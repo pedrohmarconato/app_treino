@@ -1,8 +1,8 @@
 // app.js
 
 // --- Configuração do Supabase ---
-const SUPABASE_URL = 'SUA_SUPABASE_URL_AQUI';
-const SUPABASE_KEY = 'SUA_SUPABASE_KEY_AQUI';
+const SUPABASE_URL = 'https://ktfmktecvllyiqfkavdn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0Zm1rdGVjdmxseWlxZmthdmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwNDQ2OTAsImV4cCI6MjA2MzYyMDY5MH0.PgEnBgtdITsb_G_ycSOaXOmkwNfpvIWVOOAsVrm2zCY';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- Funções auxiliares ---
