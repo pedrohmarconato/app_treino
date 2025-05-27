@@ -1,17 +1,17 @@
 :root {
-    --primary-color: #4a6cf7;
-    --primary-light: #6e89f8;
-    --primary-dark: #3451d1;
-    --secondary-color: #ff6b6b;
-    --text-color: #333333;
+    --primary-color: #4F4F4F; /* Darker gray for text/important elements */
+    --primary-light: #E0E0E0; /* Lighter gray for backgrounds */
+    --primary-dark: #333333; /* Darkest gray for text */
+    --secondary-color: #50C878; /* Neon green for highlights/buttons */
+    --text-color: var(--primary-dark); /* Use primary dark for general text */
     --light-text: #777777;
-    --bg-color: #f8f9fa;
+    --bg-color: var(--primary-light); /* Use primary light for background */
     --card-bg: #ffffff;
-    --success-color: #4caf50;
+    --success-color: var(--secondary-color); /* Neon green for success */
     --warning-color: #ff9800;
     --error-color: #f44336;
-    --border-radius: 10px;
-    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --border-radius: 8px; /* Slightly reduced border-radius for a cleaner look */
+    --shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* More subtle default shadow */
     --transition: all 0.3s ease;
 }
 
@@ -24,7 +24,7 @@
 body {
     font-family: 'Roboto', sans-serif;
     background-color: var(--bg-color);
-    color: var(--text-color);
+    color: var(--text-color); /* Updated to use the new text color */
     line-height: 1.6;
 }
 
@@ -41,7 +41,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-    color: var(--text-color);
+    color: var(--primary-dark); /* Ensure headings use the primary dark gray */
     margin-bottom: 15px;
 }
 
@@ -68,32 +68,39 @@ button {
     font-weight: 500;
     font-size: 1rem;
     transition: var(--transition);
+    box-shadow: var(--shadow); /* Add subtle shadow to buttons */
 }
 
 .primary-btn {
-    background-color: var(--primary-color);
+    background-color: var(--secondary-color); /* Neon green for primary buttons */
     color: white;
     width: 100%;
     margin-top: 20px;
 }
 
 .primary-btn:hover {
-    background-color: var(--primary-dark);
+    background-color: #45a063; /* Darker shade of neon green for hover */
 }
 
 .secondary-btn {
-    background-color: #e0e0e0;
-    color: var(--text-color);
+    background-color: var(--primary-light); /* Lighter gray for secondary buttons */
+    color: var(--primary-dark); /* Dark gray text */
 }
 
 .secondary-btn:hover {
-    background-color: #d0d0d0;
+    background-color: #cccccc; /* Slightly darker gray for hover */
 }
 
 .back-btn {
     background: none;
     font-size: 1.5rem;
     padding: 5px 15px;
+    color: var(--primary-dark); /* Ensure back button has a color */
+    box-shadow: none; /* No shadow for back button */
+}
+
+.back-btn:hover {
+    color: var(--secondary-color); /* Neon green on hover */
 }
 
 /* Telas */
@@ -128,15 +135,17 @@ button {
     padding: 20px;
     background-color: var(--card-bg);
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow); /* Use default subtle shadow */
     cursor: pointer;
     transition: var(--transition);
     width: 150px;
+    border: 1px solid var(--primary-light); /* Add a light border */
 }
 
 .user-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    /* transform: translateY(-5px); */ /* Removed transform for minimalist feel */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow on hover */
+    border-color: var(--secondary-color); /* Neon green border on hover */
 }
 
 .avatar {
@@ -145,7 +154,7 @@ button {
     margin: 0 auto 15px;
     border-radius: 50%;
     overflow: hidden;
-    background-color: #e0e0e0;
+    background-color: var(--primary-light); /* Lighter gray for avatar background */
 }
 
 .avatar img {
@@ -163,7 +172,7 @@ button {
 header {
     background-color: var(--card-bg);
     padding: 15px 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow); /* Use default subtle shadow */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -179,6 +188,14 @@ header {
     background: none;
     color: var(--light-text);
     padding: 5px 10px;
+    border: 1px solid var(--primary-light); /* Add a light border */
+    border-radius: 5px; /* Smaller border radius for buttons */
+    transition: var(--transition);
+}
+
+.logout button:hover {
+    color: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 
 /* Home Screen */
@@ -193,8 +210,9 @@ header {
     background-color: var(--card-bg);
     padding: 15px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* More subtle shadow */
     text-align: center;
+    border: 1px solid var(--primary-light); /* Add a light border */
 }
 
 .metric-card h4 {
@@ -206,23 +224,54 @@ header {
 .metric-card p {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--primary-dark); /* Use primary dark gray for metric values */
 }
 
 .schedule {
     background-color: var(--card-bg);
     padding: 20px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow); /* Use default subtle shadow */
 }
 
 .workout-card {
-    background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+    background: var(--primary-color); /* Solid dark gray for workout card */
     color: white;
     padding: 20px;
     border-radius: var(--border-radius);
     margin: 15px 0 25px;
 }
+
+.workout-card-small {
+    background: var(--primary-color); /* Similar to workout-card */
+    color: white;
+    padding: 15px; /* Slightly less padding */
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 10px; /* Smaller margin */
+}
+
+.workout-card-small .workout-type h4 { /* Targeting h4 specifically if used in small card */
+    font-size: 1rem; /* Slightly smaller than h3 in main card */
+    margin-bottom: 5px;
+}
+
+.workout-card-small .workout-type p {
+    font-size: 0.85rem; /* Slightly smaller */
+    opacity: 0.9;
+}
+
+.workout-card-small .workout-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px; /* Smaller margin */
+    font-size: 0.85rem; /* Smaller font size for details */
+}
+
+.workout-card-small .workout-info p {
+    margin: 0; /* Remove default p margins if any */
+}
+
 
 .workout-info {
     display: flex;
@@ -233,7 +282,7 @@ header {
 .last-workout {
     margin: 25px 0;
     padding-top: 15px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--primary-light); /* Use primary light for border */
 }
 
 .last-workout h3 {
@@ -256,7 +305,7 @@ header {
 .progress-container {
     width: 100%;
     height: 6px;
-    background-color: #e0e0e0;
+    background-color: var(--primary-light); /* Lighter gray for progress container background */
     border-radius: 10px;
     margin-top: 5px;
 }
@@ -264,7 +313,7 @@ header {
 .progress-bar {
     height: 100%;
     border-radius: 10px;
-    background-color: var(--primary-color);
+    background-color: var(--secondary-color); /* Neon green for progress bar */
     transition: width 0.5s ease;
 }
 
@@ -272,15 +321,31 @@ header {
     background-color: var(--card-bg);
     padding: 20px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow); /* Use default subtle shadow */
     margin-bottom: 20px;
 }
 
 .exercise-notes {
     padding: 10px;
-    background-color: rgba(74, 108, 247, 0.1);
-    border-left: 3px solid var(--primary-color);
+    background-color: rgba(80, 200, 120, 0.1); /* Light neon green background */
+    border-left: 3px solid var(--secondary-color); /* Neon green border */
     margin-bottom: 20px;
+}
+
+#exercise-1rm-percentage {
+    color: var(--light-text);
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+#current-series-info {
+    text-align: center;
+    margin-bottom: 15px; /* Increased margin a bit */
+    font-weight: 500;
+    font-size: 1.1rem;
+    color: var(--primary-dark);
 }
 
 .series-header {
@@ -289,7 +354,8 @@ header {
     gap: 10px;
     padding: 10px 0;
     font-weight: 500;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--primary-light); /* Use primary light for border */
+    color: var(--light-text);
 }
 
 .series-row {
@@ -303,9 +369,18 @@ header {
 .series-row input {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--primary-light); /* Use primary light for input border */
     border-radius: 5px;
     font-size: 1rem;
+    background-color: #fff; /* Ensure input background is white */
+    color: var(--primary-dark); /* Ensure input text is dark gray */
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.series-row input:focus {
+    outline: none;
+    border-color: var(--secondary-color); /* Neon green border on focus */
+    box-shadow: 0 0 0 2px rgba(80, 200, 120, 0.2); /* Subtle neon green shadow on focus */
 }
 
 .series-row.completed {
@@ -313,19 +388,41 @@ header {
 }
 
 .done-btn {
-    background-color: var(--success-color);
+    background-color: var(--success-color); /* Should be neon green now */
     color: white;
     border: none;
     border-radius: 5px;
     padding: 8px;
     cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.done-btn:hover {
+    background-color: #45a063; /* Darker shade of neon green for hover */
+}
+
+.done-btn:disabled {
+    background-color: var(--primary-light); /* Use a light gray for disabled background */
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.done-btn:disabled:hover {
+    background-color: var(--primary-light); /* Ensure hover doesn't change background when disabled */
+}
+
+.series-row.active-series {
+    /* background-color: rgba(80, 200, 120, 0.08); /* Subtle neon green tint */
+    border-left: 3px solid var(--secondary-color);
+    padding-left: 10px; /* Adjust padding to accommodate the border */
+    margin-left: -13px; /* Counteract padding shift if container has fixed padding */
 }
 
 .timer-container {
     background-color: var(--card-bg);
     padding: 20px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow); /* Use default subtle shadow */
     text-align: center;
     margin-bottom: 20px;
 }
@@ -334,14 +431,14 @@ header {
     font-size: 3rem;
     font-weight: 700;
     margin: 20px 0;
-    color: var(--primary-color);
+    color: var(--primary-dark); /* Dark gray for timer display */
 }
 
 .completion-message {
     background-color: var(--card-bg);
     padding: 30px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow); /* Use default subtle shadow */
     text-align: center;
 }
 
@@ -354,10 +451,90 @@ header {
 .stat p {
     font-size: 1.8rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--primary-dark); /* Dark gray for stats */
     margin-top: 10px;
 }
 
 .hidden {
     display: none;
+}
+
+/* Weekly Planner Screen Styles */
+.planner-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.planner-header h3 {
+    font-size: 1.3rem;
+    color: var(--primary-dark);
+}
+
+.planner-header p {
+    font-size: 0.9rem;
+    color: var(--light-text);
+}
+
+.planner-days-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Min width for cards */
+    gap: 20px; /* Increased gap */
+    margin-bottom: 20px;
+}
+
+.planner-day-card {
+    background-color: var(--card-bg);
+    padding: 20px; /* Increased padding */
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Increased gap between elements in card */
+}
+
+.planner-day-card h4 {
+    font-size: 1.1rem;
+    color: var(--secondary-color); /* Neon green for day name */
+    text-align: center;
+    margin-bottom: 10px; /* Adjusted margin */
+}
+
+.planner-day-card label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.planner-day-card select,
+.planner-day-card textarea {
+    width: 100%;
+    padding: 10px; /* Increased padding */
+    border: 1px solid var(--primary-light);
+    border-radius: 5px;
+    background-color: #fff;
+    color: var(--primary-dark);
+    font-size: 0.95rem; /* Adjusted font size */
+    /* margin-bottom: 10px; /* Removed individual margin, gap in flex container handles it */
+}
+
+.planner-day-card select:focus,
+.planner-day-card textarea:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(80, 200, 120, 0.2);
+}
+
+.planner-day-card textarea {
+    resize: vertical;
+    min-height: 60px; /* Minimum height for textarea */
+}
+
+.treino-select-container {
+    /* Styles for this container if it needs specific layout beyond being a div */
+    /* The .hidden class will toggle its display */
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Gap for label and select within this container */
 }
