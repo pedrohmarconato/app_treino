@@ -86,12 +86,14 @@ let completedSeries = 0;
 let timerInterval = null;
 let startTime = null;
 let workoutStartTime = null;
+let currentExerciseActiveSeries = 1; // Tracks the active series for the current exercise
 
 // Elementos DOM
 const screens = {
     login: document.getElementById('login-screen'),
     home: document.getElementById('home-screen'),
-    workout: document.getElementById('workout-screen')
+    workout: document.getElementById('workout-screen'),
+    weeklyPlanner: document.getElementById('weekly-planner-screen') // Added planner screen
 };
 
 // Inicialização da aplicação
@@ -110,46 +112,102 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('back-btn').addEventListener('click', backToHome);
     document.getElementById('skip-rest-btn').addEventListener('click', skipRest);
     document.getElementById('finish-workout-btn').addEventListener('click', finishWorkout);
+
+    // Planner screen buttons
+    const saveScheduleBtn = document.getElementById('save-schedule-btn');
+    if (saveScheduleBtn) {
+        saveScheduleBtn.addEventListener('click', () => {
+            const year = parseInt(document.getElementById('planner-year').textContent);
+            const weekNumber = parseInt(document.getElementById('planner-week-number').textContent);
+            saveWeeklySchedule(year, weekNumber);
+        });
+    }
+
+    const backToHomeFromPlannerBtn = document.getElementById('back-to-home-from-planner-btn');
+    if (backToHomeFromPlannerBtn) {
+        backToHomeFromPlannerBtn.addEventListener('click', () => changeScreen('home'));
+    }
+    
+    // Removed temporary planner button listener
 });
 
 // Função para selecionar usuário
 async function selectUser(userId) {
     try {
         // Buscar informações do usuário
-        const { data: user, error } = await supabaseClient
-            .from('dim_usuarios')
+        const { data: user, error } = await supabase
+            .from('usuarios')
             .select('*')
             .eq('id', userId)
             .single();
 
         if (error) throw error;
-
         currentUser = user;
         
-        // Atualizar UI com dados do usuário
+        // Atualizar UI com dados do usuário (avatar e nome)
         document.getElementById('user-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.nome}`;
         document.getElementById('user-name').textContent = user.nome;
+
+        // Check and trigger weekly planner if needed
+        const plannerWasShown = await checkAndTriggerWeeklyPlanner();
+        if (plannerWasShown) {
+            return; // Stop further processing as user is now in planner
+        }
         
-        // Buscar métricas do usuário
+        // Proceed if planner was not shown
         await loadUserMetrics();
-        
-        // Buscar próximo treino
-        await loadNextWorkout();
-        
-        // Trocar para tela inicial
+        await loadNextWorkout(); // This will now use the plan
         changeScreen('home');
         
     } catch (error) {
         console.error('Erro ao selecionar usuário:', error);
         alert('Erro ao carregar dados do usuário');
+        changeScreen('login'); // Go back to login on error
     }
 }
+
+
+async function checkAndTriggerWeeklyPlanner() {
+    if (!currentUser) return false;
+
+    const today = new Date();
+    const { year, week } = getWeekNumber(today);
+    // const dayOfWeek = today.getDay() || 7; // 1=Mon, 7=Sun, not strictly needed for simplified logic
+
+    try {
+        const { data, error, count } = await supabase
+            .from('planejamento_semanal')
+            .select('id', { count: 'exact', head: true }) // Only need count
+            .eq('usuario_id', currentUser.id)
+            .eq('ano', year)
+            .eq('numero_semana', week);
+
+        if (error) {
+            console.error("Erro ao verificar planejamento semanal:", error);
+            return false; // Don't show planner on error
+        }
+        
+        // Simplified condition: If no plan exists for the current week, show the planner.
+        if (count === 0) {
+            console.log(`Nenhum plano encontrado para usuário ${currentUser.id}, ano ${year}, semana ${week}. Abrindo planejador.`);
+            await renderWeeklyPlanner(year, week); // Ensure render is await if it has async parts
+            changeScreen('weeklyPlanner');
+            return true; // Planner was shown
+        }
+        console.log(`Plano encontrado para usuário ${currentUser.id}, ano ${year}, semana ${week}. Não abrindo planejador.`);
+        return false; // Planner not shown, plan exists
+    } catch (e) {
+        console.error("Exceção ao verificar planejamento semanal:", e);
+        return false;
+    }
+}
+
 
 // Carregar métricas do usuário
 async function loadUserMetrics() {
     try {
         // Buscar treinos concluídos
-        const { data: completedWorkouts, error } = await supabaseClient
+        const { data: completedWorkouts, error } = await supabase // Changed supabaseClient to supabase
             .from('fato_execucao_exercicio')
             .select('DISTINCT numero_treino')
             .eq('id_usuario', currentUser.id);
@@ -164,16 +222,21 @@ async function loadUserMetrics() {
         
         // Calcular semana atual (aproximação baseada nos treinos concluídos)
         const currentWeek = Math.floor(completedCount / 4) + 1;
+
+        // Obter e formatar o mês atual
+        const currentMonthRaw = new Date().toLocaleString('pt-BR', { month: 'long' });
+        const currentMonth = currentMonthRaw.charAt(0).toUpperCase() + currentMonthRaw.slice(1);
         
         // Atualizar UI
         document.getElementById('completed-workouts').textContent = completedCount;
         document.getElementById('progress-percentage').textContent = `${progressPercentage}%`;
         document.getElementById('current-week').textContent = currentWeek > 12 ? 12 : currentWeek;
+        document.getElementById('current-month').textContent = currentMonth;
         
         // Buscar último treino realizado
         if (completedCount > 0) {
             const lastWorkoutNumber = Math.max(...uniqueWorkouts);
-            const { data: lastWorkoutData } = await supabaseClient
+            const { data: lastWorkoutData } = await supabase // Changed supabaseClient to supabase
                 .from('fato_protocolo_treinos')
                 .select('numero_treino, semana_referencia, dia_semana')
                 .eq('numero_treino', lastWorkoutNumber)
@@ -193,100 +256,234 @@ async function loadUserMetrics() {
     }
 }
 
-// Carregar próximo treino
+// Helper function to fetch details for a specific workout number from v_protocolo_treinos
+async function fetchWorkoutDetails(workoutNumber, userId) {
+    const { data: workoutExercises, error } = await supabase
+        .from('v_protocolo_treinos')
+        .select(`
+            numero_treino,
+            tipo_treino,
+            semana_referencia,
+            dia_semana,
+            percentual_1rm_min,
+            percentual_1rm_max,
+            grupo_muscular,
+            exercicio_id,
+            ordem_exercicio 
+        `) // Added ordem_exercicio
+        .eq('numero_treino', workoutNumber)
+        .eq('id_usuario', userId) 
+        .order('ordem_exercicio', { ascending: true });
+
+    if (error) {
+        console.error(`Erro ao buscar detalhes do treino ${workoutNumber} para usuário ${userId}:`, error.message);
+        return null;
+    }
+
+    if (!workoutExercises || workoutExercises.length === 0) {
+        console.warn(`Nenhum exercício encontrado para o treino ${workoutNumber} para usuário ${userId}`);
+        return null;
+    }
+
+    const firstExercise = workoutExercises[0];
+    const exerciseCount = new Set(workoutExercises.map(ex => ex.exercicio_id)).size;
+    // Determine the primary muscle group. If multiple, take the first one or concatenate.
+    // For simplicity, taking the one from the first exercise, assuming it's representative for the workout card.
+    const primaryMuscleGroup = firstExercise.grupo_muscular; 
+
+    return {
+        numero_treino: firstExercise.numero_treino,
+        tipo_treino: firstExercise.tipo_treino,
+        semana_referencia: firstExercise.semana_referencia,
+        dia_semana: firstExercise.dia_semana,
+        percentual_1rm_min: firstExercise.percentual_1rm_min,
+        percentual_1rm_max: firstExercise.percentual_1rm_max,
+        grupo_muscular: primaryMuscleGroup, 
+        exerciseCount: exerciseCount,
+        // Storing all exercises to pass to startWorkout if needed
+        allExercisesData: workoutExercises 
+    };
+}
+
+// Carregar próximos dois treinos (agora baseado no planejamento semanal)
 async function loadNextWorkout() {
+    if (!currentUser) return;
+
+    const today = new Date();
+    const { year, week } = getWeekNumber(today);
+    const currentDayOfWeek = today.getDay() || 7; // 1 = Monday, 7 = Sunday
+
     try {
-        // Buscar treinos concluídos
-        const { data: completedWorkouts, error } = await supabaseClient
-            .from('fato_execucao_exercicio')
-            .select('DISTINCT numero_treino')
-            .eq('id_usuario', currentUser.id);
-            
-        if (error) throw error;
-        
-        const uniqueWorkouts = [...new Set(completedWorkouts.map(w => w.numero_treino))];
-        
-        // Determinar próximo treino (último + 1, ou começar do 1)
-        let nextWorkoutNumber = 1;
-        if (uniqueWorkouts.length > 0) {
-            nextWorkoutNumber = Math.max(...uniqueWorkouts) + 1;
-            if (nextWorkoutNumber > 48) nextWorkoutNumber = 1; // Recomeçar o protocolo
+        const { data: weeklyPlan, error: planError } = await supabase
+            .from('planejamento_semanal')
+            .select('*')
+            .eq('usuario_id', currentUser.id)
+            .eq('ano', year)
+            .eq('numero_semana', week)
+            .order('dia_semana', { ascending: true });
+
+        if (planError) {
+            console.error("Erro ao buscar planejamento semanal:", planError);
+            // Display error or guide user to planner
+            document.getElementById('next-workout-name').textContent = "Erro ao carregar plano";
+            return;
         }
+
+        if (!weeklyPlan || weeklyPlan.length === 0) {
+            // This case should ideally be handled by checkAndTriggerWeeklyPlanner
+            // If it's reached, means planner was skipped or an issue occurred
+            console.warn("Nenhum planejamento para a semana atual. O usuário deveria ter sido direcionado ao planejador.");
+            document.getElementById('next-workout-name').textContent = "Planeje sua semana!";
+            document.getElementById('today-muscle-group').textContent = "Planejamento pendente";
+            document.getElementById('next-workout-week').textContent = "";
+            document.getElementById('next-workout-exercises').textContent = "";
+            document.getElementById('next-workout-intensity').textContent = "";
+            document.getElementById('next-workout-2-name').textContent = "";
+            document.getElementById('next-workout-2-week').textContent = "";
+            document.getElementById('next-workout-2-exercises').textContent = "";
+            document.getElementById('next-workout-2-intensity').textContent = "";
+            // Optionally, disable start workout button
+            document.getElementById('start-workout-btn').disabled = true;
+            return;
+        }
+        document.getElementById('start-workout-btn').disabled = false;
+
+
+        const upcomingTrainings = weeklyPlan.filter(dayPlan => 
+            dayPlan.tipo_atividade === 'TREINO' && 
+            dayPlan.dia_semana >= currentDayOfWeek && 
+            dayPlan.treino_numero_ref != null
+        );
         
-        // Buscar detalhes do próximo treino
-        const { data: nextWorkoutData, error: nextError } = await supabaseClient
-            .from('fato_protocolo_treinos')
-            .select(`
-                numero_treino, 
-                semana_referencia, 
-                dia_semana,
-                percentual_1rm_min,
-                percentual_1rm_max
-            `)
-            .eq('numero_treino', nextWorkoutNumber)
-            .eq('protocolo_id', 1)
-            .limit(1)
-            .single();
-            
-        if (nextError) throw nextError;
-        
-        // Guardar info do próximo treino
-        currentWorkout = nextWorkoutData;
-        
-        // Contar exercícios no treino
-        const { count: exerciseCount } = await supabaseClient
-            .from('fato_protocolo_treinos')
-            .select('exercicio_id', { count: 'exact' })
-            .eq('numero_treino', nextWorkoutNumber)
-            .eq('protocolo_id', 1);
-            
-        // Atualizar UI
-        const workoutType = getWorkoutTypeLabel(nextWorkoutData.dia_semana);
-        document.getElementById('next-workout-name').textContent = `Treino ${workoutType}`;
-        document.getElementById('next-workout-week').textContent = `Semana ${nextWorkoutData.semana_referencia}`;
-        document.getElementById('next-workout-exercises').textContent = `${exerciseCount} exercícios`;
-        document.getElementById('next-workout-intensity').textContent = 
-            `${nextWorkoutData.percentual_1rm_min}-${nextWorkoutData.percentual_1rm_max}% 1RM`;
-        
+        // Add trainings from this week already passed if no future ones are found (for review or late start)
+        if (upcomingTrainings.length === 0) {
+            const pastTrainingsThisWeek = weeklyPlan.filter(dayPlan => 
+                dayPlan.tipo_atividade === 'TREINO' && 
+                dayPlan.treino_numero_ref != null
+            ).sort((a,b) => a.dia_semana - b.dia_semana); // Ensure sorted
+             if (pastTrainingsThisWeek.length > 0) upcomingTrainings.push(...pastTrainingsThisWeek);
+        }
+
+
+        if (upcomingTrainings.length > 0) {
+            const workout1Plan = upcomingTrainings[0];
+            const workout1Details = await fetchWorkoutDetails(workout1Plan.treino_numero_ref, currentUser.id);
+
+            if (workout1Details) {
+                // Critical: Map treino_numero_ref to numero_treino for currentWorkout consistency
+                currentWorkout = { 
+                    ...workout1Details, 
+                    numero_treino: workout1Plan.treino_numero_ref, // This is the key for startWorkout
+                    dia_semana_planejado: workout1Plan.dia_semana // Keep planned day if needed
+                }; 
+
+                document.getElementById('next-workout-name').textContent = workout1Details.tipo_treino || `Treino ${getWorkoutTypeLabel(workout1Details.dia_semana)}`;
+                document.getElementById('next-workout-week').textContent = `Semana ${workout1Details.semana_referencia}`; // This comes from v_protocolo_treinos
+                document.getElementById('next-workout-exercises').textContent = `${workout1Details.exerciseCount} exercícios`;
+                document.getElementById('next-workout-intensity').textContent = `${workout1Details.percentual_1rm_min}-${workout1Details.percentual_1rm_max}% 1RM`;
+                document.getElementById('today-muscle-group').textContent = `Próximo Foco: ${workout1Details.grupo_muscular || 'N/A'}`;
+            } else {
+                setNoWorkoutUI('next-workout', 'Erro ao carregar Treino 1');
+            }
+
+            if (upcomingTrainings.length > 1) {
+                const workout2Plan = upcomingTrainings[1];
+                const workout2Details = await fetchWorkoutDetails(workout2Plan.treino_numero_ref, currentUser.id);
+                if (workout2Details) {
+                    document.getElementById('next-workout-2-name').textContent = workout2Details.tipo_treino || `Treino ${getWorkoutTypeLabel(workout2Details.dia_semana)}`;
+                    document.getElementById('next-workout-2-week').textContent = `Semana ${workout2Details.semana_referencia}`;
+                    document.getElementById('next-workout-2-exercises').textContent = `${workout2Details.exerciseCount} exercícios`;
+                    document.getElementById('next-workout-2-intensity').textContent = `${workout2Details.percentual_1rm_min}-${workout2Details.percentual_1rm_max}% 1RM`;
+                } else {
+                     setNoWorkoutUI('next-workout-2', 'Erro ao carregar Treino 2');
+                }
+            } else {
+                setNoWorkoutUI('next-workout-2', 'Nenhum outro treino planejado');
+            }
+        } else {
+            setNoWorkoutUI('next-workout', 'Nenhum treino restante esta semana');
+            setNoWorkoutUI('next-workout-2', '');
+            document.getElementById('today-muscle-group').textContent = "Sem treinos planejados";
+            document.getElementById('start-workout-btn').disabled = true;
+        }
+
     } catch (error) {
-        console.error('Erro ao carregar próximo treino:', error);
+        console.error('Erro ao carregar próximos treinos do planejamento:', error);
+        setNoWorkoutUI('next-workout', 'Erro geral');
+        setNoWorkoutUI('next-workout-2', '');
     }
 }
 
+function setNoWorkoutUI(prefix, message1Name, message2Week = "") {
+    document.getElementById(`${prefix}-name`).textContent = message1Name;
+    if (document.getElementById(`${prefix}-week`)) {
+      document.getElementById(`${prefix}-week`).textContent = message2Week;
+    }
+    if (document.getElementById(`${prefix}-exercises`)) {
+        document.getElementById(`${prefix}-exercises`).textContent = "";
+    }
+    if (document.getElementById(`${prefix}-intensity`)) {
+        document.getElementById(`${prefix}-intensity`).textContent = "";
+    }
+}
+
+
 // Iniciar treino
 async function startWorkout() {
-    if (!currentWorkout) return;
+    if (!currentWorkout || !currentWorkout.numero_treino) {
+        alert("Detalhes do treino principal não carregados. Por favor, volte e tente novamente.");
+        return;
+    }
     
     try {
-        // Buscar todos os exercícios do treino
-        const { data: workoutExercises, error } = await supabaseClient
-            .from('fato_protocolo_treinos')
-            .select(`
-                id,
-                exercicio_id,
-                series,
-                repeticoes_alvo,
-                percentual_1rm_base,
-                tempo_descanso,
-                ordem_exercicio,
-                observacoes,
-                dim_exercicios:exercicio_id (
-                    nome,
+        // Use the allExercisesData from currentWorkout if available (populated by fetchWorkoutDetails)
+        // Otherwise, fetch fresh from v_protocolo_treinos
+        let workoutExercisesData = currentWorkout.allExercisesData;
+
+        if (!workoutExercisesData) { // Fallback if not pre-fetched
+            console.warn("currentWorkout.allExercisesData not found, fetching fresh for startWorkout");
+            const { data, error } = await supabase
+                .from('v_protocolo_treinos')
+                .select(`
+                    exercicio_id,
+                    exercicio_nome,
+                    series,
+                    repeticoes_alvo,
+                    percentual_1rm_base,
+                    tempo_descanso,
+                    ordem_exercicio,
+                    observacoes,
                     grupo_muscular
-                )
-            `)
-            .eq('numero_treino', currentWorkout.numero_treino)
-            .eq('protocolo_id', 1)
-            .order('ordem_exercicio', { ascending: true });
+                `)
+                .eq('numero_treino', currentWorkout.numero_treino)
+                .eq('id_usuario', currentUser.id)
+                .order('ordem_exercicio', { ascending: true });
             
-        if (error) throw error;
+            if (error) throw error;
+            workoutExercisesData = data;
+        }
         
-        // Guardar exercícios
-        exercises = workoutExercises;
+        if (!workoutExercisesData || workoutExercisesData.length === 0) {
+            alert("Nenhum exercício encontrado para este treino.");
+            return;
+        }
         
-        // Atualizar título do treino
-        const workoutType = getWorkoutTypeLabel(currentWorkout.dia_semana);
-        document.getElementById('workout-title').textContent = `Treino ${workoutType}`;
+        exercises = workoutExercisesData.map(ex => ({
+            id: ex.exercicio_id, // Assuming 'id' in this context refers to the specific instance in fato_protocolo_treinos, but v_protocolo_treinos might not have this. Using exercicio_id.
+            exercicio_id: ex.exercicio_id,
+            series: ex.series,
+            repeticoes_alvo: ex.repeticoes_alvo,
+            percentual_1rm_base: ex.percentual_1rm_base, // This might be named differently in v_protocolo_treinos or needs calculation
+            tempo_descanso: ex.tempo_descanso,
+            ordem_exercicio: ex.ordem_exercicio,
+            observacoes: ex.observacoes,
+            dim_exercicios: { // Keep compatible structure for loadExercise/createSeriesRow
+                nome: ex.exercicio_nome,
+                grupo_muscular: ex.grupo_muscular
+            }
+        }));
+        
+        document.getElementById('workout-title').textContent = currentWorkout.tipo_treino || `Treino ${getWorkoutTypeLabel(currentWorkout.dia_semana)}`;
         
         // Iniciar com o primeiro exercício
         currentExercise = 0;
@@ -321,13 +518,17 @@ async function loadExercise(index) {
     // Atualizar UI
     document.getElementById('exercise-name').textContent = exercise.dim_exercicios.nome;
     document.getElementById('exercise-notes').textContent = exercise.observacoes || 'Realize com atenção à técnica';
+    document.getElementById('exercise-1rm-percentage').textContent = `Usar ${exercise.percentual_1rm_base || 'N/A'}% do 1RM`;
     
+    currentExerciseActiveSeries = 1; // Reset for the new exercise
+    document.getElementById('current-series-info').textContent = `Série ${currentExerciseActiveSeries} de ${exercise.series}`;
+
     // Limpar container de séries anterior
     document.getElementById('series-container').innerHTML = '';
     
     // Criar linhas para as séries
     for (let i = 1; i <= exercise.series; i++) {
-        await createSeriesRow(exercise, i);
+        await createSeriesRow(exercise, i); // Pass currentExerciseActiveSeries if needed for initial state
     }
     
     // Mostrar container de exercício, esconder timer
@@ -340,7 +541,7 @@ async function loadExercise(index) {
 async function createSeriesRow(exercise, seriesNumber) {
     try {
         // Buscar peso sugerido
-        const { data: weightSuggestion, error } = await supabaseClient
+        const { data: weightSuggestion, error } = await supabase // Changed supabaseClient to supabase
             .from('vw_sugestao_peso_app')
             .select('peso_sugerido')
             .eq('id_usuario', currentUser.id)
@@ -371,16 +572,20 @@ async function createSeriesRow(exercise, seriesNumber) {
                 <input type="number" class="reps-input" value="${exercise.repeticoes_alvo}" min="0">
             </div>
             <div>
-                <button class="done-btn">✓</button>
+                <button class="done-btn" ${(seriesNumber !== currentExerciseActiveSeries) ? 'disabled' : ''}>✓</button>
             </div>
         `;
+        
+        if (seriesNumber === currentExerciseActiveSeries) {
+            seriesRow.classList.add('active-series');
+        }
         
         // Adicionar ao container
         document.getElementById('series-container').appendChild(seriesRow);
         
         // Adicionar evento para finalizar série
         seriesRow.querySelector('.done-btn').addEventListener('click', () => {
-            completeSeries(exercise, seriesNumber);
+            completeSeries(exercise, seriesNumber); // seriesNumber is the actual number of the series clicked
         });
         
     } catch (error) {
@@ -407,7 +612,7 @@ async function completeSeries(exercise, seriesNumber) {
         }
         
         // Registrar série concluída
-        const { error } = await supabaseClient
+        const { error } = await supabase // Changed supabaseClient to supabase
             .from('fato_execucao_exercicio')
             .insert({
                 id_usuario: currentUser.id,
@@ -423,18 +628,32 @@ async function completeSeries(exercise, seriesNumber) {
             
         if (error) throw error;
         
-        // Atualizar UI
+        // Atualizar UI da série completada
         seriesRow.classList.add('completed');
+        seriesRow.classList.remove('active-series');
         weightInput.disabled = true;
         repsInput.disabled = true;
         seriesRow.querySelector('.done-btn').disabled = true;
         
-        // Incrementar contador de séries
+        // Incrementar contador de séries global
         completedSeries++;
+
+        // ---- LOAD PROGRESSION LOGIC ----
+        await handleLoadProgression(exercise, reps);
+        // ---- END LOAD PROGRESSION LOGIC ----
         
-        // Verificar se esta é a última série do exercício
-        if (seriesNumber === exercise.series) {
-            // Mostrar timer e preparar próximo exercício
+        // Avançar para a próxima série do exercício atual
+        currentExerciseActiveSeries++;
+        
+        if (currentExerciseActiveSeries <= exercise.series) {
+            document.getElementById('current-series-info').textContent = `Série ${currentExerciseActiveSeries} de ${exercise.series}`;
+            const nextSeriesRow = document.querySelector(`.series-row[data-series="${currentExerciseActiveSeries}"]`);
+            if (nextSeriesRow) {
+                nextSeriesRow.querySelector('.done-btn').disabled = false;
+                nextSeriesRow.classList.add('active-series');
+            }
+        } else {
+            // Última série do exercício concluída
             startRest(exercise.tempo_descanso, currentExercise + 1);
         }
         
@@ -443,6 +662,105 @@ async function completeSeries(exercise, seriesNumber) {
         alert('Erro ao salvar série');
     }
 }
+
+
+async function handleLoadProgression(exercise, repsDone) {
+    const usuarioId = currentUser.id;
+    const exercicioId = exercise.exercicio_id;
+    const targetReps = exercise.repeticoes_alvo;
+    let newPesoBase;
+    let currentPesoBaseInDb;
+
+    try {
+        // Attempt Option B: Fetch from v_pesos_usuario
+        const { data: vPesosData, error: vPesosError } = await supabase
+            .from('v_pesos_usuario')
+            .select('peso_base, peso_minimo, peso_maximo, peso_se_facil, peso_se_dificil, nome_exercicio')
+            .eq('usuario_id', usuarioId)
+            // Assuming v_pesos_usuario has exercicio_id or can be reliably joined.
+            // If v_pesos_usuario only has nome_exercicio, we'd use that:
+            // .eq('nome_exercicio', exercise.dim_exercicios.nome) 
+            // For now, trying with exercicio_id, assuming it's available or implicitly joined in the view
+            .eq('exercicio_id', exercicioId) 
+            .single();
+
+        if (vPesosError || !vPesosData) {
+            console.warn(`Opção B: Não foi possível buscar dados de progressão em v_pesos_usuario para exercicio_id ${exercicioId}. Erro: ${vPesosError?.message}. Tentando Opção A.`);
+            // Fall through to Option A
+        } else {
+            currentPesoBaseInDb = vPesosData.peso_base;
+            const { peso_minimo, peso_maximo, peso_se_facil, peso_se_dificil } = vPesosData;
+
+            if (repsDone >= targetReps && peso_se_facil != null) {
+                newPesoBase = parseFloat(peso_se_facil);
+            } else if (repsDone < targetReps && peso_se_dificil != null) {
+                newPesoBase = parseFloat(peso_se_dificil);
+            } else {
+                console.warn(`Opção B: peso_se_facil/dificil não disponíveis em v_pesos_usuario para exercicio_id ${exercicioId}. Tentando Opção A.`);
+                // Fall through to Option A by leaving newPesoBase undefined here
+            }
+
+            if (newPesoBase != null) {
+                 newPesoBase = Math.max(parseFloat(peso_minimo), Math.min(newPesoBase, parseFloat(peso_maximo)));
+            }
+        }
+
+        // Option A (Fallback or if Option B didn't set newPesoBase)
+        if (newPesoBase == null) {
+            console.log(`Executando Opção A de progressão de carga para exercicio_id ${exercicioId}.`);
+            const { data: pesosUsuarioData, error: pesosUsuarioError } = await supabase
+                .from('pesos_usuario')
+                .select('id, peso_base, peso_minimo, peso_maximo')
+                .eq('usuario_id', usuarioId)
+                .eq('exercicio_id', exercicioId) // Assuming exercicio_id exists in pesos_usuario
+                .single();
+
+            if (pesosUsuarioError || !pesosUsuarioData) {
+                console.error(`Opção A: Erro ao buscar dados da tabela pesos_usuario para exercicio_id ${exercicioId}: ${pesosUsuarioError?.message}`);
+                return; // Cannot proceed
+            }
+            
+            currentPesoBaseInDb = parseFloat(pesosUsuarioData.peso_base);
+            const pesoMinimo = parseFloat(pesosUsuarioData.peso_minimo);
+            const pesoMaximo = parseFloat(pesosUsuarioData.peso_maximo);
+            const incrementStep = 2.5; // kg
+            const decrementStep = 2.5; // kg
+
+            if (repsDone >= targetReps) {
+                newPesoBase = Math.min(currentPesoBaseInDb + incrementStep, pesoMaximo);
+            } else {
+                newPesoBase = Math.max(currentPesoBaseInDb - decrementStep, pesoMinimo);
+            }
+        }
+        
+        // Ensure newPesoBase is a number with 2 decimal places
+        newPesoBase = parseFloat(newPesoBase.toFixed(2));
+
+        // Update pesos_usuario table if newPesoBase is valid and different
+        if (newPesoBase != null && newPesoBase !== parseFloat(currentPesoBaseInDb.toFixed(2))) {
+            const { error: updateError } = await supabase
+                .from('pesos_usuario')
+                .update({ 
+                    peso_base: newPesoBase, 
+                    data_calculo: new Date().toISOString() 
+                })
+                .eq('usuario_id', usuarioId)
+                .eq('exercicio_id', exercicioId); // Assuming exercicio_id is a key in pesos_usuario
+
+            if (updateError) {
+                console.error(`Erro ao atualizar peso_base para exercicio_id ${exercicioId}: ${updateError.message}`);
+            } else {
+                console.log(`Progressão de carga: peso_base atualizado para ${newPesoBase}kg no exercicio_id ${exercicioId}.`);
+            }
+        } else if (newPesoBase != null && newPesoBase === parseFloat(currentPesoBaseInDb.toFixed(2))) {
+            console.log(`Progressão de carga: peso_base (${newPesoBase}kg) não alterado para exercicio_id ${exercicioId}.`);
+        }
+
+    } catch (error) {
+        console.error(`Erro geral na função handleLoadProgression para exercicio_id ${exercicioId}: ${error.message}`);
+    }
+}
+
 
 // Iniciar descanso
 function startRest(restTime, nextExerciseIndex) {
@@ -454,6 +772,7 @@ function startRest(restTime, nextExerciseIndex) {
     
     // Mostrar timer
     document.getElementById('timer-container').classList.remove('hidden');
+    document.getElementById('current-series-info').textContent = 'Descanso'; // Atualiza info da série
     
     // Atualizar próximo exercício (se houver)
     if (!isLastExercise) {
@@ -564,7 +883,7 @@ async function getOrCreateWeightId(weight) {
         weight = Math.round(weight * 10) / 10;
         
         // Buscar ID existente
-        const { data, error } = await supabase
+        const { data, error } = await supabase // supabaseClient was already supabase here, no change needed but kept for context
             .from('dim_pesos')
             .select('id')
             .eq('valor', weight)
@@ -578,7 +897,7 @@ async function getOrCreateWeightId(weight) {
         }
         
         // Se não existe, criar
-        const { data: newWeight, error: insertError } = await supabase
+        const { data: newWeight, error: insertError } = await supabase // supabaseClient was already supabase here
             .from('dim_pesos')
             .insert({ valor: weight })
             .select('id')
@@ -611,5 +930,202 @@ function changeScreen(screenId) {
     Object.values(screens).forEach(screen => {
         screen.classList.remove('active');
     });
-    screens[screenId].classList.add('active');
+    if (screens[screenId]) {
+        screens[screenId].classList.add('active');
+    } else {
+        console.error(`Screen with id '${screenId}' not found in screens object.`);
+    }
+}
+
+// --- Weekly Planner Logic ---
+
+// Helper to get ISO week number and year
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return { week: weekNo, year: d.getUTCFullYear() };
+}
+
+async function renderWeeklyPlanner(year, weekNumber) {
+    if (!currentUser) {
+        alert("Usuário não selecionado.");
+        changeScreen('login');
+        return;
+    }
+
+    document.getElementById('planner-year').textContent = year;
+    document.getElementById('planner-week-number').textContent = weekNumber;
+
+    const plannerDaysContainer = document.getElementById('planner-days-container');
+    plannerDaysContainer.innerHTML = ''; // Clear previous content
+
+    // Define the 4 mandatory workouts directly for clarity and consistency
+    // These are assumed to be the core workouts the user needs to plan.
+    // numero_treino should correspond to what's in v_protocolo_treinos/fato_protocolo_treinos
+    // The 'nome' here is for display in the dropdown.
+    const availableWorkouts = [
+        { numero_treino: 1, nome: 'Treino A - Costas/Ombros' }, // Assuming numero_treino 1 is type A
+        { numero_treino: 2, nome: 'Treino B - Peito' },         // Assuming numero_treino 2 is type B
+        { numero_treino: 3, nome: 'Treino C - Braços/Ombros' },// Assuming numero_treino 3 is type C
+        { numero_treino: 4, nome: 'Treino D - Pernas' }         // Assuming numero_treino 4 is type D
+    ];
+    // The previous dynamic fetching logic from v_protocolo_treinos for availableWorkouts is removed
+    // to ensure exactly these 4 workouts are presented for planning, aligning with the
+    // "4 mandatory workouts" concept and simplifying validation in saveWeeklySchedule.
+
+    console.log("Workouts disponíveis para planejamento:", availableWorkouts);
+    
+    const daysOfWeek = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+
+    for (let i = 0; i < 7; i++) {
+        const dayOfWeekNumber = i + 1; // 1 for Monday, ..., 7 for Sunday
+        const dayCard = document.createElement('div');
+        dayCard.className = 'planner-day-card';
+        dayCard.dataset.dayOfWeek = dayOfWeekNumber;
+
+        let workoutOptionsHTML = '<option value="">Selecione um treino</option>';
+        availableWorkouts.forEach(workout => {
+            workoutOptionsHTML += `<option value="${workout.numero_treino}">${workout.nome}</option>`;
+        });
+
+        dayCard.innerHTML = `
+            <h4>${daysOfWeek[i]}</h4>
+            <label for="tipo-atividade-${dayOfWeekNumber}">Atividade:</label>
+            <select id="tipo-atividade-${dayOfWeekNumber}" class="planner-activity-type" data-day="${dayOfWeekNumber}">
+                <option value="">Selecione</option>
+                <option value="TREINO">Treino</option>
+                <option value="CARDIO">Cardio</option>
+                <option value="DESCANSO">Descanso</option>
+            </select>
+            
+            <div id="treino-select-container-${dayOfWeekNumber}" class="treino-select-container hidden">
+                <label for="treino-select-${dayOfWeekNumber}">Treino:</label>
+                <select id="treino-select-${dayOfWeekNumber}" name="treino-select-${dayOfWeekNumber}">
+                    ${workoutOptionsHTML}
+                </select>
+            </div>
+            
+            <label for="observacao-${dayOfWeekNumber}">Observação:</label>
+            <textarea id="observacao-${dayOfWeekNumber}" name="observacao-${dayOfWeekNumber}" rows="2"></textarea>
+        `;
+        
+        plannerDaysContainer.appendChild(dayCard);
+
+        const activitySelect = dayCard.querySelector('.planner-activity-type');
+        const treinoSelectContainer = dayCard.querySelector('.treino-select-container');
+        
+        activitySelect.addEventListener('change', (event) => {
+            if (event.target.value === 'TREINO') {
+                treinoSelectContainer.classList.remove('hidden');
+            } else {
+                treinoSelectContainer.classList.add('hidden');
+                treinoSelectContainer.querySelector('select').value = ""; // Reset treino selection
+            }
+        });
+    }
+}
+
+async function saveWeeklySchedule(year, weekNumber) {
+    if (!currentUser) {
+        alert("Usuário não logado.");
+        return;
+    }
+
+    const dayCards = document.querySelectorAll('.planner-day-card');
+    const scheduleData = [];
+    let treinoCount = 0;
+    const selectedWorkoutRefs = [];
+
+    for (const card of dayCards) {
+        const dayOfWeek = parseInt(card.dataset.dayOfWeek);
+        const activityType = card.querySelector('.planner-activity-type').value;
+        const workoutSelect = card.querySelector(`#treino-select-${dayOfWeek}`);
+        const observation = card.querySelector(`#observacao-${dayOfWeek}`).value.trim();
+        let treinoRef = null;
+
+        if (activityType === 'TREINO') {
+            treinoCount++;
+            treinoRef = workoutSelect.value ? parseInt(workoutSelect.value) : null;
+            if (treinoRef) {
+                selectedWorkoutRefs.push(treinoRef);
+            }
+        }
+        
+        if (!activityType) {
+            alert(`Por favor, selecione uma atividade para ${card.querySelector('h4').textContent}.`);
+            return;
+        }
+
+        scheduleData.push({
+            usuario_id: currentUser.id,
+            ano: year,
+            numero_semana: weekNumber,
+            dia_semana: dayOfWeek,
+            tipo_atividade: activityType,
+            treino_numero_ref: treinoRef,
+            observacao: observation
+        });
+    }
+
+    // Validation
+    if (treinoCount !== 4) {
+        alert("Você deve planejar exatamente 4 dias de TREINO.");
+        return;
+    }
+    if (scheduleData.filter(d => d.tipo_atividade === 'TREINO' && d.treino_numero_ref == null).length > 0) {
+        alert("Todos os dias de TREINO devem ter um treino específico selecionado.");
+        return;
+    }
+    const uniqueSelectedWorkouts = new Set(selectedWorkoutRefs);
+    if (selectedWorkoutRefs.length !== 4 || uniqueSelectedWorkouts.size !== 4) {
+        // This validation assumes that the list of available workouts for selection itself contains exactly 4 unique workouts.
+        // If availableWorkouts has more than 4, this needs adjustment or rely on the user to pick 4 unique ones.
+        // For now, it checks if 4 treino_refs are selected and if they are all unique.
+        alert("Os 4 treinos selecionados devem ser únicos. Verifique se não há treinos repetidos.");
+        return;
+    }
+    
+    // Check if other 3 days are CARDIO or DESCANSO
+    const nonTrainoDays = scheduleData.filter(d => d.tipo_atividade !== 'TREINO');
+    if (nonTrainoDays.length !== 3 || nonTrainoDays.some(d => d.tipo_atividade !== 'CARDIO' && d.tipo_atividade !== 'DESCANSO')) {
+        alert("Os 3 dias restantes devem ser 'CARDIO' ou 'DESCANSO'.");
+        return;
+    }
+
+
+    try {
+        // Delete existing records for this user, year, and week before inserting new ones
+        const { error: deleteError } = await supabase
+            .from('planejamento_semanal')
+            .delete()
+            .eq('usuario_id', currentUser.id)
+            .eq('ano', year)
+            .eq('numero_semana', weekNumber);
+
+        if (deleteError) {
+            console.error("Erro ao deletar planejamento antigo:", deleteError);
+            alert(`Erro ao limpar planejamento existente: ${deleteError.message}`);
+            return;
+        }
+
+        const { error: insertError } = await supabase
+            .from('planejamento_semanal')
+            .insert(scheduleData);
+
+        if (insertError) {
+            console.error("Erro ao salvar planejamento semanal:", insertError);
+            alert(`Erro ao salvar planejamento: ${insertError.message}`);
+            return;
+        }
+
+        alert("Planejamento semanal salvo com sucesso!");
+        changeScreen('home');
+        // Optionally, refresh home screen data if current week was planned
+        // await loadNextWorkout(); // This might be needed if the home screen depends on this plan
+    } catch (error) {
+        console.error("Erro inesperado ao salvar planejamento:", error);
+        alert("Um erro inesperado ocorreu.");
+    }
 }

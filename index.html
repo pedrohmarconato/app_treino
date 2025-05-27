@@ -63,19 +63,41 @@
                         <h4>Semana Atual</h4>
                         <p id="current-week">0</p>
                     </div>
+                    <div class="metric-card">
+                        <h4>Mês Atual</h4>
+                        <p id="current-month">Carregando...</p>
+                    </div>
                 </div>
                 
                 <div class="schedule">
-                    <h2>Próximo Treino</h2>
-                    <div class="next-workout">
-                        <div id="workout-card" class="workout-card">
+                    <h2>Próximos Treinos</h2>
+                    <p id="today-muscle-group" style="text-align: center; margin-bottom: 15px; font-weight: 500;">Grupo Muscular Hoje: Carregando...</p>
+                    
+                    <!-- Primeiro Próximo Treino (principal, ligado ao botão Iniciar Treino) -->
+                    <div class="next-workout"> 
+                        <div id="workout-card" class="workout-card"> <!-- Este é o principal -->
                             <div class="workout-type">
-                                <h3 id="next-workout-name">Treino A - Costas e Ombros</h3>
-                                <p id="next-workout-week">Semana 1</p>
+                                <h3 id="next-workout-name">Carregando...</h3>
+                                <p id="next-workout-week">Semana...</p>
                             </div>
                             <div class="workout-info">
-                                <p id="next-workout-exercises">5 exercícios</p>
-                                <p id="next-workout-intensity">65-70% 1RM</p>
+                                <p id="next-workout-exercises">... exercícios</p>
+                                <p id="next-workout-intensity">...% 1RM</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista para os dois próximos treinos -->
+                    <div class="next-workouts-list" style="margin-top: 20px;">
+                        <!-- Detalhes do segundo próximo treino -->
+                        <div id="next-workout-2-card" class="workout-card-small" style="margin-top:10px;">
+                             <div class="workout-type">
+                                <h4 id="next-workout-2-name">Carregando...</h4>
+                                <p id="next-workout-2-week">Semana...</p>
+                            </div>
+                            <div class="workout-info">
+                                <p id="next-workout-2-exercises">... exercícios</p>
+                                <p id="next-workout-2-intensity">...% 1RM</p>
                             </div>
                         </div>
                     </div>
@@ -86,6 +108,7 @@
                     </div>
                     
                     <button id="start-workout-btn" class="primary-btn">Iniciar Treino</button>
+                    <!-- <button id="temp-open-planner-btn" class="secondary-btn" style="margin-top: 10px;">Planejar Semana (Temp)</button> -->
                 </div>
             </div>
         </div>
@@ -106,8 +129,10 @@
                 <div id="exercise-container" class="exercise-container">
                     <h3 id="exercise-name">Puxada frontal na máquina</h3>
                     <p id="exercise-notes" class="exercise-notes">Pegada neutra para proteger ombros</p>
+                    <p id="exercise-1rm-percentage" class="exercise-detail" style="text-align: center; margin-bottom: 10px; font-style: italic;"></p>
                     
                     <div class="series-info">
+                        <h4 id="current-series-info" style="text-align: center; margin-bottom: 10px;">Série 1/X</h4>
                         <div class="series-header">
                             <div>Série</div>
                             <div>Peso (kg)</div>
@@ -149,6 +174,51 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tela de Planejamento Semanal -->
+        <div id="weekly-planner-screen" class="screen">
+            <header>
+                <!-- Basic header, can be enhanced later -->
+                <button id="back-to-home-from-planner-btn" class="back-btn">← Home</button>
+                <h2>Planejar Semana</h2>
+            </header>
+            <div class="container">
+                <div class="planner-header">
+                    <h3>Ano: <span id="planner-year">YYYY</span>, Semana: <span id="planner-week-number">WW</span></h3>
+                    <p>Selecione as atividades para cada dia da semana.</p>
+                </div>
+
+                <div id="planner-days-container" class="planner-days-container">
+                    <!-- Day cards will be dynamically populated by JS, but here's a template for one day -->
+                    <!-- 
+                        <div class="planner-day-card" data-day-of-week="1">
+                            <h4>Segunda-feira</h4>
+                            <label for="tipo-atividade-1">Atividade:</label>
+                            <select id="tipo-atividade-1" name="tipo-atividade-1" class="planner-activity-type">
+                                <option value="DESCANSO">Descanso</option>
+                                <option value="TREINO">Treino</option>
+                                <option value="CARDIO">Cardio</option>
+                            </select>
+                            
+                            <div id="treino-select-container-1" class="treino-select-container hidden">
+                                <label for="treino-select-1">Treino:</label>
+                                <select id="treino-select-1" name="treino-select-1">
+                                    <option value="">Selecione o Treino</option>
+                                    <-- Treinos (e.g., Treino 1, Treino 2) will be populated by JS -->
+                                </select>
+                            </div>
+                            
+                            <label for="observacao-1">Observação:</label>
+                            <textarea id="observacao-1" name="observacao-1" rows="2"></textarea>
+                        </div>
+                    -->
+                </div>
+
+                <button id="save-schedule-btn" class="primary-btn">Salvar Planejamento</button>
+            </div>
+        </div>
+        <!-- End Tela de Planejamento Semanal -->
+
     </div>
 
     <script src="app.js"></script>
