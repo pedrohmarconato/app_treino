@@ -1,701 +1,1342 @@
-// app.js
+// app.js - Aplicação de Treinamento com Supabase
 
-// --- Configuração do Supabase ---
-// ATENÇÃO: Preencha com suas credenciais reais do projeto Supabase
-const supabase = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.key);
+// ==================== CONFIGURAÇÃO INICIAL ====================
+const supabase = window.supabase.createClient(
+    window.SUPABASE_CONFIG.url, 
+    window.SUPABASE_CONFIG.key
+);
 
-// --- Funções auxiliares ---
-async function fetchUsuarios() {
-    const { data, error } = await supabase.from('usuarios').select('*');
-    if (error) {
-        alert('Erro ao buscar usuários');
-        return [];
-    }
-    return data;
-}
-
-async function fetchPlanoDeTreinoDoUsuario(userId) {
-    // Busca diretamente na view v_plano_usuario_semana
-    const { data, error } = await supabase
-        .from('v_plano_usuario_semana')
-        .select('*')
-        .eq('usuario_id', userId);
-
-    if (error) {
-        console.error('Erro ao buscar plano do usuário:', error);
-        alert('Erro ao buscar plano do usuário.');
-        return [];
-    }
-
-    return data;
-}
-
-async function fetchSugestaoPeso(userId, exercicioId) {
-    // Exemplo usando a view de sugestão de peso
-    const { data, error } = await supabase
-        .from('v_pesos_usuario')
-        .select('*')
-        .eq('id_usuario', userId)
-        .eq('id_exercicio', exercicioId)
-        .single();
-    if (error) {
-        return null;
-    }
-    return data;
-}
-
-// --- Manipulação de UI ---
-// Renderizar usuários dinamicamente na tela de login
-function renderUsuariosLogin(usuarios) {
-    const usersContainer = document.querySelector('#login-screen .users');
-    usersContainer.innerHTML = '';
-    usuarios.forEach(usuario => {
-        const card = document.createElement('div');
-        card.className = 'user-card';
-        card.dataset.userId = usuario.id;
-        card.innerHTML = `
-            <div class="avatar">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(usuario.nome)}" alt="${usuario.nome}">
-            </div>
-            <h3>${usuario.nome}</h3>
-        `;
-        card.onclick = () => selecionarUsuario(usuario.id, usuario.nome);
-        usersContainer.appendChild(card);
-    });
-}
-
-async function selecionarUsuario(userId, nome) {
-    window.selectedUserId = userId;
-    window.selectedUserName = nome;
-    // Troca para tela inicial
-    changeScreen('home-screen');
-    // Atualiza nome/avatar
-    document.getElementById('user-name').textContent = nome;
-    document.getElementById('user-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(nome)}`;
-    // Carrega métricas e protocolos
-    const protocolos = await fetchPlanoDeTreinoDoUsuario(userId);
-    console.log('Protocolos recebidos do Supabase:', protocolos);
-    renderProtocolos(protocolos);
-    // Carregar métricas do usuário (implementar se necessário)
-    // loadUserMetrics(userId);
-}
-
-// Inicialização dinâmica dos usuários na tela de login
-async function inicializarLogin() {
-    const usuarios = await fetchUsuarios();
-    renderUsuariosLogin(usuarios);
-}
-
-document.addEventListener('DOMContentLoaded', inicializarLogin);
-
-function renderProtocolos(protocolos) {
-    const container = document.getElementById('protocolos');
-    container.innerHTML = '';
-    console.log('Renderizando protocolos:', protocolos);
-    if (!protocolos || protocolos.length === 0) {
-        container.innerHTML = '<p>Nenhum treino encontrado.</p>';
-        return;
-    }
-    // Ordenar por semana_referencia e numero_treino
-    protocolos.sort((a, b) => {
-        if (a.semana_referencia !== b.semana_referencia) {
-            return a.semana_referencia - b.semana_referencia;
-        }
-        return a.numero_treino - b.numero_treino;
-    });
-    protocolos.forEach(proto => {
-        const div = document.createElement('div');
-        div.className = 'protocolo-card';
-        div.innerHTML = `
-            <strong>${proto.protocolos_treinamento?.nome || 'Protocolo'}</strong><br>
-            Semana: ${proto.semana_referencia ?? '-'}<br>
-            Treino: ${proto.numero_treino ?? '-'}
-        `;
-        container.appendChild(div);
-    });
-}
-
-
-// --- Inicialização ---
-
-
-
-// Variáveis globais da aplicação
-let currentUser = null;
-let currentWorkout = null;
-let currentExercise = null;
-let currentSeries = null;
-let exercises = [];
-let completedSeries = 0;
-let timerInterval = null;
-let startTime = null;
-let workoutStartTime = null;
-
-// Elementos DOM
-const screens = {
-    login: document.getElementById('login-screen'),
-    home: document.getElementById('home-screen'),
-    workout: document.getElementById('workout-screen')
+// ==================== ESTADO GLOBAL DA APLICAÇÃO ====================
+const AppState = {
+    currentUser: null,
+    currentProtocol: null,
+    currentWorkout: null,
+    currentExercises: [],
+    currentExerciseIndex: 0,
+    workoutStartTime: null,
+    completedSeries: 0,
+    timerInterval: null,
+    restStartTime: null,
+    weekPlan: null
 };
 
-// Inicialização da aplicação
-document.addEventListener('DOMContentLoaded', () => {
-    // Evento para seleção de usuário
-    document.querySelectorAll('.user-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const userId = parseInt(card.dataset.userId);
-            selectUser(userId);
-        });
-    });
+// ==================== FUNÇÕES DE BANCO DE DADOS ====================
 
-    // Botões de navegação
-    document.getElementById('logout-btn').addEventListener('click', logout);
-    document.getElementById('start-workout-btn').addEventListener('click', startWorkout);
-    document.getElementById('back-btn').addEventListener('click', backToHome);
-    document.getElementById('skip-rest-btn').addEventListener('click', skipRest);
-    document.getElementById('finish-workout-btn').addEventListener('click', finishWorkout);
-});
-
-// Função para selecionar usuário
-async function selectUser(userId) {
+// 1. Funções de Usuário
+async function fetchUsuarios() {
     try {
-        // Buscar informações do usuário
-        const { data: user, error } = await supabaseClient
+        const { data, error } = await supabase
             .from('usuarios')
             .select('*')
-            .eq('id', userId)
-            .single();
-
+            .eq('status', 'ativo')
+            .order('nome');
+        
         if (error) throw error;
-
-        currentUser = user;
-        
-        // Atualizar UI com dados do usuário
-        document.getElementById('user-avatar').src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.nome}`;
-        document.getElementById('user-name').textContent = user.nome;
-        
-        // Buscar métricas do usuário
-        await loadUserMetrics();
-        
-        // Buscar próximo treino
-        await loadNextWorkout();
-        
-        // Trocar para tela inicial
-        changeScreen('home');
-        
+        return data;
     } catch (error) {
-        console.error('Erro ao selecionar usuário:', error);
-        alert('Erro ao carregar dados do usuário');
+        console.error('Erro ao buscar usuários:', error);
+        alert('Erro ao carregar usuários');
+        return [];
     }
 }
 
-// Carregar métricas do usuário
-async function loadUserMetrics() {
+// 2. Buscar protocolo ativo do usuário
+async function fetchProtocoloAtivoUsuario(userId) {
     try {
-        // Buscar treinos concluídos
-        const { data: completedWorkouts, error } = await supabaseClient
-            .from('pesos_usuario')
-            .select('DISTINCT numero_treino')
-            .eq('id_usuario', currentUser.id);
+        // Primeiro, verificar se o usuário tem um plano de treino ativo
+        const { data: planoAtivo, error: planoError } = await supabase
+            .from('usuario_plano_treino')
+            .select(`
+                *,
+                protocolos_treinamento (*)
+            `)
+            .eq('usuario_id', userId)
+            .eq('status', 'ativo')
+            .single();
+        
+        if (planoError || !planoAtivo) {
+            // Se não tem plano ativo, criar um novo com o protocolo padrão (ID 1)
+            const { data: novoPlano, error: novoPlanoError } = await supabase
+                .from('usuario_plano_treino')
+                .insert({
+                    usuario_id: userId,
+                    protocolo_treinamento_id: 1, // Protocolo padrão
+                    semana_atual: 1,
+                    status: 'ativo'
+                })
+                .select(`
+                    *,
+                    protocolos_treinamento (*)
+                `)
+                .single();
             
-        if (error) throw error;
+            if (novoPlanoError) throw novoPlanoError;
+            return novoPlano;
+        }
         
-        const uniqueWorkouts = [...new Set(completedWorkouts.map(w => w.numero_treino))];
-        const completedCount = uniqueWorkouts.length;
+        return planoAtivo;
+    } catch (error) {
+        console.error('Erro ao buscar protocolo do usuário:', error);
+        return null;
+    }
+}
+
+// 3. Buscar próximo treino do usuário
+async function fetchProximoTreino(userId, protocoloId) {
+    try {
+        // Verificar se tem planejamento semanal
+        const weekPlan = getWeekPlan(userId);
+        const today = new Date().getDay(); // 0 = Domingo, 6 = Sábado
         
-        // Calcular progresso (baseado nos 48 treinos totais do protocolo)
-        const progressPercentage = Math.round((completedCount / 48) * 100);
-        
-        // Calcular semana atual (aproximação baseada nos treinos concluídos)
-        const currentWeek = Math.floor(completedCount / 4) + 1;
-        
-        // Atualizar UI
-        document.getElementById('completed-workouts').textContent = completedCount;
-        document.getElementById('progress-percentage').textContent = `${progressPercentage}%`;
-        document.getElementById('current-week').textContent = currentWeek > 12 ? 12 : currentWeek;
-        
-        // Buscar último treino realizado
-        if (completedCount > 0) {
-            const lastWorkoutNumber = Math.max(...uniqueWorkouts);
-            const { data: lastWorkoutData } = await supabaseClient
+        if (weekPlan && weekPlan[today] && weekPlan[today] !== 'folga' && weekPlan[today] !== 'cardio') {
+            // Buscar treino específico do planejamento
+            const tipoTreino = weekPlan[today]; // Ex: 'A', 'B', 'C', 'D'
+            const diaSemana = { 'A': 1, 'B': 2, 'C': 3, 'D': 4 }[tipoTreino];
+            
+            const { data: treino, error } = await supabase
                 .from('protocolo_treinos')
-                .select('numero_treino, semana_referencia, dia_semana')
-                .eq('numero_treino', lastWorkoutNumber)
-                .eq('protocolo_id', 1)
+                .select(`
+                    *,
+                    exercicios (*)
+                `)
+                .eq('protocolo_id', protocoloId)
+                .eq('dia_semana', diaSemana)
+                .eq('semana_referencia', AppState.currentProtocol.semana_atual)
                 .limit(1)
                 .single();
-                
-            if (lastWorkoutData) {
-                const workoutType = getWorkoutTypeLabel(lastWorkoutData.dia_semana);
-                document.getElementById('last-workout-info').textContent = 
-                    `Treino ${workoutType} - Semana ${lastWorkoutData.semana_referencia}`;
+            
+            if (!error && treino) return treino;
+        }
+        
+        // Fallback para lógica original
+        const { data: execucoes, error: execError } = await supabase
+            .from('execucao_exercicio_usuario')
+            .select('protocolo_treino_id')
+            .eq('usuario_id', userId);
+        
+        if (execError) throw execError;
+        
+        const treinosRealizados = [...new Set(execucoes.map(e => e.protocolo_treino_id))];
+        
+        let query = supabase
+            .from('protocolo_treinos')
+            .select(`
+                *,
+                exercicios (*)
+            `)
+            .eq('protocolo_id', protocoloId)
+            .order('numero_treino', { ascending: true });
+        
+        if (treinosRealizados.length > 0) {
+            query = query.not('id', 'in', `(${treinosRealizados.join(',')})`);
+        }
+        
+        const { data: proximoTreino, error } = await query.limit(1);
+        
+        if (error) throw error;
+        
+        if (!proximoTreino || proximoTreino.length === 0) {
+            const { data: primeiroTreino, error: primeiroError } = await supabase
+                .from('protocolo_treinos')
+                .select(`
+                    *,
+                    exercicios (*)
+                `)
+                .eq('protocolo_id', protocoloId)
+                .eq('numero_treino', 1)
+                .limit(1);
+            
+            if (primeiroError) throw primeiroError;
+            return primeiroTreino[0];
+        }
+        
+        return proximoTreino[0];
+    } catch (error) {
+        console.error('Erro ao buscar próximo treino:', error);
+        return null;
+    }
+}
+
+// 4. Buscar exercícios do treino
+async function fetchExerciciosTreino(numeroTreino, protocoloId) {
+    try {
+        const { data, error } = await supabase
+            .from('protocolo_treinos')
+            .select(`
+                *,
+                exercicios (*)
+            `)
+            .eq('numero_treino', numeroTreino)
+            .eq('protocolo_id', protocoloId)
+            .order('ordem_exercicio', { ascending: true });
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Erro ao buscar exercícios:', error);
+        return [];
+    }
+}
+
+// 5. Buscar 1RM do usuário para um exercício
+async function fetch1RMUsuario(userId, exercicioId) {
+    try {
+        const { data, error } = await supabase
+            .from('usuario_1rm')
+            .select('rm_calculado')
+            .eq('usuario_id', userId)
+            .eq('exercicio_id', exercicioId)
+            .eq('status', 'ativo')
+            .order('data_teste', { descending: true })
+            .limit(1)
+            .single();
+        
+        if (error) return null;
+        return data.rm_calculado;
+    } catch (error) {
+        return null;
+    }
+}
+
+// 6. Salvar execução do exercício
+async function salvarExecucaoExercicio(dados) {
+    try {
+        const { error } = await supabase
+            .from('execucao_exercicio_usuario')
+            .insert(dados);
+        
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar execução:', error);
+        return false;
+    }
+}
+
+// 7. Buscar métricas do usuário
+async function fetchMetricasUsuario(userId) {
+    try {
+        // Buscar total de treinos realizados
+        const { data: execucoes, error } = await supabase
+            .from('execucao_exercicio_usuario')
+            .select('protocolo_treino_id')
+            .eq('usuario_id', userId);
+        
+        if (error) throw error;
+        
+        const treinosUnicos = [...new Set(execucoes.map(e => e.protocolo_treino_id))];
+        const totalTreinos = treinosUnicos.length;
+        
+        // Buscar plano ativo para calcular progresso
+        const planoAtivo = await fetchProtocoloAtivoUsuario(userId);
+        let progresso = 0;
+        let semanaAtual = 1;
+        
+        if (planoAtivo) {
+            semanaAtual = planoAtivo.semana_atual;
+            const totalTreinosProtocolo = planoAtivo.protocolos_treinamento.total_treinos || 48;
+            progresso = Math.round((totalTreinos / totalTreinosProtocolo) * 100);
+        }
+        
+        // Buscar último treino
+        const { data: ultimoTreino, error: ultimoError } = await supabase
+            .from('execucao_exercicio_usuario')
+            .select('data_execucao, protocolo_treino_id')
+            .eq('usuario_id', userId)
+            .order('data_execucao', { descending: true })
+            .limit(1)
+            .single();
+        
+        let ultimoTreinoInfo = null;
+        if (!ultimoError && ultimoTreino) {
+            const { data: detalhes } = await supabase
+                .from('protocolo_treinos')
+                .select('dia_semana, semana_referencia')
+                .eq('id', ultimoTreino.protocolo_treino_id)
+                .single();
+            
+            if (detalhes) {
+                ultimoTreinoInfo = {
+                    data: new Date(ultimoTreino.data_execucao),
+                    tipo: obterTipoTreino(detalhes.dia_semana),
+                    semana: detalhes.semana_referencia
+                };
             }
         }
         
+        return {
+            treinosConcluidos: totalTreinos,
+            progresso: progresso,
+            semanaAtual: semanaAtual,
+            ultimoTreino: ultimoTreinoInfo
+        };
     } catch (error) {
-        console.error('Erro ao carregar métricas:', error);
+        console.error('Erro ao buscar métricas:', error);
+        return {
+            treinosConcluidos: 0,
+            progresso: 0,
+            semanaAtual: 1,
+            ultimoTreino: null
+        };
     }
 }
 
-// Carregar próximo treino
-async function loadNextWorkout() {
+// 8. Buscar dados para indicadores
+async function fetchDadosIndicadores() {
     try {
-        // Buscar treinos concluídos
-        const { data: completedWorkouts, error } = await supabaseClient
-            .from('pesos_usuario')
-            .select('DISTINCT numero_treino')
-            .eq('id_usuario', currentUser.id);
-            
-        if (error) throw error;
+        // Buscar comparação entre usuários
+        const { data: comparacao, error: compError } = await supabase
+            .from('v_comparativo_usuarios')
+            .select('*');
         
-        const uniqueWorkouts = [...new Set(completedWorkouts.map(w => w.numero_treino))];
+        if (compError) throw compError;
         
-        // Determinar próximo treino (último + 1, ou começar do 1)
-        let nextWorkoutNumber = 1;
-        if (uniqueWorkouts.length > 0) {
-            nextWorkoutNumber = Math.max(...uniqueWorkouts) + 1;
-            if (nextWorkoutNumber > 48) nextWorkoutNumber = 1; // Recomeçar o protocolo
-        }
-        
-        // Buscar detalhes do próximo treino
-        const { data: nextWorkoutData, error: nextError } = await supabaseClient
-            .from('protocolo_treinos')
+        // Buscar progresso do usuário atual
+        const { data: progresso, error: progError } = await supabase
+            .from('execucao_exercicio_usuario')
             .select(`
-                numero_treino, 
-                semana_referencia, 
-                dia_semana,
-                percentual_1rm_min,
-                percentual_1rm_max
+                data_execucao,
+                peso_utilizado,
+                repeticoes,
+                exercicios (nome, grupo_muscular)
             `)
-            .eq('numero_treino', nextWorkoutNumber)
-            .eq('protocolo_id', 1)
-            .limit(1)
-            .single();
-            
-        if (nextError) throw nextError;
+            .eq('usuario_id', AppState.currentUser.id)
+            .order('data_execucao', { descending: true })
+            .limit(100);
         
-        // Guardar info do próximo treino
-        currentWorkout = nextWorkoutData;
+        if (progError) throw progError;
         
-        // Contar exercícios no treino
-        const { count: exerciseCount } = await supabaseClient
-            .from('protocolo_treinos')
-            .select('exercicio_id', { count: 'exact' })
-            .eq('numero_treino', nextWorkoutNumber)
-            .eq('protocolo_id', 1);
-            
-        // Atualizar UI
-        const workoutType = getWorkoutTypeLabel(nextWorkoutData.dia_semana);
-        document.getElementById('next-workout-name').textContent = `Treino ${workoutType}`;
-        document.getElementById('next-workout-week').textContent = `Semana ${nextWorkoutData.semana_referencia}`;
-        document.getElementById('next-workout-exercises').textContent = `${exerciseCount} exercícios`;
-        document.getElementById('next-workout-intensity').textContent = 
-            `${nextWorkoutData.percentual_1rm_min}-${nextWorkoutData.percentual_1rm_max}% 1RM`;
+        // Buscar resumo por grupo muscular
+        const { data: resumoGrupo, error: resumoError } = await supabase
+            .from('v_resumo_grupo_muscular')
+            .select('*');
         
+        if (resumoError) throw resumoError;
+        
+        return {
+            comparacao,
+            progresso,
+            resumoGrupo
+        };
     } catch (error) {
-        console.error('Erro ao carregar próximo treino:', error);
+        console.error('Erro ao buscar dados dos indicadores:', error);
+        return { comparacao: [], progresso: [], resumoGrupo: [] };
     }
 }
 
-// Iniciar treino
-async function startWorkout() {
-    if (!currentWorkout) return;
+// ==================== FUNÇÕES DE PLANEJAMENTO SEMANAL ====================
+
+// Verificar se precisa planejar a semana
+function needsWeekPlanning(userId) {
+    const key = `weekPlan_${userId}_${getWeekKey()}`;
+    const plan = localStorage.getItem(key);
+    return !plan;
+}
+
+// Obter chave da semana atual
+function getWeekKey() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const week = getWeekNumber(now);
+    return `${year}_${week}`;
+}
+
+// Obter número da semana
+function getWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+// Salvar planejamento semanal
+function saveWeekPlan(userId, plan) {
+    const key = `weekPlan_${userId}_${getWeekKey()}`;
+    localStorage.setItem(key, JSON.stringify(plan));
+    AppState.weekPlan = plan;
+}
+
+// Obter planejamento semanal
+function getWeekPlan(userId) {
+    const key = `weekPlan_${userId}_${getWeekKey()}`;
+    const plan = localStorage.getItem(key);
+    return plan ? JSON.parse(plan) : null;
+}
+
+// Criar interface de planejamento semanal
+function showWeekPlanning() {
+    const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const opcoes = ['folga', 'cardio', 'A', 'B', 'C', 'D'];
     
-    try {
-        // Buscar todos os exercícios do treino
-        const { data: workoutExercises, error } = await supabaseClient
-            .from('protocolo_treinos')
-            .select(`
-                id,
-                exercicio_id,
-                series,
-                repeticoes_alvo,
-                percentual_1rm_base,
-                tempo_descanso,
-                ordem_exercicio,
-                observacoes,
-                exercicios:exercicio_id (
-                    nome,
-                    grupo_muscular
-                )
-            `)
-            .eq('numero_treino', currentWorkout.numero_treino)
-            .eq('protocolo_id', 1)
-            .order('ordem_exercicio', { ascending: true });
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content week-planning">
+            <h2>🗓️ Planeje sua Semana</h2>
+            <p>Organize seus treinos para esta semana. Você precisa incluir 4 treinos (A, B, C, D).</p>
             
-        if (error) throw error;
-        
-        // Guardar exercícios
-        exercises = workoutExercises;
-        
-        // Atualizar título do treino
-        const workoutType = getWorkoutTypeLabel(currentWorkout.dia_semana);
-        document.getElementById('workout-title').textContent = `Treino ${workoutType}`;
-        
-        // Iniciar com o primeiro exercício
-        currentExercise = 0;
-        loadExercise(currentExercise);
-        
-        // Registrar início do treino
-        workoutStartTime = new Date();
-        
-        // Trocar para tela de treino
-        changeScreen('workout');
-        
-    } catch (error) {
-        console.error('Erro ao iniciar treino:', error);
-        alert('Erro ao carregar treino');
-    }
+            <div class="week-grid">
+                ${dias.map((dia, index) => `
+                    <div class="day-plan">
+                        <h4>${dia}</h4>
+                        <select id="day-${index}" class="day-select">
+                            <option value="folga">Folga</option>
+                            <option value="cardio">Cardio</option>
+                            <option value="A">Treino A - Costas/Ombros</option>
+                            <option value="B">Treino B - Peito</option>
+                            <option value="C">Treino C - Braços/Ombros</option>
+                            <option value="D">Treino D - Pernas</option>
+                        </select>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="plan-summary">
+                <p id="plan-validation"></p>
+            </div>
+            
+            <button class="primary-btn" onclick="confirmWeekPlan()">Confirmar Planejamento</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Adicionar listeners para validação
+    document.querySelectorAll('.day-select').forEach(select => {
+        select.addEventListener('change', validateWeekPlan);
+    });
+    
+    // Pré-sugerir um planejamento balanceado
+    suggestBalancedPlan();
 }
 
-// Carregar exercício atual
-async function loadExercise(index) {
-    if (index >= exercises.length) {
-        // Treino concluído
-        showWorkoutCompletion();
+// Sugerir planejamento balanceado
+function suggestBalancedPlan() {
+    const sugestao = [
+        'folga',    // Domingo
+        'A',        // Segunda
+        'cardio',   // Terça
+        'B',        // Quarta
+        'C',        // Quinta
+        'folga',    // Sexta
+        'D'         // Sábado
+    ];
+    
+    sugestao.forEach((valor, index) => {
+        document.getElementById(`day-${index}`).value = valor;
+    });
+    
+    validateWeekPlan();
+}
+
+// Validar planejamento semanal
+function validateWeekPlan() {
+    const treinos = { A: 0, B: 0, C: 0, D: 0 };
+    let valid = true;
+    
+    for (let i = 0; i < 7; i++) {
+        const valor = document.getElementById(`day-${i}`).value;
+        if (treinos.hasOwnProperty(valor)) {
+            treinos[valor]++;
+        }
+    }
+    
+    const validation = document.getElementById('plan-validation');
+    const missing = [];
+    
+    for (let treino in treinos) {
+        if (treinos[treino] === 0) {
+            missing.push(`Treino ${treino}`);
+            valid = false;
+        } else if (treinos[treino] > 1) {
+            validation.innerHTML = `⚠️ Treino ${treino} aparece ${treinos[treino]} vezes. Cada treino deve aparecer apenas uma vez.`;
+            validation.className = 'error';
+            return false;
+        }
+    }
+    
+    if (missing.length > 0) {
+        validation.innerHTML = `⚠️ Faltam: ${missing.join(', ')}`;
+        validation.className = 'error';
+    } else {
+        validation.innerHTML = '✅ Planejamento válido! Todos os treinos estão incluídos.';
+        validation.className = 'success';
+    }
+    
+    return valid;
+}
+
+// Confirmar planejamento semanal
+function confirmWeekPlan() {
+    if (!validateWeekPlan()) {
+        alert('Por favor, inclua todos os 4 treinos (A, B, C, D) uma vez cada.');
         return;
     }
     
-    const exercise = exercises[index];
-    
-    // Atualizar progresso
-    const progress = ((index + 1) / exercises.length) * 100;
-    document.getElementById('workout-progress').style.width = `${progress}%`;
-    
-    // Atualizar UI
-    document.getElementById('exercise-name').textContent = exercise.exercicios.nome;
-    document.getElementById('exercise-notes').textContent = exercise.observacoes || 'Realize com atenção à técnica';
-    
-    // Limpar container de séries anterior
-    document.getElementById('series-container').innerHTML = '';
-    
-    // Criar linhas para as séries
-    for (let i = 1; i <= exercise.series; i++) {
-        await createSeriesRow(exercise, i);
+    const plan = {};
+    for (let i = 0; i < 7; i++) {
+        plan[i] = document.getElementById(`day-${i}`).value;
     }
     
-    // Mostrar container de exercício, esconder timer
+    saveWeekPlan(AppState.currentUser.id, plan);
+    document.querySelector('.modal-overlay').remove();
+    
+    // Recarregar próximo treino
+    carregarProximoTreino();
+}
+
+// ==================== FUNÇÕES DE UI ====================
+
+// Renderizar usuários na tela de login
+function renderUsuarios(usuarios) {
+    const container = document.querySelector('#login-screen .users');
+    container.innerHTML = '';
+    
+    usuarios.forEach(user => {
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        card.dataset.userId = user.id;
+        
+        // Usar imagem fitness ao invés de avatar cartoon
+        const userImages = {
+            'Pedro': 'https://images.unsplash.com/photo-1583454110551-21f7548f6c12?w=200&h=200&fit=crop',
+            'Japa': 'https://images.unsplash.com/photo-1567013127542-490d2b32c4a3?w=200&h=200&fit=crop'
+        };
+        
+        card.innerHTML = `
+            <div class="avatar fitness">
+                <img src="${userImages[user.nome] || 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&h=200&fit=crop'}" 
+                     alt="${user.nome}">
+            </div>
+            <h3>${user.nome}</h3>
+        `;
+        card.onclick = () => selecionarUsuario(user);
+        container.appendChild(card);
+    });
+}
+
+// Selecionar usuário e carregar dados
+async function selecionarUsuario(usuario) {
+    AppState.currentUser = usuario;
+    
+    // Atualizar UI com dados do usuário
+    document.getElementById('user-name').textContent = usuario.nome;
+    
+    const userImages = {
+        'Pedro': 'https://images.unsplash.com/photo-1583454110551-21f7548f6c12?w=40&h=40&fit=crop',
+        'Japa': 'https://images.unsplash.com/photo-1567013127542-490d2b32c4a3?w=40&h=40&fit=crop'
+    };
+    
+    document.getElementById('user-avatar').src = userImages[usuario.nome] || 
+        'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=40&h=40&fit=crop';
+    
+    // Buscar protocolo ativo
+    const protocolo = await fetchProtocoloAtivoUsuario(usuario.id);
+    if (protocolo) {
+        AppState.currentProtocol = protocolo;
+    }
+    
+    // Verificar se precisa planejar a semana
+    if (needsWeekPlanning(usuario.id)) {
+        showWeekPlanning();
+    } else {
+        AppState.weekPlan = getWeekPlan(usuario.id);
+    }
+    
+    // Carregar métricas
+    await atualizarMetricas();
+    
+    // Carregar próximo treino
+    await carregarProximoTreino();
+    
+    // Mudar para tela home
+    mudarTela('home-screen');
+}
+
+// Atualizar métricas na tela home
+async function atualizarMetricas() {
+    const metricas = await fetchMetricasUsuario(AppState.currentUser.id);
+    
+    document.getElementById('completed-workouts').textContent = metricas.treinosConcluidos;
+    document.getElementById('progress-percentage').textContent = `${metricas.progresso}%`;
+    document.getElementById('current-week').textContent = metricas.semanaAtual;
+    
+    // Atualizar último treino
+    if (metricas.ultimoTreino) {
+        const diasAtras = Math.floor((new Date() - metricas.ultimoTreino.data) / (1000 * 60 * 60 * 24));
+        const textoTempo = diasAtras === 0 ? 'Hoje' : 
+                          diasAtras === 1 ? 'Ontem' : 
+                          `${diasAtras} dias atrás`;
+        
+        document.getElementById('last-workout-info').textContent = 
+            `${metricas.ultimoTreino.tipo} - ${textoTempo}`;
+    }
+}
+
+// Carregar e exibir próximo treino
+async function carregarProximoTreino() {
+    if (!AppState.currentProtocol) return;
+    
+    // Verificar planejamento do dia
+    const weekPlan = getWeekPlan(AppState.currentUser.id);
+    const today = new Date().getDay();
+    
+    if (weekPlan && weekPlan[today]) {
+        const planToday = weekPlan[today];
+        
+        if (planToday === 'folga') {
+            document.getElementById('next-workout-name').textContent = '🏖️ Dia de Folga';
+            document.getElementById('next-workout-week').textContent = 'Descanse e recupere-se';
+            document.getElementById('next-workout-exercises').textContent = 'Hidrate-se bem';
+            document.getElementById('next-workout-intensity').textContent = 'Alongue-se';
+            document.getElementById('start-workout-btn').disabled = true;
+            document.getElementById('start-workout-btn').textContent = 'Dia de Descanso';
+            return;
+        }
+        
+        if (planToday === 'cardio') {
+            document.getElementById('next-workout-name').textContent = '🏃 Dia de Cardio';
+            document.getElementById('next-workout-week').textContent = '30-45 minutos';
+            document.getElementById('next-workout-exercises').textContent = 'Corrida, bike ou natação';
+            document.getElementById('next-workout-intensity').textContent = 'Intensidade moderada';
+            document.getElementById('start-workout-btn').disabled = true;
+            document.getElementById('start-workout-btn').textContent = 'Registre no seu app de cardio';
+            return;
+        }
+    }
+    
+    // Habilitar botão
+    document.getElementById('start-workout-btn').disabled = false;
+    document.getElementById('start-workout-btn').textContent = 'Iniciar Treino';
+    
+    const proximoTreino = await fetchProximoTreino(
+        AppState.currentUser.id, 
+        AppState.currentProtocol.protocolo_treinamento_id
+    );
+    
+    if (proximoTreino) {
+        AppState.currentWorkout = proximoTreino;
+        
+        // Contar exercícios
+        const exercicios = await fetchExerciciosTreino(
+            proximoTreino.numero_treino,
+            proximoTreino.protocolo_id
+        );
+        
+        // Atualizar UI
+        const tipoTreino = obterTipoTreino(proximoTreino.dia_semana);
+        document.getElementById('next-workout-name').textContent = tipoTreino;
+        document.getElementById('next-workout-week').textContent = `Semana ${proximoTreino.semana_referencia}`;
+        document.getElementById('next-workout-exercises').textContent = `${exercicios.length} exercícios`;
+        document.getElementById('next-workout-intensity').textContent = 
+            `${proximoTreino.percentual_1rm_min}-${proximoTreino.percentual_1rm_max}% 1RM`;
+    }
+}
+
+// Criar tela de indicadores
+async function mostrarIndicadores() {
+    const dados = await fetchDadosIndicadores();
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-content indicators">
+            <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">✕</button>
+            <h2>📊 Indicadores de Performance</h2>
+            
+            <div class="indicators-grid">
+                <div class="indicator-card">
+                    <h3>💪 Comparação entre Atletas</h3>
+                    <div class="comparison-list">
+                        ${dados.comparacao.map(comp => `
+                            <div class="comparison-item">
+                                <span class="exercise-name">${comp.exercicio}</span>
+                                <div class="comparison-bars">
+                                    <div class="user-bar">
+                                        <span>Pedro: ${comp.pedro_1rm || 0}kg</span>
+                                        <div class="bar" style="width: ${(comp.pedro_1rm / Math.max(comp.pedro_1rm || 1, comp.japa_1rm || 1)) * 100}%"></div>
+                                    </div>
+                                    <div class="user-bar">
+                                        <span>Japa: ${comp.japa_1rm || 0}kg</span>
+                                        <div class="bar" style="width: ${(comp.japa_1rm / Math.max(comp.pedro_1rm || 1, comp.japa_1rm || 1)) * 100}%"></div>
+                                    </div>
+                                </div>
+                                <span class="winner">🏆 ${comp.mais_forte}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="indicator-card">
+                    <h3>📈 Sua Evolução Recente</h3>
+                    <div class="progress-summary">
+                        ${agruparProgressoPorExercicio(dados.progresso).map(prog => `
+                            <div class="progress-item">
+                                <span class="exercise-name">${prog.exercicio}</span>
+                                <span class="progress-info">
+                                    ${prog.pesoInicial}kg → ${prog.pesoAtual}kg 
+                                    <span class="${prog.evolucao >= 0 ? 'positive' : 'negative'}">
+                                        ${prog.evolucao >= 0 ? '+' : ''}${prog.evolucao.toFixed(1)}%
+                                    </span>
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="indicator-card full-width">
+                    <h3>🎯 Força por Grupo Muscular</h3>
+                    <div class="muscle-group-grid">
+                        ${dados.resumoGrupo.filter(r => r.usuario === AppState.currentUser.nome).map(grupo => `
+                            <div class="muscle-group-card">
+                                <h4>${grupo.grupo_muscular}</h4>
+                                <div class="muscle-stats">
+                                    <div class="stat">
+                                        <span class="label">Exercícios</span>
+                                        <span class="value">${grupo.qtd_exercicios}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Média 1RM</span>
+                                        <span class="value">${Math.round(grupo.media_1rm)}kg</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="label">Máximo</span>
+                                        <span class="value">${Math.round(grupo.maior_1rm)}kg</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Agrupar progresso por exercício
+function agruparProgressoPorExercicio(progressos) {
+    const grupos = {};
+    
+    progressos.forEach(p => {
+        if (!grupos[p.exercicios.nome]) {
+            grupos[p.exercicios.nome] = {
+                exercicio: p.exercicios.nome,
+                registros: []
+            };
+        }
+        grupos[p.exercicios.nome].registros.push(p);
+    });
+    
+    return Object.values(grupos).map(g => {
+        const registros = g.registros.sort((a, b) => 
+            new Date(a.data_execucao) - new Date(b.data_execucao)
+        );
+        
+        const primeiro = registros[0];
+        const ultimo = registros[registros.length - 1];
+        
+        return {
+            exercicio: g.exercicio,
+            pesoInicial: primeiro.peso_utilizado,
+            pesoAtual: ultimo.peso_utilizado,
+            evolucao: ((ultimo.peso_utilizado - primeiro.peso_utilizado) / primeiro.peso_utilizado) * 100
+        };
+    }).slice(0, 5); // Top 5 exercícios
+}
+
+// Iniciar treino
+async function iniciarTreino() {
+    if (!AppState.currentWorkout) {
+        alert('Nenhum treino disponível');
+        return;
+    }
+    
+    // Buscar exercícios do treino
+    const exercicios = await fetchExerciciosTreino(
+        AppState.currentWorkout.numero_treino,
+        AppState.currentWorkout.protocolo_id
+    );
+    
+    if (exercicios.length === 0) {
+        alert('Erro ao carregar exercícios');
+        return;
+    }
+    
+    AppState.currentExercises = exercicios;
+    AppState.currentExerciseIndex = 0;
+    AppState.workoutStartTime = new Date();
+    AppState.completedSeries = 0;
+    
+    // Atualizar título
+    const tipoTreino = obterTipoTreino(AppState.currentWorkout.dia_semana);
+    document.getElementById('workout-title').textContent = tipoTreino;
+    
+    // Carregar primeiro exercício
+    carregarExercicio(0);
+    
+    // Mudar para tela de treino
+    mudarTela('workout-screen');
+}
+
+// Carregar exercício específico
+async function carregarExercicio(index) {
+    if (index >= AppState.currentExercises.length) {
+        // Treino concluído
+        exibirConclusaoTreino();
+        return;
+    }
+    
+    const exercicio = AppState.currentExercises[index];
+    AppState.currentExerciseIndex = index;
+    
+    // Atualizar progresso
+    const progresso = ((index) / AppState.currentExercises.length) * 100;
+    document.getElementById('workout-progress').style.width = `${progresso}%`;
+    
+    // Atualizar informações do exercício
+    document.getElementById('exercise-name').textContent = exercicio.exercicios.nome;
+    document.getElementById('exercise-notes').textContent = 
+        exercicio.observacoes || `Grupo muscular: ${exercicio.exercicios.grupo_muscular}`;
+    
+    // Criar séries
+    await criarSeries(exercicio);
+    
+    // Mostrar container do exercício
     document.getElementById('exercise-container').classList.remove('hidden');
     document.getElementById('timer-container').classList.add('hidden');
     document.getElementById('workout-completed').classList.add('hidden');
 }
 
-// Criar linha de série
-async function createSeriesRow(exercise, seriesNumber) {
-    try {
-        // Buscar peso sugerido
-        const { data: weightSuggestion, error } = await supabaseClient
-            .from('v_pesos_usuario')
-            .select('peso_sugerido')
-            .eq('id_usuario', currentUser.id)
-            .eq('exercicio_id', exercise.exercicio_id)
-            .limit(1)
-            .single();
-        
-        let suggestedWeight = 0;
-        
-        if (!error && weightSuggestion) {
-            // Aplicar percentual do treino atual
-            suggestedWeight = Math.round(weightSuggestion.peso_sugerido * (exercise.percentual_1rm_base / 100));
-            // Mínimo de 1kg
-            suggestedWeight = Math.max(1, suggestedWeight);
-        }
-        
-        // Criar elemento de série
-        const seriesRow = document.createElement('div');
-        seriesRow.className = 'series-row';
-        seriesRow.dataset.series = seriesNumber;
-        
-        seriesRow.innerHTML = `
-            <div>${seriesNumber}</div>
+// Criar linhas de séries
+async function criarSeries(exercicio) {
+    const container = document.getElementById('series-container');
+    container.innerHTML = '';
+    
+    // Buscar 1RM do usuário para calcular peso sugerido
+    const rm = await fetch1RMUsuario(AppState.currentUser.id, exercicio.exercicio_id);
+    const pesoSugerido = rm ? Math.round(rm * (exercicio.percentual_1rm_base / 100)) : 0;
+    
+    for (let i = 1; i <= exercicio.series; i++) {
+        const row = document.createElement('div');
+        row.className = 'series-row';
+        row.dataset.series = i;
+        row.innerHTML = `
+            <div>${i}</div>
             <div>
-                <input type="number" class="weight-input" value="${suggestedWeight}" min="0" step="0.5">
+                <input type="number" class="weight-input" 
+                       value="${pesoSugerido}" min="0" step="0.5"
+                       placeholder="Peso">
             </div>
             <div>
-                <input type="number" class="reps-input" value="${exercise.repeticoes_alvo}" min="0">
+                <input type="number" class="reps-input" 
+                       value="${exercicio.repeticoes_alvo}" min="0"
+                       placeholder="Reps">
             </div>
             <div>
-                <button class="done-btn">✓</button>
+                <button class="done-btn" onclick="finalizarSerie(${i})">✓</button>
             </div>
         `;
-        
-        // Adicionar ao container
-        document.getElementById('series-container').appendChild(seriesRow);
-        
-        // Adicionar evento para finalizar série
-        seriesRow.querySelector('.done-btn').addEventListener('click', () => {
-            completeSeries(exercise, seriesNumber);
-        });
-    } catch (error) {
-        console.error('Erro ao criar linha de série:', error);
-    }
-}
-
-// Função para salvar execução real do exercício
-async function saveExecucaoExercicio({usuario_id, protocolo_treino_id, exercicio_id, peso_utilizado, repeticoes, falhou = false, observacoes = ''}) {
-    try {
-        const { error } = await supabase
-            .from('execucao_exercicio_usuario')
-            .insert({
-                usuario_id,
-                protocolo_treino_id,
-                exercicio_id,
-                peso_utilizado,
-                repeticoes,
-                falhou,
-                observacoes
-            });
-        if (error) {
-            console.error('Erro ao salvar execução do exercício:', error);
-        } else {
-            console.log('Execução do exercício salva com sucesso!');
-        }
-    } catch (e) {
-        console.error('Erro inesperado ao salvar execução:', e);
+        container.appendChild(row);
     }
 }
 
 // Finalizar série
-async function completeSeries(exercise, seriesNumber) {
-    try {
-        const seriesRow = document.querySelector(`.series-row[data-series="${seriesNumber}"]`);
-        if (!seriesRow || seriesRow.classList.contains('completed')) return;
-        
-        // Pegar valores
-        const weightInput = seriesRow.querySelector('.weight-input');
-        const repsInput = seriesRow.querySelector('.reps-input');
-        
-        const weight = parseFloat(weightInput.value) || 0;
-        const reps = parseInt(repsInput.value) || 0;
-        
-        if (weight <= 0 || reps <= 0) {
-            alert('Preencha peso e repetições corretamente!');
-            return;
-        }
-        
-        // Salvar execução real do exercício
-        await saveExecucaoExercicio({
-            usuario_id: currentUser.id,
-            protocolo_treino_id: exercise.id, // id do protocolo_treino (linha do treino)
-            exercicio_id: exercise.exercicio_id,
-            peso_utilizado: weight,
-            repeticoes: reps,
-            falhou: false,
-            observacoes: ''
-        });
-        
-        // Registrar série concluída
-        const { error } = await supabaseClient
-            .from('pesos_usuario')
-            .insert({
-                id_usuario: currentUser.id,
-                exercicio_id: exercise.exercicio_id,
-                numero_treino: currentWorkout.numero_treino,
-                semana_treino: currentWorkout.semana_referencia,
-                dia_semana: currentWorkout.dia_semana,
-                serie: seriesNumber,
-                repeticoes: reps,
-                id_peso: await getOrCreateWeightId(weight),
-                data_hora: new Date().toISOString()
-            });
-            
-        if (error) throw error;
-        
-        // Marcar como concluída
-        // Atualizar UI
-        seriesRow.classList.add('completed');
-        weightInput.disabled = true;
-        repsInput.disabled = true;
-        seriesRow.querySelector('.done-btn').disabled = true;
-        
-        // Incrementar contador de séries
-        completedSeries++;
-        
-        // Verificar se esta é a última série do exercício
-        if (seriesNumber === exercise.series) {
-            // Mostrar timer e preparar próximo exercício
-            startRest(exercise.tempo_descanso, currentExercise + 1);
-        }
-        
-    } catch (error) {
-        console.error('Erro ao completar série:', error);
+async function finalizarSerie(numeroSerie) {
+    const row = document.querySelector(`.series-row[data-series="${numeroSerie}"]`);
+    if (!row || row.classList.contains('completed')) return;
+    
+    const peso = parseFloat(row.querySelector('.weight-input').value) || 0;
+    const reps = parseInt(row.querySelector('.reps-input').value) || 0;
+    
+    if (peso <= 0 || reps <= 0) {
+        alert('Preencha peso e repetições');
+        return;
+    }
+    
+    const exercicioAtual = AppState.currentExercises[AppState.currentExerciseIndex];
+    
+    // Salvar execução
+    const sucesso = await salvarExecucaoExercicio({
+        usuario_id: AppState.currentUser.id,
+        protocolo_treino_id: exercicioAtual.id,
+        exercicio_id: exercicioAtual.exercicio_id,
+        peso_utilizado: peso,
+        repeticoes: reps,
+        falhou: false
+    });
+    
+    if (!sucesso) {
         alert('Erro ao salvar série');
+        return;
+    }
+    
+    // Marcar como concluída
+    row.classList.add('completed');
+    row.querySelector('.done-btn').disabled = true;
+    row.querySelectorAll('input').forEach(input => input.disabled = true);
+    
+    AppState.completedSeries++;
+    
+    // Verificar se é a última série
+    if (numeroSerie === exercicioAtual.series) {
+        iniciarDescanso(exercicioAtual.tempo_descanso);
     }
 }
 
-// Iniciar descanso
-function startRest(restTime, nextExerciseIndex) {
-    // Se for último exercício, não mostra próximo
-    const isLastExercise = nextExerciseIndex >= exercises.length;
+// Iniciar período de descanso
+function iniciarDescanso(tempoDescanso) {
+    const proximoIndex = AppState.currentExerciseIndex + 1;
+    const temProximo = proximoIndex < AppState.currentExercises.length;
     
-    // Esconder container de exercício
+    // Esconder exercício, mostrar timer
     document.getElementById('exercise-container').classList.add('hidden');
-    
-    // Mostrar timer
     document.getElementById('timer-container').classList.remove('hidden');
     
-    // Atualizar próximo exercício (se houver)
-    if (!isLastExercise) {
-        document.getElementById('next-exercise-name').textContent = 
-            exercises[nextExerciseIndex].dim_exercicios.nome;
+    // Configurar próximo exercício
+    if (temProximo) {
+        const proximo = AppState.currentExercises[proximoIndex];
+        document.getElementById('next-exercise-name').textContent = proximo.exercicios.nome;
     } else {
-        document.getElementById('next-exercise-name').textContent = 'Treino finalizado';
+        document.getElementById('next-exercise-name').textContent = '🎉 Treino finalizado!';
     }
     
-    // Iniciar timer
-    startTime = new Date();
-    let timeLeft = restTime;
+    // Iniciar contagem regressiva
+    AppState.restStartTime = new Date();
+    let tempoRestante = tempoDescanso;
     
-    // Atualizar display do timer
-    updateTimerDisplay(timeLeft);
+    atualizarTimer(tempoRestante);
     
-    // Criar intervalo para atualização
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        const elapsed = Math.floor((new Date() - startTime) / 1000);
-        timeLeft = restTime - elapsed;
+    AppState.timerInterval = setInterval(() => {
+        const decorrido = Math.floor((new Date() - AppState.restStartTime) / 1000);
+        tempoRestante = tempoDescanso - decorrido;
         
-        if (timeLeft <= 0) {
-            clearInterval(timerInterval);
-            // Passar para próximo exercício ou finalizar
-            if (isLastExercise) {
-                showWorkoutCompletion();
+        if (tempoRestante <= 0) {
+            clearInterval(AppState.timerInterval);
+            if (temProximo) {
+                carregarExercicio(proximoIndex);
             } else {
-                currentExercise = nextExerciseIndex;
-                loadExercise(currentExercise);
+                exibirConclusaoTreino();
             }
         } else {
-            updateTimerDisplay(timeLeft);
+            atualizarTimer(tempoRestante);
         }
     }, 1000);
 }
 
 // Atualizar display do timer
-function updateTimerDisplay(timeInSeconds) {
-    const minutes = Math.floor(timeInSeconds / 60);
-    const seconds = timeInSeconds % 60;
+function atualizarTimer(segundos) {
+    const mins = Math.floor(segundos / 60);
+    const secs = segundos % 60;
     document.getElementById('timer').textContent = 
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 // Pular descanso
-function skipRest() {
-    clearInterval(timerInterval);
-    const isLastExercise = currentExercise + 1 >= exercises.length;
+function pularDescanso() {
+    if (AppState.timerInterval) {
+        clearInterval(AppState.timerInterval);
+    }
     
-    if (isLastExercise) {
-        showWorkoutCompletion();
+    const proximoIndex = AppState.currentExerciseIndex + 1;
+    if (proximoIndex < AppState.currentExercises.length) {
+        carregarExercicio(proximoIndex);
     } else {
-        currentExercise++;
-        loadExercise(currentExercise);
+        exibirConclusaoTreino();
     }
 }
 
-// Mostrar tela de conclusão de treino
-function showWorkoutCompletion() {
-    // Esconder containers
+// Exibir tela de conclusão
+function exibirConclusaoTreino() {
     document.getElementById('exercise-container').classList.add('hidden');
     document.getElementById('timer-container').classList.add('hidden');
-    
-    // Mostrar tela de conclusão
     document.getElementById('workout-completed').classList.remove('hidden');
     
-    // Atualizar estatísticas
-    document.getElementById('completed-series').textContent = completedSeries;
+    // Calcular estatísticas
+    document.getElementById('completed-series').textContent = AppState.completedSeries;
     
-    // Calcular tempo total de treino
-    const totalMinutes = Math.floor((new Date() - workoutStartTime) / 60000);
+    const tempoTotal = Math.floor((new Date() - AppState.workoutStartTime) / 60000);
+    const horas = Math.floor(tempoTotal / 60);
+    const minutos = tempoTotal % 60;
     document.getElementById('total-time').textContent = 
-        `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}min`;
+        horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
 }
 
-// Finalizar treino e voltar para home
-async function finishWorkout() {
-    completedSeries = 0;
-    exercises = [];
-    currentExercise = null;
-    
-    // Atualizar métricas e próximo treino
-    await loadUserMetrics();
-    await loadNextWorkout();
-    
-    // Voltar para home
-    changeScreen('home');
-}
-
-// Voltar para home
-function backToHome() {
-    if (confirm('Deseja realmente sair do treino? O progresso não será salvo.')) {
-        changeScreen('home');
+// Finalizar treino
+async function finalizarTreino() {
+    // Atualizar semana atual se necessário
+    if (AppState.currentProtocol) {
+        const { data: treinos } = await supabase
+            .from('protocolo_treinos')
+            .select('numero_treino')
+            .eq('protocolo_id', AppState.currentProtocol.protocolo_treinamento_id)
+            .eq('semana_referencia', AppState.currentProtocol.semana_atual);
+        
+        const treinosSemana = treinos ? treinos.length : 0;
+        const treinosRealizados = AppState.currentWorkout.numero_treino % treinosSemana;
+        
+        // Se completou todos os treinos da semana, avançar
+        if (treinosRealizados === 0) {
+            await supabase
+                .from('usuario_plano_treino')
+                .update({ semana_atual: AppState.currentProtocol.semana_atual + 1 })
+                .eq('id', AppState.currentProtocol.id);
+        }
     }
+    
+    // Resetar estado
+    AppState.currentExercises = [];
+    AppState.currentExerciseIndex = 0;
+    AppState.completedSeries = 0;
+    
+    // Atualizar tela home
+    await atualizarMetricas();
+    await carregarProximoTreino();
+    
+    mudarTela('home-screen');
+}
+
+// ==================== FUNÇÕES AUXILIARES ====================
+
+// Obter descrição do tipo de treino
+function obterTipoTreino(diaSemana) {
+    const tipos = {
+        1: 'Treino A - Costas e Ombros',
+        2: 'Treino B - Peito',
+        3: 'Treino C - Braços e Ombros',
+        4: 'Treino D - Pernas'
+    };
+    return tipos[diaSemana] || `Treino ${diaSemana}`;
+}
+
+// Mudar entre telas
+function mudarTela(telaId) {
+    const telas = ['login-screen', 'home-screen', 'workout-screen'];
+    telas.forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.classList.toggle('active', id === telaId);
+        }
+    });
 }
 
 // Logout
 function logout() {
-    currentUser = null;
-    changeScreen('login');
+    AppState.currentUser = null;
+    AppState.currentProtocol = null;
+    AppState.currentWorkout = null;
+    AppState.weekPlan = null;
+    mudarTela('login-screen');
 }
 
-// Função auxiliar para buscar ou criar ID de peso
-async function getOrCreateWeightId(weight) {
-    try {
-        // Arredondar para 1 casa decimal
-        weight = Math.round(weight * 10) / 10;
-        
-        // Buscar ID existente
-        const { data, error } = await supabase
-            .from('dim_pesos')
-            .select('id')
-            .eq('valor', weight)
-            .limit(1);
-            
-        if (error) throw error;
-        
-        // Se existe, retornar ID
-        if (data && data.length > 0) {
-            return data[0].id;
+// Voltar para home
+function voltarParaHome() {
+    if (AppState.currentExercises.length > 0) {
+        if (!confirm('Deseja sair do treino? O progresso será perdido.')) {
+            return;
         }
-        
-        // Se não existe, criar
-        const { data: newWeight, error: insertError } = await supabase
-            .from('dim_pesos')
-            .insert({ valor: weight })
-            .select('id')
-            .single();
-            
-        if (insertError) throw insertError;
-        
-        return newWeight.id;
-        
-    } catch (error) {
-        console.error('Erro ao buscar/criar ID de peso:', error);
-        // Fallback - ID 1 (geralmente o menor peso)
-        return 1;
+    }
+    
+    if (AppState.timerInterval) {
+        clearInterval(AppState.timerInterval);
+    }
+    
+    mudarTela('home-screen');
+}
+
+// Replanejar semana
+function replanejarSemana() {
+    if (confirm('Deseja replanejar sua semana? Isso irá sobrescrever o planejamento atual.')) {
+        showWeekPlanning();
     }
 }
 
-// Função auxiliar para obter label do tipo de treino
-function getWorkoutTypeLabel(day_semana) {
-    switch (day_semana) {
-        case 1: return 'A - Costas/Ombros';
-        case 2: return 'B - Peito';
-        case 3: return 'C - Braços/Ombros';
-        case 4: return 'D - Pernas';
-        default: return `Tipo ${day_semana}`;
-    }
+// ==================== ESTILOS DINÂMICOS ====================
+const dynamicStyles = `
+<style>
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
 }
 
-// Função auxiliar para trocar de tela
-function changeScreen(screenId) {
-    const screens = ['login-screen', 'home-screen', 'workout-screen'];
-    screens.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            if (id === screenId) {
-                el.classList.add('active');
-            } else {
-                el.classList.remove('active');
-            }
-        }
-    });
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 900px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
+
+.close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+/* Week Planning */
+.week-planning h2 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.week-planning p {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.day-plan {
+    text-align: center;
+}
+
+.day-plan h4 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.day-select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.day-select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.plan-summary {
+    text-align: center;
+    margin: 20px 0;
+    min-height: 30px;
+}
+
+.plan-summary p {
+    font-weight: 500;
+    margin: 0;
+}
+
+.plan-summary .error {
+    color: #f44336;
+}
+
+.plan-summary .success {
+    color: #4caf50;
+}
+
+/* Indicators */
+.indicators h2 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.indicators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.indicator-card {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.indicator-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.indicator-card h3 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.comparison-item {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 10px;
+}
+
+.exercise-name {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.comparison-bars {
+    margin: 10px 0;
+}
+
+.user-bar {
+    margin: 5px 0;
+}
+
+.user-bar span {
+    font-size: 14px;
+    color: #666;
+}
+
+.bar {
+    height: 8px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    border-radius: 4px;
+    margin-top: 5px;
+    transition: width 0.5s ease;
+}
+
+.winner {
+    display: block;
+    text-align: right;
+    color: #ff9800;
+    font-weight: 500;
+}
+
+.progress-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 8px;
+}
+
+.progress-info {
+    font-weight: 500;
+}
+
+.positive {
+    color: #4caf50;
+}
+
+.negative {
+    color: #f44336;
+}
+
+.muscle-group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.muscle-group-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.muscle-group-card h4 {
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.muscle-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    text-align: center;
+}
+
+.stat .label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat .value {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+}
+
+/* Avatar fitness */
+.avatar.fitness {
+    border: 3px solid var(--primary-color);
+}
+
+.avatar.fitness img {
+    object-position: center top;
+}
+
+/* Botões extras */
+.extra-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.secondary-btn {
+    flex: 1;
+}
+</style>
+`;
+
+// ==================== EVENTOS ====================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Adicionar estilos dinâmicos
+    document.head.insertAdjacentHTML('beforeend', dynamicStyles);
+    
+    // Adicionar botões extras na tela home
+    const scheduleDiv = document.querySelector('.schedule');
+    if (scheduleDiv) {
+        const extraButtons = document.createElement('div');
+        extraButtons.className = 'extra-buttons';
+        extraButtons.innerHTML = `
+            <button class="secondary-btn" onclick="mostrarIndicadores()">📊 Indicadores</button>
+            <button class="secondary-btn" onclick="replanejarSemana()">📅 Replanejar Semana</button>
+        `;
+        scheduleDiv.appendChild(extraButtons);
+    }
+    
+    // Carregar usuários na tela de login
+    const usuarios = await fetchUsuarios();
+    renderUsuarios(usuarios);
+    
+    // Configurar eventos dos botões
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('start-workout-btn').addEventListener('click', iniciarTreino);
+    document.getElementById('back-btn').addEventListener('click', voltarParaHome);
+    document.getElementById('skip-rest-btn').addEventListener('click', pularDescanso);
+    document.getElementById('finish-workout-btn').addEventListener('click', finalizarTreino);
+});
+
+// Exportar funções para ser usadas inline no HTML
+window.finalizarSerie = finalizarSerie;
+window.confirmWeekPlan = confirmWeekPlan;
+window.mostrarIndicadores = mostrarIndicadores;
+window.replanejarSemana = replanejarSemana;
