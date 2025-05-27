@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App de Treinamento</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+    <script src="config.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Tela de Login -->
+        <div id="login-screen" class="screen active">
+            <div class="container">
+                <h1>App de Treinamento</h1>
+                <div class="user-selection">
+                    <h2>Selecione seu perfil</h2>
+                    <div class="users"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tela Inicial -->
+        <div id="home-screen" class="screen">
+            <header>
+                <div class="user-info">
+                    <div class="avatar small">
+                        <img id="user-avatar" src="" alt="Avatar">
+                    </div>
+                    <h3 id="user-name"></h3>
+                </div>
+                <div class="logout">
+                    <button id="logout-btn">Sair</button>
+                </div>
+            </header>
+            
+            <div class="container">
+                <div class="metrics">
+                    <div class="metric-card">
+                        <h4>Treinos Concluídos</h4>
+                        <p id="completed-workouts">0</p>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Progresso</h4>
+                        <p id="progress-percentage">0%</p>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Semana Atual</h4>
+                        <p id="current-week">0</p>
+                    </div>
+                </div>
+                <div id="protocolos"></div>
+                
+                <div class="schedule">
+                    <h2>Próximo Treino</h2>
+                    <div class="next-workout">
+                        <div id="workout-card" class="workout-card">
+                            <div class="workout-type">
+                                <h3 id="next-workout-name">Treino A - Costas e Ombros</h3>
+                                <p id="next-workout-week">Semana 1</p>
+                            </div>
+                            <div class="workout-info">
+                                <p id="next-workout-exercises">5 exercícios</p>
+                                <p id="next-workout-intensity">65-70% 1RM</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="last-workout">
+                        <h3>Último Treino Realizado</h3>
+                        <p id="last-workout-info">Nenhum treino realizado ainda</p>
+                    </div>
+                    
+                    <button id="start-workout-btn" class="primary-btn">Iniciar Treino</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tela de Treino -->
+        <div id="workout-screen" class="screen">
+            <header>
+                <div class="workout-header">
+                    <button id="back-btn" class="back-btn">←</button>
+                    <h2 id="workout-title">Treino A - Costas e Ombros</h2>
+                    <div class="progress-container">
+                        <div id="workout-progress" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="container">
+                <div id="exercise-container" class="exercise-container">
+                    <h3 id="exercise-name">Puxada frontal na máquina</h3>
+                    <p id="exercise-notes" class="exercise-notes">Pegada neutra para proteger ombros</p>
+                    
+                    <div class="series-info">
+                        <div class="series-header">
+                            <div>Série</div>
+                            <div>Peso (kg)</div>
+                            <div>Reps</div>
+                            <div></div>
+                        </div>
+                        
+                        <div id="series-container">
+                            <!-- Series will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="timer-container" class="timer-container hidden">
+                    <h3>Tempo de Descanso</h3>
+                    <div class="timer-display">
+                        <span id="timer">00:00</span>
+                    </div>
+                    <p>Próximo exercício: <span id="next-exercise-name">...</span></p>
+                    <button id="skip-rest-btn" class="secondary-btn">Pular Descanso</button>
+                </div>
+                
+                <div id="workout-completed" class="hidden">
+                    <div class="completion-message">
+                        <h2>Treino Concluído!</h2>
+                        <p>Todos os exercícios foram realizados com sucesso.</p>
+                        <div class="stats">
+                            <div class="stat">
+                                <h4>Séries Concluídas</h4>
+                                <p id="completed-series">0</p>
+                            </div>
+                            <div class="stat">
+                                <h4>Tempo Total</h4>
+                                <p id="total-time">00:00</p>
+                            </div>
+                        </div>
+                        <button id="finish-workout-btn" class="primary-btn">Finalizar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

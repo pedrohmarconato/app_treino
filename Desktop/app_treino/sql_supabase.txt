@@ -1,0 +1,170 @@
+1. exercicios
+Descrição: Armazena informações sobre os exercícios disponíveis.
+Colunas:
+id (bigint, PK): Identificador único do exercício.
+nome (text): Nome do exercício.
+grupo_muscular (text): Grupo muscular que o exercício trabalha.
+equipamento (text): Equipamento necessário para o exercício.
+tempo_descanso_padrao (integer, default 0): Tempo de descanso padrão entre as séries.
+created_at (timestamp with time zone, default now()): Data e hora de criação do registro.
+updated_at (timestamp with time zone, default now()): Data e hora da última atualização do registro.
+
+2. pesos_usuario
+Descrição: Armazena os pesos utilizados pelos usuários em seus treinos.
+Colunas:
+id (serial, PK): Identificador único do registro.
+usuario_id (integer, FK): Referência ao usuário.
+protocolo_treino_id (integer, FK): Referência ao protocolo de treino.
+peso_base (numeric(5,2)): Peso base utilizado.
+peso_minimo (numeric(5,2)): Peso mínimo permitido.
+peso_maximo (numeric(5,2)): Peso máximo permitido.
+repeticoes_alvo (integer): Número de repetições alvo.
+data_calculo (timestamp without time zone, default CURRENT_TIMESTAMP): Data do cálculo do peso.
+status (character varying(10), default 'ativo'): Status do registro.
+
+3. protocolo_treinos
+Descrição: Armazena os protocolos de treino que associam exercícios a um plano de treino.
+Colunas:
+id (bigserial, PK): Identificador único do protocolo de treino.
+protocolo_id (bigint, FK): Referência ao protocolo de treinamento.
+exercicio_id (bigint, FK): Referência ao exercício.
+numero_treino (integer): Número do treino.
+semana_referencia (integer): Semana de referência do treino.
+dia_semana (integer): Dia da semana do treino.
+percentual_1rm_base (numeric(5,2), default 0): Percentual da 1RM base.
+percentual_1rm_min (numeric(5,2), default 0): Percentual mínimo da 1RM.
+percentual_1rm_max (numeric(5,2), default 0): Percentual máximo da 1RM.
+series (integer, default 1): Número de séries.
+repeticoes_alvo (integer, default 10): Número de repetições alvo.
+tempo_descanso (integer, default 60): Tempo de descanso entre as séries.
+ordem_exercicio (integer, default 1): Ordem do exercício no treino.
+observacoes (text): Observações sobre o treino.
+created_at (timestamp with time zone, default now()): Data e hora de criação do registro.
+updated_at (timestamp with time zone, default now()): Data e hora da última atualização do registro.
+
+4. protocolos_treinamento
+Descrição: Armazena informações sobre os protocolos de treinamento.
+Colunas:
+id (bigint, PK): Identificador único do protocolo.
+nome (text): Nome do protocolo.
+descricao (text): Descrição do protocolo.
+duracao_meses (integer, default 1): Duração do protocolo em meses.
+total_semanas (integer, default 4): Total de semanas do protocolo.
+dias_por_semana (integer, default 3): Dias de treino por semana.
+total_treinos (integer, default 12): Total de treinos no protocolo.
+status (text, default 'ativo'): Status do protocolo.
+created_at (timestamp with time zone, default now()): Data e hora de criação do registro.
+updated_at (timestamp with time zone, default now()): Data e hora da última atualização do registro.
+
+5. usuario_1rm
+Descrição: Armazena os dados de 1RM (uma repetição máxima) dos usuários.
+Colunas:
+id (bigserial, PK): Identificador único do registro.
+usuario_id (bigint, FK): Referência ao usuário.
+exercicio_id (bigint, FK): Referência ao exercício.
+peso_teste (numeric(6,2)): Peso testado pelo usuário.
+repeticoes_teste (integer): Número de repetições testadas.
+rm_calculado (numeric(6,2)): 1RM calculado.
+data_teste (date): Data do teste.
+status (text, default 'ativo'): Status do registro.
+created_at (timestamp with time zone, default now()): Data e hora de criação do registro.
+updated_at (timestamp with time zone, default now()): Data e hora da última atualização do registro.
+
+6. usuarios
+Descrição: Armazena informações sobre os usuários do sistema.
+Colunas:
+id (bigint, PK): Identificador único do usuário.
+nome (text): Nome do usuário.
+email (text, unique): Email do usuário.
+data_nascimento (date): Data de nascimento do usuário.
+status (text, default 'ativo'): Status do usuário.
+created_at (timestamp with time zone, default now()): Data e hora de criação do registro.
+updated_at (timestamp with time zone, default now()): Data e hora da última atualização do registro.
+
+Views
+1. v_comparativo_usuarios
+Descrição: Compara os 1RMs de diferentes usuários para um exercício específico.
+Colunas:
+exercicio: Nome do exercício.
+grupo_muscular: Grupo muscular do exercício.
+pedro_1rm: 1RM do usuário Pedro.
+japa_1rm: 1RM do usuário Japa.
+diferenca_kg: Diferença em kg entre os 1RMs de Japa e Pedro.
+mais_forte: Usuário mais forte entre Pedro e Japa.
+
+2. v_pesos_usuario
+Descrição: Exibe os pesos utilizados pelos usuários em seus treinos, incluindo ajustes de peso.
+Colunas:
+usuario_id: ID do usuário.
+nome_usuario: Nome do usuário.
+protocolo_treino_id: ID do protocolo de treino.
+numero_treino: Número do treino.
+nome_exercicio: Nome do exercício.
+peso_base: Peso base utilizado.
+peso_minimo: Peso mínimo permitido.
+peso_maximo: Peso máximo permitido.
+repeticoes_alvo: Número de repetições alvo.
+peso_se_facil: Peso ajustado se a repetição for fácil.
+peso_se_dificil: Peso ajustado se a repetição for difícil.
+
+3. v_protocolo_treinos
+Descrição: Exibe detalhes dos protocolos de treino, incluindo exercícios e suas características.
+Colunas:
+protocolo_id: ID do protocolo.
+protocolo_nome: Nome do protocolo.
+numero_treino: Número do treino.
+semana_referencia: Semana de referência do treino.
+dia_semana: Dia da semana do treino.
+tipo_treino: Tipo de treino baseado no dia da semana.
+ordem_exercicio: Ordem do exercício no treino.
+exercicio_id: ID do exercício.
+exercicio_nome: Nome do exercício.
+grupo_muscular: Grupo muscular do exercício.
+equipamento: Equipamento necessário.
+series: Número de séries.
+repeticoes_alvo: Número de repetições alvo.
+percentual_1rm_base: Percentual da 1RM base.
+percentual_1rm_min: Percentual mínimo da 1RM.
+percentual_1rm_max: Percentual máximo da 1RM.
+tempo_descanso: Tempo de descanso entre as séries.
+observacoes: Observações sobre o treino.
+
+
+4. v_resumo_grupo_muscular
+Descrição: Resumo dos exercícios por grupo muscular e usuário.
+Colunas:
+usuario: Nome do usuário.
+grupo_muscular: Grupo muscular.
+qtd_exercicios: Quantidade de exercícios.
+media_1rm: Média de 1RM.
+menor_1rm: Menor 1RM registrado.
+maior_1rm: Maior 1RM registrado.
+soma_1rm: Soma total dos 1RMs.
+
+5. v_resumo_semanas
+Descrição: Resumo dos treinos por semana em um protocolo.
+Colunas:
+protocolo_id: ID do protocolo.
+semana_referencia: Semana de referência.
+total_treinos: Total de treinos na semana.
+total_exercicios: Total de exercícios na semana.
+intensidade_media: Intensidade média dos treinos.
+reps_media: Média de repetições.
+series_media: Média de séries.
+tipos_treino: Tipos de treino realizados.
+
+6. v_usuario_1rm_detalhado
+Descrição: Detalhes dos 1RMs dos usuários por exercício.
+Colunas:
+usuario: Nome do usuário.
+exercicio: Nome do exercício.
+grupo_muscular: Grupo muscular do exercício.
+peso_teste: Peso testado.
+repeticoes_teste: Repetições testadas.
+rm_calculado: 1RM calculado.
+ganho_absoluto: Ganho absoluto em relação ao peso testado.
+ganho_percentual: Ganho percentual em relação ao peso testado.
+data_teste: Data do teste.
+
+Considerações Finais
+Este documento fornece uma visão geral da estrutura do banco de dados, incluindo tabelas, colunas e suas respectivas descrições. Para interações com o banco de dados, é importante considerar as chaves primárias e estrangeiras, bem como as views que facilitam a consulta de dados relacionados.
