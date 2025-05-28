@@ -1,18 +1,46 @@
 :root {
-    --primary-color: #4F4F4F; /* Darker gray for text/important elements */
-    --primary-light: #E0E0E0; /* Lighter gray for backgrounds */
-    --primary-dark: #333333; /* Darkest gray for text */
-    --secondary-color: #50C878; /* Neon green for highlights/buttons */
-    --text-color: var(--primary-dark); /* Use primary dark for general text */
+    --primary-color: #4a6cf7;
+    --primary-light: #6e89f8;
+    --primary-dark: #3451d1;
+    --secondary-color: #ff6b6b;
+    --text-color: #333333;
     --light-text: #777777;
-    --bg-color: var(--primary-light); /* Use primary light for background */
+    --bg-color: #f8f9fa;
     --card-bg: #ffffff;
-    --success-color: var(--secondary-color); /* Neon green for success */
+    --success-color: #4caf50;
     --warning-color: #ff9800;
     --error-color: #f44336;
-    --border-radius: 8px; /* Slightly reduced border-radius for a cleaner look */
-    --shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* More subtle default shadow */
+    --border-radius: 10px;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
+    
+    /* Dark theme variables for modal */
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2a2a2a;
+    --bg-card: #242424;
+    --bg-card-hover: #333333;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --text-muted: #999999;
+    --border-color: #333333;
+    --accent-green: #10b981;
+    --accent-green-dark: #059669;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 * {
@@ -23,9 +51,420 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color); /* Updated to use the new text color */
+    background-color: var(--bg-color, #f8f9fa);
+    color: var(--text-color, #333333);
     line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.modal .modal-content {
+  background: #242424;
+  color: #ffffff;
+  padding: 32px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  min-width: 320px;
+  max-width: 95vw;
+  position: relative;
+  z-index: 100000;
+}
+
+.modal[style*="display: block"] {
+  display: flex !important;
+}
+
+.modal[style*="display: flex"] {
+  display: flex !important;
+}
+
+/* Estilos específicos para o modal de planejamento */
+#modal-planejamento .modal-content {
+  text-align: center;
+  max-width: 800px;
+  width: 90vw;
+}
+
+.modal-planejamento-content {
+  padding: 0 !important;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.modal-subtitle {
+  margin: 8px 0 0 0;
+  opacity: 0.9;
+  font-size: 0.875rem;
+}
+
+.dias-semana-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .dias-semana-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 20px 16px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .dias-semana-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dia-card {
+  background: linear-gradient(145deg, #2a2a2a, #1e1e1e);
+  border-radius: 16px;
+  padding: 20px;
+  border: 2px solid #333;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.dia-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(16,185,129,0.1) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.dia-card:hover {
+  border-color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0,0,0,0.3),
+    0 0 0 1px rgba(16,185,129,0.2);
+}
+
+.dia-card:hover::before {
+  opacity: 1;
+}
+
+.dia-card h4 {
+  margin: 0 0 16px 0;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.dia-card.error {
+  border-color: #ef4444;
+  animation: errorShake 0.5s ease-in-out;
+}
+
+.dia-card.error .dia-select {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.dia-select {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 0.95rem;
+  background: linear-gradient(145deg, #2a2a2a, #1e1e1e);
+  color: #fff;
+  border: 2px solid #333;
+  border-radius: 12px;
+  box-shadow: 
+    0 4px 12px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  min-height: 48px;
+  font-family: inherit;
+  font-weight: 500;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%2310b981" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 20px 20px;
+  padding-right: 50px;
+}
+
+.dia-select:hover {
+  border-color: #10b981;
+  box-shadow: 
+    0 6px 16px rgba(16,185,129,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  transform: translateY(-1px);
+}
+
+.dia-select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 
+    0 0 0 4px rgba(16, 185, 129, 0.15),
+    0 6px 16px rgba(16,185,129,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+  transform: translateY(-1px);
+}
+
+.dia-select:active {
+  transform: translateY(0);
+}
+
+.dia-select option {
+  background: #2a2a2a;
+  color: #fff;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: none;
+}
+
+.dia-select option:hover {
+  background: #10b981;
+}
+
+.dia-select option:checked {
+  background: #10b981;
+  color: white;
+}
+
+.dia-select::-ms-expand {
+  display: none;
+}
+
+/* Estilo especial para select com valor selecionado */
+.dia-select:not([value=""]):not(:placeholder-shown) {
+  background: linear-gradient(145deg, #1a4d3a, #0f3d2f);
+  border-color: #10b981;
+  color: #a7f3d0;
+}
+
+/* Animação para quando o valor muda */
+.dia-select.changed {
+  animation: selectPulse 0.4s ease-out;
+}
+
+@keyframes selectPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 8px 20px rgba(16,185,129,0.4);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 6px 16px rgba(16,185,129,0.25);
+  }
+}
+
+#modal-planejamento .modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 24px;
+  background: #1a1a1a;
+  border-radius: 0 0 16px 16px;
+  border-top: 1px solid #333;
+}
+
+#modal-planejamento .btn-primary {
+  padding: 10px 24px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+  opacity: 1;
+}
+
+#modal-planejamento .btn-primary:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+#modal-planejamento .btn-primary:disabled {
+  background: #666;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+#modal-planejamento .btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.plan-validation {
+  margin: 10px auto;
+  padding: 0;
+  max-width: 90%;
+  text-align: left;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  line-height: 1.6;
+}
+
+.plan-validation.show {
+  padding: 16px 20px;
+  margin: 20px auto;
+  opacity: 1;
+  height: auto;
+  border: 1px solid;
+}
+
+.plan-validation.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.plan-validation.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+  text-align: center;
+}
+
+.dia-card.error .dia-select {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+#modal-planejamento .btn-secondary {
+  padding: 12px 32px;
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #333;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+#modal-planejamento .btn-secondary:hover {
+  background: #333;
+  color: white;
+}
+
+/* Remover estilos antigos conflitantes */
+#modal-planejamento form {
+  display: block;
+}
+
+#modal-planejamento label {
+  display: none;
+}
+
+/* Forçar estilos do botão de salvar planejamento */
+#confirm-plan-btn {
+    background: var(--accent-green) !important;
+    color: var(--bg-primary) !important;
+    opacity: 1 !important;
+    padding: 12px 32px !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    font-size: 1rem !important;
+}
+
+#confirm-plan-btn:disabled {
+    background: var(--bg-secondary) !important;
+    color: var(--text-muted) !important;
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* Notificações */
+.notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 16px 24px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 999999;
+    transition: transform 0.3s ease;
+    min-width: 300px;
+    text-align: center;
+}
+
+.notification.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.notification-success {
+    background: var(--accent-green);
+    color: var(--bg-primary);
+}
+
+.notification-error {
+    background: #f44336;
+    color: white;
+}
+
+.notification-info {
+    background: var(--primary-color);
+    color: white;
 }
 
 .app-container {
@@ -41,7 +480,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-    color: var(--primary-dark); /* Ensure headings use the primary dark gray */
+    color: var(--text-color);
     margin-bottom: 15px;
 }
 
@@ -68,39 +507,32 @@ button {
     font-weight: 500;
     font-size: 1rem;
     transition: var(--transition);
-    box-shadow: var(--shadow); /* Add subtle shadow to buttons */
 }
 
 .primary-btn {
-    background-color: var(--secondary-color); /* Neon green for primary buttons */
+    background-color: var(--primary-color);
     color: white;
     width: 100%;
     margin-top: 20px;
 }
 
 .primary-btn:hover {
-    background-color: #45a063; /* Darker shade of neon green for hover */
+    background-color: var(--primary-dark);
 }
 
 .secondary-btn {
-    background-color: var(--primary-light); /* Lighter gray for secondary buttons */
-    color: var(--primary-dark); /* Dark gray text */
+    background-color: #e0e0e0;
+    color: var(--text-color);
 }
 
 .secondary-btn:hover {
-    background-color: #cccccc; /* Slightly darker gray for hover */
+    background-color: #d0d0d0;
 }
 
 .back-btn {
     background: none;
     font-size: 1.5rem;
     padding: 5px 15px;
-    color: var(--primary-dark); /* Ensure back button has a color */
-    box-shadow: none; /* No shadow for back button */
-}
-
-.back-btn:hover {
-    color: var(--secondary-color); /* Neon green on hover */
 }
 
 /* Telas */
@@ -135,17 +567,15 @@ button {
     padding: 20px;
     background-color: var(--card-bg);
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow); /* Use default subtle shadow */
+    box-shadow: var(--shadow);
     cursor: pointer;
     transition: var(--transition);
     width: 150px;
-    border: 1px solid var(--primary-light); /* Add a light border */
 }
 
 .user-card:hover {
-    /* transform: translateY(-5px); */ /* Removed transform for minimalist feel */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow on hover */
-    border-color: var(--secondary-color); /* Neon green border on hover */
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .avatar {
@@ -154,7 +584,7 @@ button {
     margin: 0 auto 15px;
     border-radius: 50%;
     overflow: hidden;
-    background-color: var(--primary-light); /* Lighter gray for avatar background */
+    background-color: #e0e0e0;
 }
 
 .avatar img {
@@ -172,7 +602,7 @@ button {
 header {
     background-color: var(--card-bg);
     padding: 15px 20px;
-    box-shadow: var(--shadow); /* Use default subtle shadow */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -188,14 +618,6 @@ header {
     background: none;
     color: var(--light-text);
     padding: 5px 10px;
-    border: 1px solid var(--primary-light); /* Add a light border */
-    border-radius: 5px; /* Smaller border radius for buttons */
-    transition: var(--transition);
-}
-
-.logout button:hover {
-    color: var(--primary-dark);
-    border-color: var(--primary-dark);
 }
 
 /* Home Screen */
@@ -210,9 +632,8 @@ header {
     background-color: var(--card-bg);
     padding: 15px;
     border-radius: var(--border-radius);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* More subtle shadow */
+    box-shadow: var(--shadow);
     text-align: center;
-    border: 1px solid var(--primary-light); /* Add a light border */
 }
 
 .metric-card h4 {
@@ -224,54 +645,23 @@ header {
 .metric-card p {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--primary-dark); /* Use primary dark gray for metric values */
+    color: var(--primary-color);
 }
 
 .schedule {
     background-color: var(--card-bg);
     padding: 20px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow); /* Use default subtle shadow */
+    box-shadow: var(--shadow);
 }
 
 .workout-card {
-    background: var(--primary-color); /* Solid dark gray for workout card */
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
     color: white;
     padding: 20px;
     border-radius: var(--border-radius);
     margin: 15px 0 25px;
 }
-
-.workout-card-small {
-    background: var(--primary-color); /* Similar to workout-card */
-    color: white;
-    padding: 15px; /* Slightly less padding */
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    margin-bottom: 10px; /* Smaller margin */
-}
-
-.workout-card-small .workout-type h4 { /* Targeting h4 specifically if used in small card */
-    font-size: 1rem; /* Slightly smaller than h3 in main card */
-    margin-bottom: 5px;
-}
-
-.workout-card-small .workout-type p {
-    font-size: 0.85rem; /* Slightly smaller */
-    opacity: 0.9;
-}
-
-.workout-card-small .workout-info {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px; /* Smaller margin */
-    font-size: 0.85rem; /* Smaller font size for details */
-}
-
-.workout-card-small .workout-info p {
-    margin: 0; /* Remove default p margins if any */
-}
-
 
 .workout-info {
     display: flex;
@@ -282,7 +672,7 @@ header {
 .last-workout {
     margin: 25px 0;
     padding-top: 15px;
-    border-top: 1px solid var(--primary-light); /* Use primary light for border */
+    border-top: 1px solid #eee;
 }
 
 .last-workout h3 {
@@ -305,7 +695,7 @@ header {
 .progress-container {
     width: 100%;
     height: 6px;
-    background-color: var(--primary-light); /* Lighter gray for progress container background */
+    background-color: #e0e0e0;
     border-radius: 10px;
     margin-top: 5px;
 }
@@ -313,7 +703,7 @@ header {
 .progress-bar {
     height: 100%;
     border-radius: 10px;
-    background-color: var(--secondary-color); /* Neon green for progress bar */
+    background-color: var(--primary-color);
     transition: width 0.5s ease;
 }
 
@@ -321,31 +711,15 @@ header {
     background-color: var(--card-bg);
     padding: 20px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow); /* Use default subtle shadow */
+    box-shadow: var(--shadow);
     margin-bottom: 20px;
 }
 
 .exercise-notes {
     padding: 10px;
-    background-color: rgba(80, 200, 120, 0.1); /* Light neon green background */
-    border-left: 3px solid var(--secondary-color); /* Neon green border */
+    background-color: rgba(74, 108, 247, 0.1);
+    border-left: 3px solid var(--primary-color);
     margin-bottom: 20px;
-}
-
-#exercise-1rm-percentage {
-    color: var(--light-text);
-    font-style: italic;
-    text-align: center;
-    margin-bottom: 10px;
-    font-size: 0.9rem;
-}
-
-#current-series-info {
-    text-align: center;
-    margin-bottom: 15px; /* Increased margin a bit */
-    font-weight: 500;
-    font-size: 1.1rem;
-    color: var(--primary-dark);
 }
 
 .series-header {
@@ -354,8 +728,7 @@ header {
     gap: 10px;
     padding: 10px 0;
     font-weight: 500;
-    border-bottom: 1px solid var(--primary-light); /* Use primary light for border */
-    color: var(--light-text);
+    border-bottom: 1px solid #eee;
 }
 
 .series-row {
@@ -369,18 +742,9 @@ header {
 .series-row input {
     width: 100%;
     padding: 10px;
-    border: 1px solid var(--primary-light); /* Use primary light for input border */
+    border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 1rem;
-    background-color: #fff; /* Ensure input background is white */
-    color: var(--primary-dark); /* Ensure input text is dark gray */
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.series-row input:focus {
-    outline: none;
-    border-color: var(--secondary-color); /* Neon green border on focus */
-    box-shadow: 0 0 0 2px rgba(80, 200, 120, 0.2); /* Subtle neon green shadow on focus */
 }
 
 .series-row.completed {
@@ -388,41 +752,19 @@ header {
 }
 
 .done-btn {
-    background-color: var(--success-color); /* Should be neon green now */
+    background-color: var(--success-color);
     color: white;
     border: none;
     border-radius: 5px;
     padding: 8px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.done-btn:hover {
-    background-color: #45a063; /* Darker shade of neon green for hover */
-}
-
-.done-btn:disabled {
-    background-color: var(--primary-light); /* Use a light gray for disabled background */
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.done-btn:disabled:hover {
-    background-color: var(--primary-light); /* Ensure hover doesn't change background when disabled */
-}
-
-.series-row.active-series {
-    /* background-color: rgba(80, 200, 120, 0.08); /* Subtle neon green tint */
-    border-left: 3px solid var(--secondary-color);
-    padding-left: 10px; /* Adjust padding to accommodate the border */
-    margin-left: -13px; /* Counteract padding shift if container has fixed padding */
 }
 
 .timer-container {
     background-color: var(--card-bg);
     padding: 20px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow); /* Use default subtle shadow */
+    box-shadow: var(--shadow);
     text-align: center;
     margin-bottom: 20px;
 }
@@ -431,14 +773,14 @@ header {
     font-size: 3rem;
     font-weight: 700;
     margin: 20px 0;
-    color: var(--primary-dark); /* Dark gray for timer display */
+    color: var(--primary-color);
 }
 
 .completion-message {
     background-color: var(--card-bg);
     padding: 30px;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow); /* Use default subtle shadow */
+    box-shadow: var(--shadow);
     text-align: center;
 }
 
@@ -451,90 +793,165 @@ header {
 .stat p {
     font-size: 1.8rem;
     font-weight: 700;
-    color: var(--primary-dark); /* Dark gray for stats */
+    color: var(--primary-color);
     margin-top: 10px;
-}
-
-.hidden {
-    display: none;
-}
-
-/* Weekly Planner Screen Styles */
-.planner-header {
+.exercise-counter {
     text-align: center;
-    margin-bottom: 20px;
-}
-
-.planner-header h3 {
-    font-size: 1.3rem;
-    color: var(--primary-dark);
-}
-
-.planner-header p {
-    font-size: 0.9rem;
-    color: var(--light-text);
-}
-
-.planner-days-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Min width for cards */
-    gap: 20px; /* Increased gap */
-    margin-bottom: 20px;
-}
-
-.planner-day-card {
-    background-color: var(--card-bg);
-    padding: 20px; /* Increased padding */
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Increased gap between elements in card */
-}
-
-.planner-day-card h4 {
-    font-size: 1.1rem;
-    color: var(--secondary-color); /* Neon green for day name */
-    text-align: center;
-    margin-bottom: 10px; /* Adjusted margin */
-}
-
-.planner-day-card label {
-    display: block;
-    margin-bottom: 5px;
+    color: var(--muted);
+    font-size: 1.02rem;
+    margin: 10px 0 8px 0;
     font-weight: 500;
-    font-size: 0.9rem;
-    color: var(--text-color);
 }
 
-.planner-day-card select,
-.planner-day-card textarea {
-    width: 100%;
-    padding: 10px; /* Increased padding */
-    border: 1px solid var(--primary-light);
+.exercise-info {
+    margin-top: 16px;
+    display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+    background: #f3f5fa;
+    border-radius: 8px;
+    padding: 10px 0;
+}
+.info-item { text-align: center; }
+.info-label { font-size: 0.93rem; color: var(--muted); margin-bottom: 2px; }
+.info-value { font-size: 1.1rem; font-weight: 700; color: var(--primary-color); }
+
+/* === Timer Section === */
+.timer-section { text-align: center; }
+.timer-display {
+    font-size: 2.2rem;
+    font-family: 'Montserrat', Arial, sans-serif;
+    color: var(--primary-color);
+    margin: 14px 0 10px 0;
+    font-weight: 700;
+}
+#skip-rest-btn { margin-top: 8px; }
+
+/* === Completed Section === */
+.completed-section {
+    text-align: center;
+    margin-top: 24px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 36px 12px 28px 12px;
+}
+.completed-section h2 { color: var(--accent); font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; }
+.completed-section p { color: var(--muted); margin-bottom: 12px; }
+.summary-stats {
+    display: flex; gap: 30px; justify-content: center; margin: 16px 0 14px 0;
+}
+.stat-item { text-align: center; }
+.stat-item span { display: block; font-size: 1.1rem; color: var(--primary-color); font-weight: 600; }
+#finish-workout-btn { margin-top: 14px; }
+
+/* === Loading Overlay === */
+.loading-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(37,99,235,0.15);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+}
+.loading-spinner {
+    background: #fff;
+    padding: 30px 50px;
+    border-radius: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+    box-shadow: var(--shadow);
+    font-size: 1.15rem;
+}
+
+/* Styles for exercise section, series table etc. (Restored and Relocated) */
+.exercise-section h3 { font-size: 1.15rem; color: var(--primary-color); font-weight: 700; margin-bottom: 2px; }
+.exercise-section p { color: var(--muted); margin-bottom: 8px; font-size: 1rem; }
+.series-table { margin-top: 10px; }
+.series-header, .series-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr 80px;
+    gap: 10px;
+    align-items: center;
+}
+.series-header {
+    background: #f3f5fa;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: 8px;
+    padding: 8px 0;
+    margin-bottom: 6px;
+}
+.series-row {
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 7px;
+    padding: 9px 0;
+    box-shadow: 0 1px 4px 0 rgba(37,99,235,0.03);
+    transition: background var(--transition), box-shadow var(--transition);
+}
+.series-row.completed { background: #e8f5e9; opacity: 0.8; }
+.series-row.completed .done-btn { background: #22c55e; color: #fff; }
+.series-number { font-weight: 700; font-size: 1.1rem; color: var(--primary-color); text-align: center; }
+.series-weight, .series-reps {
+    display: flex; align-items: center; gap: 5px;
+}
+.weight-adjust, .reps-adjust {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: background var(--transition), color var(--transition), border var(--transition);
+}
+.weight-adjust:hover, .reps-adjust:hover {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+.weight-input, .reps-input {
+    flex: 1;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
     border-radius: 5px;
-    background-color: #fff;
-    color: var(--primary-dark);
-    font-size: 0.95rem; /* Adjusted font size */
-    /* margin-bottom: 10px; /* Removed individual margin, gap in flex container handles it */
-}
-
-.planner-day-card select:focus,
-.planner-day-card textarea:focus {
+    padding: 2px 0;
+    background: #f3f5fa;
+    margin: 0 2px;
     outline: none;
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 0 2px rgba(80, 200, 120, 0.2);
+    transition: border var(--transition);
+}
+.weight-input:focus, .reps-input:focus { border: 1.5px solid var(--primary-color); }
+.series-action .done-btn {
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    transition: background var(--transition), box-shadow var(--transition);
+    box-shadow: 0 2px 6px 0 rgba(37,99,235,0.08);
+}
+.series-action .done-btn:hover { background: var(--accent); }
+.check-icon { font-size: 1.15rem; }
+/* End of restored styles */
+
+/* === Responsividade === */
+@media (max-width: 600px) {
+    .app-container, .login-container, .dashboard, .schedule, .workout-section, .completed-section {
+        max-width: 100vw;
+        padding: 12px 2vw;
+    }
+    .dashboard { flex-direction: column; gap: 12px; }
+    .metric-card { padding: 14px 8px; }
+    .schedule { padding: 14px 6px; }
+    .next-workout-card { padding: 10px 6px; }
+    .workout-section, .exercise-section, .timer-section, .completed-section { padding: 12px 4px; }
+    .workout-summary, .summary-stats { gap: 14px; }
 }
 
-.planner-day-card textarea {
-    resize: vertical;
-    min-height: 60px; /* Minimum height for textarea */
-}
-
-.treino-select-container {
-    /* Styles for this container if it needs specific layout beyond being a div */
-    /* The .hidden class will toggle its display */
-    display: flex;
-    flex-direction: column;
-    gap: 5px; /* Gap for label and select within this container */
+::-webkit-scrollbar { width: 7px; background: #f3f5fa; }
+::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 6px; }
 }

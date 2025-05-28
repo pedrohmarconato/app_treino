@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App de Treino</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-card: #242424;
+            --bg-card-hover: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a8a8a8;
+            --text-muted: #666666;
+            --accent-green: #a8ff00;
+            --accent-green-dark: #7cc200;
+            --accent-green-bg: rgba(168, 255, 0, 0.1);
+            --border-color: #333333;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-full: 9999px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+
+        /* Typography */
+        h1, h2, h3, h4 {
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        h1 { font-size: 2.5rem; }
+        h2 { font-size: 1.875rem; }
+        h3 { font-size: 1.25rem; }
+        h4 { font-size: 1rem; }
+
+        /* Buttons */
+        button {
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            font-weight: 600;
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+            padding: 16px 24px;
+            border-radius: var(--radius-full);
+            font-size: 1rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(168, 255, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-green-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(168, 255, 0, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-card-hover);
+        }
+
+        /* Screens */
+        .screen {
+            display: none;
+            min-height: 100vh;
+            background: var(--bg-primary);
+            padding-bottom: 100px;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Login Screen */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .login-header h1 {
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+        }
+
+        .users-grid {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .user-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 32px 24px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .user-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, var(--accent-green-bg) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .user-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-green);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .user-card:hover::before {
+            opacity: 1;
+        }
+
+        .user-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: var(--radius-full);
+            margin: 0 auto 16px;
+            overflow: hidden;
+            border: 3px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-card h3 {
+            font-size: 1.125rem;
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .user-card p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Home Screen */
+        .home-header {
+            background: var(--bg-secondary);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+        }
+
+        .user-avatar-small img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-greeting h4 {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .user-greeting p {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .home-content {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Training Plan Section */
+        .training-plan {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .week-indicator {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .day-pill {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .day-pill.active {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .day-pill.completed {
+            background: var(--accent-green-bg);
+            color: var(--accent-green);
+        }
+
+        /* Progress Card */
+        .progress-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .progress-info h3 {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .progress-info h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .progress-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .progress-visual {
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+
+        .progress-ring {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-bg {
+            fill: none;
+            stroke: var(--bg-primary);
+            stroke-width: 8;
+        }
+
+        .progress-ring-progress {
+            fill: none;
+            stroke: var(--accent-green);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .progress-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Activity Section */
+        .activity-section {
+            margin-top: 32px;
+        }
+
+        .activity-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .activity-header h2 {
+            font-size: 1.125rem;
+        }
+
+        .activity-header a {
+            color: var(--accent-green);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .activity-filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .filter-pill {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-pill.active {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .activity-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .activity-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateX(4px);
+        }
+
+        .activity-thumbnail {
+            width: 80px;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+        }
+
+        .activity-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-info h4 {
+            font-size: 0.875rem;
+            margin-bottom: 4px;
+        }
+
+        .activity-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: rgba(36, 36, 36, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            padding: 12px 20px;
+        }
+
+        .nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 8px;
+            border-radius: 12px;
+        }
+
+        .nav-item:hover {
+            color: var(--accent-green);
+            background: rgba(168, 255, 0, 0.1);
+        }
+
+        .nav-item.active {
+            color: var(--accent-green);
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        /* Workout Screen */
+        .workout-screen {
+            padding: 0;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .workout-header {
+            background: var(--bg-secondary);
+            padding: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .workout-progress-bar {
+            height: 4px;
+            background: var(--bg-secondary);
+            margin-top: 16px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        #workout-progress {
+            height: 100%;
+            background: var(--accent-green);
+            transition: width 0.3s ease;
+        }
+
+        .exercise-container {
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .exercise-info {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .exercise-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .exercise-details {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .exercise-notes {
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+
+        .series-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .series-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-secondary);
+            padding: 16px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .series-item.completed {
+            opacity: 0.6;
+            background: var(--bg-primary);
+        }
+
+        .series-number {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-green);
+            color: white;
+            border-radius: 50%;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .series-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .series-input {
+            width: 80px;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .input-btn {
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            color: var(--accent-green);
+            cursor: pointer;
+            font-size: 1.125rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .input-btn:hover {
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .btn-confirm-series {
+            padding: 8px 16px;
+            background: var(--accent-green);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-confirm-series:disabled {
+            background: var(--bg-primary);
+            cursor: not-allowed;
+        }
+
+        .btn-confirm-series svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .series-check {
+            color: var(--accent-green);
+            font-size: 1.25rem;
+        }
+
+        /* Timer Container */
+        .timer-container {
+            padding: 20px;
+            text-align: center;
+            max-width: 400px;
+            margin: 40px auto;
+        }
+
+        .timer-circle {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 24px;
+            position: relative;
+        }
+
+        .timer-svg {
+            transform: rotate(-90deg);
+        }
+
+        .timer-circle-bg {
+            fill: none;
+            stroke: var(--bg-secondary);
+            stroke-width: 8;
+        }
+
+        .timer-circle-progress {
+            fill: none;
+            stroke: var(--accent-green);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .timer-label {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .workout-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .workout-controls button {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* Workout Completed */
+        .workout-completed {
+            padding: 40px 20px;
+            text-align: center;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .completed-icon {
+            width: 120px;
+            height: 120px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 3rem;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 24px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        /* Week Planning Modal */
+        .week-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .day-plan {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .day-plan h4 {
+            font-size: 0.875rem;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .day-select {
+            width: 100%;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 8px;
+            font-size: 0.875rem;
+        }
+
+        .plan-validation {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+        }
+
+        .plan-validation.error {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+
+        .plan-validation.success {
+            background: rgba(168, 255, 0, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        /* Indicators Modal */
+        .indicators-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .indicator-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 20px;
+        }
+
+        .indicator-card h3 {
+            font-size: 1.125rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-item {
+            margin-bottom: 16px;
+        }
+
+        .comparison-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .user-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-bar span {
+            min-width: 80px;
+            font-size: 0.875rem;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 24px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar {
+            height: 100%;
+            background: var(--accent-green);
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease;
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--bg-card);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+            }
+            
+            .metric-card {
+                padding: 12px 8px;
+            }
+            
+            .metric-value {
+                font-size: 1.25rem;
+            }
+            
+            .day-pill {
+                font-size: 0.625rem;
+                padding: 8px 4px;
+            }
+            
+            .series-item {
+                grid-template-columns: 36px 1fr 1fr 44px;
+                gap: 8px;
+                padding: 12px;
+            }
+            
+            .timer-display {
+                font-size: 4rem;
+            }
+        }
+
+        /* Avatar Emoji Styles */
+        .user-avatar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary);
+        }
+
+        .user-avatar .avatar-emoji {
+            font-size: 3rem;
+        }
+
+        .user-avatar-small {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary);
+        }
+
+        .user-avatar-small .avatar-emoji {
+            font-size: 1.5rem;
+        }
+
+        /* Metrics Section */
+        .metrics-section {
+            margin-top: 32px;
+        }
+
+        .metrics-section h2 {
+            font-size: 1.125rem;
+            margin-bottom: 16px;
+        }
+
+        .metrics-detail {
+            margin-top: 24px;
+        }
+
+        .metric-comparison {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .metric-comparison h4 {
+            font-size: 0.875rem;
+            margin-bottom: 12px;
+        }
+
+        .comparison-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .user-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-bar span {
+            min-width: 80px;
+            font-size: 0.875rem;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 20px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .bar {
+            height: 100%;
+            background: var(--accent-green);
+            transition: width 0.5s ease;
+        }
+
+        /* Week Planning Modal */
+        .week-planning-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .day-plan {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-color);
+            transition: var(--transition);
+        }
+
+        .day-plan.error {
+            border-color: #f44336;
+        }
+
+        .day-plan h4 {
+            font-size: 0.875rem;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .day-select {
+            width: 100%;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 8px;
+            font-size: 0.875rem;
+        }
+
+        .plan-validation {
+            background: var(--bg-card);
+            padding: 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 0.875rem;
+        }
+
+        .plan-validation.error {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+
+        .plan-validation.success {
+            background: rgba(168, 255, 0, 0.1);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        /* Back button styling */
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            z-index: 50;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .back-button:hover {
+            background: var(--bg-card-hover);
+            transform: scale(1.1);
+        }
+
+        .back-button svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-primary);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        .timer-modal {
+            max-width: 400px;
+            text-align: center;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            color: var(--text-secondary);
+        }
+
+        .timer-display {
+            margin: 32px 0;
+        }
+
+        .timer-text {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 24px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-progress {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        .timer-progress-bar {
+            height: 100%;
+            background: var(--accent-green);
+            border-radius: var(--radius-full);
+            transition: width 1s linear;
+        }
+
+        .workout-summary {
+            background: var(--bg-secondary);
+            padding: 24px;
+            border-radius: var(--radius-md);
+            margin-bottom: 24px;
+        }
+
+        .workout-summary h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-item span {
+            color: var(--text-secondary);
+        }
+
+        .summary-item strong {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .modal-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="login-header">
+                    <h1>Cyclo</h1>
+                    <p>Bem-vindo ao seu treino</p>
+                </div>
+                <div class="users-grid" id="users-grid">
+                    <!-- Usuários serão carregados dinamicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen">
+            <button class="back-button" onclick="logout()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </button>
+            <div class="home-header">
+                <div class="header-content">
+                    <div class="user-info">
+                        <div class="user-avatar-small">
+                            <img id="user-avatar" class="avatar-img" src="pedro.png" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <div class="user-greeting">
+                            <h4>Olá! Bem-vindo ao Cyclo</h4>
+                            <p id="user-name">Usuário</p>
+                        </div>
+                    </div>
+                    <button class="btn-icon" onclick="logout()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="home-content">
+                <!-- Training Plan -->
+                <div class="training-plan">
+                    <div class="section-header">
+                        <h2>Plano de Treino</h2>
+                        <p id="user-protocol" class="text-secondary"></p>
+                        <button class="btn-icon" onclick="mostrarModalPlanejamento()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v6m0 12v-6m0 0l4-4m-4 4l-4-4"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="week-indicator" id="week-indicator">
+                        <div class="day-pill">Dom</div>
+                        <div class="day-pill">Seg</div>
+                        <div class="day-pill">Ter</div>
+                        <div class="day-pill">Qua</div>
+                        <div class="day-pill">Qui</div>
+                        <div class="day-pill">Sex</div>
+                        <div class="day-pill">Sáb</div>
+                    </div>
+
+                    <!-- Progress Card -->
+                    <div class="progress-card">
+                        <div class="progress-header">
+                            <div class="progress-info">
+                                <h3 id="workout-type-label">Treino do Dia</h3>
+                                <h2 id="next-workout-name">Carregando...</h2>
+                                <div class="progress-meta">
+                                    <span id="workout-week">Semana 1</span>
+                                    <span>•</span>
+                                    <span id="workout-exercises">0 exercícios</span>
+                                </div>
+                            </div>
+                            <div class="progress-visual">
+                                <svg class="progress-ring" viewBox="0 0 100 100">
+                                    <circle class="progress-ring-bg" cx="50" cy="50" r="40"/>
+                                    <circle class="progress-ring-progress" cx="50" cy="50" r="40"
+                                            stroke-dasharray="251.2"
+                                            stroke-dashoffset="25.12"/>
+                                </svg>
+                                <div class="progress-percentage">0%</div>
+                            </div>
+                        </div>
+                        <button class="btn-primary" id="start-workout-btn">
+                            Iniciar Treino
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metrics Section -->
+                <div class="metrics-section">
+                    <h2>Métricas de Performance</h2>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="completed-workouts">0</div>
+                            <div class="metric-label">Treinos</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="current-week">1</div>
+                            <div class="metric-label">Semana</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="progress-percentage">0%</div>
+                            <div class="metric-label">Progresso</div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-detail" id="metrics-detail">
+                        <!-- Métricas detalhadas serão carregadas dinamicamente -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Navigation -->
+            <div class="bottom-nav">
+                <div class="nav-items">
+                    <div class="nav-item active">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                        </svg>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item" onclick="mostrarPrograma()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <path d="M3 9h18M9 21V9"/>
+                        </svg>
+                        <span>Programa</span>
+                    </div>
+                    <div class="nav-item" onclick="mostrarHistorico()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        <span>Histórico</span>
+                    </div>
+                    <div class="nav-item" onclick="mostrarPerfil()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        <span>Perfil</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Screen -->
+        <div id="workout-screen" class="screen">
+            <div class="workout-header">
+                <div class="workout-header-top">
+                    <button class="btn-icon" onclick="voltarParaHome()">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                        </svg>
+                    </button>
+                    <h2 id="workout-name">Carregando...</h2>
+                    <span id="exercise-counter">0/0</span>
+                </div>
+                <div class="workout-progress-bar">
+                    <div id="workout-progress"></div>
+                </div>
+            </div>
+            
+            <!-- Exercise Container -->
+            <div id="exercise-container" class="exercise-container hidden">
+                <div class="exercise-info">
+                    <h3 class="exercise-name" id="exercise-name">Carregando...</h3>
+                    <div class="exercise-details">
+                        <span class="detail-item">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                            </svg>
+                            <span id="exercise-group">Grupo</span>
+                        </span>
+                        <span class="detail-item">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/>
+                            </svg>
+                            <span id="exercise-equipment">Equipamento</span>
+                        </span>
+                    </div>
+                    <div class="exercise-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Intensidade</span>
+                            <span class="stat-value" id="intensity-info">--</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Descanso</span>
+                            <span class="stat-value" id="rest-info">--</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">1RM</span>
+                            <span class="stat-value" id="rm-info">--</span>
+                        </div>
+                    </div>
+                    <div class="exercise-notes" id="exercise-notes"></div>
+                </div>
+                
+                <div class="series-container" id="series-container">
+                    <!-- Series items will be dynamically added here -->
+                </div>
+            </div>
+            
+            <!-- Timer Container -->
+            <div id="timer-container" class="timer-container hidden">
+                <div class="timer-circle">
+                    <svg class="timer-svg" width="200" height="200">
+                        <circle class="timer-circle-bg" cx="100" cy="100" r="90"></circle>
+                        <circle class="timer-circle-progress" cx="100" cy="100" r="90" 
+                                stroke-dasharray="565.48" stroke-dashoffset="0"></circle>
+                    </svg>
+                    <div class="timer-text" id="timer-text">0:00</div>
+                </div>
+                <p class="timer-label">Tempo de descanso</p>
+                <div class="workout-controls">
+                    <button class="btn-secondary" onclick="pularDescanso()">Pular</button>
+                    <button class="btn-primary" onclick="proximoExercicio()">Próximo</button>
+                </div>
+            </div>
+            
+            <!-- Workout Completed -->
+            <div id="workout-completed" class="workout-completed hidden">
+                <div class="completed-icon">🎉</div>
+                <h2>Treino Concluído!</h2>
+                <p>Parabéns! Você completou todos os exercícios.</p>
+                <div class="workout-controls">
+                    <button class="btn-primary" onclick="finalizarTreino()">Finalizar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Week Planning Modal -->
+        <div id="week-planning-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📅 Planejamento Semanal</h2>
+                    <p class="modal-subtitle">Organize seus treinos para a semana</p>
+                </div>
+                
+                <form id="form-planejamento">
+                    <div class="dias-semana-grid">
+                        <div class="dia-card">
+                            <h4>Domingo</h4>
+                            <select name="0" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Segunda</h4>
+                            <select name="1" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Terça</h4>
+                            <select name="2" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Quarta</h4>
+                            <select name="3" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Quinta</h4>
+                            <select name="4" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Sexta</h4>
+                            <select name="5" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Sábado</h4>
+                            <select name="6" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="plan-validation" id="plan-validation"></div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" onclick="fecharModalPlanejamento()">Cancelar</button>
+                        <button type="button" class="btn-primary" id="confirm-plan-btn" onclick="salvarPlanejamento()">Salvar Planejamento</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Modal -->
+        <div id="history-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📊 Histórico de Treinos</h2>
+                    <button class="btn-icon" onclick="fecharModal('history-modal')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div id="history-content">
+                        <!-- Histórico será carregado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Modal -->
+        <div id="profile-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>👤 Perfil</h2>
+                    <button class="btn-icon" onclick="fecharModal('profile-modal')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div id="profile-content">
+                        <!-- Perfil será carregado dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer Modal (Pop-up de descanso) -->
+        <div id="timer-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content timer-modal">
+                <div class="modal-header">
+                    <h2>⏱️ Tempo de Descanso</h2>
+                </div>
+                <div class="modal-body">
+                    <div class="timer-display">
+                        <div id="modal-timer-text" class="timer-text">00:00</div>
+                        <div class="timer-progress">
+                            <div id="modal-timer-progress" class="timer-progress-bar"></div>
+                        </div>
+                    </div>
+                    <button class="btn-secondary" onclick="pularDescanso()">
+                        Pular Descanso
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Complete Modal (Pop-up de fim de treino) -->
+        <div id="workout-complete-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🎉 Treino Finalizado!</h2>
+                </div>
+                <div class="modal-body">
+                    <div class="workout-summary">
+                        <h3>Resumo do Treino</h3>
+                        <div id="workout-summary-content">
+                            <!-- Conteúdo será preenchido dinamicamente -->
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn-primary" onclick="finalizarTreinoCompleto()">
+                            Salvar e Voltar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Planejamento Semanal -->
+        <div id="modal-planejamento" class="modal" style="display:none;">
+            <div class="modal-content modal-planejamento-content">
+                <div class="modal-header">
+                    <h2>📅 Planejamento Semanal</h2>
+                    <p class="modal-subtitle">Organize seus treinos para a semana</p>
+                </div>
+                
+                <form id="form-planejamento">
+                    <div class="dias-semana-grid">
+                        <div class="dia-card">
+                            <h4>Domingo</h4>
+                            <select name="0" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Segunda</h4>
+                            <select name="1" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Terça</h4>
+                            <select name="2" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Quarta</h4>
+                            <select name="3" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Quinta</h4>
+                            <select name="4" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Sexta</h4>
+                            <select name="5" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                        <div class="dia-card">
+                            <h4>Sábado</h4>
+                            <select name="6" class="dia-select">
+                                <option value="">Selecione</option>
+                                <option value="folga">🛋️ Folga</option>
+                                <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                <option value="C">🦵 Treino C - Pernas</option>
+                                <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                <option value="cardio">🏃 Cardio</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="plan-validation" class="plan-validation"></div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('modal-planejamento').style.display='none'">Cancelar</button>
+                        
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

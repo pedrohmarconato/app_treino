@@ -39,6 +39,21 @@ open index.html
 xdg-open index.html
 ```
 
+## ⚠️ Problemas comuns em produção (Vercel/Netlify)
+
+- **404 Not Found em arquivos estáticos:**
+  - Sempre use caminhos relativos (./styles.css, ./app.js, ./js/templates/index.js, ./favicon.png) no HTML.
+- **Erro de módulos ES:**
+  - Scripts que usam import/export devem ser carregados com `<script type="module">`.
+- **Variáveis do Supabase:**
+  - No ambiente de produção, use variáveis de ambiente do Vercel/Netlify para SUPABASE_URL e SUPABASE_ANON_KEY.
+  - Gere o arquivo `config.js` dinamicamente no build/deploy, nunca versionando chaves sensíveis.
+- **Exemplo de configuração no Vercel:**
+  - Adicione SUPABASE_URL e SUPABASE_ANON_KEY em Settings > Environment Variables.
+  - Use um script de build para gerar `config.js` automaticamente a partir dessas variáveis.
+
+Se tiver dúvidas, consulte a documentação da plataforma ou peça ajuda aqui!
+
 ## Tecnologias Utilizadas
 
 - HTML5, CSS3 e JavaScript (ES6+)
