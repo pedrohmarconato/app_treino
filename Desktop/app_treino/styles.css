@@ -23,9 +23,232 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
+    background-color: var(--bg-color, #f8f9fa);
+    color: var(--text-color, #333333);
     line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.modal .modal-content {
+  background: #242424;
+  color: #ffffff;
+  padding: 32px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  min-width: 320px;
+  max-width: 95vw;
+  position: relative;
+  z-index: 100000;
+}
+
+.modal[style*="display: block"] {
+  display: flex !important;
+}
+
+.modal[style*="display: flex"] {
+  display: flex !important;
+}
+
+/* Estilos específicos para o modal de planejamento */
+#modal-planejamento .modal-content {
+  text-align: center;
+  max-width: 800px;
+  width: 90vw;
+}
+
+.modal-planejamento-content {
+  padding: 0 !important;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 24px;
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.modal-subtitle {
+  margin: 8px 0 0 0;
+  opacity: 0.9;
+  font-size: 0.875rem;
+}
+
+.dias-semana-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 24px;
+}
+
+.dia-card {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #333;
+  transition: border-color 0.2s;
+}
+
+.dia-card:hover {
+  border-color: #10b981;
+}
+
+.dia-card h4 {
+  margin: 0 0 12px 0;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.dia-select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  background: #242424;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  transition: border 0.2s, box-shadow 0.2s;
+  position: relative;
+  min-height: 42px;
+  font-family: inherit;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%2310b981" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+}
+
+.dia-select:hover {
+  border-color: #10b981;
+  box-shadow: 0 2px 10px rgba(16,185,129,0.2);
+}
+
+.dia-select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.dia-select::-ms-expand {
+  display: none;
+}
+
+#modal-planejamento .modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 24px;
+  background: #1a1a1a;
+  border-radius: 0 0 16px 16px;
+  border-top: 1px solid #333;
+}
+
+#modal-planejamento .btn-primary {
+  padding: 10px 24px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.95rem;
+}
+
+#modal-planejamento .btn-primary:hover {
+  background: #059669;
+}
+
+.plan-validation {
+  margin: 10px auto;
+  padding: 0;
+  max-width: 90%;
+  text-align: center;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.plan-validation.show {
+  padding: 12px;
+  margin: 15px auto;
+  opacity: 1;
+  height: auto;
+}
+
+.plan-validation.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.plan-validation.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.dia-card.error .dia-select {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+#modal-planejamento .btn-secondary {
+  padding: 12px 32px;
+  background: transparent;
+  color: #ccc;
+  border: 1px solid #333;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+#modal-planejamento .btn-secondary:hover {
+  background: #333;
+  color: white;
+}
+
+/* Remover estilos antigos conflitantes */
+#modal-planejamento form {
+  display: block;
+}
+
+#modal-planejamento label {
+  display: none;
+}
+
+#modal-planejamento select,
+#modal-planejamento button[type="submit"] {
+  all: unset;
 }
 
 .app-container {
@@ -364,6 +587,65 @@ header {
     font-weight: 500;
 }
 
+.exercise-info {
+    margin-top: 16px;
+    display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+    background: #f3f5fa;
+    border-radius: 8px;
+    padding: 10px 0;
+}
+.info-item { text-align: center; }
+.info-label { font-size: 0.93rem; color: var(--muted); margin-bottom: 2px; }
+.info-value { font-size: 1.1rem; font-weight: 700; color: var(--primary-color); }
+
+/* === Timer Section === */
+.timer-section { text-align: center; }
+.timer-display {
+    font-size: 2.2rem;
+    font-family: 'Montserrat', Arial, sans-serif;
+    color: var(--primary-color);
+    margin: 14px 0 10px 0;
+    font-weight: 700;
+}
+#skip-rest-btn { margin-top: 8px; }
+
+/* === Completed Section === */
+.completed-section {
+    text-align: center;
+    margin-top: 24px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 36px 12px 28px 12px;
+}
+.completed-section h2 { color: var(--accent); font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; }
+.completed-section p { color: var(--muted); margin-bottom: 12px; }
+.summary-stats {
+    display: flex; gap: 30px; justify-content: center; margin: 16px 0 14px 0;
+}
+.stat-item { text-align: center; }
+.stat-item span { display: block; font-size: 1.1rem; color: var(--primary-color); font-weight: 600; }
+#finish-workout-btn { margin-top: 14px; }
+
+/* === Loading Overlay === */
+.loading-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(37,99,235,0.15);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+}
+.loading-spinner {
+    background: #fff;
+    padding: 30px 50px;
+    border-radius: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+    box-shadow: var(--shadow);
+    font-size: 1.15rem;
+}
+
+/* Styles for exercise section, series table etc. (Restored and Relocated) */
 .exercise-section h3 { font-size: 1.15rem; color: var(--primary-color); font-weight: 700; margin-bottom: 2px; }
 .exercise-section p { color: var(--muted); margin-bottom: 8px; font-size: 1rem; }
 .series-table { margin-top: 10px; }
@@ -438,64 +720,7 @@ header {
 }
 .series-action .done-btn:hover { background: var(--accent); }
 .check-icon { font-size: 1.15rem; }
-
-.exercise-info {
-    margin-top: 16px;
-    display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
-    background: #f3f5fa;
-    border-radius: 8px;
-    padding: 10px 0;
-}
-.info-item { text-align: center; }
-.info-label { font-size: 0.93rem; color: var(--muted); margin-bottom: 2px; }
-.info-value { font-size: 1.1rem; font-weight: 700; color: var(--primary-color); }
-
-/* === Timer Section === */
-.timer-section { text-align: center; }
-.timer-display {
-    font-size: 2.2rem;
-    font-family: 'Montserrat', Arial, sans-serif;
-    color: var(--primary-color);
-    margin: 14px 0 10px 0;
-    font-weight: 700;
-}
-#skip-rest-btn { margin-top: 8px; }
-
-/* === Completed Section === */
-.completed-section {
-    text-align: center;
-    margin-top: 24px;
-    background: var(--surface);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 36px 12px 28px 12px;
-}
-.completed-section h2 { color: var(--accent); font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; }
-.completed-section p { color: var(--muted); margin-bottom: 12px; }
-.summary-stats {
-    display: flex; gap: 30px; justify-content: center; margin: 16px 0 14px 0;
-}
-.stat-item { text-align: center; }
-.stat-item span { display: block; font-size: 1.1rem; color: var(--primary-color); font-weight: 600; }
-#finish-workout-btn { margin-top: 14px; }
-
-/* === Loading Overlay === */
-.loading-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(37,99,235,0.15);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 9999;
-}
-.loading-spinner {
-    background: #fff;
-    padding: 30px 50px;
-    border-radius: 18px;
-    font-weight: 600;
-    color: var(--primary-color);
-    box-shadow: var(--shadow);
-    font-size: 1.15rem;
-}
+/* End of restored styles */
 
 /* === Responsividade === */
 @media (max-width: 600px) {
@@ -513,3 +738,4 @@ header {
 
 ::-webkit-scrollbar { width: 7px; background: #f3f5fa; }
 ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 6px; }
+}
