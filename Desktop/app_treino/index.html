@@ -6,116 +6,1375 @@
     <title>App de Treino</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-card: #242424;
+            --bg-card-hover: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a8a8a8;
+            --text-muted: #666666;
+            --accent-green: #a8ff00;
+            --accent-green-dark: #7cc200;
+            --accent-green-bg: rgba(168, 255, 0, 0.1);
+            --border-color: #333333;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-full: 9999px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+
+        /* Typography */
+        h1, h2, h3, h4 {
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        h1 { font-size: 2.5rem; }
+        h2 { font-size: 1.875rem; }
+        h3 { font-size: 1.25rem; }
+        h4 { font-size: 1rem; }
+
+        /* Buttons */
+        button {
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            font-weight: 600;
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+            padding: 16px 24px;
+            border-radius: var(--radius-full);
+            font-size: 1rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(168, 255, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-green-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(168, 255, 0, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-card-hover);
+        }
+
+        /* Screens */
+        .screen {
+            display: none;
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Login Screen */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .login-header h1 {
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+        }
+
+        .users-grid {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .user-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 32px 24px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .user-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, var(--accent-green-bg) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .user-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-green);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .user-card:hover::before {
+            opacity: 1;
+        }
+
+        .user-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: var(--radius-full);
+            margin: 0 auto 16px;
+            overflow: hidden;
+            border: 3px solid var(--border-color);
+            position: relative;
+            z-index: 1;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-card h3 {
+            font-size: 1.125rem;
+            margin-bottom: 4px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .user-card p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Home Screen */
+        .home-header {
+            background: var(--bg-secondary);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            border: 2px solid var(--accent-green);
+        }
+
+        .user-avatar-small img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-greeting h4 {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .user-greeting p {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .home-content {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Training Plan Section */
+        .training-plan {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .week-indicator {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .day-pill {
+            flex: 1;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-full);
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .day-pill.active {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .day-pill.completed {
+            background: var(--accent-green-bg);
+            color: var(--accent-green);
+        }
+
+        /* Progress Card */
+        .progress-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .progress-info h3 {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .progress-info h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .progress-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .progress-visual {
+            width: 80px;
+            height: 80px;
+            position: relative;
+        }
+
+        .progress-ring {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-bg {
+            fill: none;
+            stroke: var(--bg-primary);
+            stroke-width: 8;
+        }
+
+        .progress-ring-progress {
+            fill: none;
+            stroke: var(--accent-green);
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .progress-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Activity Section */
+        .activity-section {
+            margin-top: 32px;
+        }
+
+        .activity-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .activity-header h2 {
+            font-size: 1.125rem;
+        }
+
+        .activity-header a {
+            color: var(--accent-green);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .activity-filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .filter-pill {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-pill.active {
+            background: var(--accent-green);
+            color: var(--bg-primary);
+        }
+
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .activity-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .activity-card:hover {
+            background: var(--bg-card-hover);
+            transform: translateX(4px);
+        }
+
+        .activity-thumbnail {
+            width: 80px;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+        }
+
+        .activity-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-info h4 {
+            font-size: 0.875rem;
+            margin-bottom: 4px;
+        }
+
+        .activity-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 0;
+            z-index: 100;
+        }
+
+        .nav-items {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.75rem;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            color: var(--text-secondary);
+        }
+
+        .nav-item.active {
+            color: var(--accent-green);
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        /* Workout Screen */
+        .workout-header {
+            background: var(--bg-secondary);
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .workout-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .workout-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .workout-progress {
+            margin-top: 12px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent-green);
+            border-radius: var(--radius-full);
+            transition: width 0.3s ease;
+        }
+
+        .exercise-counter {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 8px;
+        }
+
+        .workout-content {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 24px;
+            padding-bottom: 100px;
+        }
+
+        .exercise-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .exercise-header {
+            margin-bottom: 20px;
+        }
+
+        .exercise-header h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .exercise-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .exercise-notes {
+            background: var(--accent-green-bg);
+            border-left: 3px solid var(--accent-green);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 24px;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .series-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .series-item {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 40px 1fr 1fr 48px;
+            align-items: center;
+            gap: 16px;
+            transition: var(--transition);
+        }
+
+        .series-item.completed {
+            opacity: 0.6;
+            background: var(--accent-green-bg);
+        }
+
+        .series-number {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-card);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        .series-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .input-btn {
+            width: 36px;
+            height: 36px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .input-btn:hover {
+            color: var(--accent-green);
+            background: var(--accent-green-bg);
+        }
+
+        .series-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            text-align: center;
+            font-size: 1.125rem;
+            font-weight: 600;
+            padding: 8px;
+            outline: none;
+        }
+
+        .series-input::-webkit-inner-spin-button,
+        .series-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .input-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 4px;
+        }
+
+        .series-check {
+            width: 48px;
+            height: 48px;
+            background: var(--accent-green);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--bg-primary);
+            font-size: 1.5rem;
+        }
+
+        .series-check:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 16px rgba(168, 255, 0, 0.4);
+        }
+
+        .series-check:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .exercise-info {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+            gap: 24px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+
+        /* Timer Section */
+        .timer-section {
+            text-align: center;
+            padding: 48px 24px;
+        }
+
+        .timer-section h3 {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            margin-bottom: 8px;
+        }
+
+        .next-exercise-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 32px;
+        }
+
+        .timer-display {
+            font-size: 5rem;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            color: var(--accent-green);
+            margin-bottom: 32px;
+            line-height: 1;
+        }
+
+        /* Completion Section */
+        .completion-section {
+            text-align: center;
+            padding: 48px 24px;
+        }
+
+        .completion-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        .completion-section h2 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .completion-section p {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .workout-stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin-bottom: 48px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 24px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        /* Week Planning Modal */
+        .week-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .day-plan {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .day-plan h4 {
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .day-select {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .day-select:focus {
+            border-color: var(--accent-green);
+        }
+
+        .plan-validation {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            text-align: center;
+        }
+
+        .plan-validation.error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+        }
+
+        .plan-validation.success {
+            background: var(--accent-green-bg);
+            color: var(--accent-green);
+        }
+
+        /* Indicators Modal */
+        .indicators-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .indicator-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 20px;
+        }
+
+        .indicator-card h3 {
+            font-size: 1.125rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-item {
+            margin-bottom: 16px;
+        }
+
+        .comparison-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .user-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-bar span {
+            min-width: 80px;
+            font-size: 0.875rem;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 24px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar {
+            height: 100%;
+            background: var(--accent-green);
+            border-radius: var(--radius-full);
+            transition: width 0.5s ease;
+        }
+
+        /* Loading State */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--bg-card);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+            }
+            
+            .metric-card {
+                padding: 12px 8px;
+            }
+            
+            .metric-value {
+                font-size: 1.25rem;
+            }
+            
+            .day-pill {
+                font-size: 0.625rem;
+                padding: 8px 4px;
+            }
+            
+            .series-item {
+                grid-template-columns: 36px 1fr 1fr 44px;
+                gap: 8px;
+                padding: 12px;
+            }
+            
+            .timer-display {
+                font-size: 4rem;
+            }
+        }
+    </style>
 </head>
-<body class="app-bg">
-    <!-- Tela de Login -->
-    <div id="login-screen" class="screen active">
-        <div class="login-container">
-            <h1>🏋️ App de Treinamento</h1>
-            <p>Selecione seu perfil</p>
-            <div class="users">
-                <!-- Usuários serão carregados aqui pelo JavaScript -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Tela Home -->
-    <div id="home-screen" class="screen">
-        <div class="header">
-            <div class="user-info">
-                <div id="user-avatar" class="avatar">👤</div>
-                <span id="user-name">Usuário</span>
-            </div>
-            <button class="logout-btn" id="logout-btn">Sair</button>
-        </div>
-
-        <div class="dashboard">
-            <div class="metric-card">
-                <h3>Treinos Concluídos</h3>
-                <p class="metric-value" id="completed-workouts">0</p>
-            </div>
-            <div class="metric-card">
-                <h3>Progresso</h3>
-                <p class="metric-value" id="progress-percentage">0%</p>
-            </div>
-            <div class="metric-card">
-                <h3>Semana Atual</h3>
-                <p class="metric-value" id="current-week">0</p>
-            </div>
-        </div>
-
-        <div class="schedule">
-            <h2>Próximo Treino</h2>
-            <div class="next-workout-card">
-                <h3 id="next-workout-name">Carregando...</h3>
-                <p id="next-workout-week">Semana X</p>
-                <p id="next-workout-exercises">Y exercícios</p>
-                <p id="next-workout-intensity">Z% 1RM</p>
-                <button class="primary-btn" id="start-workout-btn">Iniciar Treino</button>
-            </div>
-            <div class="extra-buttons">
-                <!-- Botões adicionados via JavaScript -->
-            </div>
-            <div class="last-workout-summary">
-                <h4>Último Treino:</h4>
-                <p id="last-workout-info">Nenhum treino registrado</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tela de Treino -->
-    <div id="workout-screen" class="screen">
-        <div class="header">
-            <button class="back-btn" id="back-btn">← Voltar</button>
-            <h2 id="workout-title">Treino do Dia</h2>
-            <div class="workout-summary"></div> 
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="workout-progress"></div>
-            </div>
-        </div>
-
-        <!-- Container do Exercício -->
-        <div id="exercise-container" class="exercise-section hidden">
-            <h3 id="exercise-name">Nome do Exercício</h3>
-            <p id="exercise-notes">Notas sobre o exercício</p>
-
-            <div class="series-table">
-                <div id="series-container">
-                    <!-- Séries serão carregadas aqui -->
+<body>
+    <div class="app-container">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="login-header">
+                    <h1>Cyclo</h1>
+                    <p>Bem-vindo ao seu treino</p>
+                </div>
+                <div class="users-grid" id="users-grid">
+                    <!-- Usuários serão carregados dinamicamente -->
                 </div>
             </div>
         </div>
 
-        <!-- Container do Timer -->
-        <div id="timer-container" class="timer-section hidden">
-            <h3>Próximo Exercício:</h3>
-            <p id="next-exercise-name">Carregando...</p>
-            <div class="timer-display" id="timer">00:00</div>
-            <button class="primary-btn" id="skip-rest-btn">Pular Descanso</button>
-        </div>
-
-        <!-- Treino Concluído -->
-        <div id="workout-completed" class="completed-section hidden">
-            <h2>🎉 Treino Concluído!</h2>
-            <p>Parabéns!</p>
-            <div class="summary-stats">
-                <div class="stat-item">
-                    <span>Séries:</span>
-                    <span id="completed-series">0</span>
-                </div>
-                <div class="stat-item">
-                    <span>Tempo:</span>
-                    <span id="total-time">0min</span>
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen">
+            <div class="home-header">
+                <div class="header-content">
+                    <div class="user-info">
+                        <div class="user-avatar-small">
+                            <img id="user-avatar" src="" alt="">
+                        </div>
+                        <div class="user-greeting">
+                            <h4>Olá! Bem-vindo ao Cyclo</h4>
+                            <p id="user-name">Usuário</p>
+                        </div>
+                    </div>
+                    <button class="btn-icon" onclick="logout()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            <button class="primary-btn" id="finish-workout-btn">Finalizar</button>
+
+            <div class="home-content">
+                <!-- Training Plan -->
+                <div class="training-plan">
+                    <div class="section-header">
+                        <h2>Plano de Treino</h2>
+                        <button class="btn-icon" onclick="replanejarSemana()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2v6m0 12v-6m0 0l4-4m-4 4l-4-4"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="week-indicator" id="week-indicator">
+                        <div class="day-pill">Seg</div>
+                        <div class="day-pill">Ter</div>
+                        <div class="day-pill active">Qua</div>
+                        <div class="day-pill">Qui</div>
+                        <div class="day-pill">Sex</div>
+                        <div class="day-pill">Sáb</div>
+                        <div class="day-pill">Dom</div>
+                    </div>
+
+                    <!-- Progress Card -->
+                    <div class="progress-card">
+                        <div class="progress-header">
+                            <div class="progress-info">
+                                <h3>Cardio</h3>
+                                <h2 id="next-workout-name">Lower Body</h2>
+                                <div class="progress-meta">
+                                    <span>⏱ 3 horas</span>
+                                    <span>🏋️ Iniciante</span>
+                                </div>
+                            </div>
+                            <div class="progress-visual">
+                                <svg class="progress-ring" viewBox="0 0 100 100">
+                                    <circle class="progress-ring-bg" cx="50" cy="50" r="40"/>
+                                    <circle class="progress-ring-progress" cx="50" cy="50" r="40"
+                                            stroke-dasharray="251.2"
+                                            stroke-dashoffset="25.12"/>
+                                </svg>
+                                <div class="progress-percentage">90%</div>
+                            </div>
+                        </div>
+                        <button class="btn-primary" id="start-workout-btn">
+                            Continuar Treino
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metrics -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="completed-workouts">0</div>
+                        <div class="metric-label">Treinos</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="current-week">1</div>
+                        <div class="metric-label">Semana</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="progress-percentage">0%</div>
+                        <div class="metric-label">Progresso</div>
+                    </div>
+                </div>
+
+                <!-- Activity Section -->
+                <div class="activity-section">
+                    <div class="activity-header">
+                        <h2>Minha Atividade</h2>
+                        <a href="#" onclick="mostrarIndicadores()">Ver tudo</a>
+                    </div>
+                    
+                    <div class="activity-filters">
+                        <div class="filter-pill active">Ciclismo</div>
+                        <div class="filter-pill">Corrida</div>
+                        <div class="filter-pill">Remo</div>
+                    </div>
+
+                    <div class="activity-list">
+                        <div class="activity-card">
+                            <div class="activity-thumbnail">
+                                <img src="https://images.unsplash.com/photo-1541625602330-2277a4c46182?w=160&h=120&fit=crop" alt="">
+                            </div>
+                            <div class="activity-info">
+                                <h4>Spin Bike</h4>
+                                <p>20 min • 100 kcal</p>
+                            </div>
+                        </div>
+                        <div class="activity-card">
+                            <div class="activity-thumbnail">
+                                <img src="https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=160&h=120&fit=crop" alt="">
+                            </div>
+                            <div class="activity-info">
+                                <h4>Ciclismo Indoor</h4>
+                                <p>45 min • 380 kcal</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Navigation -->
+            <div class="bottom-nav">
+                <div class="nav-items">
+                    <div class="nav-item active">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                        </svg>
+                        <span>Home</span>
+                    </div>
+                    <div class="nav-item" onclick="mostrarIndicadores()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <path d="M3 9h18M9 21V9"/>
+                        </svg>
+                        <span>Programa</span>
+                    </div>
+                    <div class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <span>Descobrir</span>
+                    </div>
+                    <div class="nav-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                        <span>Perfil</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workout Screen -->
+        <div id="workout-screen" class="screen">
+            <div class="workout-header">
+                <div class="workout-header-top">
+                    <button class="btn-icon" onclick="voltarParaHome()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <h2 id="workout-title">Treino</h2>
+                    <div style="width: 40px;"></div>
+                </div>
+                <div class="workout-progress">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" id="workout-progress" style="width: 0%"></div>
+                    </div>
+                    <div class="exercise-counter" id="exercise-counter">Exercício 1 de 5</div>
+                </div>
+            </div>
+
+            <div class="workout-content">
+                <!-- Exercise Container -->
+                <div id="exercise-container" class="exercise-card hidden">
+                    <div class="exercise-header">
+                        <h2 id="exercise-name">Nome do Exercício</h2>
+                        <div class="exercise-meta">
+                            <span id="exercise-group">Grupo</span>
+                            <span>•</span>
+                            <span id="exercise-equipment">Equipamento</span>
+                        </div>
+                    </div>
+
+                    <div class="exercise-notes" id="exercise-notes">
+                        Mantenha a técnica perfeita durante toda a execução
+                    </div>
+
+                    <div class="series-container" id="series-container">
+                        <!-- Séries serão carregadas dinamicamente -->
+                    </div>
+
+                    <div class="exercise-info">
+                        <div class="info-item">
+                            <div class="info-label">Intensidade</div>
+                            <div class="info-value" id="intensity-info">70-80%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Descanso</div>
+                            <div class="info-value" id="rest-info">60s</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">1RM</div>
+                            <div class="info-value" id="rm-info">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timer Container -->
+                <div id="timer-container" class="timer-section hidden">
+                    <h3>Próximo exercício</h3>
+                    <div class="next-exercise-name" id="next-exercise-name">Nome do Exercício</div>
+                    <div class="timer-display" id="timer">00:00</div>
+                    <button class="btn-primary" onclick="pularDescanso()">
+                        Pular Descanso
+                    </button>
+                </div>
+
+                <!-- Workout Completed -->
+                <div id="workout-completed" class="completion-section hidden">
+                    <div class="completion-icon">🎉</div>
+                    <h2>Treino Concluído!</h2>
+                    <p>Parabéns pelo seu esforço!</p>
+                    
+                    <div class="workout-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="completed-series">0</div>
+                            <div class="stat-label">Séries</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="total-time">0</div>
+                            <div class="stat-label">Tempo</div>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" onclick="finalizarTreino()">
+                        Finalizar
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Configuração e Scripts -->
+    <!-- Scripts -->
     <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
