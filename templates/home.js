@@ -26,29 +26,12 @@ export const homeTemplate = () => `
         </div>
 
         <div class="home-content">
-            <!-- Training Plan -->
-            <div class="training-plan">
-                <div class="section-header">
-                    <h2>Plano de Treino</h2>
-                    <p id="user-protocol" class="text-secondary"></p>
-                    <button class="btn-icon" onclick="mostrarModalPlanejamento()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2v6m0 12v-6m0 0l4-4m-4 4l-4-4"/>
-                        </svg>
-                    </button>
-                </div>
-                
-                <div class="week-indicator" id="week-indicator">
-                    <div class="day-pill">Dom</div>
-                    <div class="day-pill">Seg</div>
-                    <div class="day-pill">Ter</div>
-                    <div class="day-pill">Qua</div>
-                    <div class="day-pill">Qui</div>
-                    <div class="day-pill">Sex</div>
-                    <div class="day-pill">Sáb</div>
-                </div>
 
-                <!-- Progress Card -->
+
+
+                    </button>
+
+
                 <div class="progress-card">
                     <div class="progress-header">
                         <div class="progress-info">
@@ -77,6 +60,12 @@ export const homeTemplate = () => `
                         </svg>
                     </button>
                 </div>
+            </div>
+
+            <!-- Semana Customizada -->
+            <div class="custom-week-section">
+                <h2>Semana de Treinos</h2>
+                <ul id="custom-week-list"></ul>
             </div>
 
             <!-- Metrics Section -->

@@ -2,7 +2,7 @@
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';
 import { workoutTemplate, exerciseItemTemplate, seriesItemTemplate, workoutStyles } from './workout.js';
-import { weekPlanningModalTemplate, modalStyles } from './modals.js';
+import OrderWeekPage, { orderWeekStyles } from './OrderWeekPage.js';
 
 // Função para renderizar um template no DOM
 export function renderTemplate(templateName, container = 'app') {
@@ -25,17 +25,23 @@ export function renderTemplate(templateName, container = 'app') {
         case 'workout':
             containerEl.innerHTML = workoutTemplate();
             break;
+        case 'orderWeek':
+            containerEl.innerHTML = '';
+            const root = document.createElement('div');
+            root.id = 'order-week-root';
+            containerEl.appendChild(root);
+            // Renderização básica sem React: injeta HTML da OrderWeekPage diretamente
+            root.innerHTML = `<div id="order-week-page"></div>`;
+            window.renderOrderWeekPage && window.renderOrderWeekPage('order-week-page');
+            break;
         default:
             console.error(`Template ${templateName} não encontrado`);
     }
 }
 
-// Função para adicionar modais ao DOM
-export function addModals() {
-    // Verifica se o modal já existe antes de adicionar
-    if (!document.getElementById('modal-planejamento')) {
-        document.body.insertAdjacentHTML('beforeend', weekPlanningModalTemplate());
-    }
+// Função para adicionar páginas customizadas ao DOM
+export function addCustomPages() {
+    // Placeholder para futuras páginas customizadas
 }
 
 // Função para injetar estilos específicos dos templates
@@ -55,7 +61,7 @@ export function injectTemplateStyles() {
         ${loginStyles}
         ${homeStyles}
         ${workoutStyles}
-        ${modalStyles}
+        ${orderWeekStyles}
     `;
     
     document.head.appendChild(styleElement);
@@ -65,9 +71,6 @@ export function injectTemplateStyles() {
 export function initTemplates() {
     // Injeta os estilos dos templates
     injectTemplateStyles();
-    
-    // Adiciona os modais ao DOM
-    addModals();
     
     // Renderiza a tela inicial (login)
     renderTemplate('login');
@@ -80,5 +83,4 @@ export {
     workoutTemplate,
     exerciseItemTemplate,
     seriesItemTemplate,
-    weekPlanningModalTemplate
 };

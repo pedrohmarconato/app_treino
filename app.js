@@ -1,6 +1,9 @@
 // app.js - Aplicação de Treinamento com Design Moderno
 console.log('[app.js] JS carregado com sucesso!');
 
+// Este arquivo agora é um módulo ES6. Todos os imports/exports devem ser relativos e explícitos.
+
+
 // Funções de Modal
 function abrirModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -17,7 +20,7 @@ function fecharModal(modalId) {
 }
 
 // ==================== CONFIGURAÇÃO INICIAL ====================
-const supabase = window.supabase.createClient(
+export const supabase = window.supabase.createClient(
     window.SUPABASE_CONFIG.url, 
     window.SUPABASE_CONFIG.key
 );
@@ -33,31 +36,16 @@ const AppState = {
     completedSeries: 0,
     timerInterval: null,
     restStartTime: null,
-    weekPlan: null,
+
     restTime: 0,
     pesosSugeridos: {},
     isResting: false
 };
 
 // ==================== FUNÇÕES DE BANCO DE DADOS ====================
-
-// 1. Funções de Usuário
-async function fetchUsuarios() {
-    try {
-        const { data, error } = await supabase
-            .from('usuarios')
-            .select('*')
-            .eq('status', 'ativo')
-            .order('nome');
-        
-        if (error) throw error;
-        return data;
-    } catch (error) {
-        console.error('Erro ao buscar usuários:', error);
-        showNotification('Erro ao carregar usuários', 'error');
-        return [];
-    }
-}
+// Funções de consulta agora centralizadas em services/protocolService.js
+import * as ProtocolService from './services/protocolService.js';
+import * as UserService from './services/userService.js';
 
 // 2. Buscar protocolo ativo do usuário
 async function fetchProtocoloAtivoUsuario(userId) {
@@ -226,25 +214,7 @@ async function fetchExerciciosTreino(numeroTreino, protocoloId) {
     }
 }
 
-// 5. Buscar 1RM do usuário
-async function fetch1RMUsuario(userId, exercicioId) {
-    try {
-        const { data, error } = await supabase
-            .from('usuario_1rm')
-            .select('rm_calculado')
-            .eq('usuario_id', userId)
-            .eq('exercicio_id', exercicioId)
-            .eq('status', 'ativo')
-            .order('data_teste', { descending: true })
-            .limit(1)
-            .single();
-        
-        if (error) return null;
-        return data.rm_calculado;
-    } catch (error) {
-        return null;
-    }
-}
+// fetch1RMUsuario foi movido para userService.js
 
 // 6. Salvar execução do exercício
 async function salvarExecucaoExercicio(dados) {
@@ -261,70 +231,7 @@ async function salvarExecucaoExercicio(dados) {
     }
 }
 
-// 7. Buscar métricas do usuário
-async function fetchMetricasUsuario(userId) {
-    try {
-        const { data: execucoes, error } = await supabase
-            .from('execucao_exercicio_usuario')
-            .select('protocolo_treino_id')
-            .eq('usuario_id', userId);
-        
-        if (error) throw error;
-        
-        const treinosUnicos = [...new Set(execucoes.map(e => e.protocolo_treino_id))];
-        const totalTreinos = treinosUnicos.length;
-        
-        const planoAtivo = await fetchProtocoloAtivoUsuario(userId);
-        let progresso = 0;
-        let semanaAtual = 1;
-        
-        if (planoAtivo) {
-            semanaAtual = planoAtivo.semana_atual;
-            const totalTreinosProtocolo = planoAtivo.protocolos_treinamento.total_treinos || 48;
-            progresso = Math.round((totalTreinos / totalTreinosProtocolo) * 100);
-        }
-        
-        const { data: ultimoTreino, error: ultimoError } = await supabase
-            .from('execucao_exercicio_usuario')
-            .select('data_execucao, protocolo_treino_id')
-            .eq('usuario_id', userId)
-            .order('data_execucao', { descending: true })
-            .limit(1)
-            .single();
-        
-        let ultimoTreinoInfo = null;
-        if (!ultimoError && ultimoTreino) {
-            const { data: detalhes } = await supabase
-                .from('protocolo_treinos')
-                .select('dia_semana, semana_referencia')
-                .eq('id', ultimoTreino.protocolo_treino_id)
-                .single();
-            
-            if (detalhes) {
-                ultimoTreinoInfo = {
-                    data: new Date(ultimoTreino.data_execucao),
-                    tipo: obterTipoTreino(detalhes.dia_semana),
-                    semana: detalhes.semana_referencia
-                };
-            }
-        }
-        
-        return {
-            treinosConcluidos: totalTreinos,
-            progresso: progresso,
-            semanaAtual: semanaAtual,
-            ultimoTreino: ultimoTreinoInfo
-        };
-    } catch (error) {
-        console.error('Erro ao buscar métricas:', error);
-        return {
-            treinosConcluidos: 0,
-            progresso: 0,
-            semanaAtual: 1,
-            ultimoTreino: null
-        };
-    }
-}
+// fetchMetricasUsuario foi movido para userService.js
 
 // 8. Buscar dados para indicadores
 async function fetchDadosIndicadores() {
@@ -364,7 +271,7 @@ async function fetchDadosIndicadores() {
     }
 }
 
-// ==================== FUNÇÕES DE PLANEJAMENTO SEMANAL ====================
+
 
 function needsWeekPlanning(userId) {
     const key = `weekPlan_${userId}_${getWeekKey()}`;
@@ -503,7 +410,10 @@ async function selecionarUsuario(usuario) {
         AppState.currentUser = usuario;
         
         // Atualizar UI
-        document.getElementById('user-name').textContent = usuario.nome;
+        const userNameEl = document.getElementById('user-name');
+if (userNameEl) {
+    userNameEl.textContent = usuario.nome;
+}
         const userImages = {
             'Pedro': 'pedro.png',
             'Japa': 'japa.png'
@@ -550,7 +460,7 @@ async function carregarDashboard() {
     atualizarIndicadorSemana();
     
     // Buscar métricas
-    const metricas = await fetchMetricasUsuario(AppState.currentUser.id);
+    const metricas = await UserService.fetchMetricasUsuario(AppState.currentUser.id);
     
     // Atualizar cards de métricas
     document.getElementById('completed-workouts').textContent = metricas.treinosConcluidos;
@@ -584,7 +494,7 @@ async function carregarDashboard() {
         document.getElementById('next-workout-name').textContent = `Treino ${tipoTreino}`;
         
         // Buscar exercícios do treino
-        const exercicios = await fetchExerciciosTreino(
+        const exercicios = await ProtocolService.fetchExerciciosTreino(
             proximoTreino.numero_treino,
             AppState.currentProtocol.protocolo_treinamento_id
         );
@@ -593,7 +503,7 @@ async function carregarDashboard() {
     }
     
     // Carregar dados dos indicadores (ranking, estatísticas, etc)
-    const dadosIndicadores = await fetchDadosIndicadores();
+    const dadosIndicadores = await ProtocolService.fetchDadosIndicadores();
     if (dadosIndicadores.comparacao && dadosIndicadores.comparacao.length > 0) {
         // Renderizar ranking competitivo na seção de métricas
         renderizarMetricasCompetitivas();
@@ -693,11 +603,11 @@ function hideLoading() {
 // ==================== FUNÇÕES DE MÉTRICAS COMPETITIVAS ====================
 
 function renderizarMetricasCompetitivas() {
-    carregarRankingCompetitivo();
-    carregarEstatisticasUsuarios();
+    ProtocolService.carregarRankingCompetitivo();
+    ProtocolService.carregarEstatisticasUsuarios();
 
     if (AppState.currentUser && AppState.currentUser.nome) {
-        carregarResumoGrupoMuscular(AppState.currentUser.nome);
+        ProtocolService.carregarResumoGrupoMuscular(AppState.currentUser.nome);
     } else {
         console.warn("Nome do usuário atual não disponível para carregar resumo muscular.");
     }
@@ -705,7 +615,7 @@ function renderizarMetricasCompetitivas() {
 
 // Ranking de força entre Pedro e Japa por exercício
 async function carregarRankingCompetitivo() {
-    const { error } = await supabase.from('v_comparativo_usuarios').select('*');
+    const { error } = await ProtocolService.carregarRankingCompetitivo();
     if (error) {
         showNotification('Erro ao carregar ranking competitivo', 'error');
         return;
@@ -714,7 +624,7 @@ async function carregarRankingCompetitivo() {
 
 // Estatísticas gerais dos usuários
 async function carregarEstatisticasUsuarios() {
-    const { error } = await supabase.from('v_estatisticas_usuarios').select('*');
+    const { error } = await ProtocolService.carregarEstatisticasUsuarios();
     if (error) {
         showNotification('Erro ao carregar estatísticas dos usuários', 'error');
         return;
@@ -723,10 +633,7 @@ async function carregarEstatisticasUsuarios() {
 
 // Resumo de desempenho por grupo muscular
 async function carregarResumoGrupoMuscular(nomeUsuario) {
-    const { error } = await supabase
-        .from('v_resumo_grupo_muscular')
-        .select('*')
-        .eq('usuario', nomeUsuario);
+    const { error } = await ProtocolService.carregarResumoGrupoMuscular(nomeUsuario);
     if (error) {
         showNotification('Erro ao carregar resumo por grupo muscular', 'error');
         return;
@@ -737,11 +644,7 @@ async function carregarResumoGrupoMuscular(nomeUsuario) {
 
 // Carregar pesos sugeridos para o treino do usuário
 async function carregarPesosSugeridos(usuarioId, protocoloTreinoId) {
-    const { error } = await supabase
-        .from('v_pesos_usuario')
-        .select('*')
-        .eq('usuario_id', usuarioId)
-        .eq('protocolo_treino_id', protocoloTreinoId);
+    const { error } = await ProtocolService.carregarPesosSugeridos(usuarioId, protocoloTreinoId);
     if (error) {
         showNotification('Erro ao carregar pesos sugeridos', 'error');
         return;
@@ -802,12 +705,7 @@ async function mostrarExercicioAtual() {
     if (!protocoloId) {
         console.warn('protocolo_treino_id indefinido ao buscar pesos sugeridos');
     }
-    const { data: pesosSugeridos } = await supabase
-        .from('v_pesos_usuario')
-        .select('*')
-        .eq('usuario_id', AppState.currentUser.id)
-        .eq('protocolo_treino_id', protocoloId)
-        .maybeSingle();
+    const { data: pesosSugeridos } = await ProtocolService.carregarPesosSugeridos(AppState.currentUser.id, protocoloId);
         
     // Atualizar progresso
     const progress = (AppState.currentExerciseIndex / AppState.currentExercises.length) * 100;
@@ -850,7 +748,7 @@ async function mostrarExercicioAtual() {
     document.getElementById('rest-info').textContent = `${exercicio.tempo_descanso}s`;
         
     // Buscar 1RM
-    fetch1RMUsuario(AppState.currentUser.id, exercicio.exercicio_id).then(rm => {
+    UserService.fetch1RMUsuario(AppState.currentUser.id, exercicio.exercicio_id).then(rm => {
         if (rm) {
             document.getElementById('rm-info').textContent = `${rm}kg`;
         } else {
@@ -960,7 +858,7 @@ async function confirmarSerie(serieIndex) {
         data_execucao: new Date().toISOString()
     };
     
-    const success = await salvarExecucaoExercicio(dados);
+    const success = await ProtocolService.salvarExecucaoExercicio(dados);
     
     if (!success) {
         showNotification('Erro ao salvar série', 'error');
@@ -1098,7 +996,7 @@ async function finalizarTreinoCompleto() {
         document.getElementById('workout-complete-modal').style.display = 'none';
         
         // Salvar treino no banco
-        await finalizarTreino();
+        await ProtocolService.finalizarTreino();
     } catch (error) {
         console.error('Erro ao finalizar treino:', error);
         showNotification('Erro ao salvar treino', 'error');
@@ -1114,12 +1012,11 @@ async function finalizarTreino() {
 
         for (const exercicio of exercicios) {
             // Buscar execuções para cada exercício
-            const { data: execs, error } = await supabase
-                .from('execucao_exercicio_usuario')
-                .select('id')
-                .eq('usuario_id', AppState.currentUser.id)
-                .eq('protocolo_treino_id', AppState.currentWorkout.id)
-                .eq('exercicio_id', exercicio.exercicio_id);
+            const { data: execs, error } = await ProtocolService.fetchExecucoesExercicio(
+                AppState.currentUser.id,
+                AppState.currentWorkout.id,
+                exercicio.exercicio_id
+            );
             if (error) throw error;
             const esperado = exercicio.series || 1;
             if (!execs || execs.length < esperado) {
@@ -1134,13 +1031,10 @@ async function finalizarTreino() {
         }
 
         // Marcar treino como concluído
-        const { error } = await supabase
-            .from('treinos_concluidos')
-            .insert({
-                usuario_id: AppState.currentUser.id,
-                protocolo_treino_id: AppState.currentWorkout.id,
-                data_conclusao: new Date()
-            });
+        const { error } = await ProtocolService.marcarTreinoConcluido(
+            AppState.currentUser.id,
+            AppState.currentWorkout.id
+        );
         if (error) throw error;
         showNotification('Treino finalizado com sucesso!', 'success');
         voltarParaHome();
@@ -1153,73 +1047,8 @@ async function finalizarTreino() {
 
 // ==================== FUNÇÕES UTILITÁRIAS ====================
 
-// Mostrar notificação
-function showNotification(message, type = 'info') {
-    // Remover notificação existente se houver
-    const existingNotification = document.querySelector('.notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
-    // Criar nova notificação
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    
-    // Adicionar ao body
-    document.body.appendChild(notification);
-    
-    // Adicionar classe para mostrar
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 10);
-    
-    // Remover após 3 segundos
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    }, 3000);
-}
 
-// ==================== FUNÇÕES DE PLANEJAMENTO ====================
 
-// Salvar planejamento semanal no localStorage
-function saveWeekPlan(userId, plan) {
-    try {
-        const key = `weekPlan_${userId}`;
-        localStorage.setItem(key, JSON.stringify(plan));
-        console.log('[saveWeekPlan] Planejamento salvo:', plan);
-        return true;
-    } catch (error) {
-        console.error('[saveWeekPlan] Erro ao salvar planejamento:', error);
-        return false;
-    }
-}
-
-// Carregar planejamento semanal do localStorage
-function loadWeekPlan(userId) {
-    try {
-        const key = `weekPlan_${userId}`;
-        const plan = localStorage.getItem(key);
-        return plan ? JSON.parse(plan) : null;
-    } catch (error) {
-        console.error('[loadWeekPlan] Erro ao carregar planejamento:', error);
-        return null;
-    }
-}
-
-// Verificar se o usuário precisa de planejamento semanal
-function needsWeekPlanning(userId) {
-    const plan = loadWeekPlan(userId);
-    return !plan || Object.keys(plan).length === 0;
-}
-
-// Obter planejamento semanal do usuário
-function getWeekPlan(userId) {
-    return loadWeekPlan(userId) || {};
-}
 
 // ==================== FUNÇÕES DE MODAL ====================
 
@@ -1229,11 +1058,7 @@ async function fetchGruposMuscularesTreinos() {
         console.log('Buscando grupos musculares dos exercícios...');
         
         // Buscar grupos musculares únicos da tabela exercicios
-        const { data, error } = await supabase
-            .from('exercicios')
-            .select('grupo_muscular')
-            .order('grupo_muscular');
-        
+        const { data, error } = await ProtocolService.fetchGruposMuscularesTreinos();
         if (error) {
             console.error('Erro ao buscar grupos musculares:', error);
             return {
@@ -1402,22 +1227,6 @@ function configurarListenersSelects() {
             this.closest('.dia-card').style.transform = 'translateY(0)';
         });
     });
-}
-
-function carregarPlanejamentoExistente() {
-    if (!AppState.currentUser) return;
-    
-    const planoExistente = getWeekPlan(AppState.currentUser.id);
-    if (planoExistente) {
-        const form = document.getElementById('form-planejamento');
-        const selects = form.querySelectorAll('.dia-select');
-        
-        selects.forEach((select, index) => {
-            if (planoExistente[index]) {
-                select.value = planoExistente[index];
-            }
-        });
-    }
 }
 
 function salvarPlanejamento() {
@@ -1600,7 +1409,157 @@ function validarPlanejamento() {
 
 // ==================== INICIALIZAÇÃO ====================
 
+// --- Integração OrderWeekPage.js (renderização vanilla JS) ---
+import OrderWeekPage from './templates/OrderWeekPage.js';
+
+const DIAS_SEMANA = [
+  'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
+];
+const GRUPOS = ['A', 'B', 'C', 'D'];
+const TIPOS = ['Treino', 'Cardio', 'Folga'];
+const semanaPadrao = [
+  { dia: 'Domingo', tipo: 'Folga', grupo: null },
+  { dia: 'Segunda', tipo: 'Treino', grupo: 'A' },
+  { dia: 'Terça', tipo: 'Treino', grupo: 'B' },
+  { dia: 'Quarta', tipo: 'Cardio', grupo: null },
+  { dia: 'Quinta', tipo: 'Treino', grupo: 'C' },
+  { dia: 'Sexta', tipo: 'Treino', grupo: 'D' },
+  { dia: 'Sábado', tipo: 'Folga', grupo: null }
+];
+
+// Sincronização com backend
+import { saveSemanaOrdemBackend, loadSemanaOrdemBackend } from './services/protocolService.js';
+
+async function syncSemanaOrdemFromBackend(userId) {
+  const ordem = await loadSemanaOrdemBackend(userId);
+  if (ordem) {
+    localStorage.setItem('semanaOrdem', JSON.stringify(ordem));
+    return ordem;
+  }
+  return getSemanaOrdemLocal();
+}
+async function syncSemanaOrdemToBackend(userId, ordem) {
+  await saveSemanaOrdemBackend(userId, ordem);
+}
+function getSemanaOrdemLocal() {
+  const raw = localStorage.getItem('semanaOrdem');
+  if (raw) try { return JSON.parse(raw); } catch { return semanaPadrao; }
+  return semanaPadrao;
+}
+function getSemanaOrdem() {
+  // Para uso global, sempre pega do localStorage (sincronizado previamente)
+  return getSemanaOrdemLocal();
+}
+function setSemanaOrdem(semana, userId) {
+  localStorage.setItem('semanaOrdem', JSON.stringify(semana));
+  if (userId) syncSemanaOrdemToBackend(userId, semana);
+}
+window.renderOrderWeekPage = function(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  // Renderização vanilla (sem React):
+  let semana = getSemanaOrdem();
+  container.innerHTML = '';
+  // Monta lista drag-and-drop manualmente
+  container.innerHTML = `<h2>Organizar Semana de Treinos</h2><ul id='semana-list'></ul><button id='salvar-semana-btn' class='btn-primary'>Salvar</button>`;
+  const ul = container.querySelector('#semana-list');
+  semana.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.draggable = true;
+    li.innerHTML = `<span class='dia-label'>${item.dia}</span>` +
+      `<select class='tipo-select'>${TIPOS.map(t => `<option value='${t}' ${item.tipo===t?'selected':''}>${t}</option>`).join('')}</select>` +
+      (item.tipo==='Treino' ? `<select class='grupo-select'>${GRUPOS.map(g => `<option value='${g}' ${item.grupo===g?'selected':''}>${g}</option>`).join('')}</select>` : '') +
+      `<span class='drag-handle'>☰</span>`;
+    li.className = 'semana-li';
+    li.dataset.idx = idx;
+    ul.appendChild(li);
+  });
+  // Drag-and-drop handlers
+  let dragIdx = null;
+  ul.querySelectorAll('li').forEach((li, idx) => {
+    li.addEventListener('dragstart', () => { dragIdx = idx; li.classList.add('dragging'); });
+    li.addEventListener('dragend', () => { dragIdx = null; li.classList.remove('dragging'); });
+    li.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (dragIdx === null || dragIdx === idx) return;
+      const moved = semana.splice(dragIdx, 1)[0];
+      semana.splice(idx, 0, moved);
+      setSemanaOrdem(semana);
+      window.renderOrderWeekPage(containerId); // re-render
+    });
+  });
+  // Tipo/grupo handlers
+  ul.querySelectorAll('.tipo-select').forEach((sel, idx) => {
+    sel.addEventListener('change', e => {
+      semana[idx].tipo = e.target.value;
+      if (e.target.value !== 'Treino') semana[idx].grupo = null;
+      else if (!semana[idx].grupo) semana[idx].grupo = 'A';
+      setSemanaOrdem(semana);
+      window.renderOrderWeekPage(containerId);
+    });
+  });
+  ul.querySelectorAll('.grupo-select').forEach((sel, idx) => {
+    sel.addEventListener('change', e => {
+      semana[idx].grupo = e.target.value;
+      setSemanaOrdem(semana);
+      window.renderOrderWeekPage(containerId);
+    });
+  });
+  // Salvar
+  container.querySelector('#salvar-semana-btn').onclick = () => {
+    setSemanaOrdem(semana);
+    alert('Ordem da semana salva!');
+  };
+};
+
+// --- Adiciona botão na bottom navigator bar ---
+document.addEventListener('DOMContentLoaded', () => {
+  let bar = document.querySelector('.bottom-nav, .bottom-bar, .bottomnavigator, #bottom-nav');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'bottom-nav';
+    document.body.appendChild(bar);
+  }
+  if (!bar.querySelector('#order-week-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'order-week-btn';
+    btn.className = 'btn-bottom-nav';
+    btn.innerHTML = `<span>Ordem Semana</span>`;
+    btn.onclick = () => {
+      window.renderTemplate && window.renderTemplate('orderWeek');
+    };
+    bar.appendChild(btn);
+  }
+});
+
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // Sincroniza ordem customizada da semana com backend ao iniciar
+    const userId = AppState.currentUser && AppState.currentUser.id;
+    if (userId) await syncSemanaOrdemFromBackend(userId);
+    // Renderiza a semana customizada na home
+    function renderCustomWeekList() {
+        const ul = document.getElementById('custom-week-list');
+        if (!ul) return;
+        const semana = getSemanaOrdem();
+        ul.innerHTML = '';
+        semana.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'custom-week-item';
+            li.innerHTML = `<strong>${item.dia}:</strong> ${item.tipo}${item.tipo === 'Treino' && item.grupo ? ' ('+item.grupo+')' : ''}`;
+            ul.appendChild(li);
+        });
+    }
+    // Observa mudanças de navegação/renderização da home
+    const observer = new MutationObserver(() => {
+        if (document.getElementById('custom-week-list')) {
+            renderCustomWeekList();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    // Também tenta renderizar imediatamente
+    setTimeout(renderCustomWeekList, 300);
+
     // Adicionar animações CSS
     const style = document.createElement('style');
     style.textContent = `
@@ -1654,9 +1613,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.head.appendChild(style);
     
     // Event listener para botão de iniciar treino
-    document.getElementById('start-workout-btn').addEventListener('click', iniciarTreino);
+    const btn = document.getElementById('start-workout-btn');
+if (btn) {
+    btn.addEventListener('click', iniciarTreino);
+}
     
     // Carregar usuários
-    const usuarios = await fetchUsuarios();
+    const usuarios = await UserService.fetchUsuarios();
     renderUsuarios(usuarios);
 });

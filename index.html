@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyclo Training - Sistema de Acompanhamento de Treinos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
     
     <!-- Estilos Base -->
     <link rel="stylesheet" href="./styles.css">
@@ -25,7 +27,7 @@
     <!-- Scripts -->
     <script type="module">
         // Importa o sistema de templates
-        import { initTemplates, renderTemplate } from './js/templates/index.js'; // Caminho relativo correto para Vercel/Netlify
+        import { initTemplates, renderTemplate } from './templates/index.js';
         
         // Torna as funções de template disponíveis globalmente
         window.renderTemplate = renderTemplate;
@@ -39,6 +41,6 @@
     <!-- Script principal da aplicação -->
     <!-- app.js não usa import/export, então não precisa de type='module'.
      Para produção, garanta que config.js seja gerado dinamicamente com as variáveis do Supabase do ambiente. -->
-<script src="./app.js"></script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
