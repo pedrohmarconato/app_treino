@@ -1,145 +1,122 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App de Treinamento</title>
+    <title>App de Treino</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Montserrat:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
-    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-    <div class="app-container">
-        <!-- Tela de Login -->
-        <div id="login-screen" class="screen active">
-            <div class="container">
-                <h1>App de Treinamento</h1>
-                <div class="user-selection">
-                    <h2>Selecione seu perfil</h2>
-                    <div class="users"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tela Inicial -->
-        <div id="home-screen" class="screen">
-            <header>
-                <div class="user-info">
-                    <div class="avatar small">
-                        <img id="user-avatar" src="" alt="Avatar">
-                    </div>
-                    <h3 id="user-name"></h3>
-                </div>
-                <div class="logout">
-                    <button id="logout-btn">Sair</button>
-                </div>
-            </header>
-            
-            <div class="container">
-                <div class="metrics">
-                    <div class="metric-card">
-                        <h4>Treinos Concluídos</h4>
-                        <p id="completed-workouts">0</p>
-                    </div>
-                    <div class="metric-card">
-                        <h4>Progresso</h4>
-                        <p id="progress-percentage">0%</p>
-                    </div>
-                    <div class="metric-card">
-                        <h4>Semana Atual</h4>
-                        <p id="current-week">0</p>
-                    </div>
-                </div>
-                <div id="protocolos"></div>
-                
-                <div class="schedule">
-                    <h2>Próximo Treino</h2>
-                    <div class="next-workout">
-                        <div id="workout-card" class="workout-card">
-                            <div class="workout-type">
-                                <h3 id="next-workout-name">Treino A - Costas e Ombros</h3>
-                                <p id="next-workout-week">Semana 1</p>
-                            </div>
-                            <div class="workout-info">
-                                <p id="next-workout-exercises">5 exercícios</p>
-                                <p id="next-workout-intensity">65-70% 1RM</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="last-workout">
-                        <h3>Último Treino Realizado</h3>
-                        <p id="last-workout-info">Nenhum treino realizado ainda</p>
-                    </div>
-                    
-                    <button id="start-workout-btn" class="primary-btn">Iniciar Treino</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tela de Treino -->
-        <div id="workout-screen" class="screen">
-            <header>
-                <div class="workout-header">
-                    <button id="back-btn" class="back-btn">←</button>
-                    <h2 id="workout-title">Treino A - Costas e Ombros</h2>
-                    <div class="progress-container">
-                        <div id="workout-progress" class="progress-bar" style="width: 0%"></div>
-                    </div>
-                </div>
-            </header>
-            
-            <div class="container">
-                <div id="exercise-container" class="exercise-container">
-                    <h3 id="exercise-name">Puxada frontal na máquina</h3>
-                    <p id="exercise-notes" class="exercise-notes">Pegada neutra para proteger ombros</p>
-                    
-                    <div class="series-info">
-                        <div class="series-header">
-                            <div>Série</div>
-                            <div>Peso (kg)</div>
-                            <div>Reps</div>
-                            <div></div>
-                        </div>
-                        
-                        <div id="series-container">
-                            <!-- Series will be populated by JavaScript -->
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="timer-container" class="timer-container hidden">
-                    <h3>Tempo de Descanso</h3>
-                    <div class="timer-display">
-                        <span id="timer">00:00</span>
-                    </div>
-                    <p>Próximo exercício: <span id="next-exercise-name">...</span></p>
-                    <button id="skip-rest-btn" class="secondary-btn">Pular Descanso</button>
-                </div>
-                
-                <div id="workout-completed" class="hidden">
-                    <div class="completion-message">
-                        <h2>Treino Concluído!</h2>
-                        <p>Todos os exercícios foram realizados com sucesso.</p>
-                        <div class="stats">
-                            <div class="stat">
-                                <h4>Séries Concluídas</h4>
-                                <p id="completed-series">0</p>
-                            </div>
-                            <div class="stat">
-                                <h4>Tempo Total</h4>
-                                <p id="total-time">00:00</p>
-                            </div>
-                        </div>
-                        <button id="finish-workout-btn" class="primary-btn">Finalizar</button>
-                    </div>
-                </div>
+<body class="app-bg">
+    <!-- Tela de Login -->
+    <div id="login-screen" class="screen active">
+        <div class="login-container">
+            <h1>🏋️ App de Treinamento</h1>
+            <p>Selecione seu perfil</p>
+            <div class="users">
+                <!-- Usuários serão carregados aqui pelo JavaScript -->
             </div>
         </div>
     </div>
 
+    <!-- Tela Home -->
+    <div id="home-screen" class="screen">
+        <div class="header">
+            <div class="user-info">
+                <div id="user-avatar" class="avatar">👤</div>
+                <span id="user-name">Usuário</span>
+            </div>
+            <button class="logout-btn" id="logout-btn">Sair</button>
+        </div>
+
+        <div class="dashboard">
+            <div class="metric-card">
+                <h3>Treinos Concluídos</h3>
+                <p class="metric-value" id="completed-workouts">0</p>
+            </div>
+            <div class="metric-card">
+                <h3>Progresso</h3>
+                <p class="metric-value" id="progress-percentage">0%</p>
+            </div>
+            <div class="metric-card">
+                <h3>Semana Atual</h3>
+                <p class="metric-value" id="current-week">0</p>
+            </div>
+        </div>
+
+        <div class="schedule">
+            <h2>Próximo Treino</h2>
+            <div class="next-workout-card">
+                <h3 id="next-workout-name">Carregando...</h3>
+                <p id="next-workout-week">Semana X</p>
+                <p id="next-workout-exercises">Y exercícios</p>
+                <p id="next-workout-intensity">Z% 1RM</p>
+                <button class="primary-btn" id="start-workout-btn">Iniciar Treino</button>
+            </div>
+            <div class="extra-buttons">
+                <!-- Botões adicionados via JavaScript -->
+            </div>
+            <div class="last-workout-summary">
+                <h4>Último Treino:</h4>
+                <p id="last-workout-info">Nenhum treino registrado</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela de Treino -->
+    <div id="workout-screen" class="screen">
+        <div class="header">
+            <button class="back-btn" id="back-btn">← Voltar</button>
+            <h2 id="workout-title">Treino do Dia</h2>
+            <div class="workout-summary"></div> 
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="workout-progress"></div>
+            </div>
+        </div>
+
+        <!-- Container do Exercício -->
+        <div id="exercise-container" class="exercise-section hidden">
+            <h3 id="exercise-name">Nome do Exercício</h3>
+            <p id="exercise-notes">Notas sobre o exercício</p>
+
+            <div class="series-table">
+                <div id="series-container">
+                    <!-- Séries serão carregadas aqui -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Container do Timer -->
+        <div id="timer-container" class="timer-section hidden">
+            <h3>Próximo Exercício:</h3>
+            <p id="next-exercise-name">Carregando...</p>
+            <div class="timer-display" id="timer">00:00</div>
+            <button class="primary-btn" id="skip-rest-btn">Pular Descanso</button>
+        </div>
+
+        <!-- Treino Concluído -->
+        <div id="workout-completed" class="completed-section hidden">
+            <h2>🎉 Treino Concluído!</h2>
+            <p>Parabéns!</p>
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <span>Séries:</span>
+                    <span id="completed-series">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Tempo:</span>
+                    <span id="total-time">0min</span>
+                </div>
+            </div>
+            <button class="primary-btn" id="finish-workout-btn">Finalizar</button>
+        </div>
+    </div>
+
+    <!-- Configuração e Scripts -->
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

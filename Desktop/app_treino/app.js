@@ -157,21 +157,60 @@ async function fetchProximoTreino(userId, protocoloId) {
     }
 }
 
-// 4. Buscar exercícios do treino
+// 4. Buscar exercícios do treino - FUNÇÃO CORRIGIDA
 async function fetchExerciciosTreino(numeroTreino, protocoloId) {
     try {
+        // Buscar todos os exercícios do treino específico
         const { data, error } = await supabase
             .from('protocolo_treinos')
             .select(`
-                *,
-                exercicios (*)
+                id,
+                protocolo_id,
+                exercicio_id,
+                numero_treino,
+                semana_referencia,
+                dia_semana,
+                percentual_1rm_base,
+                percentual_1rm_min,
+                percentual_1rm_max,
+                series,
+                repeticoes_alvo,
+                tempo_descanso,
+                ordem_exercicio,
+                observacoes,
+                exercicios (
+                    id,
+                    nome,
+                    grupo_muscular,
+                    equipamento,
+                    tempo_descanso_padrao
+                )
             `)
             .eq('numero_treino', numeroTreino)
             .eq('protocolo_id', protocoloId)
             .order('ordem_exercicio', { ascending: true });
         
         if (error) throw error;
-        return data;
+        
+        // Garantir que cada exercício seja único e bem estruturado
+        const exerciciosUnicos = data.reduce((acc, item) => {
+            // Verificar se o exercício já foi adicionado
+            const existente = acc.find(e => e.exercicio_id === item.exercicio_id);
+            if (!existente) {
+                acc.push({
+                    ...item,
+                    // Garantir que os dados do exercício estejam acessíveis
+                    exercicio_nome: item.exercicios?.nome || 'Exercício sem nome',
+                    exercicio_grupo: item.exercicios?.grupo_muscular || 'Não especificado',
+                    exercicio_equipamento: item.exercicios?.equipamento || 'Livre'
+                });
+            }
+            return acc;
+        }, []);
+        
+        console.log('Exercícios carregados:', exerciciosUnicos);
+        return exerciciosUnicos;
+        
     } catch (error) {
         console.error('Erro ao buscar exercícios:', error);
         return [];
@@ -747,41 +786,83 @@ function agruparProgressoPorExercicio(progressos) {
     }).slice(0, 5); // Top 5 exercícios
 }
 
-// Iniciar treino
+// Iniciar treino - FUNÇÃO MELHORADA
 async function iniciarTreino() {
     if (!AppState.currentWorkout) {
         alert('Nenhum treino disponível');
         return;
     }
     
-    // Buscar exercícios do treino
-    const exercicios = await fetchExerciciosTreino(
-        AppState.currentWorkout.numero_treino,
-        AppState.currentWorkout.protocolo_id
-    );
+    // Mostrar loading
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading-overlay';
+    loadingDiv.innerHTML = '<div class="loading-spinner">Carregando exercícios...</div>';
+    document.body.appendChild(loadingDiv);
     
-    if (exercicios.length === 0) {
-        alert('Erro ao carregar exercícios');
-        return;
+    try {
+        // Buscar exercícios do treino
+        const exercicios = await fetchExerciciosTreino(
+            AppState.currentWorkout.numero_treino,
+            AppState.currentWorkout.protocolo_id
+        );
+        
+        if (!exercicios || exercicios.length === 0) {
+            throw new Error('Nenhum exercício encontrado para este treino');
+        }
+        
+        // Configurar estado
+        AppState.currentExercises = exercicios;
+        AppState.currentExerciseIndex = 0;
+        AppState.workoutStartTime = new Date();
+        AppState.completedSeries = 0;
+        
+        // Atualizar título do treino
+        const tipoTreino = obterTipoTreino(AppState.currentWorkout.dia_semana);
+        document.getElementById('workout-title').textContent = tipoTreino;
+        
+        // Adicionar resumo do treino
+        const summaryDiv = document.querySelector('.workout-summary');
+        if (summaryDiv) {
+            summaryDiv.innerHTML = `
+                <div class="summary-item">
+                    <span class="summary-label">Total de Exercícios:</span>
+                    <span class="summary-value">${exercicios.length}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Tempo Estimado:</span>
+                    <span class="summary-value">${calcularTempoEstimado(exercicios)}min</span>
+                </div>
+            `;
+        }
+        
+        // Carregar primeiro exercício
+        await carregarExercicio(0);
+        
+        // Mudar para tela de treino
+        mudarTela('workout-screen');
+        
+    } catch (error) {
+        console.error('Erro ao iniciar treino:', error);
+        alert(`Erro ao carregar treino: ${error.message}`);
+    } finally {
+        // Remover loading
+        loadingDiv.remove();
     }
-    
-    AppState.currentExercises = exercicios;
-    AppState.currentExerciseIndex = 0;
-    AppState.workoutStartTime = new Date();
-    AppState.completedSeries = 0;
-    
-    // Atualizar título
-    const tipoTreino = obterTipoTreino(AppState.currentWorkout.dia_semana);
-    document.getElementById('workout-title').textContent = tipoTreino;
-    
-    // Carregar primeiro exercício
-    carregarExercicio(0);
-    
-    // Mudar para tela de treino
-    mudarTela('workout-screen');
 }
 
-// Carregar exercício específico
+// Função auxiliar para calcular tempo estimado
+function calcularTempoEstimado(exercicios) {
+    let tempoTotal = 0;
+    exercicios.forEach(ex => {
+        // Tempo por série (30s) + descanso entre séries
+        tempoTotal += (ex.series * 30) + ((ex.series - 1) * ex.tempo_descanso);
+        // Adicionar tempo de descanso entre exercícios
+        tempoTotal += ex.tempo_descanso;
+    });
+    return Math.round(tempoTotal / 60);
+}
+
+// Carregar exercício específico - FUNÇÃO MELHORADA
 async function carregarExercicio(index) {
     if (index >= AppState.currentExercises.length) {
         // Treino concluído
@@ -796,12 +877,37 @@ async function carregarExercicio(index) {
     const progresso = ((index) / AppState.currentExercises.length) * 100;
     document.getElementById('workout-progress').style.width = `${progresso}%`;
     
-    // Atualizar informações do exercício
-    document.getElementById('exercise-name').textContent = exercicio.exercicios.nome;
-    document.getElementById('exercise-notes').textContent = 
-        exercicio.observacoes || `Grupo muscular: ${exercicio.exercicios.grupo_muscular}`;
+    // Atualizar contador de exercícios
+    let workoutHeader = document.querySelector('#workout-screen .header');
+    if (workoutHeader) {
+        let counter = document.getElementById('exercise-counter');
+        if (!counter) {
+            counter = document.createElement('div');
+            counter.id = 'exercise-counter';
+            counter.className = 'exercise-counter';
+            workoutHeader.appendChild(counter);
+        }
+        counter.textContent = `Exercício ${index + 1} de ${AppState.currentExercises.length}`;
+    }
     
-    // Criar séries
+    // Usar os dados corretos do exercício
+    const nomeExercicio = exercicio.exercicio_nome || exercicio.exercicios?.nome || 'Exercício';
+    const grupoMuscular = exercicio.exercicio_grupo || exercicio.exercicios?.grupo_muscular || '';
+    const equipamento = exercicio.exercicio_equipamento || exercicio.exercicios?.equipamento || '';
+    
+    // Atualizar informações do exercício
+    document.getElementById('exercise-name').textContent = nomeExercicio;
+    
+    // Criar descrição detalhada
+    const descricao = [];
+    if (grupoMuscular) descricao.push(`Grupo: ${grupoMuscular}`);
+    if (equipamento) descricao.push(`Equipamento: ${equipamento}`);
+    if (exercicio.observacoes) descricao.push(exercicio.observacoes);
+    
+    document.getElementById('exercise-notes').textContent = 
+        descricao.length > 0 ? descricao.join(' • ') : 'Execute com técnica perfeita';
+    
+    // Criar séries com informações corretas
     await criarSeries(exercicio);
     
     // Mostrar container do exercício
@@ -810,37 +916,116 @@ async function carregarExercicio(index) {
     document.getElementById('workout-completed').classList.add('hidden');
 }
 
-// Criar linhas de séries
+// Criar linhas de séries - FUNÇÃO APRIMORADA
 async function criarSeries(exercicio) {
     const container = document.getElementById('series-container');
     container.innerHTML = '';
     
     // Buscar 1RM do usuário para calcular peso sugerido
     const rm = await fetch1RMUsuario(AppState.currentUser.id, exercicio.exercicio_id);
-    const pesoSugerido = rm ? Math.round(rm * (exercicio.percentual_1rm_base / 100)) : 0;
     
+    // Calcular peso sugerido baseado no percentual do protocolo
+    let pesoSugerido = 0;
+    if (rm && exercicio.percentual_1rm_base > 0) {
+        pesoSugerido = Math.round(rm * (exercicio.percentual_1rm_base / 100) * 2) / 2; // Arredondar para 0.5kg
+    }
+    
+    // Buscar último peso usado neste exercício
+    const { data: ultimaExecucao } = await supabase
+        .from('execucao_exercicio_usuario')
+        .select('peso_utilizado, repeticoes')
+        .eq('usuario_id', AppState.currentUser.id)
+        .eq('exercicio_id', exercicio.exercicio_id)
+        .order('data_execucao', { descending: true })
+        .limit(1)
+        .single();
+    
+    // Se tem execução anterior, usar como referência
+    if (ultimaExecucao && ultimaExecucao.peso_utilizado) {
+        pesoSugerido = ultimaExecucao.peso_utilizado;
+    }
+    
+    // Criar header da tabela de séries
+    const header = document.createElement('div');
+    header.className = 'series-header';
+    header.innerHTML = `
+        <div>Série</div>
+        <div>Peso (kg)</div>
+        <div>Repetições</div>
+        <div>Status</div>
+    `;
+    container.appendChild(header);
+    
+    // Criar linhas de séries
     for (let i = 1; i <= exercicio.series; i++) {
         const row = document.createElement('div');
         row.className = 'series-row';
         row.dataset.series = i;
         row.innerHTML = `
-            <div>${i}</div>
-            <div>
-                <input type="number" class="weight-input" 
-                       value="${pesoSugerido}" min="0" step="0.5"
-                       placeholder="Peso">
+            <div class="series-number">${i}</div>
+            <div class="series-weight">
+                <button class="weight-adjust" onclick="ajustarPeso(${i}, -0.5)">-</button>
+                <input type="number" 
+                       class="weight-input" 
+                       id="weight-${i}"
+                       value="${pesoSugerido}" 
+                       min="0" 
+                       step="0.5"
+                       placeholder="0">
+                <button class="weight-adjust" onclick="ajustarPeso(${i}, 0.5)">+</button>
             </div>
-            <div>
-                <input type="number" class="reps-input" 
-                       value="${exercicio.repeticoes_alvo}" min="0"
-                       placeholder="Reps">
+            <div class="series-reps">
+                <button class="reps-adjust" onclick="ajustarReps(${i}, -1)">-</button>
+                <input type="number" 
+                       class="reps-input" 
+                       id="reps-${i}"
+                       value="${exercicio.repeticoes_alvo}" 
+                       min="1"
+                       placeholder="0">
+                <button class="reps-adjust" onclick="ajustarReps(${i}, 1)">+</button>
             </div>
-            <div>
-                <button class="done-btn" onclick="finalizarSerie(${i})">✓</button>
+            <div class="series-action">
+                <button class="done-btn" id="done-${i}" onclick="finalizarSerie(${i})">
+                    <span class="check-icon">✓</span>
+                </button>
             </div>
         `;
         container.appendChild(row);
     }
+    
+    // Adicionar informações de intensidade
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'exercise-info';
+    infoDiv.innerHTML = `
+        <div class="info-item">
+            <span class="info-label">Intensidade:</span>
+            <span class="info-value">${exercicio.percentual_1rm_min}-${exercicio.percentual_1rm_max}% 1RM</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Descanso:</span>
+            <span class="info-value">${exercicio.tempo_descanso}s</span>
+        </div>
+        ${rm ? `
+        <div class="info-item">
+            <span class="info-label">Seu 1RM:</span>
+            <span class="info-value">${rm}kg</span>
+        </div>
+        ` : ''}
+    `;
+    container.appendChild(infoDiv);
+}
+
+// Funções auxiliares para ajuste de peso e repetições
+function ajustarPeso(serie, delta) {
+    const input = document.getElementById(`weight-${serie}`);
+    const novoValor = Math.max(0, parseFloat(input.value || 0) + delta);
+    input.value = novoValor;
+}
+
+function ajustarReps(serie, delta) {
+    const input = document.getElementById(`reps-${serie}`);
+    const novoValor = Math.max(1, parseInt(input.value || 0) + delta);
+    input.value = novoValor;
 }
 
 // Finalizar série
@@ -898,7 +1083,7 @@ function iniciarDescanso(tempoDescanso) {
     // Configurar próximo exercício
     if (temProximo) {
         const proximo = AppState.currentExercises[proximoIndex];
-        document.getElementById('next-exercise-name').textContent = proximo.exercicios.nome;
+        document.getElementById('next-exercise-name').textContent = proximo.exercicio_nome || proximo.exercicios?.nome;
     } else {
         document.getElementById('next-exercise-name').textContent = '🎉 Treino finalizado!';
     }
@@ -1302,6 +1487,162 @@ const dynamicStyles = `
 .secondary-btn {
     flex: 1;
 }
+
+/* Novos estilos para a tela de treino */
+.exercise-counter {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.series-header {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr 80px;
+    gap: 10px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #666;
+}
+
+.series-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr 80px;
+    gap: 10px;
+    padding: 10px;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.series-number {
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.series-weight, .series-reps {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.weight-adjust, .reps-adjust {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+}
+
+.weight-adjust:hover, .reps-adjust:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.weight-input, .reps-input {
+    flex: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.exercise-info {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f0f7ff;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.info-item {
+    text-align: center;
+}
+
+.info-label {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.workout-summary {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 10px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 10px;
+}
+
+.summary-item {
+    text-align: center;
+}
+
+.summary-label {
+    font-size: 12px;
+    color: #666;
+    display: block;
+}
+
+.summary-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.series-row.completed {
+    background: #e8f5e9;
+    opacity: 0.8;
+}
+
+.series-row.completed .done-btn {
+    background: #4caf50;
+    color: white;
+}
+
+.check-icon {
+    font-size: 18px;
+}
 </style>
 `;
 
@@ -1340,3 +1681,5 @@ window.finalizarSerie = finalizarSerie;
 window.confirmWeekPlan = confirmWeekPlan;
 window.mostrarIndicadores = mostrarIndicadores;
 window.replanejarSemana = replanejarSemana;
+window.ajustarPeso = ajustarPeso; // Nova função exportada
+window.ajustarReps = ajustarReps; // Nova função exportada

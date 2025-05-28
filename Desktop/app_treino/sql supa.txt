@@ -1,0 +1,147 @@
+Tabelas
+usuarios
+
+id: bigint (PK)
+nome: text
+email: text (unique)
+data_nascimento: date
+status: text (default 'ativo')
+created_at: timestamp with time zone
+updated_at: timestamp with time zone
+auth_uuid: uuid
+exercicios
+
+id: bigint (PK)
+nome: text
+grupo_muscular: text
+equipamento: text
+tempo_descanso_padrao: integer (default 0)
+created_at: timestamp with time zone
+updated_at: timestamp with time zone
+pesos_usuario
+
+id: serial (PK)
+usuario_id: integer (FK -> usuarios.id)
+protocolo_treino_id: integer (FK -> protocolo_treinos.id)
+peso_base: numeric(5,2)
+peso_minimo: numeric(5,2)
+peso_maximo: numeric(5,2)
+repeticoes_alvo: integer
+data_calculo: timestamp without time zone (default CURRENT_TIMESTAMP)
+status: character varying(10) (default 'ativo')
+protocolo_treinos
+
+id: bigserial (PK)
+protocolo_id: bigint (FK -> protocolos_treinamento.id)
+exercicio_id: bigint (FK -> exercicios.id)
+numero_treino: integer
+semana_referencia: integer
+dia_semana: integer
+percentual_1rm_base: numeric(5,2) (default 0)
+percentual_1rm_min: numeric(5,2) (default 0)
+percentual_1rm_max: numeric(5,2) (default 0)
+series: integer (default 1)
+repeticoes_alvo: integer (default 10)
+tempo_descanso: integer (default 60)
+ordem_exercicio: integer (default 1)
+observacoes: text
+protocolos_treinamento
+
+id: bigint (PK)
+nome: text
+descricao: text
+duracao_meses: integer (default 1)
+total_semanas: integer (default 4)
+dias_por_semana: integer (default 3)
+total_treinos: integer (default 12)
+status: text (default 'ativo')
+execucao_exercicio_usuario
+
+id: serial (PK)
+usuario_id: bigint (FK -> usuarios.id)
+protocolo_treino_id: bigint (FK -> protocolo_treinos.id)
+exercicio_id: bigint (FK -> exercicios.id)
+data_execucao: timestamp with time zone (default now())
+peso_utilizado: numeric(6,2)
+repeticoes: integer
+falhou: boolean (default false)
+observacoes: text
+planejamento_semanal
+
+id: bigserial (PK)
+usuario_id: bigint (FK -> usuarios.id)
+ano: integer
+semana: integer
+dia_semana: integer
+tipo_atividade: text
+numero_treino: integer
+concluido: boolean (default false)
+data_conclusao: timestamp with time zone
+observacoes: text
+usuario_1rm
+
+id: bigserial (PK)
+usuario_id: bigint (FK -> usuarios.id)
+exercicio_id: bigint (FK -> exercicios.id)
+peso_teste: numeric(6,2)
+repeticoes_teste: integer
+rm_calculado: numeric(6,2)
+data_teste: date
+status: text (default 'ativo')
+usuario_plano_treino
+
+id: bigserial (PK)
+usuario_id: bigint (FK -> usuarios.id)
+protocolo_treinamento_id: bigint (FK -> protocolos_treinamento.id)
+data_inicio: date (default CURRENT_DATE)
+semana_atual: integer (default 1)
+status: text (default 'ativo')
+Views
+v_comparativo_usuarios
+
+Compara o 1RM de dois usuários (Pedro e Japa) para diferentes exercícios.
+v_estatisticas_usuarios
+
+Estatísticas de treinos realizados por usuários ativos.
+v_pesos_usuario
+
+Detalhes sobre os pesos utilizados por usuários em diferentes protocolos de treino.
+v_planejamento_semanal_atual
+
+Planejamento semanal atual de atividades para usuários.
+v_plano_usuario_semana
+
+Detalhes do plano de treino de usuários para a semana atual.
+
+v_progressao_exercicio
+
+Mostra a progressão de exercícios para cada usuário, incluindo a primeira e última execução, pesos utilizados e percentual de progresso.
+v_protocolo_treinos
+
+Detalhes dos protocolos de treino, incluindo informações sobre os exercícios, dias da semana e tipo de treino.
+v_resumo_grupo_muscular
+
+Resumo dos exercícios por grupo muscular, incluindo a média, menor e maior 1RM para cada usuário.
+v_resumo_semanas
+
+Resumo das semanas de treino, incluindo total de treinos, total de exercícios e médias de intensidade, repetições e séries.
+v_usuario_1rm_detalhado
+
+Detalhes sobre os testes de 1RM dos usuários, incluindo ganhos absolutos e percentuais.
+Relações entre Tabelas
+usuarios:
+
+Relaciona-se com as tabelas pesos_usuario, execucao_exercicio_usuario, planejamento_semanal, usuario_1rm, e usuario_plano_treino através da coluna usuario_id.
+exercicios:
+
+Relaciona-se com as tabelas execucao_exercicio_usuario, pesos_usuario, protocolo_treinos, e usuario_1rm através da coluna exercicio_id.
+protocolo_treinos:
+
+Relaciona-se com as tabelas pesos_usuario, execucao_exercicio_usuario, e usuario_plano_treino através da coluna protocolo_treino_id.
+protocolos_treinamento:
+
+Relaciona-se com as tabelas protocolo_treinos e usuario_plano_treino através da coluna protocolo_id.
+usuario_1rm:
+
+Relaciona-se com a tabela exercicios através da coluna exercicio_id e com a tabela usuarios através da coluna usuario_id.
+Essas relações ajudam a estruturar os dados de forma que as informações possam ser facilmente acessadas e manipuladas, permitindo uma análise eficaz do desempenho dos usuários em seus treinos.
