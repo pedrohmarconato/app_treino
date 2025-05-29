@@ -133,7 +133,7 @@ export const seriesItemTemplate = (exerciseId, seriesNumber) => `
     </div>
 `;
 
-// Estilos específicos da tela de treino
+// Estilos específicos da tela de treino - CORRIGIDO
 export const workoutStyles = `
     .workout-container {
         max-width: 800px;

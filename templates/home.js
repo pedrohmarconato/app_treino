@@ -26,11 +26,27 @@ export const homeTemplate = () => `
         </div>
 
         <div class="home-content">
-
-
-
+            <!-- Semana de Treinos -->
+            <div class="training-plan">
+                <div class="section-header">
+                    <h2>Semana de Treinos</h2>
+                    <button class="btn-secondary" onclick="mostrarModalPlanejamento()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14m-7-7h14"/>
+                        </svg>
+                        Editar
                     </button>
-
+                </div>
+                
+                <div class="week-indicator">
+                    <div class="day-pill">Dom</div>
+                    <div class="day-pill">Seg</div>
+                    <div class="day-pill">Ter</div>
+                    <div class="day-pill">Qua</div>
+                    <div class="day-pill">Qui</div>
+                    <div class="day-pill">Sex</div>
+                    <div class="day-pill">Sáb</div>
+                </div>
 
                 <div class="progress-card">
                     <div class="progress-header">
@@ -62,10 +78,21 @@ export const homeTemplate = () => `
                 </div>
             </div>
 
-            <!-- Semana Customizada -->
+            <!-- Ordem Customizada da Semana -->
             <div class="custom-week-section">
-                <h2>Semana de Treinos</h2>
-                <ul id="custom-week-list"></ul>
+                <div class="section-header">
+                    <h2>Ordem da Semana</h2>
+                    <button class="btn-secondary" onclick="window.renderTemplate && window.renderTemplate('orderWeek')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Organizar
+                    </button>
+                </div>
+                <ul id="custom-week-list" class="custom-week-list">
+                    <!-- Lista será preenchida dinamicamente -->
+                </ul>
             </div>
 
             <!-- Metrics Section -->
@@ -110,10 +137,136 @@ export const homeTemplate = () => `
                 </div>
             </div>
         </div>
+
+        <!-- Modal de Planejamento Semanal -->
+        <div id="modal-planejamento" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Planejamento Semanal</h2>
+                    <button class="btn-close" onclick="fecharModalPlanejamento()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <p class="modal-description">
+                        Configure seu planejamento semanal de treinos. Cada treino (A, B, C, D) deve aparecer apenas uma vez na semana.
+                    </p>
+                    
+                    <form id="form-planejamento">
+                        <div class="dias-grid">
+                            <div class="dia-card">
+                                <label class="dia-label">Domingo</label>
+                                <select name="0" class="dia-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                    <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                    <option value="C">🦵 Treino C - Pernas</option>
+                                    <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                    <option value="cardio">🏃 Cardio</option>
+                                    <option value="folga">😴 Folga</option>
+                                </select>
+                            </div>
+                            
+                            <div class="dia-card">
+                                <label class="dia-label">Segunda</label>
+                                <select name="1" class="dia-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                    <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                    <option value="C">🦵 Treino C - Pernas</option>
+                                    <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                    <option value="cardio">🏃 Cardio</option>
+                                    <option value="folga">😴 Folga</option>
+                                </select>
+                            </div>
+                            
+                            <div class="dia-card">
+                                <label class="dia-label">Terça</label>
+                                <select name="2" class="dia-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                    <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                    <option value="C">🦵 Treino C - Pernas</option>
+                                    <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                    <option value="cardio">🏃 Cardio</option>
+                                    <option value="folga">😴 Folga</option>
+                                </select>
+                            </div>
+                            
+                            <div class="dia-card">
+                                <label class="dia-label">Quarta</label>
+                                <select name="3" class="dia-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                    <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                    <option value="C">🦵 Treino C - Pernas</option>
+                                    <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                    <option value="cardio">🏃 Cardio</option>
+                                    <option value="folga">😴 Folga</option>
+                                </select>
+                            </div>
+                            
+                            <div class="dia-card">
+                                <label class="dia-label">Quinta</label>
+                                <select name="4" class="dia-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                    <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                    <option value="C">🦵 Treino C - Pernas</option>
+                                    <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                    <option value="cardio">🏃 Cardio</option>
+                                    <option value="folga">😴 Folga</option>
+                                </select>
+                            </div>
+                            
+                            <div class="dia-card">
+                                <label class="dia-label">Sexta</label>
+                                <select name="5" class="dia-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                    <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                    <option value="C">🦵 Treino C - Pernas</option>
+                                    <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                    <option value="cardio">🏃 Cardio</option>
+                                    <option value="folga">😴 Folga</option>
+                                </select>
+                            </div>
+                            
+                            <div class="dia-card">
+                                <label class="dia-label">Sábado</label>
+                                <select name="6" class="dia-select" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="A">💪 Treino A - Peito/Tríceps</option>
+                                    <option value="B">🔙 Treino B - Costas/Bíceps</option>
+                                    <option value="C">🦵 Treino C - Pernas</option>
+                                    <option value="D">🎯 Treino D - Ombros/Abdômen</option>
+                                    <option value="cardio">🏃 Cardio</option>
+                                    <option value="folga">😴 Folga</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="plan-validation" class="plan-validation"></div>
+                        
+                        <div class="modal-actions">
+                            <button type="button" class="btn-secondary" onclick="fecharModalPlanejamento()">
+                                Cancelar
+                            </button>
+                            <button type="submit" id="confirm-plan-btn" class="btn-primary" disabled>
+                                Salvar Planejamento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 `;
 
-// Estilos específicos da tela home
+// Estilos específicos da tela home - ATUALIZADOS
 export const homeStyles = `
     /* Home Screen */
     .home-header {
@@ -166,6 +319,7 @@ export const homeStyles = `
         border-radius: var(--radius-lg);
         padding: 24px;
         margin-bottom: 24px;
+        border: 1px solid var(--border-color);
     }
 
     .section-header {
@@ -278,6 +432,38 @@ export const homeStyles = `
         font-weight: 600;
     }
 
+    /* Custom Week Section */
+    .custom-week-section {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border-color);
+    }
+
+    .custom-week-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 12px;
+    }
+
+    .custom-week-item {
+        padding: 12px 16px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.875rem;
+    }
+
+    .custom-week-item strong {
+        color: var(--accent-green);
+        min-width: 80px;
+    }
+
     .metrics-section {
         margin-top: 32px;
     }
@@ -323,6 +509,7 @@ export const homeStyles = `
         border-radius: var(--radius-md);
         padding: 16px;
         margin-bottom: 12px;
+        border: 1px solid var(--border-color);
     }
 
     .metric-comparison h4 {
@@ -359,5 +546,222 @@ export const homeStyles = `
         height: 100%;
         background: var(--accent-green);
         transition: width 0.5s ease;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+        z-index: 1000000;
+        border: 1px solid var(--border-color);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-header h2 {
+        font-size: 1.5rem;
+        margin: 0;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s ease;
+    }
+
+    .btn-close:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .btn-close svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-description {
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+        line-height: 1.5;
+    }
+
+    .dias-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .dia-card {
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .dia-card.error {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .dia-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+    }
+
+    .dia-select {
+        width: 100%;
+        padding: 12px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .dia-select:focus {
+        outline: none;
+        border-color: var(--accent-green);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .dia-select.changed {
+        animation: selectChanged 0.4s ease;
+    }
+
+    @keyframes selectChanged {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .plan-validation {
+        margin: 16px 0;
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        line-height: 1.4;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.3s ease;
+    }
+
+    .plan-validation.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .plan-validation.success {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid var(--accent-green);
+        color: var(--accent-green);
+    }
+
+    .plan-validation.error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid #ef4444;
+        color: #ef4444;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn-secondary {
+        padding: 12px 24px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+    }
+
+    .btn-secondary:hover {
+        background: var(--bg-primary);
+        border-color: var(--accent-green);
+    }
+
+    .btn-secondary svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .btn-primary {
+        padding: 12px 24px;
+        background: var(--accent-green);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .btn-primary:disabled {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .btn-primary:not(:disabled):hover {
+        background: var(--accent-green-dark);
+        transform: translateY(-1px);
+    }
+
+    .btn-primary svg {
+        width: 16px;
+        height: 16px;
     }
 `;

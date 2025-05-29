@@ -377,30 +377,38 @@ function showNotification(message, type = 'info') {
 }
 
 function renderUsuarios(usuarios) {
-    const container = document.getElementById('users-grid');
-    container.innerHTML = '';
-    
-    usuarios.forEach(user => {
-        const userImages = {
-            'Pedro': 'pedro.png',
-            'Japa': 'japa.png'
-        };
+    // Aguardar o DOM estar pronto
+    setTimeout(() => {
+        const container = document.getElementById('users-grid');
+        if (!container) {
+            console.error('Container users-grid não encontrado');
+            return;
+        }
         
-        const card = document.createElement('div');
-        card.className = 'user-card';
-        card.innerHTML = `
-            <div class="user-avatar">
-                <img src="${userImages[user.nome] || 'pedro.png'}" 
-                     alt="${user.nome}">
-            </div>
-            <h3>${user.nome}</h3>
-            <p>Atleta Premium</p>
-        `;
-        card.addEventListener('click', function() {
-            selecionarUsuario(user);
+        container.innerHTML = '';
+        
+        usuarios.forEach(user => {
+            const userImages = {
+                'Pedro': 'pedro.png',
+                'Japa': 'japa.png'
+            };
+            
+            const card = document.createElement('div');
+            card.className = 'user-card';
+            card.innerHTML = `
+                <div class="user-avatar">
+                    <img src="${userImages[user.nome] || 'pedro.png'}" 
+                         alt="${user.nome}">
+                </div>
+                <h3>${user.nome}</h3>
+                <p>Atleta Premium</p>
+            `;
+            card.addEventListener('click', function() {
+                selecionarUsuario(user);
+            });
+            container.appendChild(card);
         });
-        container.appendChild(card);
-    });
+    }, 100);
 }
 
 async function selecionarUsuario(usuario) {
@@ -459,6 +467,9 @@ async function carregarDashboard() {
     // Atualizar indicador de semana
     atualizarIndicadorSemana();
     
+    // Renderizar ordem customizada da semana
+    renderCustomWeekList();
+    
     // Buscar métricas
     const metricas = await UserService.fetchMetricasUsuario(AppState.currentUser.id);
     
@@ -467,6 +478,93 @@ async function carregarDashboard() {
     document.getElementById('current-week').textContent = metricas.semanaAtual;
     document.getElementById('progress-percentage').textContent = `${metricas.progresso}%`;
     
+    // Atualizar progress ring
+    const progressRing = document.querySelector('.progress-ring-progress');
+    if (progressRing) {
+        const circumference = 2 * Math.PI * 40;
+        const offset = circumference - (metricas.progresso / 100) * circumference;
+        progressRing.style.strokeDashoffset = offset;
+    }
+    const progressPercentage = document.querySelector('.progress-percentage');
+    if (progressPercentage) {
+        progressPercentage.textContent = `${metricas.progresso}%`;
+    }
+    
+    // Atualizar informação do protocolo
+    if (AppState.currentProtocol) {
+        const userProtocol = document.getElementById('user-protocol');
+        if (userProtocol) {
+            const semanaAtual = AppState.currentProtocol.semana_atual || 1;
+            const nomeProt = AppState.currentProtocol.nome_protocolo || 'Protocolo não definido';
+            userProtocol.textContent = `${nomeProt} - Semana ${semanaAtual}`;
+        }
+    }
+    
+    // Buscar próximo treino
+    const proximoTreino = await fetchProximoTreino(
+        AppState.currentUser.id, 
+        AppState.currentProtocol.protocolo_treinamento_id
+    );
+    
+    if (proximoTreino) {
+        AppState.currentWorkout = proximoTreino;
+        const tipoTreino = obterTipoTreino(proximoTreino.dia_semana);
+        const nextWorkoutName = document.getElementById('next-workout-name');
+        if (nextWorkoutName) {
+            nextWorkoutName.textContent = `Treino ${tipoTreino}`;
+        }
+        
+        // Buscar exercícios do treino
+        const exercicios = await ProtocolService.fetchExerciciosTreino(
+            proximoTreino.numero_treino,
+            AppState.currentProtocol.protocolo_treinamento_id
+        );
+        
+        AppState.currentExercises = exercicios;
+        
+        // Atualizar contador de exercícios
+        const workoutExercises = document.getElementById('workout-exercises');
+        if (workoutExercises) {
+            workoutExercises.textContent = `${exercicios.length} exercícios`;
+        }
+    }
+    
+    // Carregar dados dos indicadores (ranking, estatísticas, etc)
+    const dadosIndicadores = await ProtocolService.fetchDadosIndicadores();
+    if (dadosIndicadores.comparacao && dadosIndicadores.comparacao.length > 0) {
+        // Renderizar ranking competitivo na seção de métricas
+        renderizarMetricasCompetitivas();
+    }
+    
+    // Configurar event listener para botão de iniciar treino
+    const startBtn = document.getElementById('start-workout-btn');
+    if (startBtn) {
+        startBtn.onclick = iniciarTreino;
+    }
+}
+
+// Função para renderizar a lista customizada da semana
+function renderCustomWeekList() {
+    const ul = document.getElementById('custom-week-list');
+    if (!ul) return;
+    
+    const semana = getSemanaOrdem();
+    ul.innerHTML = '';
+    
+    semana.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'custom-week-item';
+        li.innerHTML = `
+            <strong>${item.dia}:</strong> 
+            <span>${item.tipo}${item.tipo === 'Treino' && item.grupo ? ' (' + item.grupo + ')' : ''}</span>
+        `;
+        ul.appendChild(li);
+    });
+}
+
+// ==================== DASHBOARD ====================
+// (continuação da função carregarDashboard)
+
     // Atualizar progress ring
     const progressRing = document.querySelector('.progress-ring-progress');
     const circumference = 2 * Math.PI * 40;
@@ -550,16 +648,31 @@ function mostrarTela(telaId) {
             case 'login-screen':
                 window.renderTemplate('login');
                 // Re-renderiza os usuários após carregar o template
-                if (AppState.users.length > 0) {
-                    renderUsuarios(AppState.users);
-                }
+                setTimeout(() => {
+                   // Inicializar AppState.users
+AppState.users = [];
+
+// Tornar funções globais para uso nos templates
+window.mostrarModalPlanejamento = mostrarModalPlanejamento;
+window.fecharModalPlanejamento = fecharModalPlanejamento;
+window.salvarPlanejamentoSemanal = salvarPlanejamentoSemanal;
+window.validarPlanejamento = validarPlanejamento;
+window.logout = logout;
+window.iniciarTreino = iniciarTreino;
+.length > 0) {
+                        renderUsuarios(AppState.users);
+                    }
+                }, 200);
                 break;
             case 'home-screen':
                 window.renderTemplate('home');
                 // Re-inicializa os elementos do dashboard
                 setTimeout(() => {
                     if (AppState.currentUser) {
-                        document.getElementById('user-name').textContent = AppState.currentUser.nome;
+                        const userNameEl = document.getElementById('user-name');
+                        if (userNameEl) {
+                            userNameEl.textContent = AppState.currentUser.nome;
+                        }
                         const userImages = {
                             'Pedro': 'pedro.png',
                             'Japa': 'japa.png'
@@ -570,7 +683,7 @@ function mostrarTela(telaId) {
                         }
                     }
                     carregarDashboard();
-                }, 100);
+                }, 200);
                 break;
             case 'workout-screen':
                 window.renderTemplate('workout');

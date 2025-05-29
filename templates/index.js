@@ -1,7 +1,7 @@
 // Arquivo principal que exporta todos os templates
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';
-import { workoutTemplate, exerciseItemTemplate, seriesItemTemplate, workoutStyles } from './workout.js';
+import { workoutTemplate, workoutStyles } from './workout.js';
 import OrderWeekPage, { orderWeekStyles } from './OrderWeekPage.js';
 
 // Função para renderizar um template no DOM
@@ -81,6 +81,5 @@ export {
     loginTemplate,
     homeTemplate,
     workoutTemplate,
-    exerciseItemTemplate,
-    seriesItemTemplate,
+    workoutStyles,
 };
