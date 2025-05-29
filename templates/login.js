@@ -6,9 +6,6 @@ export const loginTemplate = () => `
                 <h1>Cyclo</h1>
                 <p>Bem-vindo ao seu treino</p>
             </div>
-            <div class="users-grid" id="users-grid">
-                <!-- Usuários serão carregados dinamicamente -->
-            </div>
         </div>
     </div>
 `;

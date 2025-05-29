@@ -1166,6 +1166,166 @@ button {
   margin: 0 auto;
 }
 
+/* Modal de Planejamento Semanal */
+.modal-planejamento-content {
+    max-width: 900px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(80vh - 140px);
+}
+
+.planejamento-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 30px;
+}
+
+/* Treinos Disponíveis */
+.treinos-disponiveis {
+    background: #f5f5f5;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.lista-treinos {
+    margin-top: 15px;
+}
+
+.treino-item {
+    background: white;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    cursor: move;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.treino-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.treino-item.dragging {
+    opacity: 0.5;
+}
+
+.treino-tipo {
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+/* Calendário Semanal */
+.calendario-semanal {
+    flex: 1;
+}
+
+.dias-semana {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.dia-slot {
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+}
+
+.dia-slot h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.drop-zone {
+    min-height: 80px;
+    border: 2px dashed #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.drop-zone.drag-over {
+    border-color: var(--primary-color);
+    background: rgba(255, 87, 34, 0.1);
+}
+
+.placeholder {
+    color: #999;
+    font-size: 12px;
+}
+
+.treino-alocado {
+    background: var(--primary-color);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+}
+
+.treino-alocado span {
+    word-break: break-word;
+}
+
+.btn-remover {
+    background: rgba(255,255,255,0.3);
+    border: none;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    align-self: center;
+    transition: background 0.3s ease;
+}
+
+.btn-remover:hover {
+    background: rgba(255,255,255,0.5);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* Responsividade */
 @media (max-width: 768px) {
   .dias-semana-grid {
       grid-template-columns: 1fr;

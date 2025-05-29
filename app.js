@@ -3,15 +3,20 @@ console.log('[app.js] JS carregado com sucesso!');
 
 // Este arquivo agora é um módulo ES6. Todos os imports/exports devem ser relativos e explícitos.
 
+import { modalPlanejamentoTemplate } from './templates/modals.js';
+import * as ProtocolService from './services/protocolService.js';
+import * as UserService from './services/userService.js';
 
-// Funções de Modal
-function abrirModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'flex';
-    }
-}
 
+
+/**
+ * Fecha um modal genérico pelo ID
+ * @param {string} modalId - ID do modal
+ */
+/**
+ * Fecha um modal genérico pelo ID
+ * @param {string} modalId - ID do modal
+ */
 function fecharModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -25,6 +30,7 @@ export const supabase = window.supabase.createClient(
     window.SUPABASE_CONFIG.key
 );
 
+
 // ==================== ESTADO GLOBAL DA APLICAÇÃO ====================
 const AppState = {
     currentUser: null,
@@ -36,15 +42,241 @@ const AppState = {
     completedSeries: 0,
     timerInterval: null,
     restStartTime: null,
-
     restTime: 0,
     pesosSugeridos: {},
     isResting: false
 };
 
-// ==================== FUNÇÕES DE BANCO DE DADOS ====================
+// Variáveis globais para o planejamento
+let planejamentoAtual = {};
+let treinosDisponiveis = [];
+let usuarioIdAtual = null;
+let elementoArrastando = null; // Para drag and drop
+
+// Função para mostrar o modal de planejamento
+function mostrarModalPlanejamento(usuarioId) {
+    console.log('[mostrarModalPlanejamento] Iniciando para usuário:', usuarioId);
+    usuarioIdAtual = usuarioId;
+    
+    // Verificar se o modal existe, senão criar
+    let modal = document.getElementById('modalPlanejamento');
+    if (!modal) {
+        console.log('[mostrarModalPlanejamento] Modal não existe, criando...');
+        const modalHTML = modalPlanejamentoTemplate();
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        modal = document.getElementById('modalPlanejamento');
+        console.log('[mostrarModalPlanejamento] Modal criado:', modal);
+    }
+    
+    if (modal) {
+        // Mostrar o modal
+        modal.style.display = 'block';
+        console.log('[mostrarModalPlanejamento] Modal exibido');
+        
+        // Carregar dados
+        carregarDadosPlanejamento(usuarioId);
+    } else {
+        console.error('[mostrarModalPlanejamento] Falha ao criar/encontrar modal');
+    }
+}
+
+/**
+ * Fecha o modal de planejamento semanal
+ */
+function fecharModalPlanejamento() {
+    fecharModal('modalPlanejamento');
+    planejamentoAtual = {};
+    treinosDisponiveis = [];
+    usuarioIdAtual = null;
+}
+
+// Função para carregar dados do planejamento
+async function carregarDadosPlanejamento(usuarioId) {
+    console.log('[carregarDadosPlanejamento] Iniciando para usuário:', usuarioId);
+    try {
+        // Carregar treinos disponíveis do protocolo do usuário
+        console.log('[carregarDadosPlanejamento] Buscando protocolo ativo do usuário...');
+        const protocolo = await ProtocolService.fetchProtocoloAtivoUsuario ? await ProtocolService.fetchProtocoloAtivoUsuario(usuarioId) : null;
+        console.log('[carregarDadosPlanejamento] Protocolo retornado:', protocolo);
+        
+        if (protocolo && protocolo.protocolo_treinamento_id) {
+            console.log('[carregarDadosPlanejamento] Protocolo válido. Carregando treinos disponíveis...');
+            // Simular carregamento de treinos (adaptar conforme sua API)
+            treinosDisponiveis = [
+                { id: 1, nome: 'Treino A - Peito e Tríceps', tipo: 'A' },
+                { id: 2, nome: 'Treino B - Costas e Bíceps', tipo: 'B' },
+                { id: 3, nome: 'Treino C - Pernas', tipo: 'C' },
+                { id: 4, nome: 'Treino D - Ombros e Abdômen', tipo: 'D' }
+            ];
+            console.log('[carregarDadosPlanejamento] Treinos disponíveis:', treinosDisponiveis);
+            
+            // Carregar planejamento existente se houver
+            const chaveStorage = `planejamento_${usuarioId}_semana_${protocolo.semana_atual}`;
+            console.log('[carregarDadosPlanejamento] Buscando planejamento salvo em:', chaveStorage);
+            const planejamentoSalvo = localStorage.getItem(chaveStorage);
+            if (planejamentoSalvo) {
+                planejamentoAtual = JSON.parse(planejamentoSalvo);
+                console.log('[carregarDadosPlanejamento] Planejamento existente carregado:', planejamentoAtual);
+            } else {
+                planejamentoAtual = {};
+                console.log('[carregarDadosPlanejamento] Nenhum planejamento salvo encontrado. Inicializando vazio.');
+            }
+            
+            // Renderizar treinos e planejamento
+            console.log('[carregarDadosPlanejamento] Renderizando treinos disponíveis...');
+            renderizarTreinosDisponiveis();
+            console.log('[carregarDadosPlanejamento] Renderizando planejamento existente...');
+            renderizarPlanejamentoExistente();
+        } else {
+            console.warn('[carregarDadosPlanejamento] Protocolo inválido ou não encontrado para o usuário:', usuarioId);
+        }
+    } catch (error) {
+        console.error('[carregarDadosPlanejamento] Erro:', error);
+    }
+}
+
+// Renderizar lista de treinos disponíveis
+function renderizarTreinosDisponiveis() {
+    const container = document.getElementById('listaTreinosDisponiveis');
+    if (!container) return;
+    container.innerHTML = treinosDisponiveis.map(treino => `
+        <div class="treino-item" draggable="true" data-treino-id="${treino.id}" data-treino-nome="${treino.nome}">
+            <span class="treino-tipo">${treino.tipo}</span>
+            <span class="treino-nome">${treino.nome}</span>
+        </div>
+    `).join('');
+    // Adicionar eventos de drag
+    container.querySelectorAll('.treino-item').forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragend', handleDragEnd);
+    });
+    // Configurar drop zones
+    configurarDropZones();
+}
+
+// Configurar zonas de drop
+function configurarDropZones() {
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+        zone.addEventListener('dragover', handleDragOver);
+        zone.addEventListener('drop', handleDrop);
+        zone.addEventListener('dragleave', handleDragLeave);
+        zone.addEventListener('dragenter', handleDragEnter);
+    });
+}
+
+// Handlers de drag and drop
+function handleDragStart(e) {
+    elementoArrastando = e.target;
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/html', e.target.innerHTML);
+}
+
+function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'copy';
+    return false;
+}
+
+function handleDragEnter(e) {
+    e.target.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    e.target.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    e.preventDefault();
+    const dropZone = e.target.closest('.drop-zone');
+    dropZone.classList.remove('drag-over');
+    if (elementoArrastando) {
+        const dia = dropZone.dataset.dia;
+        const treinoId = elementoArrastando.dataset.treinoId;
+        const treinoNome = elementoArrastando.dataset.treinoNome;
+        // Adicionar treino ao planejamento
+        planejamentoAtual[dia] = {
+            id: treinoId,
+            nome: treinoNome
+        };
+        // Atualizar visualização
+        dropZone.innerHTML = `
+            <div class="treino-alocado" data-treino-id="${treinoId}">
+                <span>${treinoNome}</span>
+                <button class="btn-remover" onclick="removerTreinoDoDia('${dia}')">×</button>
+            </div>
+        `;
+    }
+    return false;
+}
+
+// Remover treino de um dia
+function removerTreinoDoDia(dia) {
+    delete planejamentoAtual[dia];
+    const dropZone = document.querySelector(`.drop-zone[data-dia="${dia}"]`);
+    if (dropZone) dropZone.innerHTML = '<span class="placeholder">Arraste um treino aqui</span>';
+}
+
+// Renderizar planejamento existente
+function renderizarPlanejamentoExistente() {
+    Object.keys(planejamentoAtual).forEach(dia => {
+        const treino = planejamentoAtual[dia];
+        const dropZone = document.querySelector(`.drop-zone[data-dia="${dia}"]`);
+        if (dropZone && treino) {
+            dropZone.innerHTML = `
+                <div class="treino-alocado" data-treino-id="${treino.id}">
+                    <span>${treino.nome}</span>
+                    <button class="btn-remover" onclick="removerTreinoDoDia('${dia}')">×</button>
+                </div>
+            `;
+        }
+    });
+}
+
+// Salvar planejamento
+async function salvarPlanejamentoSemanal() {
+    try {
+        // Salvar no localStorage (adaptar para salvar no banco de dados)
+        localStorage.setItem(`planejamento_${usuarioIdAtual}`, JSON.stringify(planejamentoAtual));
+        // Aqui você pode adicionar a chamada para salvar no banco de dados
+        // await ProtocolService.salvarPlanejamentoSemanal(usuarioIdAtual, planejamentoAtual);
+        alert('Planejamento salvo com sucesso!');
+        fecharModalPlanejamento();
+        // Atualizar a visualização da ordem da semana se estiver visível
+        if (typeof window.mostrarOrdemSemana === 'function') {
+            window.mostrarOrdemSemana(usuarioIdAtual);
+        }
+    } catch (error) {
+        console.error('[salvarPlanejamentoSemanal] Erro:', error);
+        alert('Erro ao salvar planejamento. Tente novamente.');
+    }
+}
+
+let treinosDisponiveis = [];
+let usuarioIdAtual = null;
+let elementoArrastando = null; // Para drag and drop
+
+window.mostrarModalPlanejamento = mostrarModalPlanejamento;
+window.fecharModalPlanejamento = fecharModalPlanejamento;
+window.salvarPlanejamentoSemanal = salvarPlanejamentoSemanal;
+window.selecionarUsuario = selecionarUsuario;
+window.removerTreinoDoDia = removerTreinoDoDia;
+
 // Funções de consulta agora centralizadas em services/protocolService.js
 import * as ProtocolService from './services/protocolService.js';
+import { modalPlanejamentoTemplate } from './templates/modals.js';
+import * as ProtocolService from './services/protocolService.js';
+import * as UserService from './services/userService.js';
+
 import * as UserService from './services/userService.js';
 
 // 2. Buscar protocolo ativo do usuário
@@ -411,8 +643,14 @@ function renderUsuarios(usuarios) {
     }, 100);
 }
 
+/**
+ * Seleciona um usuário e carrega seus dados
+ * @param {object} usuario - Objeto do usuário
+ */
 async function selecionarUsuario(usuario) {
-    console.log('[selecionarUsuario] Iniciando seleção para usuário:', usuario);
+    // Adiciona o botão de ordem da semana após login
+    adicionarBotaoOrdemSemana();
+    
     showLoading();
     try {
         AppState.currentUser = usuario;
@@ -444,9 +682,10 @@ if (userNameEl) {
         
         // Verificar planejamento semanal
         if (needsWeekPlanning(usuario.id)) {
-            console.log('[selecionarUsuario] Usuário precisa de planejamento semanal.');
-            mostrarModalPlanejamento();
-            return;
+    console.log('[selecionarUsuario] Usuário precisa de planejamento semanal.');
+    mostrarModalPlanejamento(usuario.id);
+    return;
+}
         }
         
         AppState.weekPlan = getWeekPlan(usuario.id);
@@ -461,7 +700,7 @@ if (userNameEl) {
     } finally {
         hideLoading();
     }
-}
+
 
 async function carregarDashboard() {
     // Funções que não dependem diretamente de currentUser ou currentProtocol podem ser chamadas,
@@ -1224,74 +1463,6 @@ async function fetchGruposMuscularesTreinos() {
     }
 }
 
-async function mostrarModalPlanejamento() {
-    console.log('[mostrarModalPlanejamento] Função iniciada');
-    
-    // Exibe o modal de planejamento semanal
-    const modal = document.getElementById('modal-planejamento');
-    console.log('[mostrarModalPlanejamento] Modal encontrado:', modal);
-    
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100vw';
-        modal.style.height = '100vh';
-        modal.style.zIndex = '999999';
-        modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-        console.log('[mostrarModalPlanejamento] Modal exibido');
-        
-        // Garantir que o conteúdo do modal também esteja visível
-        const modalContent = modal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.style.position = 'relative';
-            modalContent.style.zIndex = '1000000';
-        }
-    } else {
-        console.error('[mostrarModalPlanejamento] Modal não encontrado no DOM!');
-        return;
-    }
-
-    // Buscar grupos musculares do banco de dados
-    const gruposMusculares = await fetchGruposMuscularesTreinos();
-    
-    // Atualizar os selects com os grupos musculares corretos
-    const selects = modal.querySelectorAll('.dia-select');
-    selects.forEach(select => {
-        // Atualizar as opções de treino com os grupos musculares do banco
-        const optionA = select.querySelector('option[value="A"]');
-        const optionB = select.querySelector('option[value="B"]');
-        const optionC = select.querySelector('option[value="C"]');
-        const optionD = select.querySelector('option[value="D"]');
-        
-        if (optionA) optionA.textContent = `💪 Treino A - ${gruposMusculares[1] || 'Peito/Tríceps'}`;
-        if (optionB) optionB.textContent = `🔙 Treino B - ${gruposMusculares[2] || 'Costas/Bíceps'}`;
-        if (optionC) optionC.textContent = `🦵 Treino C - ${gruposMusculares[3] || 'Pernas'}`;
-        if (optionD) optionD.textContent = `🎯 Treino D - ${gruposMusculares[4] || 'Ombros/Abdômen'}`;
-    });
-
-    // Carregar planejamento existente se houver
-    carregarPlanejamentoExistente();
-    
-    // Configurar eventos nos selects com animações
-    configurarListenersSelects();
-    
-    // Inicializar validação
-    validarPlanejamento();
-    
-    // Configurar evento de submit do form
-    const form = document.getElementById('form-planejamento');
-    if (form && !form.dataset.listenerAdded) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            salvarPlanejamentoSemanal();
-        });
-        form.dataset.listenerAdded = 'true';
-    }
-}
 
 // Carregar planejamento existente do usuário
 function carregarPlanejamentoExistente() {
@@ -1318,6 +1489,7 @@ function carregarPlanejamentoExistente() {
 
 function configurarListenersSelects() {
     const form = document.getElementById('form-planejamento');
+    if (!form) return;
     const selects = form.querySelectorAll('.dia-select');
     
     // Remover listeners antigos para evitar duplicação
@@ -1364,52 +1536,12 @@ function salvarPlanejamento() {
     salvarPlanejamentoSemanal();
 }
 
-function fecharModalPlanejamento() {
-    const modal = document.getElementById('modal-planejamento');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
+// (REMOVIDO DUPLICADO) função fecharModalPlanejamento
+        
+    
 
-function salvarPlanejamentoSemanal() {
-    if (!AppState.currentUser) {
-        showNotification('Erro: usuário não selecionado', 'error');
-        return;
-    }
 
-    const form = document.getElementById('form-planejamento');
-    const formData = new FormData(form);
-    const plano = {};
-    
-    // Montar o plano a partir do formulário
-    for (let [dia, valor] of formData.entries()) {
-        plano[dia] = valor;
-    }
-    
-    console.log('[salvarPlanejamentoSemanal] Plano montado:', plano);
-    
-    // Validar se todos os dias foram preenchidos
-    const diasCompletos = Object.keys(plano).length === 7;
-    if (!diasCompletos) {
-        showNotification('Por favor, complete o planejamento para todos os dias da semana', 'error');
-        return;
-    }
-    
-    // Salvar o plano
-    saveWeekPlan(AppState.currentUser.id, plano);
-    AppState.weekPlan = plano;
-    
-    // Fechar modal
-    const modal = document.getElementById('modal-planejamento');
-    if (modal) modal.style.display = 'none';
-    
-    showNotification('Planejamento semanal salvo com sucesso!', 'success');
-    
-    // Carregar dashboard e mostrar tela principal
-    carregarDashboard().then(() => {
-        mostrarTela('home-screen');
-    });
-}
+// (REMOVIDO DUPLICADO) função salvarPlanejamentoSemanal
 
 // Validação em tempo real do planejamento
 function validarPlanejamento() {
@@ -1643,8 +1775,8 @@ window.renderOrderWeekPage = function(containerId) {
   };
 };
 
-// --- Adiciona botão na bottom navigator bar ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- Adiciona botão na bottom navigator bar APÓS login ---
+function adicionarBotaoOrdemSemana() {
   let bar = document.querySelector('.bottom-nav, .bottom-bar, .bottomnavigator, #bottom-nav');
   if (!bar) {
     bar = document.createElement('div');
@@ -1661,7 +1793,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     bar.appendChild(btn);
   }
-});
+}
+
 
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -1744,6 +1877,43 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.head.appendChild(style);
     
     // Event listener para botão de iniciar treino
+
+// Função para verificar se precisa de planejamento semanal
+async function verificarNecessidadePlanejamento(protocolo) {
+    try {
+        // Verificar se existe planejamento salvo para a semana atual
+        const planejamentoSalvo = localStorage.getItem(`planejamento_${protocolo.usuario_id}_semana_${protocolo.semana_atual}`);
+        
+        // Se não há planejamento salvo, precisa planejar
+        if (!planejamentoSalvo) {
+            return true;
+        }
+        
+        // Se é uma nova semana (você pode adicionar lógica para verificar se mudou de semana)
+        const ultimaVerificacao = localStorage.getItem(`ultima_verificacao_${protocolo.usuario_id}`);
+        const hoje = new Date();
+        
+        if (!ultimaVerificacao) {
+            localStorage.setItem(`ultima_verificacao_${protocolo.usuario_id}`, hoje.toISOString());
+            return true;
+        }
+        
+        // Verificar se é segunda-feira (novo ciclo semanal)
+        if (hoje.getDay() === 1) {
+            const ultimaData = new Date(ultimaVerificacao);
+            if (hoje.toDateString() !== ultimaData.toDateString()) {
+                localStorage.setItem(`ultima_verificacao_${protocolo.usuario_id}`, hoje.toISOString());
+                return true;
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('[verificarNecessidadePlanejamento] Erro:', error);
+        return false;
+    }
+}
+
     const btn = document.getElementById('start-workout-btn');
 if (btn) {
     btn.addEventListener('click', iniciarTreino);

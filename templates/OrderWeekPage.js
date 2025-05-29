@@ -1,4 +1,20 @@
 // OrderWeekPage.js
+
+// Função para mostrar ordem da semana para um usuário específico
+export function mostrarOrdemSemana(usuarioId) {
+    // Verificar se há usuário logado
+    if (!usuarioId) {
+        console.log('[mostrarOrdemSemana] Nenhum usuário logado');
+        return;
+    }
+    // Aqui você pode adicionar a lógica para buscar e exibir a ordem da semana do usuário
+    // Por exemplo, chamar renderOrderWeekPage ou outra função que injete o template na tela
+    if (typeof window.renderOrderWeekPage === 'function') {
+        window.renderOrderWeekPage('order-week-page', usuarioId);
+    } else {
+        console.warn('[mostrarOrdemSemana] Função renderOrderWeekPage não encontrada');
+    }
+}
 // Página para reordenar e editar o plano semanal de treinos com drag-and-drop
 
 // OrderWeekPage.js - Template HTML para a página de ordenação da semana.

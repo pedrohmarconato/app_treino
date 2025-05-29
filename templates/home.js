@@ -26,6 +26,11 @@ export const homeTemplate = () => `
         </div>
 
         <div class="home-content">
+            <!-- Grid de Usuários movido da tela de login -->
+            <div class="users-grid" id="users-grid">
+                <!-- Usuários serão carregados dinamicamente -->
+            </div>
+
             <!-- Semana de Treinos -->
             <div class="training-plan">
                 <div class="section-header">
