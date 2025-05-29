@@ -464,80 +464,142 @@ if (userNameEl) {
 }
 
 async function carregarDashboard() {
-    // Atualizar indicador de semana
-    atualizarIndicadorSemana();
-    
-    // Renderizar ordem customizada da semana
-    renderCustomWeekList();
-    
-    // Buscar métricas
-    const metricas = await UserService.fetchMetricasUsuario(AppState.currentUser.id);
-    
-    // Atualizar cards de métricas
-    document.getElementById('completed-workouts').textContent = metricas.treinosConcluidos;
-    document.getElementById('current-week').textContent = metricas.semanaAtual;
-    document.getElementById('progress-percentage').textContent = `${metricas.progresso}%`;
-    
-    // Atualizar progress ring
-    const progressRing = document.querySelector('.progress-ring-progress');
-    if (progressRing) {
-        const circumference = 2 * Math.PI * 40;
-        const offset = circumference - (metricas.progresso / 100) * circumference;
-        progressRing.style.strokeDashoffset = offset;
+    // Funções que não dependem diretamente de currentUser ou currentProtocol podem ser chamadas,
+    // mas devem ser robustas internamente ou seus erros tratados.
+    try {
+        atualizarIndicadorSemana();
+        renderCustomWeekList();
+    } catch (e) {
+        console.error("Erro inicializando UI do dashboard (semana/lista):", e);
     }
-    const progressPercentage = document.querySelector('.progress-percentage');
-    if (progressPercentage) {
-        progressPercentage.textContent = `${metricas.progresso}%`;
+
+    const startBtn = document.getElementById('start-workout-btn');
+
+    // Guard: Check for currentUser
+    if (!AppState.currentUser) {
+        console.warn("carregarDashboard: AppState.currentUser is not defined. Dashboard loading aborted or partial.");
+        // Update UI elements to reflect no user data
+        const elCompleted = document.getElementById('completed-workouts');
+        if (elCompleted) elCompleted.textContent = 'N/A';
+        const elWeek = document.getElementById('current-week');
+        if (elWeek) elWeek.textContent = 'N/A';
+        const elProgress = document.getElementById('progress-percentage');
+        if (elProgress) elProgress.textContent = '0%';
+        
+        const progressRing = document.querySelector('.progress-ring-progress');
+        if (progressRing) {
+            const circumference = 2 * Math.PI * 40;
+            progressRing.style.strokeDashoffset = circumference; // 0% progress
+        }
+        const userProtocolEl = document.getElementById('user-protocol');
+        if (userProtocolEl) userProtocolEl.textContent = 'Nenhum usuário selecionado';
+        const nextWorkoutNameEl = document.getElementById('next-workout-name');
+        if (nextWorkoutNameEl) nextWorkoutNameEl.textContent = 'N/A';
+        const workoutExercisesEl = document.getElementById('workout-exercises');
+        if (workoutExercisesEl) workoutExercisesEl.textContent = 'N/A';
+        
+        if (startBtn) startBtn.disabled = true;
+        return; // Abort further dashboard loading
     }
-    
-    // Atualizar informação do protocolo
-    if (AppState.currentProtocol) {
-        const userProtocol = document.getElementById('user-protocol');
-        if (userProtocol) {
+
+    // If currentUser exists, tentatively enable start button (may be disabled again if no protocol)
+    if (startBtn) startBtn.disabled = false;
+
+    try {
+        // Buscar métricas
+        const metricas = await UserService.fetchMetricasUsuario(AppState.currentUser.id);
+        if (metricas) {
+            const elCompleted = document.getElementById('completed-workouts');
+            if (elCompleted) elCompleted.textContent = metricas.treinosConcluidos !== undefined ? metricas.treinosConcluidos : 'N/A';
+            const elWeek = document.getElementById('current-week');
+            if (elWeek) elWeek.textContent = metricas.semanaAtual !== undefined ? metricas.semanaAtual : 'N/A';
+            const elProgressPct = document.getElementById('progress-percentage');
+            if (elProgressPct) elProgressPct.textContent = `${metricas.progresso !== undefined ? metricas.progresso : 0}%`;
+
+            const progressRing = document.querySelector('.progress-ring-progress');
+            if (progressRing) {
+                const circumference = 2 * Math.PI * 40;
+                const progressValue = metricas.progresso !== undefined ? metricas.progresso : 0;
+                const offset = circumference - (progressValue / 100) * circumference;
+                progressRing.style.strokeDashoffset = offset;
+            }
+        } else {
+            document.getElementById('completed-workouts').textContent = 'N/A';
+            document.getElementById('current-week').textContent = 'N/A';
+            document.getElementById('progress-percentage').textContent = '0%';
+        }
+    } catch (error) {
+        console.error("Error fetching user metrics:", error);
+        document.getElementById('completed-workouts').textContent = 'Erro';
+        document.getElementById('current-week').textContent = 'Erro';
+        document.getElementById('progress-percentage').textContent = 'Erro';
+    }
+
+    // Guard: Check for currentProtocol
+    if (!AppState.currentProtocol) {
+        console.warn("carregarDashboard: AppState.currentProtocol is not defined.");
+        const userProtocolEl = document.getElementById('user-protocol');
+        if (userProtocolEl) userProtocolEl.textContent = 'Protocolo não carregado';
+        const nextWorkoutNameEl = document.getElementById('next-workout-name');
+        if (nextWorkoutNameEl) nextWorkoutNameEl.textContent = 'N/A (sem protocolo)';
+        const workoutExercisesEl = document.getElementById('workout-exercises');
+        if (workoutExercisesEl) workoutExercisesEl.textContent = 'N/A';
+        if (startBtn) startBtn.disabled = true;
+    } else {
+        const userProtocolEl = document.getElementById('user-protocol');
+        if (userProtocolEl) {
             const semanaAtual = AppState.currentProtocol.semana_atual || 1;
             const nomeProt = AppState.currentProtocol.nome_protocolo || 'Protocolo não definido';
-            userProtocol.textContent = `${nomeProt} - Semana ${semanaAtual}`;
+            userProtocolEl.textContent = `${nomeProt} - Semana ${semanaAtual}`;
+        }
+        if (startBtn) startBtn.disabled = false; // Re-enable if protocol is loaded
+
+        try {
+            const proximoTreino = await fetchProximoTreino(
+                AppState.currentUser.id, 
+                AppState.currentProtocol.protocolo_treinamento_id
+            );
+
+            if (proximoTreino) {
+                AppState.currentWorkout = proximoTreino;
+                const tipoTreino = obterTipoTreino(proximoTreino.dia_semana);
+                const nextWorkoutNameEl = document.getElementById('next-workout-name');
+                if (nextWorkoutNameEl) nextWorkoutNameEl.textContent = `Treino ${tipoTreino}`;
+
+                const exercicios = await ProtocolService.fetchExerciciosTreino(
+                    proximoTreino.numero_treino,
+                    AppState.currentProtocol.protocolo_treinamento_id
+                );
+                AppState.currentExercises = Array.isArray(exercicios) ? exercicios : [];
+
+                const workoutExercisesEl = document.getElementById('workout-exercises');
+                if (workoutExercisesEl) workoutExercisesEl.textContent = `${AppState.currentExercises.length} exercícios`;
+            } else {
+                const nextWorkoutNameEl = document.getElementById('next-workout-name');
+                if (nextWorkoutNameEl) nextWorkoutNameEl.textContent = 'Nenhum próximo treino';
+                const workoutExercisesEl = document.getElementById('workout-exercises');
+                if (workoutExercisesEl) workoutExercisesEl.textContent = '0 exercícios';
+                AppState.currentWorkout = null;
+                AppState.currentExercises = [];
+            }
+        } catch (error) {
+            console.error("Error fetching next workout or exercises:", error);
+            const nextWorkoutNameEl = document.getElementById('next-workout-name');
+            if (nextWorkoutNameEl) nextWorkoutNameEl.textContent = 'Erro ao carregar treino';
         }
     }
-    
-    // Buscar próximo treino
-    const proximoTreino = await fetchProximoTreino(
-        AppState.currentUser.id, 
-        AppState.currentProtocol.protocolo_treinamento_id
-    );
-    
-    if (proximoTreino) {
-        AppState.currentWorkout = proximoTreino;
-        const tipoTreino = obterTipoTreino(proximoTreino.dia_semana);
-        const nextWorkoutName = document.getElementById('next-workout-name');
-        if (nextWorkoutName) {
-            nextWorkoutName.textContent = `Treino ${tipoTreino}`;
+
+    try {
+        const dadosIndicadores = await ProtocolService.fetchDadosIndicadores();
+        if (dadosIndicadores && dadosIndicadores.comparacao && dadosIndicadores.comparacao.length > 0) {
+            if (typeof renderizarMetricasCompetitivas === 'function') {
+                 renderizarMetricasCompetitivas();
+            }
         }
-        
-        // Buscar exercícios do treino
-        const exercicios = await ProtocolService.fetchExerciciosTreino(
-            proximoTreino.numero_treino,
-            AppState.currentProtocol.protocolo_treinamento_id
-        );
-        
-        AppState.currentExercises = exercicios;
-        
-        // Atualizar contador de exercícios
-        const workoutExercises = document.getElementById('workout-exercises');
-        if (workoutExercises) {
-            workoutExercises.textContent = `${exercicios.length} exercícios`;
-        }
+    } catch (error) {
+        console.error("Error fetching dadosIndicadores:", error);
     }
     
-    // Carregar dados dos indicadores (ranking, estatísticas, etc)
-    const dadosIndicadores = await ProtocolService.fetchDadosIndicadores();
-    if (dadosIndicadores.comparacao && dadosIndicadores.comparacao.length > 0) {
-        // Renderizar ranking competitivo na seção de métricas
-        renderizarMetricasCompetitivas();
-    }
-    
-    // Configurar event listener para botão de iniciar treino
-    const startBtn = document.getElementById('start-workout-btn');
     if (startBtn) {
         startBtn.onclick = iniciarTreino;
     }
@@ -560,52 +622,6 @@ function renderCustomWeekList() {
         `;
         ul.appendChild(li);
     });
-}
-
-// ==================== DASHBOARD ====================
-// (continuação da função carregarDashboard)
-
-    // Atualizar progress ring
-    const progressRing = document.querySelector('.progress-ring-progress');
-    const circumference = 2 * Math.PI * 40;
-    const offset = circumference - (metricas.progresso / 100) * circumference;
-    progressRing.style.strokeDashoffset = offset;
-    document.querySelector('.progress-percentage').textContent = `${metricas.progresso}%`;
-    
-    // Atualizar informação do protocolo
-    if (AppState.currentProtocol) {
-        const userProtocol = document.getElementById('user-protocol');
-        const semanaAtual = AppState.currentProtocol.semana_atual || 1;
-        const nomeProt = AppState.currentProtocol.nome_protocolo || 'Protocolo não definido';
-        userProtocol.textContent = `${nomeProt} - Semana ${semanaAtual}`;
-    }
-    
-    // Buscar próximo treino
-    const proximoTreino = await fetchProximoTreino(
-        AppState.currentUser.id, 
-        AppState.currentProtocol.protocolo_treinamento_id
-    );
-    
-    if (proximoTreino) {
-        AppState.currentWorkout = proximoTreino;
-        const tipoTreino = obterTipoTreino(proximoTreino.dia_semana);
-        document.getElementById('next-workout-name').textContent = `Treino ${tipoTreino}`;
-        
-        // Buscar exercícios do treino
-        const exercicios = await ProtocolService.fetchExerciciosTreino(
-            proximoTreino.numero_treino,
-            AppState.currentProtocol.protocolo_treinamento_id
-        );
-        
-        AppState.currentExercises = exercicios;
-    }
-    
-    // Carregar dados dos indicadores (ranking, estatísticas, etc)
-    const dadosIndicadores = await ProtocolService.fetchDadosIndicadores();
-    if (dadosIndicadores.comparacao && dadosIndicadores.comparacao.length > 0) {
-        // Renderizar ranking competitivo na seção de métricas
-        renderizarMetricasCompetitivas();
-    }
 }
 
 function atualizarIndicadorSemana() {
@@ -649,21 +665,22 @@ function mostrarTela(telaId) {
                 window.renderTemplate('login');
                 // Re-renderiza os usuários após carregar o template
                 setTimeout(() => {
-                   // Inicializar AppState.users
-AppState.users = [];
-
-// Tornar funções globais para uso nos templates
-window.mostrarModalPlanejamento = mostrarModalPlanejamento;
-window.fecharModalPlanejamento = fecharModalPlanejamento;
-window.salvarPlanejamentoSemanal = salvarPlanejamentoSemanal;
-window.validarPlanejamento = validarPlanejamento;
-window.logout = logout;
-window.iniciarTreino = iniciarTreino;
-.length > 0) {
+                    // Inicializar AppState.users
+                    AppState.users = [];
+                    // Tornar funções globais para uso nos templates
+                    window.mostrarModalPlanejamento = mostrarModalPlanejamento;
+                    window.fecharModalPlanejamento = fecharModalPlanejamento;
+                    window.salvarPlanejamentoSemanal = salvarPlanejamentoSemanal;
+                    window.validarPlanejamento = validarPlanejamento;
+                    window.logout = logout;
+                    window.iniciarTreino = iniciarTreino;
+                    // Renderizar usuários se houver
+                    if (Array.isArray(AppState.users) && AppState.users.length > 0) {
                         renderUsuarios(AppState.users);
                     }
                 }, 200);
-                break;
+                break; 
+
             case 'home-screen':
                 window.renderTemplate('home');
                 // Re-inicializa os elementos do dashboard
@@ -685,6 +702,7 @@ window.iniciarTreino = iniciarTreino;
                     carregarDashboard();
                 }, 200);
                 break;
+
             case 'workout-screen':
                 window.renderTemplate('workout');
                 break;
