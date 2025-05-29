@@ -11,21 +11,21 @@ export { supabase };
 // Funções auxiliares para queries comuns
 export async function query(table, options = {}) {
     try {
-        let query = supabase.from(table);
+        let q = supabase.from(table);
         
-        if (options.select) query = query.select(options.select);
+        if (options.select) q = q.select(options.select);
         if (options.eq) {
             Object.entries(options.eq).forEach(([key, value]) => {
-                query = query.eq(key, value);
+                q = q.eq(key, value);
             });
         }
         if (options.order) {
-            query = query.order(options.order.column, { ascending: options.order.ascending ?? true });
+            q = q.order(options.order.column, { ascending: options.order.ascending ?? true });
         }
-        if (options.limit) query = query.limit(options.limit);
-        if (options.single) query = query.single();
+        if (options.limit) q = q.limit(options.limit);
+        if (options.single) q = q.single();
         
-        const { data, error } = await query;
+        const { data, error } = await q;
         
         if (error) throw error;
         return { data, error: null };

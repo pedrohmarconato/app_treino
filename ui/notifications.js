@@ -79,3 +79,5 @@ export function hideLoading() {
     const loading = document.querySelector('.loading-overlay');
     if (loading) {
         loading.remove();
+    }
+}

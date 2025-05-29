@@ -1,11 +1,11 @@
 // js/app.js
 // Arquivo principal - inicialização e orquestração
 
-import AppState from './state/appState.js';
-import { initLogin } from './features/login.js';
-import { carregarDashboard } from './features/dashboard.js';
-import { mostrarTela, logout } from './ui/navigation.js';
-import { showNotification } from './ui/notifications.js';
+import AppState from '../state/appState.js';
+import { initLogin } from '../feature/login.js';
+import { carregarDashboard } from '../feature/dashboard.js';
+import { mostrarTela, logout } from '../ui/navigation.js';
+import { showNotification } from '../ui/notifications.js';
 
 // Verificar se todas as dependências estão carregadas
 function checkDependencies() {
