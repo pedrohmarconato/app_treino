@@ -88,60 +88,39 @@ function renderizarUsuarios(usuarios) {
 
 
 
-// Selecionar usuário e fazer login
+// Selecionar usuário e navegar para a home ou planejamento (SUPER SIMPLIFICADO)
 export async function selecionarUsuario(usuario) {
-    showLoading();
-    
     try {
-        // Salvar usuário no estado
+        // 1. Salvar usuário no estado
         AppState.set('currentUser', usuario);
-        
-        // Adicionar botão de ordem da semana
-        adicionarBotaoOrdemSemana();
-        
-        // Carregar protocolo ativo
-        const protocolo = await fetchProtocoloAtivoUsuario(usuario.id);
-        
-        if (!protocolo) {
-            showNotification('Erro ao carregar protocolo do usuário', 'error');
-            hideLoading();
-            return;
-        }
-        
-        AppState.set('currentProtocol', protocolo);
-        
-        // Verificar se precisa de planejamento semanal
+        console.log('[selecionarUsuario] Usuário definido no AppState:', usuario.nome);
+
+        // 2. Verificar se precisa de planejamento semanal
         if (needsWeekPlanning(usuario.id)) {
-            hideLoading();
-            mostrarModalPlanejamento(usuario.id);
-            return;
+            console.log('[selecionarUsuario] Necessário planejamento semanal para:', usuario.nome);
+            mostrarModalPlanejamento(usuario.id); // Modal de planejamento cuidará do próximo passo
+            return; // Encerra aqui, o fluxo continua após o planejamento
         }
         
-        // Carregar plano semanal
-        const weekPlan = getWeekPlan(usuario.id);
-        AppState.set('weekPlan', weekPlan);
-        
-        // Carregar próximo treino
-        const proximoTreino = await fetchProximoTreino(
-            usuario.id,
-            protocolo.protocolo_treinamento_id,
-            protocolo.semana_atual
-        );
-        
-        AppState.set('currentWorkout', proximoTreino);
-        
-        // Carregar dashboard
-        await carregarDashboard();
-        
-        // Navegar para home
-        mostrarTela('home-screen');
+        // 3. Se não precisa de planejamento, ir para a OrderWeekPage (dados carregam lá)
+        console.log('[selecionarUsuario] Planejamento semanal não necessário. Navegando para OrderWeekPage para:', usuario.nome);
+        if (window.renderTemplate) {
+            window.renderTemplate('orderWeek');
+        } else {
+            console.error('[selecionarUsuario] window.renderTemplate não está definido. Não é possível navegar para OrderWeekPage. Verifique se o sistema de templates está carregado.');
+            // Fallback: ir para home-screen se renderTemplate não estiver disponível
+            showNotification('Erro ao tentar abrir a página de ordem semanal. Exibindo dashboard.', 'warning');
+            mostrarTela('home-screen');
+        }
         
     } catch (error) {
-        console.error('Erro ao selecionar usuário:', error);
-        showNotification('Erro ao carregar dados do usuário', 'error');
-    } finally {
-        hideLoading();
+        console.error('Erro crítico ao selecionar usuário:', error);
+        // Idealmente, showNotification ainda funcionaria, mas como estamos removendo show/hideLoading daqui,
+        // a UI de notificação precisa ser robusta ou gerenciada de forma diferente em erros críticos como este.
+        showNotification('Erro grave ao selecionar usuário. Tente recarregar.', 'error');
     }
+    // Não há mais hideLoading() aqui, pois showLoading() foi removido.
+    // A tela de login deve desaparecer ao navegar para 'home-screen' ou ao modal ser exibido.
 }
 
 // Mostrar modal de planejamento semanal
