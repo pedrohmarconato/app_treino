@@ -2,8 +2,8 @@
 // Arquivo principal - inicialização e orquestração
 
 import AppState from '../state/appState.js';
-import { initLogin } from '../feature/login.js';
 import { carregarDashboard } from '../feature/dashboard.js';
+import { inicializarPlanejamento, fecharModalPlanejamento, removerTreinoDoDia, salvarPlanejamentoSemanal } from '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
 
@@ -43,7 +43,12 @@ async function initApp() {
     }
     
     // Iniciar na tela de login
-    await initLogin();
+    if (window.initLogin) {
+        await window.initLogin();
+    } else {
+        console.error('window.initLogin não está definido ao tentar iniciar o app');
+        showNotification('Erro crítico ao iniciar o login', 'error');
+    }
 }
 
 // Configurar funções globais para compatibilidade com templates
@@ -56,6 +61,12 @@ function setupGlobalFunctions() {
     // Dashboard
     window.carregarDashboard = carregarDashboard;
     
+    // Login
+    window.initLogin = async () => {
+        const { initLoginScreen } = await import('../feature/login.js');
+        return initLoginScreen();
+    };
+    
     // Mostrar ordem da semana
     window.mostrarOrdemSemana = (usuarioId) => {
         if (window.renderTemplate) {
@@ -63,6 +74,12 @@ function setupGlobalFunctions() {
         }
     };
     
+    // Planejamento
+    window.inicializarPlanejamento = inicializarPlanejamento;
+    window.fecharModalPlanejamento = fecharModalPlanejamento;
+    window.removerTreinoDoDia = removerTreinoDoDia;
+    window.salvarPlanejamentoSemanal = salvarPlanejamentoSemanal;
+
     // Adicionar estilos de animação
     addAnimationStyles();
 }

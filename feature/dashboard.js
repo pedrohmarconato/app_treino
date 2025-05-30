@@ -22,18 +22,18 @@ export async function carregarDashboard() {
             console.warn('Usuário ou protocolo não definido');
             return;
         }
-        
-        // Carregar métricas do usuário
-        await carregarMetricas(currentUser.id);
+
+        // Carregar indicadores competitivos (que inclui estatisticas/metricas)
+        await carregarIndicadores(); 
+
+        // Carregar métricas do usuário (agora usando dados do AppState)
+        await carregarMetricas(); 
         
         // Atualizar informações do protocolo
         atualizarInfoProtocolo();
         
         // Carregar informações do próximo treino
         await carregarProximoTreino();
-        
-        // Carregar indicadores competitivos
-        await carregarIndicadores();
         
         // Configurar botão de início
         configurarBotaoIniciar();
@@ -44,31 +44,64 @@ export async function carregarDashboard() {
     }
 }
 
-// Carregar métricas do usuário
-async function carregarMetricas(userId) {
+// Carregar métricas do usuário (usando dados do AppState)
+async function carregarMetricas() {
     try {
-        const metricas = await fetchMetricasUsuario(userId);
+        const metricas = AppState.get('userMetrics'); // Ler métricas do AppState
         
-        // Atualizar elementos da UI
-        updateElement('completed-workouts', metricas.treinosConcluidos);
-        updateElement('current-week', metricas.semanaAtual);
-        updateElement('progress-percentage', `${metricas.progresso}%`);
+        if (!metricas) {
+            console.warn('Métricas do usuário não encontradas no AppState. Tentando buscar...');
+            // Fallback, embora o ideal é que carregarIndicadores já tenha populado
+            const currentUser = AppState.get('currentUser');
+            if (currentUser) {
+                const fallbackMetricas = await fetchMetricasUsuario(currentUser.id);
+                AppState.set('userMetrics', fallbackMetricas); // Salva para evitar re-busca imediata
+                updateElement('completed-workouts', fallbackMetricas.treinosConcluidos || 0);
+                updateElement('current-week', fallbackMetricas.semanaAtual || 1);
+                updateElement('progress-percentage', `${fallbackMetricas.progresso || 0}%`);
+                // ... (atualizar anel de progresso e barras com fallbackMetricas)
+                const progressRing = document.querySelector('.progress-ring-progress');
+                if (progressRing) {
+                    const circumference = 2 * Math.PI * 40;
+                    const offset = circumference - ((fallbackMetricas.progresso || 0) / 100) * circumference;
+                    progressRing.style.strokeDashoffset = offset;
+                }
+                const userProgressBar = document.getElementById('user-progress-bar');
+                if (userProgressBar) {
+                    userProgressBar.style.width = `${((fallbackMetricas.treinosConcluidos || 0) / 4) * 100}%`;
+                }
+                updateElement('user-workouts', fallbackMetricas.treinosConcluidos || 0);
+                return; // Sai após o fallback
+            } else {
+                console.error('Não foi possível buscar métricas: usuário não definido.');
+                // Definir valores padrão em caso de erro grave
+                updateElement('completed-workouts', '0');
+                updateElement('current-week', '1');
+                updateElement('progress-percentage', '0%');
+                return;
+            }
+        }
+        
+        // Atualizar elementos da UI com dados do AppState
+        updateElement('completed-workouts', metricas.total_treinos_realizados || metricas.treinosConcluidos || 0); // Ajustar para nome da coluna em v_estatisticas_usuarios
+        updateElement('current-week', metricas.semana_atual || metricas.semanaAtual || 1); // Ajustar
+        updateElement('progress-percentage', `${metricas.percentual_progresso || metricas.progresso || 0}%`); // Ajustar
         
         // Atualizar anel de progresso
         const progressRing = document.querySelector('.progress-ring-progress');
         if (progressRing) {
             const circumference = 2 * Math.PI * 40;
-            const offset = circumference - (metricas.progresso / 100) * circumference;
+            const offset = circumference - ((metricas.percentual_progresso || metricas.progresso || 0) / 100) * circumference;
             progressRing.style.strokeDashoffset = offset;
         }
         
         // Atualizar barras de comparação
         const userProgressBar = document.getElementById('user-progress-bar');
         if (userProgressBar) {
-            userProgressBar.style.width = `${(metricas.treinosConcluidos / 4) * 100}%`;
+            userProgressBar.style.width = `${((metricas.total_treinos_realizados || metricas.treinosConcluidos || 0) / 4) * 100}%`;
         }
         
-        updateElement('user-workouts', metricas.treinosConcluidos);
+        updateElement('user-workouts', metricas.total_treinos_realizados || metricas.treinosConcluidos || 0);
         
     } catch (error) {
         console.error('Erro ao carregar métricas:', error);
@@ -76,6 +109,33 @@ async function carregarMetricas(userId) {
         updateElement('completed-workouts', '0');
         updateElement('current-week', '1');
         updateElement('progress-percentage', '0%');
+    }
+}
+
+// Carregar indicadores competitivos
+async function carregarIndicadores() {
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser) return;
+        
+        const dados = await fetchDadosIndicadores(currentUser.id);
+
+        if (dados && dados.estatisticas) {
+            // Salvar as estatísticas (métricas) no AppState para serem usadas por carregarMetricas
+            AppState.set('userMetrics', dados.estatisticas);
+        } else {
+            console.warn('Dados de estatísticas não retornados por fetchDadosIndicadores.');
+            // Considerar um fallback ou estado de erro se as métricas são cruciais aqui
+            AppState.set('userMetrics', null); // Limpa para evitar dados obsoletos
+        }
+        
+        // Aqui você pode renderizar os OUTROS indicadores competitivos (comparacao, resumoGrupo)
+        // Exemplo: renderizarComparacao(dados.comparacao);
+        // Exemplo: renderizarResumoGrupo(dados.resumoGrupo);
+        
+    } catch (error) {
+        console.error('Erro ao carregar indicadores:', error);
+        AppState.set('userMetrics', null); // Limpa em caso de erro
     }
 }
 
@@ -120,22 +180,6 @@ async function carregarProximoTreino() {
     } catch (error) {
         console.error('Erro ao carregar exercícios:', error);
         updateElement('workout-exercises', '0 exercícios');
-    }
-}
-
-// Carregar indicadores competitivos
-async function carregarIndicadores() {
-    try {
-        const currentUser = AppState.get('currentUser');
-        if (!currentUser) return;
-        
-        const dados = await fetchDadosIndicadores(currentUser.id);
-        
-        // Aqui você pode renderizar os indicadores competitivos
-        // Por exemplo: comparação entre usuários, evolução, etc.
-        
-    } catch (error) {
-        console.error('Erro ao carregar indicadores:', error);
     }
 }
 

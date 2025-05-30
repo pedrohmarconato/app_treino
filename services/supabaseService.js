@@ -1,6 +1,16 @@
 // js/services/supabaseService.js
 // Centraliza a conexão e queries básicas do Supabase
 
+// Verificar se as configurações estão disponíveis
+if (!window.SUPABASE_CONFIG) {
+    console.error('SUPABASE_CONFIG não encontrado!');
+}
+
+console.log('Configuração Supabase:', {
+    url: window.SUPABASE_CONFIG?.url,
+    hasKey: !!window.SUPABASE_CONFIG?.key
+});
+
 const supabase = window.supabase.createClient(
     window.SUPABASE_CONFIG.url, 
     window.SUPABASE_CONFIG.key
@@ -10,27 +20,44 @@ export { supabase };
 
 // Funções auxiliares para queries comuns
 export async function query(table, options = {}) {
+    console.log(`[query] Consultando tabela: ${table}`, options);
+    
     try {
         let q = supabase.from(table);
         
-        if (options.select) q = q.select(options.select);
+        // Sempre usar select() primeiro
+        if (options.select) {
+            q = q.select(options.select);
+        } else {
+            q = q.select('*'); // Selecionar tudo por padrão
+        }
+        
+        // Aplicar filtros
         if (options.eq) {
             Object.entries(options.eq).forEach(([key, value]) => {
+                console.log(`[query] Aplicando filtro eq: ${key} = ${value}`);
                 q = q.eq(key, value);
             });
         }
+        
         if (options.order) {
             q = q.order(options.order.column, { ascending: options.order.ascending ?? true });
         }
         if (options.limit) q = q.limit(options.limit);
         if (options.single) q = q.single();
         
+        console.log(`[query] Executando query na tabela ${table}...`);
         const { data, error } = await q;
         
-        if (error) throw error;
+        if (error) {
+            console.error(`[query] Erro na consulta ${table}:`, error);
+            throw error;
+        }
+        
+        console.log(`[query] Resultado da consulta ${table}:`, data);
         return { data, error: null };
     } catch (error) {
-        console.error(`Erro ao consultar ${table}:`, error);
+        console.error(`[query] Erro ao consultar ${table}:`, error);
         return { data: null, error };
     }
 }

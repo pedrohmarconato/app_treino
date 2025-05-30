@@ -205,7 +205,7 @@ export async function fetchDadosIndicadores(userId) {
     
     // Buscar resumo por grupo muscular
     const { data: resumoGrupo } = await query('v_resumo_grupo_muscular', {
-        eq: { usuario_id: userId }
+        eq: { usuario: userId } // Corrigido de usuario_id para usuario
     });
     
     return {

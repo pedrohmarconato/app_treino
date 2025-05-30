@@ -10,11 +10,17 @@ import { mostrarTela, adicionarBotaoOrdemSemana } from '../ui/navigation.js';
 import { carregarDashboard } from './dashboard.js';
 
 // Inicializar tela de login
-export async function initLogin() {
+export async function initLoginScreen() {
+    console.log('[initLoginScreen] Iniciando...');
     try {
         const usuarios = await fetchUsuarios();
+        console.log('[initLoginScreen] Usuários carregados:', usuarios);
         AppState.set('users', usuarios);
-        renderizarUsuarios(usuarios);
+        // AGUARDAR mais tempo para garantir que o template foi renderizado
+        setTimeout(() => {
+            console.log('[initLoginScreen] Tentando renderizar usuários...');
+            renderizarUsuarios(usuarios);
+        }, 500);
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
         showNotification('Erro ao carregar usuários', 'error');
@@ -23,37 +29,64 @@ export async function initLogin() {
 
 // Renderizar usuários na tela
 function renderizarUsuarios(usuarios) {
-    setTimeout(() => {
-        const container = document.getElementById('users-grid');
-        if (!container) {
-            console.error('Container users-grid não encontrado');
-            return;
-        }
+    console.log('[renderizarUsuarios] Buscando container...');
+    const container = document.getElementById('users-grid');
+    
+    if (!container) {
+        console.error('[renderizarUsuarios] Container users-grid não encontrado, tentando novamente...');
+        // Tentar novamente após um delay maior
+        setTimeout(() => {
+            console.log('[renderizarUsuarios] Tentativa adicional...');
+            renderizarUsuarios(usuarios);
+        }, 1000);
+        return;
+    }
+    
+    console.log('[renderizarUsuarios] Container encontrado, renderizando', usuarios.length, 'usuários');
+    
+    container.innerHTML = '';
+    
+    if (usuarios.length === 0) {
+        console.warn('[renderizarUsuarios] Nenhum usuário para renderizar');
+        container.innerHTML = '<p>Nenhum usuário encontrado</p>';
+        return;
+    }
+    
+    usuarios.forEach((user, index) => {
+        console.log(`[renderizarUsuarios] Renderizando usuário ${index + 1}:`, user.nome);
         
-        container.innerHTML = '';
+        const userImages = {
+            'Pedro': 'pedro.png',
+            'Japa': 'japa.png'
+        };
         
-        usuarios.forEach(user => {
-            const userImages = {
-                'Pedro': 'pedro.png',
-                'Japa': 'japa.png'
-            };
-            
-            const card = document.createElement('div');
-            card.className = 'user-card';
-            card.innerHTML = `
-                <div class="user-avatar">
-                    <img src="${userImages[user.nome] || 'pedro.png'}" 
-                         alt="${user.nome}">
-                </div>
-                <h3>${user.nome}</h3>
-                <p>Atleta Premium</p>
-            `;
-            
-            card.addEventListener('click', () => selecionarUsuario(user));
-            container.appendChild(card);
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        card.innerHTML = `
+            <div class="user-avatar">
+                <img src="${userImages[user.nome] || 'pedro.png'}" 
+                     alt="${user.nome}"
+                     onerror="console.error('Erro ao carregar imagem:', this.src)">
+            </div>
+            <h3>${user.nome}</h3>
+            <p>Atleta Premium</p>
+        `;
+        
+        card.addEventListener('click', () => {
+            console.log('[renderizarUsuarios] Usuário selecionado:', user.nome);
+            selecionarUsuario(user);
         });
-    }, 100);
+        
+        container.appendChild(card);
+    });
+    
+    console.log('[renderizarUsuarios] Renderização concluída');
 }
+
+// Resto do código permanece igual...
+
+
+
 
 // Selecionar usuário e fazer login
 export async function selecionarUsuario(usuario) {

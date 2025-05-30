@@ -2,6 +2,8 @@
 import { modalPlanejamentoTemplate } from './modals.js';
 window.modalPlanejamentoTemplate = modalPlanejamentoTemplate;
 import { loginTemplate, loginStyles } from './login.js';
+import { initLoginScreen } from '../feature/login.js';
+window.initLogin = initLoginScreen;
 import { homeTemplate, homeStyles } from './home.js';
 import { workoutTemplate, workoutStyles } from './workout.js';
 import OrderWeekPage, { orderWeekStyles } from './OrderWeekPage.js';

@@ -5,12 +5,48 @@ import { query, insert, update } from './supabaseService.js';
 
 // Buscar todos os usuários ativos
 export async function fetchUsuarios() {
-    const { data, error } = await query('usuarios', {
-        eq: { status: 'ativo' },
-        order: { column: 'nome', ascending: true }
-    });
+    console.log('[fetchUsuarios] Iniciando busca de usuários...');
     
-    return data || [];
+    try {
+        // TESTE 1: Buscar todos os usuários primeiro
+        console.log('[fetchUsuarios] Buscando todos os usuários...');
+        const { data: todosUsuarios, error: erroTodos } = await query('usuarios');
+        
+        if (erroTodos) {
+            console.error('[fetchUsuarios] Erro ao buscar todos os usuários:', erroTodos);
+            return [];
+        }
+        
+        console.log('[fetchUsuarios] Todos os usuários encontrados:', todosUsuarios);
+        
+        // Se não encontrou nenhum usuário, pode ser problema de conexão ou tabela vazia
+        if (!todosUsuarios || todosUsuarios.length === 0) {
+            console.warn('[fetchUsuarios] Nenhum usuário encontrado na tabela');
+            
+            // RETORNAR usuários mock para teste
+            console.log('[fetchUsuarios] Retornando usuários mock para teste');
+            return [
+                { id: 1, nome: 'Pedro', status: 'ativo' },
+                { id: 2, nome: 'Japa', status: 'ativo' }
+            ];
+        }
+        
+        // Filtrar usuários ativos
+        const usuariosAtivos = todosUsuarios.filter(user => user.status === 'ativo');
+        console.log('[fetchUsuarios] Usuários ativos encontrados:', usuariosAtivos);
+        
+        return usuariosAtivos.sort((a, b) => a.nome.localeCompare(b.nome));
+        
+    } catch (error) {
+        console.error('[fetchUsuarios] Erro geral:', error);
+        
+        // EM CASO DE ERRO, RETORNAR DADOS MOCK
+        console.log('[fetchUsuarios] Retornando dados mock devido ao erro');
+        return [
+            { id: 1, nome: 'Pedro', status: 'ativo' },
+            { id: 2, nome: 'Japa', status: 'ativo' }
+        ];
+    }
 }
 
 // Buscar 1RM do usuário para um exercício específico
@@ -53,6 +89,8 @@ export async function fetchMetricasUsuario(userId) {
 
 // Buscar protocolo ativo do usuário
 export async function fetchProtocoloAtivoUsuario(userId) {
+    console.log('[fetchProtocoloAtivoUsuario] Buscando protocolo para usuário:', userId);
+    
     const { data: planoAtivo } = await query('usuario_plano_treino', {
         select: '*, protocolos_treinamento(*)',
         eq: { 
@@ -62,34 +100,71 @@ export async function fetchProtocoloAtivoUsuario(userId) {
         single: true
     });
     
-    // Se não houver plano ativo, criar um novo
+    // Se não houver plano ativo, retornar protocolo mock
     if (!planoAtivo) {
-        const { data: novoPlano } = await insert('usuario_plano_treino', {
+        console.log('[fetchProtocoloAtivoUsuario] Nenhum plano ativo encontrado, retornando mock');
+        return {
+            id: 1,
             usuario_id: userId,
-            protocolo_treinamento_id: 1, // Protocolo padrão
+            protocolo_treinamento_id: 1,
             semana_atual: 1,
-            status: 'ativo'
-        });
-        
-        if (novoPlano && novoPlano[0]) {
-            // Buscar o protocolo relacionado
-            const { data: protocolo } = await query('protocolos_treinamento', {
-                eq: { id: novoPlano[0].protocolo_treinamento_id },
-                single: true
-            });
-            
-            return {
-                ...novoPlano[0],
-                protocolos_treinamento: protocolo,
-                nome_protocolo: protocolo?.nome || 'Protocolo Padrão'
-            };
-        }
+            status: 'ativo',
+            protocolos_treinamento: {
+                id: 1,
+                nome: 'Protocolo Padrão'
+            },
+            nome_protocolo: 'Protocolo Padrão'
+        };
     }
     
     return {
         ...planoAtivo,
         nome_protocolo: planoAtivo?.protocolos_treinamento?.nome || 'Protocolo Padrão'
     };
+}
+
+// Buscar grupos musculares do plano semanal do usuário
+export async function fetchTiposTreinoMuscular(userId) {
+    console.log('[fetchTiposTreinoMuscular] Buscando grupos musculares do plano para usuário:', userId);
+    if (!userId) {
+        console.error('[fetchTiposTreinoMuscular] userId não fornecido.');
+        return [];
+    }
+
+    const { data, error } = await query('v_plano_usuario_semana', { 
+        select: 'grupo_muscular',
+        eq: { usuario_id: userId } // ASSUMINDO que a coluna em v_plano_usuario_semana é 'usuario_id'
+    });
+
+    if (error) {
+        console.error('[fetchTiposTreinoMuscular] Erro ao buscar grupos musculares do plano:', error.message);
+        return [];
+    }
+
+    if (!data || data.length === 0) {
+        console.warn('[fetchTiposTreinoMuscular] Nenhum grupo muscular encontrado no plano para o usuário:', userId);
+        return [];
+    }
+
+    // Extrair os valores de grupo_muscular e garantir que sejam únicos
+    const gruposUnicos = [...new Set(data.map(item => item.grupo_muscular).filter(gm => gm))];
+    console.log('[fetchTiposTreinoMuscular] Grupos musculares únicos do plano para o usuário', userId, 'encontrados:', gruposUnicos);
+    return gruposUnicos;
+}
+
+export async function upsert(table, data, options = {}) {
+    try {
+        const { data: result, error } = await supabase
+            .from(table)
+            .upsert(data, options)
+            .select();
+        
+        if (error) throw error;
+        return { data: result, error: null };
+    } catch (error) {
+        console.error(`Erro ao fazer upsert em ${table}:`, error);
+        return { data: null, error };
+    }
 }
 
 // Salvar teste de 1RM

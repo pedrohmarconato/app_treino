@@ -3,7 +3,7 @@
 
 import AppState from '../state/appState.js';
 import { saveWeekPlan, getWeekPlan } from '../utils/weekPlanStorage.js';
-import { fetchGruposMuscularesTreinos } from '../services/workoutService.js';
+import { fetchTiposTreinoMuscular } from '../services/userService.js'; // Importa a nova função
 import { showNotification } from '../ui/notifications.js';
 import { mostrarTela } from '../ui/navigation.js';
 
@@ -19,17 +19,35 @@ export async function inicializarPlanejamento(usuarioId) {
     usuarioIdAtual = usuarioId;
     
     try {
-        // Carregar grupos musculares
-        const grupos = await fetchGruposMuscularesTreinos();
-        
+        // Buscar tipos de treino muscular do plano do usuário
+        const tiposMusculares = await fetchTiposTreinoMuscular(usuarioId);
+
         // Criar treinos disponíveis
-        treinosDisponiveis = [
-            { id: 1, nome: 'Treino A - Peito e Tríceps', tipo: 'A' },
-            { id: 2, nome: 'Treino B - Costas e Bíceps', tipo: 'B' },
-            { id: 3, nome: 'Treino C - Pernas', tipo: 'C' },
-            { id: 4, nome: 'Treino D - Ombros e Abdômen', tipo: 'D' }
-        ];
+        treinosDisponiveis = [];
+        let treinoIdCounter = 1;
+
+        // Adicionar treinos musculares
+        tiposMusculares.forEach(tipo => {
+            treinosDisponiveis.push({
+                id: `muscular_${treinoIdCounter++}`,
+                nome: `Muscular: ${tipo}`,
+                tipo: tipo, // Usado para a lógica de não repetição
+                categoria: 'muscular' 
+            });
+        });
+
+        // Adicionar treinos de Cardio
+        for (let i = 0; i < 3; i++) {
+            treinosDisponiveis.push({
+                id: `cardio_${treinoIdCounter++}`,
+                nome: 'Cardio',
+                tipo: 'Cardio', // Tipo genérico para cardio
+                categoria: 'cardio'
+            });
+        }
         
+        console.log('[inicializarPlanejamento] Treinos disponíveis montados:', treinosDisponiveis);
+
         // Verificar se existe planejamento salvo
         const planoSalvo = getWeekPlan(usuarioId);
         if (planoSalvo) {
@@ -113,39 +131,61 @@ function handleDrop(e) {
         e.stopPropagation();
     }
     e.preventDefault();
-    
+
     const dropZone = e.target.closest('.drop-zone');
+    if (!dropZone) return;
     dropZone.classList.remove('drag-over');
-    
+
     if (elementoArrastando) {
         const dia = dropZone.dataset.dia;
-        const treinoId = elementoArrastando.dataset.treinoId;
-        const treinoNome = elementoArrastando.dataset.treinoNome;
+        const treinoIdArrastado = elementoArrastando.dataset.treinoId;
+
+        // Encontrar o objeto do treino arrastado na lista de treinos disponíveis
+        const treinoArrastado = treinosDisponiveis.find(t => t.id === treinoIdArrastado);
+
+        if (!treinoArrastado) {
+            console.error('[handleDrop] Treino arrastado não encontrado na lista de disponíveis:', treinoIdArrastado);
+            showNotification('Erro ao processar o treino.', 'error');
+            return;
+        }
+
+        // Validação: Não repetir grupos musculares
+        if (treinoArrastado.categoria === 'muscular') {
+            for (const diaPlanejado in planejamentoAtual) {
+                const treinoExistente = planejamentoAtual[diaPlanejado];
+                if (treinoExistente.categoria === 'muscular' && treinoExistente.tipo === treinoArrastado.tipo) {
+                    showNotification(`O grupo muscular '${treinoArrastado.tipo}' já foi adicionado.`, 'error');
+                    return; // Impede a adição
+                }
+            }
+        }
         
         // Adicionar treino ao planejamento
         planejamentoAtual[dia] = {
-            id: treinoId,
-            nome: treinoNome,
-            tipo: treinoNome.split(' ')[1] // Extrai A, B, C ou D
+            id: treinoArrastado.id,
+            nome: treinoArrastado.nome,
+            tipo: treinoArrastado.tipo,
+            categoria: treinoArrastado.categoria
         };
-        
-        // Atualizar visualização
+
+        // Atualizar visualização da drop zone
         dropZone.innerHTML = `
-            <div class="treino-alocado" data-treino-id="${treinoId}">
-                <span>${treinoNome}</span>
-                <button class="btn-remover" onclick="removerTreinoDoDia('${dia}')">×</button>
+            <div class="treino-no-dia" data-treino-id="${treinoArrastado.id}">
+                <span class="treino-tipo">${treinoArrastado.tipo}</span>
+                <span class="treino-nome">${treinoArrastado.nome.replace('Muscular: ', '').replace('Cardio: ', '')}</span>
+                <button class="remover-treino-dia" onclick="removerTreinoDoDia('${dia}')">X</button>
             </div>
         `;
-        
-        // Validar planejamento
-        validarPlanejamento();
     }
     
-    return false;
+    // Validar planejamento após cada drop para feedback imediato, se necessário
+    validarPlanejamento();
+    
+    return false; // Prevenir default browser handling
 }
 
 // Remover treino de um dia
-window.removerTreinoDoDia = function(dia) {
+export function removerTreinoDoDia(dia) {
     delete planejamentoAtual[dia];
     
     const dropZone = document.querySelector(`.drop-zone[data-dia="${dia}"]`);
@@ -162,13 +202,17 @@ function renderizarPlanejamentoExistente() {
         const treino = planejamentoAtual[dia];
         const dropZone = document.querySelector(`.drop-zone[data-dia="${dia}"]`);
         
-        if (dropZone && treino) {
+        if (dropZone && treino && treino.id && treino.nome && treino.tipo) { // Checagem mais robusta do objeto treino
             dropZone.innerHTML = `
-                <div class="treino-alocado" data-treino-id="${treino.id}">
-                    <span>${treino.nome}</span>
-                    <button class="btn-remover" onclick="removerTreinoDoDia('${dia}')">×</button>
+                <div class="treino-no-dia" data-treino-id="${treino.id}">
+                    <span class="treino-tipo">${treino.tipo}</span>
+                    <span class="treino-nome">${treino.nome.replace('Muscular: ', '').replace('Cardio: ', '')}</span>
+                    <button class="remover-treino-dia" onclick="removerTreinoDoDia('${dia}')">X</button>
                 </div>
             `;
+        } else if (dropZone) {
+            // Se não houver treino para o dia, garantir que o placeholder seja exibido
+            dropZone.innerHTML = '<span class="placeholder">Arraste um treino aqui</span>';
         }
     });
     
@@ -178,60 +222,69 @@ function renderizarPlanejamentoExistente() {
 // Validar planejamento
 function validarPlanejamento() {
     const btnSalvar = document.getElementById('confirm-plan-btn');
-    const validation = document.getElementById('plan-validation');
+    const validationMessageElement = document.getElementById('plan-validation-message'); // Supondo que o elemento da mensagem tenha este ID
     
-    const treinos = { A: 0, B: 0, C: 0, D: 0 };
     let diasPreenchidos = 0;
     let isValid = true;
-    let messages = [];
-    
-    // Contar treinos
-    for (let dia = 0; dia < 7; dia++) {
-        if (planejamentoAtual[dia]) {
+    const messages = [];
+    const tiposMuscularesNoPlano = {};
+
+    // Iterar sobre os 7 dias da semana (assumindo que as drop zones são numeradas de 0 a 6 ou têm data-dia="0" a data-dia="6")
+    const diasDaSemana = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado']; // Ou como seus data-dia estiverem definidos
+    // Se os data-dia forem numéricos de 0 a 6, podemos usar um loop for (let i = 0; i < 7; i++)
+
+    for (const diaKey in planejamentoAtual) {
+        if (planejamentoAtual.hasOwnProperty(diaKey) && planejamentoAtual[diaKey]) {
             diasPreenchidos++;
-            const tipo = planejamentoAtual[dia].tipo;
-            if (treinos[tipo] !== undefined) {
-                treinos[tipo]++;
+            const treinoDoDia = planejamentoAtual[diaKey];
+            if (treinoDoDia.categoria === 'muscular') {
+                tiposMuscularesNoPlano[treinoDoDia.tipo] = (tiposMuscularesNoPlano[treinoDoDia.tipo] || 0) + 1;
             }
         }
     }
-    
-    // Verificar se todos os dias estão preenchidos
-    if (diasPreenchidos < 7) {
-        messages.push(`❌ Preencha todos os dias da semana (faltam ${7 - diasPreenchidos} dias)`);
+
+    // Validação 1: Todos os slots devem estar cheios
+    // Contar quantos dias no planejamentoAtual têm um treino atribuído.
+    // Os 'dias' no HTML são 'domingo', 'segunda', etc. O objeto planejamentoAtual usa essas chaves.
+    const totalDiasNoModal = document.querySelectorAll('#planning-modal .drop-zone').length;
+    if (diasPreenchidos < totalDiasNoModal) {
+        messages.push(`❌ Preencha todos os ${totalDiasNoModal} dias da semana (faltam ${totalDiasNoModal - diasPreenchidos}).`);
         isValid = false;
     }
-    
-    // Verificar duplicatas e faltantes
-    Object.entries(treinos).forEach(([tipo, count]) => {
-        if (count > 1) {
-            messages.push(`❌ Treino ${tipo} está duplicado`);
+
+    // Validação 2: Não repetir grupos musculares
+    for (const tipo in tiposMuscularesNoPlano) {
+        if (tiposMuscularesNoPlano[tipo] > 1) {
+            messages.push(`❌ O grupo muscular '${tipo}' está repetido.`);
             isValid = false;
-        } else if (count === 0) {
-            messages.push(`❌ Treino ${tipo} não foi alocado`);
-            isValid = false;
-        }
-    });
-    
-    // Atualizar validação visual
-    if (validation) {
-        if (isValid) {
-            validation.className = 'plan-validation show success';
-            validation.innerHTML = '✅ Planejamento válido! Todos os treinos estão corretamente distribuídos.';
-        } else {
-            validation.className = 'plan-validation show error';
-            validation.innerHTML = messages.join('<br>');
         }
     }
-    
-    // Habilitar/desabilitar botão
+
+    // Atualizar mensagem de validação e estado do botão salvar
+    if (validationMessageElement) {
+        if (isValid) {
+            validationMessageElement.textContent = '✅ Planejamento válido!';
+            validationMessageElement.className = 'success'; // Adicione classes CSS para estilização
+        } else {
+            validationMessageElement.innerHTML = messages.join('<br>');
+            validationMessageElement.className = 'error'; // Adicione classes CSS para estilização
+        }
+    }
+
     if (btnSalvar) {
         btnSalvar.disabled = !isValid;
     }
+
+    return isValid; // Retorna o status da validação
 }
 
 // Salvar planejamento semanal
-window.salvarPlanejamentoSemanal = async function() {
+export async function salvarPlanejamentoSemanal() {
+    if (!validarPlanejamento()) { // Chama a validação aqui
+        showNotification('Planejamento inválido. Verifique as mensagens.', 'error');
+        return;
+    }
+
     if (!usuarioIdAtual) {
         showNotification('Erro: usuário não identificado', 'error');
         return;
@@ -274,7 +327,7 @@ window.salvarPlanejamentoSemanal = async function() {
 };
 
 // Fechar modal de planejamento
-window.fecharModalPlanejamento = function() {
+export function fecharModalPlanejamento() {
     const modal = document.getElementById('modalPlanejamento');
     if (modal) {
         modal.style.display = 'none';
@@ -286,6 +339,3 @@ window.fecharModalPlanejamento = function() {
     usuarioIdAtual = null;
     elementoArrastando = null;
 };
-
-// Exportar função de inicialização
-window.inicializarPlanejamento = inicializarPlanejamento;
