@@ -66,17 +66,35 @@ export async function inicializarPlanejamento(usuarioId) {
     }
 }
 
+// Mapear emojis para os tipos de treino
+const treinoEmojis = {
+    'Costas': '🔙',
+    'Peito': '💪',
+    'Pernas': '🦵',
+    'Ombro e Braço': '💪',
+    'Cardio': '🏃',
+    'Folga': '😴',
+    'Ombro': '🎯',
+    'Braço': '💪'
+};
+
 // Renderizar treinos disponíveis
 function renderizarTreinosDisponiveis() {
     const container = document.getElementById('listaTreinosDisponiveis');
     if (!container) return;
     
-    container.innerHTML = treinosDisponiveis.map(treino => `
-        <div class="treino-item" draggable="true" data-treino-id="${treino.id}" data-treino-nome="${treino.nome}">
-            <span class="treino-tipo">${treino.tipo}</span>
-            <span class="treino-nome">${treino.nome}</span>
-        </div>
-    `).join('');
+    container.innerHTML = treinosDisponiveis.map(treino => {
+        // Seleciona o emoji pelo tipo, ou usa padrão se não houver
+        const emoji = treinoEmojis[treino.tipo] || '🏋️';
+        // Remove prefixos do nome para exibição
+        const displayName = treino.nome.replace(/^Muscular: /, '').replace(/^Cardio: /, '');
+        return `
+            <div class="treino-item" draggable="true" data-treino-id="${treino.id}" data-treino-nome="${treino.nome}" data-treino-tipo="${treino.tipo}">
+                <span class="treino-tipo">${emoji}</span>
+                <span class="treino-nome">${displayName}</span>
+            </div>
+        `;
+    }).join('');
     
     // Adicionar eventos de drag
     container.querySelectorAll('.treino-item').forEach(item => {

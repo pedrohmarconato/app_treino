@@ -1,6 +1,7 @@
 // Arquivo principal que exporta todos os templates
-import { modalPlanejamentoTemplate } from './modals.js';
+import { modalPlanejamentoTemplate, modalPlanejamentoStyles } from './modals.js';
 window.modalPlanejamentoTemplate = modalPlanejamentoTemplate;
+window.modalPlanejamentoStyles = modalPlanejamentoStyles;
 import { loginTemplate, loginStyles } from './login.js';
 import { initLoginScreen } from '../feature/login.js';
 window.initLogin = initLoginScreen;

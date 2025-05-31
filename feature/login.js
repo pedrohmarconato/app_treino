@@ -135,6 +135,14 @@ function mostrarModalPlanejamento(usuarioId) {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         modal = document.getElementById('modalPlanejamento');
     }
+
+    // Injeta os estilos se necessário
+    if (!document.getElementById('modalPlanejamentoStyles') && window.modalPlanejamentoStyles) {
+        const style = document.createElement('style');
+        style.id = 'modalPlanejamentoStyles';
+        style.innerHTML = window.modalPlanejamentoStyles;
+        document.head.appendChild(style);
+    }
     
     if (modal) {
         modal.style.display = 'block';
