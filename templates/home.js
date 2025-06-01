@@ -30,7 +30,7 @@ export const homeTemplate = () => `
             <div class="training-plan">
                 <div class="section-header">
                     <h2>Semana de Treinos</h2>
-                    <button class="btn-secondary" onclick="mostrarModalPlanejamento()">
+                    <button class="btn-secondary" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 5v14m-7-7h14"/>
                         </svg>

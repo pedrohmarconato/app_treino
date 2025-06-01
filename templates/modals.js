@@ -23,7 +23,7 @@ export const modalPlanejamentoTemplate = () => `
                             <span class="day-name">Segunda</span>
                             <span class="day-number">1</span>
                         </div>
-                        <div class="day-content">
+                        <div class="day-content" id="dia-segunda-content">
                             <div class="empty-slot">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -40,7 +40,7 @@ export const modalPlanejamentoTemplate = () => `
                             <span class="day-name">Terça</span>
                             <span class="day-number">2</span>
                         </div>
-                        <div class="day-content">
+                        <div class="day-content" id="dia-terca-content">
                             <div class="empty-slot">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -57,7 +57,7 @@ export const modalPlanejamentoTemplate = () => `
                             <span class="day-name">Quarta</span>
                             <span class="day-number">3</span>
                         </div>
-                        <div class="day-content">
+                        <div class="day-content" id="dia-quarta-content">
                             <div class="empty-slot">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -74,7 +74,7 @@ export const modalPlanejamentoTemplate = () => `
                             <span class="day-name">Quinta</span>
                             <span class="day-number">4</span>
                         </div>
-                        <div class="day-content">
+                        <div class="day-content" id="dia-quinta-content">
                             <div class="empty-slot">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -91,7 +91,7 @@ export const modalPlanejamentoTemplate = () => `
                             <span class="day-name">Sexta</span>
                             <span class="day-number">5</span>
                         </div>
-                        <div class="day-content">
+                        <div class="day-content" id="dia-sexta-content">
                             <div class="empty-slot">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -108,7 +108,7 @@ export const modalPlanejamentoTemplate = () => `
                             <span class="day-name">Sábado</span>
                             <span class="day-number">6</span>
                         </div>
-                        <div class="day-content">
+                        <div class="day-content" id="dia-sabado-content">
                             <div class="empty-slot">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
@@ -125,7 +125,7 @@ export const modalPlanejamentoTemplate = () => `
                             <span class="day-name">Domingo</span>
                             <span class="day-number">7</span>
                         </div>
-                        <div class="day-content">
+                        <div class="day-content" id="dia-domingo-content">
                             <div class="empty-slot">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>

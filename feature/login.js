@@ -146,3 +146,18 @@ function mostrarModalPlanejamento(usuarioId) {
 
 // Exportar para uso global
 window.selecionarUsuario = selecionarUsuario;
+
+// Função para abrir o planejamento semanal para o usuário atual (usado pela home page)
+function abrirPlanejamentoParaUsuarioAtual() {
+    console.log('[abrirPlanejamentoParaUsuarioAtual] Tentando abrir planejamento para usuário atual.');
+    const currentUser = AppState.get('currentUser');
+    if (currentUser && currentUser.id) {
+        mostrarModalPlanejamento(currentUser.id);
+    } else {
+        console.error('[abrirPlanejamentoParaUsuarioAtual] Nenhum usuário atual encontrado no AppState.');
+        showNotification('Faça login para acessar o planejamento.', 'error');
+        // Opcionalmente, redirecionar para a tela de login se nenhum usuário estiver logado
+        // window.mostrarTela('login-screen'); 
+    }
+}
+window.abrirPlanejamentoParaUsuarioAtual = abrirPlanejamentoParaUsuarioAtual;
