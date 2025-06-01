@@ -11,6 +11,259 @@ import { iniciarTreino } from './workout.js';
 
 // Carregar dados do dashboard
 export async function carregarDashboard() {
+    console.log('[carregarDashboard] Iniciando carregamento...');
+    
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser) {
+            console.warn('[carregarDashboard] Usuário não definido');
+            return;
+        }
+
+        console.log('[carregarDashboard] Carregando para usuário:', currentUser.nome);
+
+        // 1. Carregar dados básicos (sem dependência do weeklyPlanManager)
+        await carregarIndicadores();
+        await carregarMetricas();
+        
+        console.log('[carregarDashboard] Indicadores e métricas carregados');
+        
+        // 2. Verificar se há plano semanal no estado
+        let weekPlan = AppState.get('weekPlan');
+        
+        if (!weekPlan) {
+            // Tentar carregar do localStorage como fallback
+            weekPlan = getWeekPlan(currentUser.id);
+            if (weekPlan) {
+                AppState.set('weekPlan', weekPlan);
+                console.log('[carregarDashboard] Plano carregado do localStorage');
+            }
+        }
+        
+        // 3. Atualizar UI com plano semanal (se disponível)
+        if (weekPlan) {
+            atualizarUIComPlanoSemanal(weekPlan);
+            console.log('[carregarDashboard] UI atualizada com plano semanal');
+        }
+        
+        // 4. Carregar treino de hoje (simplificado)
+        await carregarProximoTreinoSimplificado();
+        
+        // 5. Configurar botão de iniciar
+        configurarBotaoIniciar();
+        
+        console.log('[carregarDashboard] Dashboard carregado com sucesso!');
+        
+    } catch (error) {
+        console.error('[carregarDashboard] Erro:', error);
+        showNotification('Alguns dados podem não estar atualizados', 'warning');
+        
+        // Mesmo com erro, tentar configurar o básico
+        try {
+            configurarBotaoIniciar();
+            atualizarIndicadorSemana();
+        } catch (fallbackError) {
+            console.error('[carregarDashboard] Erro no fallback:', fallbackError);
+        }
+    }
+}
+
+// Função simplificada para carregar próximo treino
+// Versão correta: carregarProximoTreinoFromPlan
+async function carregarProximoTreinoFromPlan() {
+    try {
+        const currentUser = AppState.get('currentUser');
+        const weekPlan = AppState.get('weekPlan');
+        
+        if (!weekPlan) {
+            updateElement('next-workout-name', 'Configure seu planejamento');
+            updateElement('workout-exercises', 'Nenhum treino configurado');
+            return; // Este return está dentro da função - OK
+        }
+        
+        // Determinar treino de hoje
+        const hoje = new Date().getDay();
+        const treinoDoDia = weekPlan[hoje];
+        
+        if (!treinoDoDia) {
+            updateElement('next-workout-name', 'Nenhum treino hoje');
+            updateElement('workout-exercises', 'Dia livre');
+            return; // Este return está dentro da função - OK
+        }
+        
+        if (treinoDoDia.tipo === 'folga') {
+            updateElement('next-workout-name', 'Dia de Folga');
+            updateElement('workout-exercises', 'Descanso');
+            AppState.set('currentWorkout', { tipo: 'folga', nome: 'Dia de Folga' });
+            return; // Este return está dentro da função - OK
+        }
+        
+        if (treinoDoDia.tipo === 'Cardio') {
+            updateElement('next-workout-name', 'Cardio');
+            updateElement('workout-exercises', 'Exercícios cardiovasculares');
+            AppState.set('currentWorkout', { tipo: 'cardio', nome: 'Cardio' });
+            return; // Este return está dentro da função - OK
+        }
+        
+        // Treino muscular
+        updateElement('next-workout-name', `Treino ${treinoDoDia.tipo}`);
+        updateElement('workout-exercises', 'Treino de força');
+        
+        AppState.set('currentWorkout', {
+            tipo: 'treino',
+            nome: `Treino ${treinoDoDia.tipo}`,
+            grupo_muscular: treinoDoDia.tipo
+        });
+        
+        console.log('[carregarProximoTreinoFromPlan] Treino configurado:', treinoDoDia);
+        
+    } catch (error) {
+        console.error('[carregarProximoTreinoFromPlan] Erro:', error);
+        updateElement('next-workout-name', 'Erro ao carregar treino');
+        updateElement('workout-exercises', '');
+    }
+}
+
+// Função simplificada para carregar próximo treino (mantida para compatibilidade, mas agora chama a nova)
+async function carregarProximoTreinoSimplificado() {
+    await carregarProximoTreinoFromPlan();
+}
+
+    try {
+        const currentUser = AppState.get('currentUser');
+        const weekPlan = AppState.get('weekPlan');
+        
+        if (!weekPlan) {
+            updateElement('next-workout-name', 'Configure seu planejamento');
+            updateElement('workout-exercises', 'Nenhum treino configurado');
+            return;
+        }
+        
+        // Determinar treino de hoje
+        const hoje = new Date().getDay();
+        const treinoDoDia = weekPlan[hoje];
+        
+        if (!treinoDoDia) {
+            updateElement('next-workout-name', 'Nenhum treino hoje');
+            updateElement('workout-exercises', 'Dia livre');
+            return;
+        }
+        
+        if (treinoDoDia.tipo === 'folga') {
+            updateElement('next-workout-name', 'Dia de Folga');
+            updateElement('workout-exercises', 'Descanso');
+            AppState.set('currentWorkout', { tipo: 'folga', nome: 'Dia de Folga' });
+            return;
+        }
+        
+        if (treinoDoDia.tipo === 'Cardio') {
+            updateElement('next-workout-name', 'Cardio');
+            updateElement('workout-exercises', 'Exercícios cardiovasculares');
+            AppState.set('currentWorkout', { tipo: 'cardio', nome: 'Cardio' });
+            return;
+        }
+        
+        // Treino muscular
+        updateElement('next-workout-name', `Treino ${treinoDoDia.tipo}`);
+        updateElement('workout-exercises', 'Treino de força');
+        
+        AppState.set('currentWorkout', {
+            tipo: 'treino',
+            nome: `Treino ${treinoDoDia.tipo}`,
+            grupo_muscular: treinoDoDia.tipo
+        });
+        
+        console.log('[carregarProximoTreinoSimplificado] Treino configurado:', treinoDoDia);
+        
+    } catch (error) {
+        console.error('[carregarProximoTreinoSimplificado] Erro:', error);
+        updateElement('next-workout-name', 'Erro ao carregar treino');
+        updateElement('workout-exercises', '');
+    }
+
+
+// Função para atualizar UI com plano semanal
+function atualizarUIComPlanoSemanal(weekPlan) {
+    try {
+        // Atualizar indicador da semana
+        const today = new Date().getDay();
+        const dayElements = document.querySelectorAll('.day-modern');
+        
+        dayElements.forEach((dayEl, index) => {
+            const dayPlan = weekPlan[index];
+            const typeEl = dayEl.querySelector('.day-type');
+            const indicatorEl = dayEl.querySelector('.day-indicator');
+            
+            if (dayPlan && typeEl) {
+                if (dayPlan.tipo === 'folga') {
+                    typeEl.textContent = 'Folga';
+                } else if (dayPlan.tipo === 'Cardio') {
+                    typeEl.textContent = 'Cardio';
+                } else {
+                    typeEl.textContent = `Treino ${dayPlan.tipo}`;
+                }
+            }
+            
+            if (indicatorEl) {
+                indicatorEl.classList.remove('active', 'completed');
+                
+                if (index === today) {
+                    indicatorEl.classList.add('active');
+                } else if (index < today && dayPlan?.concluido) {
+                    indicatorEl.classList.add('completed');
+                }
+            }
+        });
+        
+        console.log('[atualizarUIComPlanoSemanal] UI da semana atualizada');
+        
+    } catch (error) {
+        console.error('[atualizarUIComPlanoSemanal] Erro:', error);
+    }
+}
+
+// Função melhorada para configurar botão
+function configurarBotaoIniciar() {
+    const startBtn = document.getElementById('start-workout-btn');
+    if (!startBtn) {
+        console.warn('[configurarBotaoIniciar] Botão start-workout-btn não encontrado');
+        return;
+    }
+    
+    const workout = AppState.get('currentWorkout');
+    
+    if (workout) {
+        startBtn.disabled = false;
+        startBtn.onclick = () => {
+            if (workout.tipo === 'folga') {
+                showNotification('Hoje é dia de descanso! 😴', 'info');
+            } else if (workout.tipo === 'cardio') {
+                showNotification('Hora do cardio! 🏃‍♂️', 'info');
+            } else {
+                // Iniciar treino de força (implementar depois)
+                showNotification('Treino de força em desenvolvimento 💪', 'info');
+            }
+        };
+        console.log('[configurarBotaoIniciar] Botão configurado para:', workout.tipo);
+    } else {
+        startBtn.disabled = true;
+        startBtn.onclick = () => {
+            showNotification('Configure seu planejamento primeiro', 'warning');
+        };
+        console.log('[configurarBotaoIniciar] Botão desabilitado - sem treino');
+    }
+}
+
+// Função auxiliar para atualizar elementos (já existia)
+function updateElement(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value;
+    } else {
+        console.warn(`[updateElement] Elemento ${id} não encontrado`);
+    }
+}
+
     try {
         const currentUser = AppState.get('currentUser');
         if (!currentUser) {
@@ -45,7 +298,7 @@ export async function carregarDashboard() {
         console.error('Erro ao carregar dashboard:', error);
         showNotification('Erro ao carregar dados', 'error');
     }
-}
+
 // (REMOVIDO BLOCO DUPLICADO E INVÁLIDO)
 
 

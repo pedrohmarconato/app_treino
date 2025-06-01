@@ -142,7 +142,7 @@ function renderizarPlanejamentoExistente() {
 
 // Validar planejamento
 function validarPlanejamento() {
-    const btnSalvar = document.getElementById('confirm-plan-btn');
+    const btnSalvar = document.querySelector('.btn-save') || document.getElementById('confirm-plan-btn');
     const validationMessageElement = document.getElementById('validationMessage');
     
     let diasPreenchidos = 0;
@@ -152,6 +152,66 @@ function validarPlanejamento() {
 
     // Contar dias preenchidos
     for (const diaKey in planejamentoAtual) {
+        if (planejamentoAtual.hasOwnProperty(diaKey) && planejamentoAtual[diaKey]) {
+            diasPreenchidos++;
+            const treinoDoDia = planejamentoAtual[diaKey];
+            if (treinoDoDia.categoria === 'muscular') {
+                tiposMuscularesNoPlano[treinoDoDia.tipo] = (tiposMuscularesNoPlano[treinoDoDia.tipo] || 0) + 1;
+            }
+        }
+    }
+
+    // Validação 1: Todos os 7 dias devem estar preenchidos
+    if (diasPreenchidos < 7) {
+        messages.push(`❌ Preencha todos os 7 dias da semana (faltam ${7 - diasPreenchidos}).`);
+        isValid = false;
+    }
+
+    // Validação 2: Não repetir grupos musculares (opcional, pode relaxar)
+    for (const tipo in tiposMuscularesNoPlano) {
+        if (tiposMuscularesNoPlano[tipo] > 1) {
+            messages.push(`⚠️ O grupo muscular '${tipo}' está repetido.`);
+            // Não invalidar completamente, apenas avisar
+        }
+    }
+
+    // Validação 3: Pelo menos um treino na semana (folga e cardio são válidos)
+    const temAlgumTreino = Object.values(planejamentoAtual).some(treino => 
+        treino && (treino.categoria === 'muscular' || treino.categoria === 'cardio')
+    );
+    
+    if (!temAlgumTreino && diasPreenchidos > 0) {
+        messages.push(`❌ Adicione pelo menos um treino na semana.`);
+        isValid = false;
+    }
+
+    // Atualizar UI
+    if (validationMessageElement) {
+        validationMessageElement.classList.remove('success', 'error');
+        
+        if (isValid && diasPreenchidos === 7) {
+            validationMessageElement.textContent = '✅ Planejamento válido! Pronto para salvar.';
+            validationMessageElement.classList.add('success');
+            validationMessageElement.style.display = 'block';
+        } else if (messages.length > 0) {
+            validationMessageElement.innerHTML = messages.join('<br>');
+            validationMessageElement.classList.add('error');
+            validationMessageElement.style.display = 'block';
+        } else {
+            validationMessageElement.style.display = 'none';
+        }
+    }
+
+    if (btnSalvar) {
+        btnSalvar.disabled = !isValid || diasPreenchidos < 7;
+    }
+
+    console.log('[validarPlanejamento] Validação:', { isValid, diasPreenchidos, messages });
+    return isValid && diasPreenchidos === 7;
+}
+
+
+    for (const diaKey in planejamentoAtual) {   
         if (planejamentoAtual.hasOwnProperty(diaKey) && planejamentoAtual[diaKey]) {
             diasPreenchidos++;
             const treinoDoDia = planejamentoAtual[diaKey];
@@ -207,7 +267,7 @@ function validarPlanejamento() {
     }
 
     return isValid && diasPreenchidos === 7;
-}
+
 
 // Abrir seletor de treino
 window.abrirSeletorTreino = function(dia, nomeDia) {
@@ -384,6 +444,190 @@ window.removerTreinoDoDia = function(dia) {
 
 // Salvar planejamento semanal
 export async function salvarPlanejamentoSemanal() {
+    console.log('[salvarPlanejamentoSemanal] Iniciando salvamento...');
+    
+    if (!validarPlanejamento()) {
+        showNotification('Planejamento inválido. Verifique as mensagens.', 'error');
+        return;
+    }
+
+    if (!usuarioIdAtual) {
+        showNotification('Erro: usuário não identificado', 'error');
+        return;
+    }
+    
+    try {
+        showNotification('Salvando planejamento...', 'info');
+        
+        // 1. Converter planejamento para formato do Supabase
+        const planejamentoParaSupabase = {};
+        for (let dia = 0; dia < 7; dia++) {
+            const diaKey = getDiaKey(dia); // domingo, segunda, etc.
+            const treino = planejamentoAtual[diaKey];
+            
+            if (treino) {
+                planejamentoParaSupabase[dia] = {
+                    tipo: treino.tipo,
+                    categoria: treino.categoria,
+                    numero_treino: null,
+                    concluido: false
+                };
+            } else {
+                planejamentoParaSupabase[dia] = {
+                    tipo: 'folga',
+                    categoria: 'folga',
+                    numero_treino: null,
+                    concluido: false
+                };
+            }
+        }
+        
+        console.log('[salvarPlanejamentoSemanal] Planejamento convertido:', planejamentoParaSupabase);
+        
+        // 2. Salvar no Supabase usando o serviço
+        const resultado = await saveWeeklyPlan(usuarioIdAtual, planejamentoParaSupabase);
+        
+        if (!resultado.success) {
+            throw new Error(resultado.error || 'Erro ao salvar no banco');
+        }
+        
+        console.log('[salvarPlanejamentoSemanal] Salvo no Supabase com sucesso');
+        
+        // 3. Salvar também no localStorage como backup
+        const weekPlanLocalStorage = {};
+        for (let dia = 0; dia < 7; dia++) {
+            if (planejamentoParaSupabase[dia]) {
+                weekPlanLocalStorage[dia] = planejamentoParaSupabase[dia].tipo;
+            } else {
+                weekPlanLocalStorage[dia] = 'folga';
+            }
+        }
+        saveWeekPlan(usuarioIdAtual, weekPlanLocalStorage);
+        
+        console.log('[salvarPlanejamentoSemanal] Salvo no localStorage como backup');
+        
+        // 4. Atualizar estado global diretamente (sem weeklyPlanManager por enquanto)
+        AppState.set('weekPlan', planejamentoParaSupabase);
+        
+        // 5. Simular treino do dia para evitar erro de inicialização
+        const hoje = new Date().getDay();
+        const treinoDoDia = planejamentoParaSupabase[hoje];
+        
+        if (treinoDoDia) {
+            const mockWorkout = {
+                tipo: treinoDoDia.tipo,
+                nome: treinoDoDia.tipo === 'folga' ? 'Dia de Folga' : 
+                      treinoDoDia.tipo === 'Cardio' ? 'Cardio' : 
+                      `Treino ${treinoDoDia.tipo}`,
+                exercicios: [],
+                numero_treino: treinoDoDia.numero_treino
+            };
+            
+            AppState.set('currentWorkout', mockWorkout);
+            console.log('[salvarPlanejamentoSemanal] Treino do dia definido:', mockWorkout);
+        }
+        
+        // 6. Feedback e navegação
+        showNotification('✅ Planejamento salvo com sucesso!', 'success');
+        fecharModalPlanejamento();
+        
+        // 7. Navegar para home
+        mostrarTela('home-screen');
+        
+        // 8. Carregar dashboard (com try/catch para evitar erros)
+        try {
+            if (window.carregarDashboard) {
+                await window.carregarDashboard();
+                console.log('[salvarPlanejamentoSemanal] Dashboard carregado');
+            }
+        } catch (dashboardError) {
+            console.warn('[salvarPlanejamentoSemanal] Erro no dashboard (não crítico):', dashboardError);
+            // Não quebrar o fluxo por erro no dashboard
+        }
+        
+        console.log('[salvarPlanejamentoSemanal] Salvamento concluído com sucesso!');
+        
+    } catch (error) {
+        console.error('[salvarPlanejamentoSemanal] Erro:', error);
+        showNotification('Erro ao salvar planejamento: ' + error.message, 'error');
+    }
+}
+
+// Função auxiliar para mapear índice do dia para string
+function getDiaKey(diaIndex) {
+    const dias = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+    return dias[diaIndex];
+}
+
+
+    const btnSalvar = document.querySelector('.btn-save') || document.getElementById('confirm-plan-btn');
+    const validationMessageElement = document.getElementById('validationMessage');
+    
+    let diasPreenchidos = 0;
+    let isValid = true;
+    const messages = [];
+    const tiposMuscularesNoPlano = {};
+
+    // Contar dias preenchidos
+    for (const diaKey in planejamentoAtual) {
+        if (planejamentoAtual.hasOwnProperty(diaKey) && planejamentoAtual[diaKey]) {
+            diasPreenchidos++;
+            const treinoDoDia = planejamentoAtual[diaKey];
+            if (treinoDoDia.categoria === 'muscular') {
+                tiposMuscularesNoPlano[treinoDoDia.tipo] = (tiposMuscularesNoPlano[treinoDoDia.tipo] || 0) + 1;
+            }
+        }
+    }
+
+    // Validação 1: Todos os 7 dias devem estar preenchidos
+    if (diasPreenchidos < 7) {
+        messages.push(`❌ Preencha todos os 7 dias da semana (faltam ${7 - diasPreenchidos}).`);
+        isValid = false;
+    }
+
+    // Validação 2: Não repetir grupos musculares (opcional, pode relaxar)
+    for (const tipo in tiposMuscularesNoPlano) {
+        if (tiposMuscularesNoPlano[tipo] > 1) {
+            messages.push(`⚠️ O grupo muscular '${tipo}' está repetido.`);
+            // Não invalidar completamente, apenas avisar
+        }
+    }
+
+    // Validação 3: Pelo menos um treino na semana (folga e cardio são válidos)
+    const temAlgumTreino = Object.values(planejamentoAtual).some(treino => 
+        treino && (treino.categoria === 'muscular' || treino.categoria === 'cardio')
+    );
+    
+    if (!temAlgumTreino && diasPreenchidos > 0) {
+        messages.push(`❌ Adicione pelo menos um treino na semana.`);
+        isValid = false;
+    }
+
+    // Atualizar UI
+    if (validationMessageElement) {
+        validationMessageElement.classList.remove('success', 'error');
+        
+        if (isValid && diasPreenchidos === 7) {
+            validationMessageElement.textContent = '✅ Planejamento válido! Pronto para salvar.';
+            validationMessageElement.classList.add('success');
+            validationMessageElement.style.display = 'block';
+        } else if (messages.length > 0) {
+            validationMessageElement.innerHTML = messages.join('<br>');
+            validationMessageElement.classList.add('error');
+            validationMessageElement.style.display = 'block';
+        } else {
+            validationMessageElement.style.display = 'none';
+        }
+    }
+
+    if (btnSalvar) {
+        btnSalvar.disabled = !isValid || diasPreenchidos < 7;
+    }
+
+    console.log('[validarPlanejamento] Validação:', { isValid, diasPreenchidos, messages });
+    return isValid && diasPreenchidos === 7;
+
+
     if (!validarPlanejamento()) {
         showNotification('Planejamento inválido. Verifique as mensagens.', 'error');
         return;
@@ -441,7 +685,7 @@ export async function salvarPlanejamentoSemanal() {
         console.error('[salvarPlanejamentoSemanal] Erro:', error);
         showNotification('Erro ao salvar planejamento: ' + error.message, 'error');
     }
-}
+
 
 // Fechar modal de planejamento
 export function fecharModalPlanejamento() {
@@ -470,3 +714,15 @@ export async function needsWeekPlanningAsync(userId) {
 
 // Exportar função removerTreinoDoDia para compatibilidade
 export const removerTreinoDoDia = window.removerTreinoDoDia;
+
+// Função global para compatibilidade com o template
+window.salvarPlanejamento = async function() {
+    await salvarPlanejamentoSemanal();
+};
+
+// Também disponibilizar outras funções necessárias
+window.inicializarPlanejamento = inicializarPlanejamento;
+window.fecharModalPlanejamento = fecharModalPlanejamento;
+
+// Exportar para uso direto também
+export { salvarPlanejamentoSemanal as salvarPlanejamento };
