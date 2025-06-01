@@ -44,8 +44,8 @@ export async function getWeekPlanFromSupabase(userId) {
                 usuario_id: userId,
                 ano: year,
                 semana: week
-            },
-            single: true
+            }
+            // Não usar 'single: true' para evitar erro 406
         });
 
         if (error && error.code !== 'PGRST116') { // PGRST116 = not found
@@ -53,7 +53,15 @@ export async function getWeekPlanFromSupabase(userId) {
             return null;
         }
 
-        return data?.planejamento || null;
+        // Se não houver dados, retorna null
+        if (!data || data.length === 0) return null;
+
+        // Se houver apenas um registro, retorna o planejamento
+        if (data.length === 1) return data[0].planejamento || null;
+
+        // Se houver múltiplos registros, retorna o mais recente pelo updated_at
+        const sorted = data.slice().sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        return sorted[0].planejamento || null;
     } catch (error) {
         console.error('Erro ao buscar planejamento do Supabase:', error);
         return null;
