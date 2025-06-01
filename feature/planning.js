@@ -255,10 +255,6 @@ function validarPlanejamento() {
 // [Copiar todas as outras funções do arquivo original aqui...]
 
 // Funções mantidas sem alteração:
-function renderizarTreinosDisponiveis() {
-    console.log('[renderizarTreinosDisponiveis] Treinos carregados para popup:', treinosDisponiveis);
-}
-
 function renderizarPlanejamentoExistente() {
     Object.keys(planejamentoAtual).forEach(dia => {
         const treino = planejamentoAtual[dia];
@@ -331,60 +327,6 @@ window.fecharSeletorTreino = function() {
     nomeDiaAtual = '';
 };
 
-function criarOpcaoTreino(treino, diaDestino) {
-    const option = document.createElement('div');
-    option.className = 'treino-option';
-    
-    let isDisabled = false;
-    let statusText = '';
-    
-    if (treino.categoria === 'muscular') {
-        for (const dia in planejamentoAtual) {
-            const treinoExistente = planejamentoAtual[dia];
-            if (treinoExistente && treinoExistente.tipo === treino.tipo && dia != diaDestino) {
-                isDisabled = true;
-                statusText = 'Já utilizado';
-                break;
-            }
-        }
-    }
-    
-    if (isDisabled) {
-        option.classList.add('disabled');
-    }
-    
-    option.innerHTML = `
-        <span class="option-emoji">${treino.emoji}</span>
-        <div class="option-info">
-            <div class="option-name">${treino.nome}</div>
-            <div class="option-description">${treino.descricao}</div>
-            ${statusText ? `<div class="option-status">${statusText}</div>` : ''}
-        </div>
-    `;
-    
-    if (!isDisabled) {
-        option.addEventListener('click', () => {
-            selecionarTreinoParaDia(treino, diaDestino);
-        });
-    }
-    
-    return option;
-}
-
-function selecionarTreinoParaDia(treino, dia) {
-    planejamentoAtual[dia] = {
-        id: treino.id,
-        nome: treino.nome,
-        tipo: treino.tipo,
-        categoria: treino.categoria
-    };
-    
-    atualizarVisualizacaoDia(dia, treino);
-    fecharSeletorTreino();
-    validarPlanejamento();
-    showNotification(`${treino.nome} adicionado para ${nomeDiaAtual}`, 'success');
-}
-
 function atualizarVisualizacaoDia(dia, treino) {
     const dayContent = document.getElementById(`dia-${dia}-content`);
     if (!dayContent) return;
@@ -449,36 +391,7 @@ export function fecharModalPlanejamento() {
 export function removerTreinoDoDia(dia) {
     return removerTreinoDoDiaMobile(dia);
 }
-
-// Lógica do planejamento semanal
-
-import AppState from '../state/appState.js';
-import { saveWeekPlan, getWeekPlan, saveWeekPlanToSupabase, getWeekPlanFromSupabase } from '../utils/weekPlanStorage.js';
-import { fetchTiposTreinoMuscular } from '../services/userService.js';
-import { showNotification } from '../ui/notifications.js';
-import { mostrarTela } from '../ui/navigation.js';
-
-// Variáveis do planejamento
-let planejamentoAtual = {};
-let treinosDisponiveis = [];
-let usuarioIdAtual = null;
-let diaAtualSelecionado = null;
-let nomeDiaAtual = '';
-
-// Mapear emojis para os tipos de treino
-const treinoEmojis = {
-    'Costas': '🔙',
-    'Peito': '💪',
-    'Pernas': '🦵',
-    'Ombro e Braço': '💪',
-    'Cardio': '🏃',
-    'Folga': '😴',
-    'Ombro': '🎯',
-    'Braço': '💪'
-};
-
-// Inicializar planejamento - SUPABASE + localStorage
-export async function inicializarPlanejamento(usuarioId) {
+// FIM DO ARQUIVO - sem duplicidade de imports ou variáveis
     console.log('[inicializarPlanejamento] Iniciando para usuário:', usuarioId);
     usuarioIdAtual = usuarioId;
     
@@ -534,28 +447,11 @@ export async function inicializarPlanejamento(usuarioId) {
         console.error('[inicializarPlanejamento] Erro:', error);
         showNotification('Erro ao carregar dados do planejamento', 'error');
     }
-}
+
 
 // Renderizar treinos disponíveis (atualizada para mobile)
 function renderizarTreinosDisponiveis() {
-    // No layout mobile, não precisamos renderizar treinos disponíveis
-    // pois eles aparecem no popup quando o usuário clica no dia
-    console.log('[renderizarTreinosDisponiveis] Treinos carregados para popup:', treinosDisponiveis);
-}
 
-// Renderizar planejamento existente (atualizada para mobile)
-function renderizarPlanejamentoExistente() {
-    Object.keys(planejamentoAtual).forEach(dia => {
-        const treino = planejamentoAtual[dia];
-        if (treino && treino.id && treino.nome && treino.tipo) {
-            atualizarVisualizacaoDia(dia, treino);
-        }
-    });
-    validarPlanejamento();
-}
-
-// Atualizar função de validação para mobile
-function validarPlanejamento() {
     const btnSalvar = document.getElementById('confirm-plan-btn');
     const validationMessageElement = document.getElementById('plan-validation-message');
     
@@ -619,8 +515,6 @@ function validarPlanejamento() {
     if (btnSalvar) {
         btnSalvar.disabled = !isValid || diasPreenchidos < 7;
     }
-
-    return isValid && diasPreenchidos === 7;
 }
 
 // Abrir seletor de treino
