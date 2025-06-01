@@ -1,6 +1,65 @@
 // js/utils/weekPlanStorage.js
 // Gerenciamento do plano semanal no localStorage
 
+// --- Integração com Supabase ---
+import { upsert, query } from '../services/supabaseService.js';
+
+// Salvar plano semanal no Supabase
+export async function saveWeekPlanToSupabase(userId, plan) {
+    try {
+        const now = new Date();
+        const year = now.getFullYear();
+        const week = getWeekNumber(now);
+
+        const { data, error } = await upsert('planejamento_semanal', {
+            usuario_id: userId,
+            ano: year,
+            semana: week,
+            planejamento: plan,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'usuario_id,ano,semana' });
+
+        if (error) {
+            console.error('Erro ao salvar no Supabase:', error);
+            return false;
+        }
+
+        console.log('Planejamento salvo no Supabase:', data);
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar planejamento no Supabase:', error);
+        return false;
+    }
+}
+
+// Buscar plano semanal do Supabase
+export async function getWeekPlanFromSupabase(userId) {
+    try {
+        const now = new Date();
+        const year = now.getFullYear();
+        const week = getWeekNumber(now);
+
+        const { data, error } = await query('planejamento_semanal', {
+            eq: {
+                usuario_id: userId,
+                ano: year,
+                semana: week
+            },
+            single: true
+        });
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+            console.error('Erro ao buscar do Supabase:', error);
+            return null;
+        }
+
+        return data?.planejamento || null;
+    } catch (error) {
+        console.error('Erro ao buscar planejamento do Supabase:', error);
+        return null;
+    }
+}
+
 // Obter chave da semana atual
 function getWeekKey() {
     const now = new Date();

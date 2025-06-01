@@ -1,4 +1,5 @@
 // js/features/workout.js
+import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 // Lógica da tela de treino
 
 import AppState from '../state/appState.js';
@@ -387,10 +388,11 @@ function mostrarTreinoConcluido() {
 window.finalizarTreino = async function() {
     try {
         const currentUser = AppState.get('currentUser');
-        const workout = AppState.get('currentWorkout');
         
-        // Marcar treino como concluído
-        await marcarTreinoConcluido(currentUser.id, workout.id);
+        if (!currentUser) {
+            showNotification('Erro: usuário não identificado', 'error');
+            return;
+        }
         
         // Fechar modal
         const modal = document.getElementById('workout-complete-modal');

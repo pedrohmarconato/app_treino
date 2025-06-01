@@ -5,6 +5,7 @@ import AppState from '../state/appState.js';
 import { fetchUsuarios, fetchProtocoloAtivoUsuario } from '../services/userService.js';
 import { fetchProximoTreino } from '../services/workoutService.js';
 import { needsWeekPlanning, getWeekPlan } from '../utils/weekPlanStorage.js';
+import { needsWeekPlanningAsync } from './planning.js';
 import { showLoading, hideLoading, showNotification } from '../ui/notifications.js';
 import { mostrarTela, adicionarBotaoOrdemSemana } from '../ui/navigation.js';
 import { carregarDashboard } from './dashboard.js';
@@ -95,8 +96,8 @@ export async function selecionarUsuario(usuario) {
         AppState.set('currentUser', usuario);
         console.log('[selecionarUsuario] Usuário definido no AppState:', usuario.nome);
 
-        // 2. Verificar se precisa de planejamento semanal
-        if (needsWeekPlanning(usuario.id)) {
+        // 2. Verificar se precisa de planejamento semanal (SUPABASE + localStorage)
+        if (await needsWeekPlanningAsync(usuario.id)) {
             console.log('[selecionarUsuario] Necessário planejamento semanal para:', usuario.nome);
             mostrarModalPlanejamento(usuario.id); // Modal de planejamento cuidará do próximo passo
             return; // Encerra aqui, o fluxo continua após o planejamento

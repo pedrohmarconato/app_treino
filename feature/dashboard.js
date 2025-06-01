@@ -5,37 +5,40 @@ import AppState from '../state/appState.js';
 import { fetchMetricasUsuario } from '../services/userService.js';
 import { fetchExerciciosTreino, fetchDadosIndicadores } from '../services/workoutService.js';
 import { getWeekPlan } from '../utils/weekPlanStorage.js';
+import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 import { showNotification } from '../ui/notifications.js';
 import { iniciarTreino } from './workout.js';
 
 // Carregar dados do dashboard
 export async function carregarDashboard() {
     try {
-        // Atualizar indicadores visuais
-        atualizarIndicadorSemana();
-        renderCustomWeekList();
-        
         const currentUser = AppState.get('currentUser');
-        const currentProtocol = AppState.get('currentProtocol');
-        
-        if (!currentUser || !currentProtocol) {
-            console.warn('Usuário ou protocolo não definido');
+        if (!currentUser) {
+            console.warn('Usuário não definido');
             return;
         }
 
-        // Carregar indicadores competitivos (que inclui estatisticas/metricas)
-        await carregarIndicadores(); 
+        // NOVO: Inicializar plano semanal
+        const planResult = await weeklyPlanManager.initialize(currentUser.id);
+        
+        if (planResult.needsPlanning) {
+            // Redirecionar para planejamento
+            if (window.renderTemplate) {
+                window.renderTemplate('planejamentoSemanalPage');
+            }
+            return;
+        }
 
-        // Carregar métricas do usuário (agora usando dados do AppState)
-        await carregarMetricas(); 
+        // Carregar outros dados...
+        await carregarIndicadores();
+        await carregarMetricas();
         
-        // Atualizar informações do protocolo
-        atualizarInfoProtocolo();
+        // NOVO: Atualizar UI com dados do plano semanal
+        atualizarUIComPlanoSemanal();
         
-        // Carregar informações do próximo treino
-        await carregarProximoTreino();
+        // Carregar informações do próximo treino (agora baseado no plano)
+        await carregarProximoTreinoFromPlan();
         
-        // Configurar botão de início
         configurarBotaoIniciar();
         
     } catch (error) {
@@ -43,6 +46,8 @@ export async function carregarDashboard() {
         showNotification('Erro ao carregar dados', 'error');
     }
 }
+// (REMOVIDO BLOCO DUPLICADO E INVÁLIDO)
+
 
 // Carregar métricas do usuário (usando dados do AppState)
 async function carregarMetricas() {
