@@ -1,4 +1,4 @@
-// js/features/dashboard.js
+// js/features/dashboard.js - VERSÃO CORRIGIDA
 // Lógica do dashboard/home
 
 import AppState from '../state/appState.js';
@@ -47,7 +47,7 @@ export async function carregarDashboard() {
         }
         
         // 4. Carregar treino de hoje (simplificado)
-        await carregarProximoTreinoSimplificado();
+        await carregarProximoTreinoFromPlan();
         
         // 5. Configurar botão de iniciar
         configurarBotaoIniciar();
@@ -68,8 +68,7 @@ export async function carregarDashboard() {
     }
 }
 
-// Função simplificada para carregar próximo treino
-// Versão correta: carregarProximoTreinoFromPlan
+// Função corrigida para carregar próximo treino
 async function carregarProximoTreinoFromPlan() {
     try {
         const currentUser = AppState.get('currentUser');
@@ -78,7 +77,7 @@ async function carregarProximoTreinoFromPlan() {
         if (!weekPlan) {
             updateElement('next-workout-name', 'Configure seu planejamento');
             updateElement('workout-exercises', 'Nenhum treino configurado');
-            return; // Este return está dentro da função - OK
+            return;
         }
         
         // Determinar treino de hoje
@@ -88,21 +87,21 @@ async function carregarProximoTreinoFromPlan() {
         if (!treinoDoDia) {
             updateElement('next-workout-name', 'Nenhum treino hoje');
             updateElement('workout-exercises', 'Dia livre');
-            return; // Este return está dentro da função - OK
+            return;
         }
         
         if (treinoDoDia.tipo === 'folga') {
             updateElement('next-workout-name', 'Dia de Folga');
             updateElement('workout-exercises', 'Descanso');
             AppState.set('currentWorkout', { tipo: 'folga', nome: 'Dia de Folga' });
-            return; // Este return está dentro da função - OK
+            return;
         }
         
         if (treinoDoDia.tipo === 'Cardio') {
             updateElement('next-workout-name', 'Cardio');
             updateElement('workout-exercises', 'Exercícios cardiovasculares');
             AppState.set('currentWorkout', { tipo: 'cardio', nome: 'Cardio' });
-            return; // Este return está dentro da função - OK
+            return;
         }
         
         // Treino muscular
@@ -123,64 +122,6 @@ async function carregarProximoTreinoFromPlan() {
         updateElement('workout-exercises', '');
     }
 }
-
-// Função simplificada para carregar próximo treino (mantida para compatibilidade, mas agora chama a nova)
-async function carregarProximoTreinoSimplificado() {
-    await carregarProximoTreinoFromPlan();
-}
-
-    try {
-        const currentUser = AppState.get('currentUser');
-        const weekPlan = AppState.get('weekPlan');
-        
-        if (!weekPlan) {
-            updateElement('next-workout-name', 'Configure seu planejamento');
-            updateElement('workout-exercises', 'Nenhum treino configurado');
-            return;
-        }
-        
-        // Determinar treino de hoje
-        const hoje = new Date().getDay();
-        const treinoDoDia = weekPlan[hoje];
-        
-        if (!treinoDoDia) {
-            updateElement('next-workout-name', 'Nenhum treino hoje');
-            updateElement('workout-exercises', 'Dia livre');
-            return;
-        }
-        
-        if (treinoDoDia.tipo === 'folga') {
-            updateElement('next-workout-name', 'Dia de Folga');
-            updateElement('workout-exercises', 'Descanso');
-            AppState.set('currentWorkout', { tipo: 'folga', nome: 'Dia de Folga' });
-            return;
-        }
-        
-        if (treinoDoDia.tipo === 'Cardio') {
-            updateElement('next-workout-name', 'Cardio');
-            updateElement('workout-exercises', 'Exercícios cardiovasculares');
-            AppState.set('currentWorkout', { tipo: 'cardio', nome: 'Cardio' });
-            return;
-        }
-        
-        // Treino muscular
-        updateElement('next-workout-name', `Treino ${treinoDoDia.tipo}`);
-        updateElement('workout-exercises', 'Treino de força');
-        
-        AppState.set('currentWorkout', {
-            tipo: 'treino',
-            nome: `Treino ${treinoDoDia.tipo}`,
-            grupo_muscular: treinoDoDia.tipo
-        });
-        
-        console.log('[carregarProximoTreinoSimplificado] Treino configurado:', treinoDoDia);
-        
-    } catch (error) {
-        console.error('[carregarProximoTreinoSimplificado] Erro:', error);
-        updateElement('next-workout-name', 'Erro ao carregar treino');
-        updateElement('workout-exercises', '');
-    }
-
 
 // Função para atualizar UI com plano semanal
 function atualizarUIComPlanoSemanal(weekPlan) {
@@ -254,54 +195,6 @@ function configurarBotaoIniciar() {
     }
 }
 
-// Função auxiliar para atualizar elementos (já existia)
-function updateElement(id, value) {
-    const element = document.getElementById(id);
-    if (element) {
-        element.textContent = value;
-    } else {
-        console.warn(`[updateElement] Elemento ${id} não encontrado`);
-    }
-}
-
-    try {
-        const currentUser = AppState.get('currentUser');
-        if (!currentUser) {
-            console.warn('Usuário não definido');
-            return;
-        }
-
-        // NOVO: Inicializar plano semanal
-        const planResult = await weeklyPlanManager.initialize(currentUser.id);
-        
-        if (planResult.needsPlanning) {
-            // Redirecionar para planejamento
-            if (window.renderTemplate) {
-                window.renderTemplate('planejamentoSemanalPage');
-            }
-            return;
-        }
-
-        // Carregar outros dados...
-        await carregarIndicadores();
-        await carregarMetricas();
-        
-        // NOVO: Atualizar UI com dados do plano semanal
-        atualizarUIComPlanoSemanal();
-        
-        // Carregar informações do próximo treino (agora baseado no plano)
-        await carregarProximoTreinoFromPlan();
-        
-        configurarBotaoIniciar();
-        
-    } catch (error) {
-        console.error('Erro ao carregar dashboard:', error);
-        showNotification('Erro ao carregar dados', 'error');
-    }
-
-// (REMOVIDO BLOCO DUPLICADO E INVÁLIDO)
-
-
 // Carregar métricas do usuário (usando dados do AppState)
 async function carregarMetricas() {
     try {
@@ -317,19 +210,22 @@ async function carregarMetricas() {
                 updateElement('completed-workouts', fallbackMetricas.treinosConcluidos || 0);
                 updateElement('current-week', fallbackMetricas.semanaAtual || 1);
                 updateElement('progress-percentage', `${fallbackMetricas.progresso || 0}%`);
-                // ... (atualizar anel de progresso e barras com fallbackMetricas)
+                
+                // Atualizar anel de progresso
                 const progressRing = document.querySelector('.progress-ring-progress');
                 if (progressRing) {
                     const circumference = 2 * Math.PI * 40;
                     const offset = circumference - ((fallbackMetricas.progresso || 0) / 100) * circumference;
                     progressRing.style.strokeDashoffset = offset;
                 }
+                
                 const userProgressBar = document.getElementById('user-progress-bar');
                 if (userProgressBar) {
                     userProgressBar.style.width = `${((fallbackMetricas.treinosConcluidos || 0) / 4) * 100}%`;
                 }
+                
                 updateElement('user-workouts', fallbackMetricas.treinosConcluidos || 0);
-                return; // Sai após o fallback
+                return;
             } else {
                 console.error('Não foi possível buscar métricas: usuário não definido.');
                 // Definir valores padrão em caso de erro grave
@@ -341,9 +237,9 @@ async function carregarMetricas() {
         }
         
         // Atualizar elementos da UI com dados do AppState
-        updateElement('completed-workouts', metricas.total_treinos_realizados || metricas.treinosConcluidos || 0); // Ajustar para nome da coluna em v_estatisticas_usuarios
-        updateElement('current-week', metricas.semana_atual || metricas.semanaAtual || 1); // Ajustar
-        updateElement('progress-percentage', `${metricas.percentual_progresso || metricas.progresso || 0}%`); // Ajustar
+        updateElement('completed-workouts', metricas.total_treinos_realizados || metricas.treinosConcluidos || 0);
+        updateElement('current-week', metricas.semana_atual || metricas.semanaAtual || 1);
+        updateElement('progress-percentage', `${metricas.percentual_progresso || metricas.progresso || 0}%`);
         
         // Atualizar anel de progresso
         const progressRing = document.querySelector('.progress-ring-progress');
@@ -383,7 +279,6 @@ async function carregarIndicadores() {
             AppState.set('userMetrics', dados.estatisticas);
         } else {
             console.warn('Dados de estatísticas não retornados por fetchDadosIndicadores.');
-            // Considerar um fallback ou estado de erro se as métricas são cruciais aqui
             AppState.set('userMetrics', null); // Limpa para evitar dados obsoletos
         }
         
@@ -410,7 +305,7 @@ function atualizarInfoProtocolo() {
     }
 }
 
-// Carregar informações do próximo treino
+// Carregar informações do próximo treino (versão legada)
 async function carregarProximoTreino() {
     const workout = AppState.get('currentWorkout');
     const protocol = AppState.get('currentProtocol');
@@ -515,28 +410,13 @@ function getSemanaOrdem() {
     ];
 }
 
-// Configurar botão de iniciar treino
-function configurarBotaoIniciar() {
-    const startBtn = document.getElementById('start-workout-btn');
-    if (!startBtn) return;
-    
-    const workout = AppState.get('currentWorkout');
-    const exercises = AppState.get('currentExercises');
-    
-    if (workout && exercises && exercises.length > 0) {
-        startBtn.disabled = false;
-        startBtn.onclick = iniciarTreino;
-    } else {
-        startBtn.disabled = true;
-        startBtn.onclick = null;
-    }
-}
-
 // Função auxiliar para atualizar elementos
 function updateElement(id, value) {
     const element = document.getElementById(id);
     if (element) {
         element.textContent = value;
+    } else {
+        console.warn(`[updateElement] Elemento ${id} não encontrado`);
     }
 }
 

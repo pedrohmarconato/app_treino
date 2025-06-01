@@ -1,9 +1,9 @@
-// js/app.js - VERSÃO CORRIGIDA SEM RETURN ILEGAL
+// js/app.js - VERSÃO CORRIGIDA PARA NAVEGAÇÃO
 // Arquivo principal - inicialização e orquestração
 
 import AppState from '../state/appState.js';
 import { carregarDashboard } from '../feature/dashboard.js';
-import { inicializarPlanejamento, fecharModalPlanejamento, removerTreinoDoDia, salvarPlanejamentoSemanal } from '../feature/planning.js';
+import { inicializarPlanejamento, fecharModalPlanejamento, salvarPlanejamentoSemanal } from '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
 
@@ -75,13 +75,30 @@ async function initApp() {
 
 // Configurar funções globais para compatibilidade com templates
 function setupGlobalFunctions() {
-    // Navegação
-    window.mostrarTela = mostrarTela;
-    window.voltarParaHome = () => mostrarTela('home-screen');
+    // Navegação - CORRIGIDA
+    window.mostrarTela = (tela) => {
+        console.log('[app.js] Navegando via window.mostrarTela para:', tela);
+        mostrarTela(tela);
+    };
+    
+    window.voltarParaHome = () => {
+        console.log('[app.js] Voltando para home via window.voltarParaHome');
+        mostrarTela('home-screen');
+    };
+    
     window.logout = logout;
     
-    // Dashboard
-    window.carregarDashboard = carregarDashboard;
+    // Dashboard - CORRIGIDA
+    window.carregarDashboard = async () => {
+        console.log('[app.js] Carregando dashboard via window.carregarDashboard');
+        try {
+            await carregarDashboard();
+            console.log('[app.js] Dashboard carregado com sucesso');
+        } catch (error) {
+            console.error('[app.js] Erro ao carregar dashboard:', error);
+            showNotification('Erro ao carregar dados do dashboard', 'warning');
+        }
+    };
     
     // Login
     window.initLogin = async () => {
@@ -89,19 +106,20 @@ function setupGlobalFunctions() {
         return initLoginScreen();
     };
     
-    // Planejamento - CORREÇÃO PRINCIPAL
+    // Planejamento - CORRIGIDA
     window.salvarPlanejamento = async () => {
+        console.log('[app.js] Salvando planejamento via window.salvarPlanejamento');
         try {
             await salvarPlanejamentoSemanal();
+            console.log('[app.js] Planejamento salvo com sucesso');
         } catch (error) {
-            console.error('Erro ao salvar planejamento:', error);
+            console.error('[app.js] Erro ao salvar planejamento:', error);
             showNotification('Erro ao salvar planejamento', 'error');
         }
     };
     
     window.inicializarPlanejamento = inicializarPlanejamento;
     window.fecharModalPlanejamento = fecharModalPlanejamento;
-    window.removerTreinoDoDia = removerTreinoDoDia;
 
     // Ordem da semana
     window.mostrarOrdemSemana = (usuarioId) => {
@@ -117,6 +135,28 @@ function setupGlobalFunctions() {
     
     window.fecharSeletorTreino = window.fecharSeletorTreino || function() {
         console.warn('fecharSeletorTreino ainda não foi definida');
+    };
+
+    // NOVA: Função para forçar renderização da home
+    window.forcarRenderizacaoHome = () => {
+        console.log('[app.js] Forçando renderização da home...');
+        
+        setTimeout(() => {
+            if (window.renderTemplate) {
+                console.log('[app.js] Renderizando template home');
+                window.renderTemplate('home');
+                
+                // Aguardar renderização e carregar dashboard
+                setTimeout(async () => {
+                    console.log('[app.js] Carregando dashboard após renderização forçada');
+                    if (window.carregarDashboard) {
+                        await window.carregarDashboard();
+                    }
+                }, 300);
+            } else {
+                console.error('[app.js] window.renderTemplate não disponível para forçar renderização');
+            }
+        }, 100);
     };
 
     // Adicionar estilos de animação
@@ -180,13 +220,56 @@ function addAnimationStyles() {
         .pulse {
             animation: pulse 2s infinite;
         }
+        
+        /* NOVO: CSS para debug de navegação */
+        .debug-navigation {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 10000;
+            display: none;
+        }
+        
+        .debug-navigation.show {
+            display: block;
+        }
     `;
     document.head.appendChild(style);
+}
+
+// NOVA: Função de debug para navegação
+function debugNavigation(message) {
+    if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
+        return; // Só em desenvolvimento
+    }
+    
+    let debugEl = document.getElementById('debug-navigation');
+    if (!debugEl) {
+        debugEl = document.createElement('div');
+        debugEl.id = 'debug-navigation';
+        debugEl.className = 'debug-navigation';
+        document.body.appendChild(debugEl);
+    }
+    
+    debugEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    debugEl.classList.add('show');
+    
+    setTimeout(() => {
+        debugEl.classList.remove('show');
+    }, 3000);
 }
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js] 📄 DOM carregado');
+    
+    // Debug de navegação
+    window.debugNavigation = debugNavigation;
     
     // Aguardar templates carregarem com timeout
     const initTimeout = setTimeout(() => {
@@ -218,7 +301,7 @@ window.addEventListener('error', (event) => {
         event.filename.includes('127.0.0.1') ||
         event.filename.includes('chrome-extension')
     )) {
-        return; // Não mostrar notificação para erros de dev
+        return;
     }
     
     // Mostrar notificação apenas para erros críticos
@@ -276,6 +359,10 @@ if (typeof window !== 'undefined') {
             } else {
                 console.log(`❌ Função ${name} NÃO está disponível`);
             }
+        },
+        forceHome: () => {
+            console.log('🏠 Forçando navegação para home...');
+            window.forcarRenderizacaoHome();
         }
     };
 }

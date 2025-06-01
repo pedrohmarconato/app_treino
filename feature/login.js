@@ -1,4 +1,4 @@
-// js/features/login.js
+// js/features/login.js - VERSÃO CORRIGIDA
 // Lógica da tela de login e seleção de usuário
 
 import AppState from '../state/appState.js';
@@ -84,65 +84,72 @@ function renderizarUsuarios(usuarios) {
     console.log('[renderizarUsuarios] Renderização concluída');
 }
 
-// Resto do código permanece igual...
-
-
-
-
-// Selecionar usuário e navegar para a home ou planejamento (SUPER SIMPLIFICADO)
+// CORREÇÃO PRINCIPAL: Selecionar usuário e navegar SEMPRE para HOME
 export async function selecionarUsuario(usuario) {
     try {
+        console.log('[selecionarUsuario] ===== SELEÇÃO DE USUÁRIO =====');
+        console.log('[selecionarUsuario] Usuário selecionado:', usuario.nome);
+        
         // 1. Salvar usuário no estado
         AppState.set('currentUser', usuario);
         console.log('[selecionarUsuario] Usuário definido no AppState:', usuario.nome);
 
         // 2. Verificar se precisa de planejamento semanal (SUPABASE + localStorage)
-        if (await needsWeekPlanningAsync(usuario.id)) {
-            console.log('[selecionarUsuario] Necessário planejamento semanal para:', usuario.nome);
-            mostrarModalPlanejamento(usuario.id); // Modal de planejamento cuidará do próximo passo
-            return; // Encerra aqui, o fluxo continua após o planejamento
+        const precisaPlanejamento = await needsWeekPlanningAsync(usuario.id);
+        console.log('[selecionarUsuario] Precisa de planejamento?', precisaPlanejamento);
+        
+        if (precisaPlanejamento) {
+            console.log('[selecionarUsuario] ➡️ REDIRECIONANDO para planejamento semanal');
+            mostrarModalPlanejamento(usuario.id);
+            return;
         }
         
-        // 3. Se não precisa de planejamento, ir para a OrderWeekPage (dados carregam lá)
-        console.log('[selecionarUsuario] Planejamento semanal não necessário. Navegando para OrderWeekPage para:', usuario.nome);
+        // 3. CORREÇÃO: SEMPRE ir para home, nunca para OrderWeekPage
+        console.log('[selecionarUsuario] ➡️ REDIRECIONANDO para HOME (planejamento já existe)');
+        
+        // Navegar para home
         if (window.renderTemplate) {
-            window.renderTemplate('orderWeek');
+            console.log('[selecionarUsuario] Usando renderTemplate para ir para home');
+            window.renderTemplate('home');
         } else {
-            console.error('[selecionarUsuario] window.renderTemplate não está definido. Não é possível navegar para OrderWeekPage. Verifique se o sistema de templates está carregado.');
-            // Fallback: ir para home-screen se renderTemplate não estiver disponível
-            showNotification('Erro ao tentar abrir a página de ordem semanal. Exibindo dashboard.', 'warning');
+            console.log('[selecionarUsuario] Usando mostrarTela para ir para home-screen');
             mostrarTela('home-screen');
         }
         
+        // Carregar dashboard após navegação
+        setTimeout(async () => {
+            console.log('[selecionarUsuario] Carregando dashboard...');
+            try {
+                if (window.carregarDashboard) {
+                    await window.carregarDashboard();
+                    console.log('[selecionarUsuario] ✅ Dashboard carregado com sucesso');
+                } else {
+                    console.warn('[selecionarUsuario] window.carregarDashboard não disponível');
+                }
+            } catch (dashboardError) {
+                console.error('[selecionarUsuario] Erro no dashboard:', dashboardError);
+            }
+        }, 300);
+        
+        console.log('[selecionarUsuario] ===== SELEÇÃO CONCLUÍDA =====');
+        
     } catch (error) {
-        console.error('Erro crítico ao selecionar usuário:', error);
-        // Idealmente, showNotification ainda funcionaria, mas como estamos removendo show/hideLoading daqui,
-        // a UI de notificação precisa ser robusta ou gerenciada de forma diferente em erros críticos como este.
+        console.error('[selecionarUsuario] Erro crítico:', error);
         showNotification('Erro grave ao selecionar usuário. Tente recarregar.', 'error');
     }
-    // Não há mais hideLoading() aqui, pois showLoading() foi removido.
-    // A tela de login deve desaparecer ao navegar para 'home-screen' ou ao modal ser exibido.
 }
 
 // Mostrar tela de planejamento semanal
 function mostrarModalPlanejamento(usuarioId) {
-    console.log('[mostrarModalPlanejamento -> mostrarTelaPlanejamentoSemanal] Iniciando para usuário:', usuarioId);
+    console.log('[mostrarModalPlanejamento] Iniciando para usuário:', usuarioId);
     
     // Usar o sistema de navegação para mostrar a tela de planejamento
-    // O ID do usuário será passado para a função de inicialização através do onScreenRendered ou similar
     if (window.mostrarTela) {
         window.mostrarTela('planejamentoSemanal', { usuarioId: usuarioId }); 
-        // A passagem de usuarioId como segundo argumento para mostrarTela
-        // dependerá da implementação de mostrarTela e onScreenRendered.
-        // Se onScreenRendered não aceitar parâmetros, precisaremos de um estado global ou outra forma de passar o usuarioId.
     } else {
         console.error('Função window.mostrarTela não encontrada.');
         showNotification('Erro ao tentar abrir o planejamento semanal.', 'error');
     }
-    
-    // A inicialização do planejamento (window.inicializarPlanejamento(usuarioId))
-    // deverá ser chamada após a tela ser renderizada, 
-    // idealmente dentro de um callback como onScreenRendered('planejamentoSemanal', { usuarioId }).
 }
 
 // Exportar para uso global
@@ -157,8 +164,6 @@ function abrirPlanejamentoParaUsuarioAtual() {
     } else {
         console.error('[abrirPlanejamentoParaUsuarioAtual] Nenhum usuário atual encontrado no AppState.');
         showNotification('Faça login para acessar o planejamento.', 'error');
-        // Opcionalmente, redirecionar para a tela de login se nenhum usuário estiver logado
-        // window.mostrarTela('login-screen'); 
     }
 }
 window.abrirPlanejamentoParaUsuarioAtual = abrirPlanejamentoParaUsuarioAtual;

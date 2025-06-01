@@ -1623,6 +1623,114 @@ button {
     position: fixed;
     top: 0;
     left: 0;
+}
+
+/* =================================== */
+/* CORREÇÃO FINAL - VISIBILIDADE HOME */
+/* =================================== */
+
+/* Garantir que o app container esteja sempre visível */
+#app {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 1 !important;
+    background: var(--bg-primary) !important;
+    min-height: 100vh !important;
+}
+
+/* Garantir que a home screen seja sempre visível quando ativa */
+#home-screen {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 2 !important;
+    background: var(--bg-primary) !important;
+    min-height: 100vh !important;
+}
+
+/* Forçar ocultação completa de modais */
+.modal-overlay,
+.planning-page-container,
+#modalPlanejamento,
+#modal-planejamento,
+[id*="modal"][style*="flex"],
+[id*="modal"]:not([style*="none"]) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    z-index: -999 !important;
+    position: fixed !important;
+    top: -9999px !important;
+}
+
+/* Garantir que elementos da home estejam visíveis */
+.home-header,
+.home-content,
+.training-plan,
+.custom-week-section,
+.metrics-section,
+.progress-card,
+.metric-card {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Garantir grid de métricas */
+.metrics-grid {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Garantir botões visíveis */
+.btn-primary,
+.btn-secondary {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Garantir que não haja overflow bloqueado */
+body {
+    overflow: auto !important;
+}
+
+body.modal-open {
+    overflow: auto !important;
+}
+
+/* Forçar z-index correto */
+.screen {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.screen.active {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 2 !important;
+}
+
+/* Garantir que login não sobreponha */
+#login-screen:not(.active) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    z-index: -1 !important;
+}
+
+/* Garantir que workout não sobreponha */
+#workout-screen:not(.active) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    z-index: -1 !important;
+}
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
