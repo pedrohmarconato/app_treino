@@ -20,7 +20,19 @@
     </div>
     
     <!-- Container para modais dinâmicos -->
-    <div id="modals-container"></div>
+    <div id="modals-container">
+        <div id="seletorTreinoPopup" class="popup-overlay" style="display: none;">
+            <div class="popup-content">
+                <div class="popup-header">
+                    <h3 id="popup-day-title">Selecionar Treino</h3>
+                    <button class="popup-close-btn" onclick="fecharSeletorTreino()">×</button>
+                </div>
+                <div id="treino-options" class="popup-body">
+                    <!-- As opções de treino serão inseridas aqui pelo JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
     
     <!-- Loading Global -->
     <div id="global-loading" class="loading-overlay" style="display: none;">

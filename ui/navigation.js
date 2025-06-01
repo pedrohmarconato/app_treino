@@ -7,7 +7,8 @@ import AppState from '../state/appState.js';
 const screenTemplateMap = {
     'login-screen': 'login',
     'home-screen': 'home',
-    'workout-screen': 'workout'
+    'workout-screen': 'workout',
+    'planejamentoSemanal': 'planejamentoSemanalPage'
 };
 
 // Mostrar tela específica
@@ -59,6 +60,35 @@ function onScreenRendered(telaId) {
         case 'workout-screen':
             // Preparar tela de treino
             prepareWorkoutScreen();
+            break;
+
+        case 'planejamentoSemanal':
+            const currentUserForPlanning = AppState.get('currentUser');
+            if (currentUserForPlanning && currentUserForPlanning.id) {
+                if (window.inicializarPlanejamento) {
+                    console.log(`[onScreenRendered] Initializing planning for user: ${currentUserForPlanning.id}`);
+                    window.inicializarPlanejamento(currentUserForPlanning.id);
+                } else {
+                    console.error('[onScreenRendered] window.inicializarPlanejamento não encontrado.');
+                }
+                
+                // Inject styles for the planning page
+                if (window.modalPlanejamentoStyles && !document.getElementById('modalPlanejamentoPageStyles')) {
+                    const styleTag = document.createElement('style');
+                    styleTag.id = 'modalPlanejamentoPageStyles';
+                    styleTag.innerHTML = window.modalPlanejamentoStyles;
+                    document.head.appendChild(styleTag);
+                    console.log('[onScreenRendered] Injected modalPlanejamentoPageStyles.');
+                } else if (document.getElementById('modalPlanejamentoPageStyles')){
+                    console.log('[onScreenRendered] modalPlanejamentoPageStyles already exists.');
+                } else if (!window.modalPlanejamentoStyles){
+                    console.error('[onScreenRendered] window.modalPlanejamentoStyles not found for injection.');
+                }
+            } else {
+                console.error('[onScreenRendered] Usuário atual não encontrado no AppState para inicializar o planejamento semanal.');
+                if(window.showNotification) window.showNotification('Erro: Usuário não identificado para o planejamento.', 'error');
+                if(window.mostrarTela) window.mostrarTela('login-screen'); // Navigate back to login
+            }
             break;
     }
 }

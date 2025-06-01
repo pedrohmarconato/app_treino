@@ -123,37 +123,25 @@ export async function selecionarUsuario(usuario) {
     // A tela de login deve desaparecer ao navegar para 'home-screen' ou ao modal ser exibido.
 }
 
-// Mostrar modal de planejamento semanal
+// Mostrar tela de planejamento semanal
 function mostrarModalPlanejamento(usuarioId) {
-    console.log('[mostrarModalPlanejamento] Iniciando para usuário:', usuarioId);
+    console.log('[mostrarModalPlanejamento -> mostrarTelaPlanejamentoSemanal] Iniciando para usuário:', usuarioId);
     
-    // Verificar se o modal existe
-    let modal = document.getElementById('modalPlanejamento');
-    if (!modal && window.modalPlanejamentoTemplate) {
-        // Criar modal usando template
-        const modalHTML = window.modalPlanejamentoTemplate();
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        modal = document.getElementById('modalPlanejamento');
-    }
-
-    // Injeta os estilos se necessário
-    if (!document.getElementById('modalPlanejamentoStyles') && window.modalPlanejamentoStyles) {
-        const style = document.createElement('style');
-        style.id = 'modalPlanejamentoStyles';
-        style.innerHTML = window.modalPlanejamentoStyles;
-        document.head.appendChild(style);
-    }
-    
-    if (modal) {
-        modal.style.display = 'block';
-        // Inicializar o planejamento
-        if (window.inicializarPlanejamento) {
-            window.inicializarPlanejamento(usuarioId);
-        }
+    // Usar o sistema de navegação para mostrar a tela de planejamento
+    // O ID do usuário será passado para a função de inicialização através do onScreenRendered ou similar
+    if (window.mostrarTela) {
+        window.mostrarTela('planejamentoSemanal', { usuarioId: usuarioId }); 
+        // A passagem de usuarioId como segundo argumento para mostrarTela
+        // dependerá da implementação de mostrarTela e onScreenRendered.
+        // Se onScreenRendered não aceitar parâmetros, precisaremos de um estado global ou outra forma de passar o usuarioId.
     } else {
-        console.error('Modal de planejamento não encontrado');
-        showNotification('Erro ao abrir planejamento semanal', 'error');
+        console.error('Função window.mostrarTela não encontrada.');
+        showNotification('Erro ao tentar abrir o planejamento semanal.', 'error');
     }
+    
+    // A inicialização do planejamento (window.inicializarPlanejamento(usuarioId))
+    // deverá ser chamada após a tela ser renderizada, 
+    // idealmente dentro de um callback como onScreenRendered('planejamentoSemanal', { usuarioId }).
 }
 
 // Exportar para uso global

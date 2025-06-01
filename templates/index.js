@@ -39,6 +39,9 @@ export function renderTemplate(templateName, container = 'app') {
             root.innerHTML = `<div id="order-week-page"></div>`;
             window.renderOrderWeekPage && window.renderOrderWeekPage('order-week-page');
             break;
+        case 'planejamentoSemanalPage':
+            containerEl.innerHTML = window.modalPlanejamentoTemplate();
+            break;
         default:
             console.error(`Template ${templateName} não encontrado`);
     }

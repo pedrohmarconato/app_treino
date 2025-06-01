@@ -1618,6 +1618,95 @@ button {
 }
 
 /* Responsive */
+/* Popup Styles */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050; /* Alto z-index para ficar na frente */
+    padding: 16px;
+}
+
+.popup-content {
+    background-color: var(--bg-card);
+    padding: 24px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 1051;
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.popup-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.popup-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.75rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.popup-close-btn:hover {
+    color: var(--text-primary);
+}
+
+.popup-body {
+    /* Estilos para o corpo do popup, se necessário */
+}
+
+/* Estilos para as opções de treino dentro do popup */
+#treino-options .treino-option {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
+}
+
+#treino-options .treino-option:hover {
+    background-color: var(--bg-card-hover);
+    border-color: var(--accent-green);
+}
+
+#treino-options .treino-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+#treino-options .treino-option.disabled:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+
 @media (max-width: 640px) {
   .metrics-grid {
       grid-template-columns: repeat(3, 1fr);
