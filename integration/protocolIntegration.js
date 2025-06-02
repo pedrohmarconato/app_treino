@@ -564,6 +564,5 @@ window.testarProtocolo = async function() {
     }
 };
 
-// Exportar para uso em outros módulos
-export { ProtocolIntegration };
+// ✅ EXPORT ÚNICO - removida duplicata
 export default ProtocolIntegration;
