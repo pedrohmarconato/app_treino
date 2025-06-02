@@ -1,6 +1,6 @@
 // js/app.js - App principal com protocolo completo integrado
 import AppState from '../state/appState.js';
-import { carregarDashboard } from '../feature/dashboard.js';
+
 import { inicializarPlanejamento, fecharModalPlanejamento, salvarPlanejamentoSemanal } from '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';

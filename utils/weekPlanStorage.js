@@ -92,40 +92,7 @@ export function needsWeekPlanning(userId) {
     return !plan;
 }
 
-// Salvar plano semanal
-export function saveWeekPlan(userId, plan) {
-    if (!userId) {
-        console.error('saveWeekPlan: userId é obrigatório');
-        return false;
-    }
-    
-    const key = `weekPlan_${userId}_${getWeekKey()}`;
-    try {
-        localStorage.setItem(key, JSON.stringify(plan));
-        console.log(`Plano semanal salvo para usuário ${userId}:`, plan);
-        return true;
-    } catch (error) {
-        console.error('Erro ao salvar plano semanal:', error);
-        return false;
-    }
-}
 
-// Obter plano semanal
-export function getWeekPlan(userId) {
-    if (!userId) {
-        console.error('getWeekPlan: userId é obrigatório');
-        return null;
-    }
-    
-    const key = `weekPlan_${userId}_${getWeekKey()}`;
-    try {
-        const plan = localStorage.getItem(key);
-        return plan ? JSON.parse(plan) : null;
-    } catch (error) {
-        console.error('Erro ao recuperar plano semanal:', error);
-        return null;
-    }
-}
 
 // Limpar plano semanal
 export function clearWeekPlan(userId) {

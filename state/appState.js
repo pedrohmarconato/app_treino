@@ -5,19 +5,9 @@ class AppStateManager {
     constructor() {
         this.state = {
             currentUser: null,
-            currentProtocol: null,
             currentWorkout: null,
-            currentExercises: [],
-            currentExerciseIndex: 0,
-            workoutStartTime: null,
-            completedSeries: 0,
-            timerInterval: null,
-            restStartTime: null,
-            restTime: 0,
-            pesosSugeridos: {},
-            isResting: false,
             weekPlan: null,
-            users: []
+            userMetrics: null
         };
         
         this.listeners = new Map();

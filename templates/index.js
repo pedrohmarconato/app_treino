@@ -3,8 +3,8 @@ import { modalPlanejamentoTemplate, modalPlanejamentoStyles } from './modals.js'
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';
 import { workoutTemplate, workoutStyles } from './workout.js';
-import OrderWeekPage, { orderWeekStyles } from './OrderWeekPage.js';
-import { MetricsWidget, metricsWidgetStyles } from '../components/MetricsWidget.js';
+
+
 
 // Exportar componentes globalmente
 window.modalPlanejamentoTemplate = modalPlanejamentoTemplate;
