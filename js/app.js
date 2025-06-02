@@ -1,11 +1,10 @@
-// js/app.js - VERSÃO CORRIGIDA PARA NAVEGAÇÃO
-// Arquivo principal - inicialização e orquestração
-
+// js/app.js - App principal com protocolo completo integrado
 import AppState from '../state/appState.js';
 import { carregarDashboard } from '../feature/dashboard.js';
 import { inicializarPlanejamento, fecharModalPlanejamento, salvarPlanejamentoSemanal } from '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
+import { initializeProtocol } from '../integration/protocolIntegration.js';
 
 // Verificar se todas as dependências estão carregadas
 function checkDependencies() {
@@ -25,9 +24,7 @@ function checkDependencies() {
     
     if (errors.length > 0) {
         console.error('Erros de dependência:', errors);
-        if (window.showNotification) {
-            errors.forEach(error => showNotification(error, 'error'));
-        }
+        errors.forEach(error => showNotification(error, 'error'));
         return false;
     }
     
@@ -37,7 +34,7 @@ function checkDependencies() {
 
 // Inicializar aplicação
 async function initApp() {
-    console.log('[app.js] 🚀 Iniciando aplicação...');
+    console.log('[app.js] 🚀 Iniciando aplicação com protocolo completo...');
     
     // Verificar dependências críticas
     if (!checkDependencies()) {
@@ -47,17 +44,21 @@ async function initApp() {
     }
     
     try {
-        // Configurar funções globais
+        // 1. Configurar funções globais básicas
         setupGlobalFunctions();
         console.log('✅ Funções globais configuradas');
         
-        // Verificar se há usuário salvo
+        // 2. Inicializar protocolo completo
+        await initializeProtocol();
+        console.log('✅ Protocolo inicializado');
+        
+        // 3. Verificar se há usuário salvo
         const savedUserId = localStorage.getItem('lastUserId');
         if (savedUserId) {
             console.log('📱 Usuário anterior encontrado:', savedUserId);
         }
         
-        // Iniciar na tela de login
+        // 4. Iniciar na tela de login
         if (window.initLogin) {
             await window.initLogin();
             console.log('✅ Tela de login inicializada');
@@ -65,11 +66,14 @@ async function initApp() {
             throw new Error('window.initLogin não está definido');
         }
         
+        // 5. Configurar system de debug (desenvolvimento)
+        setupDebugSystem();
+        
+        console.log('[app.js] ✅ Aplicação inicializada com sucesso!');
+        
     } catch (error) {
         console.error('❌ Erro crítico na inicialização:', error);
-        if (window.showNotification) {
-            showNotification('Erro crítico ao iniciar aplicação', 'error');
-        }
+        showNotification('Erro crítico ao iniciar aplicação', 'error');
     }
 }
 
@@ -128,39 +132,234 @@ function setupGlobalFunctions() {
         }
     };
 
-    // Funções para planejamento mobile (serão definidas quando o template for carregado)
-    window.abrirSeletorTreino = window.abrirSeletorTreino || function() {
-        console.warn('abrirSeletorTreino ainda não foi definida');
-    };
-    
-    window.fecharSeletorTreino = window.fecharSeletorTreino || function() {
-        console.warn('fecharSeletorTreino ainda não foi definida');
+    // Função para abrir planejamento semanal
+    window.abrirPlanejamentoParaUsuarioAtual = () => {
+        const currentUser = AppState.get('currentUser');
+        if (currentUser && currentUser.id) {
+            if (window.renderTemplate) {
+                window.renderTemplate('planejamentoSemanalPage');
+                setTimeout(() => {
+                    if (window.inicializarPlanejamento) {
+                        window.inicializarPlanejamento(currentUser.id);
+                    }
+                }, 100);
+            }
+        } else {
+            showNotification('Faça login para acessar o planejamento.', 'error');
+        }
     };
 
-    // NOVA: Função para forçar renderização da home
-    window.forcarRenderizacaoHome = () => {
-        console.log('[app.js] Forçando renderização da home...');
+    // NOVA: Função para inicializar home com protocolo
+    window.initializeHomeScreen = async function() {
+        console.log('[app.js] Inicializando home screen com protocolo...');
         
-        setTimeout(() => {
-            if (window.renderTemplate) {
-                console.log('[app.js] Renderizando template home');
-                window.renderTemplate('home');
-                
-                // Aguardar renderização e carregar dashboard
-                setTimeout(async () => {
-                    console.log('[app.js] Carregando dashboard após renderização forçada');
-                    if (window.carregarDashboard) {
-                        await window.carregarDashboard();
+        try {
+            const currentUser = AppState.get('currentUser');
+            
+            if (!currentUser) {
+                console.warn('[app.js] Nenhum usuário logado, redirecionando para login');
+                setTimeout(() => {
+                    if (window.renderTemplate) {
+                        window.renderTemplate('login');
                     }
-                }, 300);
-            } else {
-                console.error('[app.js] window.renderTemplate não disponível para forçar renderização');
+                }, 500);
+                return;
             }
-        }, 100);
+            
+            console.log('[app.js] Inicializando para usuário:', currentUser.nome);
+            
+            // Atualizar informações do usuário na UI
+            updateUserInfo(currentUser);
+            
+            // Carregar dashboard com dados do protocolo
+            setTimeout(async () => {
+                try {
+                    if (window.carregarDashboard) {
+                        console.log('[app.js] Carregando dashboard...');
+                        await window.carregarDashboard();
+                        console.log('[app.js] Dashboard carregado com sucesso');
+                    }
+                    
+                    // Verificar e carregar treino de hoje
+                    await loadTodaysWorkout(currentUser.id);
+                    
+                } catch (error) {
+                    console.error('[app.js] Erro ao carregar dashboard:', error);
+                    setupBasicHomeElements(currentUser);
+                }
+            }, 200);
+            
+            console.log('[app.js] Home screen inicializada com protocolo');
+            
+        } catch (error) {
+            console.error('[app.js] Erro na inicialização da home:', error);
+        }
     };
 
     // Adicionar estilos de animação
     addAnimationStyles();
+}
+
+// Função para carregar treino de hoje
+async function loadTodaysWorkout(userId) {
+    try {
+        // Usar o serviço do protocolo para carregar treino de hoje
+        if (window.WorkoutProtocolService) {
+            const treino = await window.WorkoutProtocolService.carregarTreinoParaExecucao(userId);
+            
+            // Salvar no estado
+            AppState.set('currentWorkout', treino);
+            
+            // Atualizar UI do botão de treino
+            updateWorkoutButton(treino);
+            
+            console.log('[app.js] ✅ Treino de hoje carregado:', treino.nome);
+        }
+        
+    } catch (error) {
+        console.error('[app.js] Erro ao carregar treino de hoje:', error);
+    }
+}
+
+// Atualizar botão de treino baseado no tipo
+function updateWorkoutButton(treino) {
+    const startBtn = document.getElementById('start-workout-btn');
+    const btnText = document.getElementById('btn-text');
+    const workoutName = document.getElementById('workout-name');
+    const workoutType = document.getElementById('workout-type');
+    
+    if (!startBtn) return;
+    
+    startBtn.disabled = false;
+    
+    switch(treino.tipo) {
+        case 'folga':
+            if (btnText) btnText.textContent = 'Dia de Descanso';
+            if (workoutName) workoutName.textContent = 'Dia de Folga';
+            if (workoutType) workoutType.textContent = 'Descanso';
+            startBtn.onclick = () => {
+                showNotification('Hoje é dia de descanso! 😴 Aproveite para se recuperar.', 'info');
+            };
+            break;
+            
+        case 'cardio':
+            if (btnText) btnText.textContent = 'Iniciar Cardio';
+            if (workoutName) workoutName.textContent = 'Treino Cardiovascular';
+            if (workoutType) workoutType.textContent = 'Cardio';
+            startBtn.onclick = () => {
+                showNotification('Hora do cardio! 🏃‍♂️ Configure seu equipamento.', 'success');
+            };
+            break;
+            
+        case 'treino':
+            if (btnText) btnText.textContent = 'Iniciar Treino';
+            if (workoutName) workoutName.textContent = treino.nome;
+            if (workoutType) workoutType.textContent = `Semana ${treino.semana_atual}`;
+            startBtn.onclick = () => {
+                // Usar a função global de iniciar treino
+                if (window.iniciarTreino) {
+                    window.iniciarTreino();
+                } else {
+                    showNotification('Sistema de treino carregando...', 'info');
+                }
+            };
+            break;
+            
+        default:
+            if (btnText) btnText.textContent = 'Configurar Treino';
+            if (workoutName) workoutName.textContent = 'Configure seu planejamento';
+            if (workoutType) workoutType.textContent = 'Setup';
+            startBtn.onclick = () => {
+                window.abrirPlanejamentoParaUsuarioAtual();
+            };
+            break;
+    }
+}
+
+// Atualizar informações do usuário
+function updateUserInfo(user) {
+    const userNameEl = document.getElementById('user-name');
+    if (userNameEl) {
+        userNameEl.textContent = user.nome;
+    }
+    
+    const userImages = {
+        'Pedro': 'pedro.png',
+        'Japa': 'japa.png'
+    };
+    
+    const avatarEl = document.getElementById('user-avatar');
+    if (avatarEl) {
+        avatarEl.src = userImages[user.nome] || 'pedro.png';
+        avatarEl.alt = user.nome;
+    }
+}
+
+// Configurar elementos básicos da home se falhar
+function setupBasicHomeElements(user) {
+    const startBtn = document.getElementById('start-workout-btn');
+    if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.onclick = () => {
+            showNotification('Sistema básico ativo. Configure seu planejamento primeiro.', 'warning');
+            window.abrirPlanejamentoParaUsuarioAtual();
+        };
+    }
+    
+    updateUserInfo(user);
+    updateElement('workout-name', 'Configure Treino');
+    updateElement('completed-workouts', '0');
+    updateElement('current-week', '1');
+    updateElement('progress-percentage', '0%');
+}
+
+// Configurar sistema de debug (apenas desenvolvimento)
+function setupDebugSystem() {
+    if (!window.location.hostname.includes('localhost') && 
+        !window.location.hostname.includes('127.0.0.1')) {
+        return; // Só em desenvolvimento
+    }
+    
+    // Ferramentas de debug
+    window.debugApp = {
+        state: () => AppState,
+        functions: () => Object.keys(window).filter(key => typeof window[key] === 'function'),
+        dependencies: () => ({
+            supabase: !!window.supabase,
+            config: !!window.SUPABASE_CONFIG,
+            renderTemplate: !!window.renderTemplate,
+            protocolo: !!window.iniciarTreino
+        }),
+        clearCache: () => {
+            localStorage.clear();
+            sessionStorage.clear();
+            console.log('🧹 Cache limpo');
+        },
+        testProtocol: () => {
+            if (window.testarProtocolo) {
+                window.testarProtocolo();
+            } else {
+                console.log('❌ Função de teste do protocolo não disponível');
+            }
+        },
+        simulateTreino: async () => {
+            const currentUser = AppState.get('currentUser');
+            if (!currentUser) {
+                console.log('❌ Nenhum usuário logado');
+                return;
+            }
+            
+            if (window.iniciarTreino) {
+                console.log('🏋️ Simulando início de treino...');
+                await window.iniciarTreino();
+            } else {
+                console.log('❌ Função iniciarTreino não disponível');
+            }
+        }
+    };
+    
+    console.log('[app.js] 🔧 Sistema de debug configurado (desenvolvimento)');
+    console.log('💡 Use window.debugApp para acessar ferramentas de debug');
 }
 
 // Adicionar estilos de animação
@@ -220,62 +419,19 @@ function addAnimationStyles() {
         .pulse {
             animation: pulse 2s infinite;
         }
-        
-        /* NOVO: CSS para debug de navegação */
-        .debug-navigation {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            z-index: 10000;
-            display: none;
-        }
-        
-        .debug-navigation.show {
-            display: block;
-        }
     `;
     document.head.appendChild(style);
 }
 
-// NOVA: Função de debug para navegação
-function debugNavigation(message) {
-    if (!window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) {
-        return; // Só em desenvolvimento
-    }
-    
-    let debugEl = document.getElementById('debug-navigation');
-    if (!debugEl) {
-        debugEl = document.createElement('div');
-        debugEl.id = 'debug-navigation';
-        debugEl.className = 'debug-navigation';
-        document.body.appendChild(debugEl);
-    }
-    
-    debugEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-    debugEl.classList.add('show');
-    
-    setTimeout(() => {
-        debugEl.classList.remove('show');
-    }, 3000);
-}
-
-// Event listeners
+// Event listeners principais
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js] 📄 DOM carregado');
-    
-    // Debug de navegação
-    window.debugNavigation = debugNavigation;
     
     // Aguardar templates carregarem com timeout
     const initTimeout = setTimeout(() => {
         console.log('[app.js] ⏰ Iniciando após timeout...');
         initApp();
-    }, 200);
+    }, 300);
     
     // Verificar se templates já estão carregados
     if (window.renderTemplate) {
@@ -306,9 +462,7 @@ window.addEventListener('error', (event) => {
     
     // Mostrar notificação apenas para erros críticos
     if (event.message && event.message.includes('is not defined')) {
-        if (window.showNotification) {
-            showNotification('Erro de função não encontrada. Recarregue a página.', 'error');
-        }
+        showNotification('Erro de função não encontrada. Recarregue a página.', 'error');
     }
 });
 
@@ -326,45 +480,24 @@ window.addEventListener('unhandledrejection', (event) => {
         
         if (event.reason.message.includes('Supabase')) {
             console.error('💾 Erro do Supabase:', event.reason.message);
-            if (window.showNotification) {
-                showNotification('Erro de conexão com o banco de dados', 'error');
-            }
+            showNotification('Erro de conexão com o banco de dados', 'error');
             event.preventDefault();
             return;
         }
     }
 });
 
+// Função auxiliar para atualizar elementos
+function updateElement(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value;
+    }
+}
+
 // Exportar estado global para debugging (apenas em desenvolvimento)
 if (typeof window !== 'undefined') {
     window.AppState = AppState;
-    
-    // Ferramentas de debug
-    window.debugApp = {
-        state: () => window.AppState,
-        functions: () => Object.keys(window).filter(key => typeof window[key] === 'function'),
-        dependencies: () => ({
-            supabase: !!window.supabase,
-            config: !!window.SUPABASE_CONFIG,
-            renderTemplate: !!window.renderTemplate
-        }),
-        clearCache: () => {
-            localStorage.clear();
-            sessionStorage.clear();
-            console.log('🧹 Cache limpo');
-        },
-        testFunction: (name) => {
-            if (typeof window[name] === 'function') {
-                console.log(`✅ Função ${name} está disponível`);
-            } else {
-                console.log(`❌ Função ${name} NÃO está disponível`);
-            }
-        },
-        forceHome: () => {
-            console.log('🏠 Forçando navegação para home...');
-            window.forcarRenderizacaoHome();
-        }
-    };
 }
 
-console.log('[app.js] 📦 Módulo app.js carregado com sucesso!');
+console.log('[app.js] 📦 Módulo app.js carregado com protocolo completo!');
