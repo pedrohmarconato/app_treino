@@ -1,10 +1,9 @@
-// templates/index.js - Sistema de templates ATUALIZADO com novo home
+// templates/index.js - Sistema de templates CORRIGIDO
 import { modalPlanejamentoTemplate, modalPlanejamentoStyles } from './modals.js';
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';
 import { workoutTemplate, workoutStyles } from './workout.js';
-
-
+import { MetricsWidget, metricsWidgetStyles } from '../components/MetricsWidget.js';
 
 // Exportar componentes globalmente
 window.modalPlanejamentoTemplate = modalPlanejamentoTemplate;
@@ -35,7 +34,7 @@ export function renderTemplate(templateName, container = 'app') {
                 console.log('[renderTemplate] Renderizando home NOVA');
                 containerEl.innerHTML = homeTemplate();
                 
-                // NOVO: Inicializar componentes avançados da home
+                // Inicializar componentes da home
                 setTimeout(() => {
                     initializeHomeComponents();
                 }, 100);
@@ -47,27 +46,11 @@ export function renderTemplate(templateName, container = 'app') {
                 break;
                 
             case 'orderWeek':
-                console.log('[renderTemplate] Renderizando orderWeek');
-                containerEl.innerHTML = '';
-                const root = document.createElement('div');
-                root.id = 'order-week-root';
-                containerEl.appendChild(root);
-                
-                const currentUser = window.AppState?.get('currentUser');
-                if (!currentUser) {
-                    console.warn('[renderTemplate] Usuário não logado, redirecionando para login');
-                    setTimeout(() => renderTemplate('login'), 100);
-                    return;
+                console.log('[renderTemplate] Redirecionando OrderWeek para Home');
+                renderTemplate('home');
+                if (window.showNotification) {
+                    window.showNotification('Funcionalidade em desenvolvimento', 'info');
                 }
-                
-                // Redirecionar para home por enquanto
-                console.log('[renderTemplate] Redirecionando OrderWeek para Home temporariamente');
-                setTimeout(() => {
-                    renderTemplate('home');
-                    if (window.showNotification) {
-                        window.showNotification('Redirecionado para home. OrderWeek em desenvolvimento.', 'info');
-                    }
-                }, 500);
                 break;
                 
             case 'planejamentoSemanalPage':
@@ -77,7 +60,6 @@ export function renderTemplate(templateName, container = 'app') {
                 
             default:
                 console.error(`[renderTemplate] Template ${templateName} não encontrado`);
-                
                 if (templateName !== 'home') {
                     console.log('[renderTemplate] Fallback: renderizando home');
                     renderTemplate('home');
@@ -96,7 +78,7 @@ export function renderTemplate(templateName, container = 'app') {
     }
 }
 
-// NOVA FUNÇÃO: Inicializar componentes específicos da home
+// Inicializar componentes específicos da home
 async function initializeHomeComponents() {
     console.log('[initializeHomeComponents] Inicializando componentes da home...');
     
@@ -111,26 +93,28 @@ async function initializeHomeComponents() {
         
         console.log('[initializeHomeComponents] Inicializando para usuário:', currentUser.nome);
         
-        // 1. Atualizar informações do usuário na UI
+        // 1. Atualizar informações do usuário
         updateUserInfo(currentUser);
         
-        // 2. Inicializar widget de métricas avançado (se container existir)
+        // 2. Inicializar widget de métricas se container existir
         const metricsContainer = document.getElementById('metrics-advanced-container');
         if (metricsContainer) {
-            const metricsWidget = new MetricsWidget('metrics-advanced-container');
-            await metricsWidget.init();
-            
-            // Salvar referência para cleanup posterior se necessário
-            window.currentMetricsWidget = metricsWidget;
+            try {
+                const metricsWidget = new MetricsWidget('metrics-advanced-container');
+                await metricsWidget.init();
+                window.currentMetricsWidget = metricsWidget;
+            } catch (error) {
+                console.warn('[initializeHomeComponents] Erro ao inicializar MetricsWidget:', error);
+            }
         }
         
-        // 3. Carregar dashboard principal
+        // 3. Carregar dashboard
         setTimeout(async () => {
             try {
                 if (window.carregarDashboard) {
                     console.log('[initializeHomeComponents] Carregando dashboard...');
                     await window.carregarDashboard();
-                    console.log('[initializeHomeComponents] ✅ Dashboard carregado com sucesso');
+                    console.log('[initializeHomeComponents] ✅ Dashboard carregado');
                 } else {
                     console.warn('[initializeHomeComponents] window.carregarDashboard não disponível');
                     setupBasicHomeElements(currentUser);
@@ -141,7 +125,7 @@ async function initializeHomeComponents() {
             }
         }, 200);
         
-        // 4. Configurar animações de entrada
+        // 4. Configurar animações
         setupHomeAnimations();
         
         console.log('[initializeHomeComponents] ✅ Componentes da home inicializados');
@@ -177,7 +161,7 @@ function updateUserInfo(user) {
     }
 }
 
-// Configurar elementos básicos da home se o dashboard falhar
+// Configurar elementos básicos da home
 function setupBasicHomeElements(user) {
     try {
         const startBtn = document.getElementById('start-workout-btn');
@@ -195,19 +179,22 @@ function setupBasicHomeElements(user) {
                             window.showNotification('Hora do cardio! 🏃‍♂️', 'info');
                         }
                     } else {
-                        if (window.showNotification) {
-                            window.showNotification('Treino de força em desenvolvimento 💪', 'info');
+                        if (window.iniciarTreino) {
+                            window.iniciarTreino();
+                        } else if (window.showNotification) {
+                            window.showNotification('Sistema de treino carregando...', 'info');
                         }
                     }
                 } else {
-                    if (window.showNotification) {
+                    if (window.abrirPlanejamentoParaUsuarioAtual) {
+                        window.abrirPlanejamentoParaUsuarioAtual();
+                    } else if (window.showNotification) {
                         window.showNotification('Configure seu planejamento primeiro', 'warning');
                     }
                 }
             };
         }
         
-        // Configurar valores padrão
         updateElement('user-name', user.nome);
         updateElement('workout-name', 'Configurar Treino');
         updateElement('completed-workouts', '0');
@@ -237,7 +224,7 @@ function setupHomeAnimations() {
             }, index * 150);
         });
         
-        // Animar entrada dos indicadores da semana
+        // Animar indicadores da semana
         setTimeout(() => {
             const dayIndicators = document.querySelectorAll('.day-indicator');
             dayIndicators.forEach((indicator, index) => {
@@ -252,7 +239,7 @@ function setupHomeAnimations() {
             });
         }, 300);
         
-        // Animar entrada dos cards de métrica
+        // Animar cards de métrica
         setTimeout(() => {
             const metricCards = document.querySelectorAll('.metric-card');
             metricCards.forEach((card, index) => {
@@ -291,10 +278,9 @@ export function injectTemplateStyles() {
         ${loginStyles}
         ${homeStyles}
         ${workoutStyles}
-        ${orderWeekStyles}
         ${metricsWidgetStyles}
         
-        /* Animações globais adicionais */
+        /* Animações globais */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -317,27 +303,12 @@ export function injectTemplateStyles() {
             }
         }
         
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
         .animate-fade-in-up {
             animation: fadeInUp 0.6s ease-out;
         }
         
         .animate-scale-in {
             animation: scaleIn 0.4s ease-out;
-        }
-        
-        .animate-slide-in-left {
-            animation: slideInLeft 0.5s ease-out;
         }
     `;
     
@@ -355,9 +326,6 @@ export function initTemplates() {
     // Renderiza a tela inicial (login)
     renderTemplate('login');
     
-    // Configurar função global para inicializar home
-    window.initializeHomeScreen = initializeHomeComponents;
-    
     // Configurar limpeza de componentes ao navegar
     setupComponentCleanup();
     
@@ -366,9 +334,10 @@ export function initTemplates() {
 
 // Configurar limpeza de componentes
 function setupComponentCleanup() {
-    // Listener para limpeza de widgets ao mudar de tela
-    const originalRenderTemplate = window.renderTemplate;
+    // Armazenar referência original
+    const originalRenderTemplate = renderTemplate;
     
+    // Sobrescrever função global
     window.renderTemplate = function(templateName, container) {
         // Limpar widgets existentes
         if (window.currentMetricsWidget) {
@@ -376,12 +345,12 @@ function setupComponentCleanup() {
                 window.currentMetricsWidget.destroy();
                 window.currentMetricsWidget = null;
             } catch (error) {
-                console.warn('[setupComponentCleanup] Erro ao limpar widget de métricas:', error);
+                console.warn('[setupComponentCleanup] Erro ao limpar widget:', error);
             }
         }
         
         // Chamar função original
-        return originalRenderTemplate.call(this, templateName, container);
+        return originalRenderTemplate(templateName, container);
     };
 }
 
