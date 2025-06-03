@@ -11,21 +11,24 @@ export async function saveWeekPlanToSupabase(userId, plan) {
         const year = now.getFullYear();
         const week = getWeekNumber(now);
 
-        // Inserir registros individuais para cada dia
+        // Inserir registros individuais para cada dia (garantindo robustez)
         const registros = [];
         for (let dia = 0; dia < 7; dia++) {
-            const planoDia = plan[dia];
+            let planoDia = plan[dia];
+            if (!planoDia || typeof planoDia !== 'object') {
+                planoDia = { tipo: 'folga', categoria: 'folga', numero_treino: null };
+            }
             registros.push({
                 usuario_id: userId,
                 ano: year,
                 semana: week,
                 dia_semana: dia,
-                tipo_atividade: planoDia?.tipo || 'folga',
-                numero_treino: planoDia?.numero_treino || null,
+                tipo_atividade: planoDia.tipo || 'folga',
+                numero_treino: planoDia.numero_treino || null,
                 concluido: false
             });
         }
-
+        console.log('[saveWeekPlanToSupabase] Registros a inserir:', registros);
         // Usar insert ao invés de upsert
         const { data, error } = await insert('planejamento_semanal', registros);
 

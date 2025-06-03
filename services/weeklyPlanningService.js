@@ -64,11 +64,24 @@ export async function getActiveWeeklyPlan(userId) {
         return null;
     }
     
-    // Converter para formato usado pela aplicação
+    // Converter para formato usado pela aplicação (0-6)
     const planFormatted = {};
     plano.forEach(dia => {
-        planFormatted[dia.dia_semana] = {
-            tipo: dia.tipo_atividade,
+        // Converter de volta: 1-7 para 0-6 (segunda=1 vira 1, domingo=7 vira 0)
+        const diaIndex = dia.dia_semana === 7 ? 0 : dia.dia_semana;
+        
+        // Converter tipo_atividade para o formato esperado pela aplicação
+        let tipo = dia.tipo_atividade.toLowerCase();
+        if (tipo === 'treino' && dia.observacoes) {
+            // Extrair o tipo real do treino das observações
+            const match = dia.observacoes.match(/- (\w+)$/);
+            if (match) {
+                tipo = match[1];
+            }
+        }
+        
+        planFormatted[diaIndex] = {
+            tipo: tipo,
             numero_treino: dia.numero_treino,
             concluido: dia.concluido
         };
@@ -99,16 +112,16 @@ export async function saveWeeklyPlan(userId, planejamento) {
         for (let dia = 0; dia < 7; dia++) {
             const planoDoDia = planejamento[dia]; // Espera-se que planejamento seja um objeto {0: ..., 1: ..., ...}
             
+            // Converter índice 0-6 para 1-7 (segunda=1, domingo=7) conforme esperado pela constraint
+            const diaSemanaDB = dia === 0 ? 7 : dia; // domingo (0) vira 7, outros dias mantêm o valor
+            
             if (!planoDoDia || typeof planoDoDia.tipo !== 'string') {
-                console.warn(`[weeklyPlanningService] Plano para o dia ${dia} inválido ou ausente. Pulando.`);
-                // Se um dia é crucial, pode-se adicionar um 'folga' padrão aqui ou lançar erro.
-                // Por ora, vamos pular para ver se o erro de constraint é por outro motivo.
-                // Se todos os dias forem obrigatórios, isso precisa mudar.
+                console.warn(`[weeklyPlanningService] Plano para o dia ${dia} inválido ou ausente. Adicionando folga padrão.`);
                 registros.push({
                     usuario_id: userId,
                     ano: ano,
                     semana: semana,
-                    dia_semana: dia, // dia_semana é o índice do loop 0-6
+                    dia_semana: diaSemanaDB, // Usar valor convertido para 1-7
                     tipo_atividade: 'folga', // Default para dia ausente ou inválido
                     numero_treino: null,
                     concluido: false,
@@ -138,9 +151,9 @@ export async function saveWeeklyPlan(userId, planejamento) {
                 usuario_id: userId,
                 ano: ano,
                 semana: semana,
-                dia_semana: dia, // dia_semana é o índice do loop 0-6
+                dia_semana: diaSemanaDB, // Usar valor convertido para 1-7
                 tipo_atividade: tipoAtual === 'folga' ? 'folga' : 
-                              tipoAtual === 'cardio' ? 'cardio' : tipoAtual, // Salva o tipo original em minúsculo
+                              tipoAtual === 'cardio' ? 'cardio' : 'treino', // ✅ CORRIGIDO
                 numero_treino: numeroTreino,
                 concluido: false,
                 observacoes: `Plano semana ${semana}/${ano} - ${tipoAtual}`
@@ -215,6 +228,9 @@ export async function getTodaysWorkout(userId) {
 export async function markDayAsCompleted(userId, diaIndex) {
     const { ano, semana } = getCurrentWeekKey();
     
+    // Converter índice 0-6 para 1-7 (segunda=1, domingo=7) conforme esperado pela constraint
+    const diaSemanaDB = diaIndex === 0 ? 7 : diaIndex;
+    
     const { data, error } = await update('planejamento_semanal', 
         { concluido: true, data_conclusao: new Date().toISOString() },
         {
@@ -222,7 +238,7 @@ export async function markDayAsCompleted(userId, diaIndex) {
                 usuario_id: userId,
                 ano: ano,
                 semana: semana,
-                dia_semana: diaIndex
+                dia_semana: diaSemanaDB
             }
         }
     );
