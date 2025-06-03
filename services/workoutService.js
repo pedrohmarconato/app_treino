@@ -3,7 +3,7 @@
 
 import { query, insert, update } from './supabaseService.js';
 // ✅ IMPORT CORRIGIDO - usando as funções exportadas
-import { getWeekPlan } from '../utils/weekPlanStorage.js';
+import { getWeekPlan } from '../../utils/weekPlanStorage.js';
 
 // Buscar próximo treino do usuário
 export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {

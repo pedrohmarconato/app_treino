@@ -112,6 +112,20 @@ export function clearWeekPlan(userId) {
     }
 }
 
+// Obter plano semanal do localStorage
+export function getWeekPlan(userId) {
+    const key = `weekPlan_${userId}_${getWeekKey()}`;
+    const plan = localStorage.getItem(key);
+    return plan ? JSON.parse(plan) : null;
+}
+
+// Salvar plano semanal no localStorage
+export function saveWeekPlan(userId, plan) {
+    const key = `weekPlan_${userId}_${getWeekKey()}`;
+    localStorage.setItem(key, JSON.stringify(plan));
+}
+
+
 // Obter todos os planos do usuário (histórico)
 export function getAllUserWeekPlans(userId) {
     const plans = [];

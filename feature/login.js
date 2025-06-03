@@ -142,10 +142,10 @@ export async function selecionarUsuario(usuario) {
 // Mostrar tela de planejamento semanal
 function mostrarModalPlanejamento(usuarioId) {
     console.log('[mostrarModalPlanejamento] Iniciando para usuário:', usuarioId);
-    
-    // Usar o sistema de navegação para mostrar a tela de planejamento
+    // Corrigir para navegar para a página de planejamento semanal
     if (window.mostrarTela) {
-        window.mostrarTela('planejamentoSemanal', { usuarioId: usuarioId }); 
+        // O mapeamento correto é 'planejamentoSemanal' → 'planejamentoSemanalPage', conforme navigation.js
+        window.mostrarTela('planejamentoSemanal'); // usuarioId já está no AppState
     } else {
         console.error('Função window.mostrarTela não encontrada.');
         showNotification('Erro ao tentar abrir o planejamento semanal.', 'error');

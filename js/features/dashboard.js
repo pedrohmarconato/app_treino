@@ -1,7 +1,7 @@
 // js/features/dashboard.js - Dashboard simplificado sem duplicatas
 import AppState from '../state/appState.js';
 import { fetchMetricasUsuario } from '../services/userService.js';
-import { getWeekPlan } from '../utils/weekPlanStorage.js';
+import { getWeekPlan } from '../../utils/weekPlanStorage.js';
 import { showNotification } from '../ui/notifications.js';
 
 // Mapear tipos de treino para emojis
