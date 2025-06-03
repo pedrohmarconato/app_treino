@@ -81,6 +81,9 @@ export async function getActiveWeeklyPlan(userId) {
  * Salvar plano semanal no banco
  */
 export async function saveWeeklyPlan(userId, planejamento) {
+    console.log('[weeklyPlanningService] saveWeeklyPlan chamado com userId:', userId);
+    console.log('[weeklyPlanningService] Planejamento recebido:', JSON.stringify(planejamento, null, 2));
+
     const { ano, semana } = getCurrentWeekKey();
     
     try {
@@ -94,52 +97,70 @@ export async function saveWeeklyPlan(userId, planejamento) {
         const registros = [];
         
         for (let dia = 0; dia < 7; dia++) {
-            const planoDoDia = planejamento[dia];
-            if (!planoDoDia) continue;
+            const planoDoDia = planejamento[dia]; // Espera-se que planejamento seja um objeto {0: ..., 1: ..., ...}
+            
+            if (!planoDoDia || typeof planoDoDia.tipo !== 'string') {
+                console.warn(`[weeklyPlanningService] Plano para o dia ${dia} inválido ou ausente. Pulando.`);
+                // Se um dia é crucial, pode-se adicionar um 'folga' padrão aqui ou lançar erro.
+                // Por ora, vamos pular para ver se o erro de constraint é por outro motivo.
+                // Se todos os dias forem obrigatórios, isso precisa mudar.
+                registros.push({
+                    usuario_id: userId,
+                    ano: ano,
+                    semana: semana,
+                    dia_semana: dia, // dia_semana é o índice do loop 0-6
+                    tipo_atividade: 'folga', // Default para dia ausente ou inválido
+                    numero_treino: null,
+                    concluido: false,
+                    observacoes: `Plano semana ${semana}/${ano} - Dia ${dia} (padrão folga)`
+                });
+                continue;
+            }
             
             let numeroTreino = null;
+            const tipoAtual = planoDoDia.tipo.toLowerCase(); // Já deve estar em minúsculo vindo de planning.js
             
-            // Se for treino, determinar número baseado no tipo e semana do protocolo
-            if (planoDoDia.tipo && planoDoDia.tipo !== 'folga' && planoDoDia.tipo !== 'cardio') {
-                // Mapear tipo de treino para dia da semana no protocolo
+            if (tipoAtual !== 'folga' && tipoAtual !== 'cardio') {
                 const tipoTreinoMap = {
-                    'A': 1, 'Peito': 1,
-                    'B': 2, 'Costas': 2, 
-                    'C': 3, 'Pernas': 3,
-                    'D': 4, 'Ombro': 4, 'Ombro e Braço': 4
+                    // Mapear tipos em minúsculo para consistência
+                    'a': 1, 'peito': 1,
+                    'b': 2, 'costas': 2, 
+                    'c': 3, 'pernas': 3,
+                    'd': 4, 'ombro': 4, 'ombro e braço': 4
                 };
                 
-                const diaSemanaProtocolo = tipoTreinoMap[planoDoDia.tipo] || 1;
-                
-                // Calcular número do treino baseado na semana do protocolo
+                const diaSemanaProtocolo = tipoTreinoMap[tipoAtual] || 1; // Usar tipoAtual (minúsculo)
                 const semanaProtocolo = protocoloAtivo.semana_atual || 1;
-                numeroTreino = ((semanaProtocolo - 1) * 4) + diaSemanaProtocolo;
+                numeroTreino = ((semanaProtocolo - 1) * (Object.keys(tipoTreinoMap).length / 2)) + diaSemanaProtocolo; // Ajuste para o número de treinos distintos
             }
             
             registros.push({
                 usuario_id: userId,
                 ano: ano,
                 semana: semana,
-                dia_semana: dia,
-                tipo_atividade: planoDoDia.tipo === 'folga' ? 'Folga' : 
-                              planoDoDia.tipo === 'cardio' ? 'Cardio' : 'Treino',
+                dia_semana: dia, // dia_semana é o índice do loop 0-6
+                tipo_atividade: tipoAtual === 'folga' ? 'folga' : 
+                              tipoAtual === 'cardio' ? 'cardio' : tipoAtual, // Salva o tipo original em minúsculo
                 numero_treino: numeroTreino,
                 concluido: false,
-                observacoes: `Plano semana ${semana}/${ano} - ${planoDoDia.tipo}`
+                observacoes: `Plano semana ${semana}/${ano} - ${tipoAtual}`
             });
         }
+        
+        console.log('[weeklyPlanningService] Registros preparados para insert:', JSON.stringify(registros, null, 2));
         
         // 3. Inserir registros
         const { data, error } = await insert('planejamento_semanal', registros);
         
         if (error) {
+            console.error('[weeklyPlanningService] Erro do Supabase insert:', JSON.stringify(error, null, 2));
             throw error;
         }
         
         return { success: true, data };
         
     } catch (error) {
-        console.error('Erro ao salvar plano semanal:', error);
+        console.error('[weeklyPlanningService] Erro ao salvar plano semanal:', error.message);
         return { success: false, error: error.message };
     }
 }

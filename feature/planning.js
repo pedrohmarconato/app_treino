@@ -491,43 +491,46 @@ export async function salvarPlanejamentoSemanal() {
             'quinta': 4, 'sexta': 5, 'sabado': 6
         };
 
-        // Inicializa todos os dias como folga
+        // Montar objeto indexado para Supabase, garantindo todos os dias e tipo_atividade em minúsculo
         const planejamentoParaSupabase = {};
         for (let dia = 0; dia < 7; dia++) {
+            let treino = null;
+            // Procurar o treino correspondente ao dia
+            for (const [diaKey, t] of Object.entries(planejamentoAtual)) {
+                if (diasMap[diaKey] === dia) {
+                    treino = t;
+                    break;
+                }
+            }
             planejamentoParaSupabase[dia] = {
-                tipo: 'folga',
-                categoria: 'folga',
-                numero_treino: null,
+                tipo: treino && treino.tipo ? treino.tipo.toLowerCase() : 'folga',
+                categoria: treino && treino.categoria ? treino.categoria.toLowerCase() : 'folga',
+                numero_treino: treino && treino.numero_treino ? treino.numero_treino : null,
                 concluido: false
             };
         }
-
-        // Preenche com os dados do planejamento atual
-        Object.entries(planejamentoAtual).forEach(([diaKey, treino]) => {
-            const diaIndex = diasMap[diaKey];
-            if (diaIndex !== undefined && treino) {
-                planejamentoParaSupabase[diaIndex] = {
-                    tipo: treino.tipo || 'folga',
-                    categoria: treino.categoria || 'folga',
-                    numero_treino: treino.numero_treino || null,
-                    concluido: false
-                };
-            }
-        });
-
-        console.log('[salvarPlanejamentoSemanal] Planejamento convertido:', planejamentoParaSupabase);
+        console.log('[salvarPlanejamentoSemanal] Objeto indexado para Supabase:', planejamentoParaSupabase);
 
         // Salva no Supabase
         const resultado = await saveWeeklyPlan(usuarioIdAtual, planejamentoParaSupabase);
+
+        // Função auxiliar para calcular a semana do ano
+        function getNumeroSemana(dt) {
+            const data = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+            const diaDaSemana = data.getUTCDay() || 7;
+            data.setUTCDate(data.getUTCDate() + 4 - diaDaSemana);
+            const anoInicio = new Date(Date.UTC(data.getUTCFullYear(),0,1));
+            return Math.ceil((((data - anoInicio) / 86400000) + 1)/7);
+        }
 
         if (!resultado.success) {
             throw new Error(resultado.error || 'Erro ao salvar no banco');
         }
 
-        // Backup no localStorage
+        // Backup no localStorage (apenas tipos)
         const weekPlanLocalStorage = {};
         for (let dia = 0; dia < 7; dia++) {
-            weekPlanLocalStorage[dia] = planejamentoParaSupabase[dia].tipo;
+            weekPlanLocalStorage[dia] = planejamentoParaSupabase[dia].tipo_atividade;
         }
         saveWeekPlan(usuarioIdAtual, weekPlanLocalStorage);
 
@@ -536,13 +539,13 @@ export async function salvarPlanejamentoSemanal() {
 
         // Simula treino do dia para inicialização
         const hoje = new Date().getDay();
-        const treinoDoDia = planejamentoParaSupabase[hoje];
+        const treinoDoDia = planejamentoParaSupabase.find(p => p.dia_semana === hoje);
         if (treinoDoDia) {
             const mockWorkout = {
-                tipo: treinoDoDia.tipo,
-                nome: treinoDoDia.tipo === 'folga' ? 'Dia de Folga' :
-                      treinoDoDia.tipo === 'Cardio' ? 'Cardio' :
-                      `Treino ${treinoDoDia.tipo}`,
+                tipo: treinoDoDia.tipo_atividade,
+                nome: treinoDoDia.tipo_atividade === 'folga' ? 'Dia de Folga' :
+                      treinoDoDia.tipo_atividade === 'Cardio' ? 'Cardio' :
+                      `Treino ${treinoDoDia.tipo_atividade}`,
                 exercicios: [],
                 numero_treino: treinoDoDia.numero_treino
             };
