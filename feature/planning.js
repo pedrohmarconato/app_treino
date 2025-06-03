@@ -327,8 +327,13 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
         }
     });
     
+    // Garantir popup visível independentemente do CSS
     popup.style.display = 'flex';
+    popup.style.visibility = 'visible';
+    popup.style.opacity = '1';
+    popup.style.zIndex = 1050;
     document.body.style.overflow = 'hidden';
+    console.log('[abrirSeletorTreino] Popup exibido para', nomeDia, dia);
 };
 
 // Fechar seletor de treino
@@ -336,7 +341,11 @@ window.fecharSeletorTreino = function() {
     const popup = document.getElementById('seletorTreinoPopup');
     if (popup) {
         popup.style.display = 'none';
+        popup.style.visibility = 'hidden';
+        popup.style.opacity = '0';
+        popup.style.zIndex = '';
         document.body.style.overflow = '';
+        console.log('[fecharSeletorTreino] Popup fechado');
     }
     nomeDiaAtual = '';
 };

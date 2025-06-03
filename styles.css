@@ -1652,25 +1652,13 @@ button {
 }
 
 /* Forçar ocultação completa de modais */
-.modal-overlay,
+/* 1. PLANEJAMENTO SEMANAL - Corrigir visibilidade */
 .planning-page-container,
-#modalPlanejamento,
-#modal-planejamento,
-[id*="modal"][style*="flex"],
-[id*="modal"]:not([style*="none"]) {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    z-index: -999 !important;
-    position: fixed !important;
-    top: -9999px !important;
-}
-
-/* Garantir que elementos da home estejam visíveis */
-.home-header,
-.home-content,
-.training-plan,
-.custom-week-section,
+#modalPlanejamento {
+    background: var(--bg-primary) !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    padding: 20px !important;
 .metrics-section,
 .progress-card,
 .metric-card {
