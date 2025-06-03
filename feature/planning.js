@@ -511,46 +511,16 @@ export async function salvarPlanejamentoSemanal() {
         }
         console.log('[salvarPlanejamentoSemanal] Objeto indexado para Supabase:', planejamentoParaSupabase);
 
-        // Salva no Supabase
+        // Salva no Supabase (usando o serviço correto)
         const resultado = await saveWeeklyPlan(usuarioIdAtual, planejamentoParaSupabase);
-
-        // Função auxiliar para calcular a semana do ano
-        function getNumeroSemana(dt) {
-            const data = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()));
-            const diaDaSemana = data.getUTCDay() || 7;
-            data.setUTCDate(data.getUTCDate() + 4 - diaDaSemana);
-            const anoInicio = new Date(Date.UTC(data.getUTCFullYear(),0,1));
-            return Math.ceil((((data - anoInicio) / 86400000) + 1)/7);
-        }
 
         if (!resultado.success) {
             throw new Error(resultado.error || 'Erro ao salvar no banco');
         }
 
-        // Backup no localStorage (apenas tipos)
-        const weekPlanLocalStorage = {};
-        for (let dia = 0; dia < 7; dia++) {
-            weekPlanLocalStorage[dia] = planejamentoParaSupabase[dia].tipo_atividade;
-        }
-        saveWeekPlan(usuarioIdAtual, weekPlanLocalStorage);
-
         // Atualiza estado global
         AppState.set('weekPlan', planejamentoParaSupabase);
-
-        // Simula treino do dia para inicialização
-        const hoje = new Date().getDay();
-        const treinoDoDia = planejamentoParaSupabase.find(p => p.dia_semana === hoje);
-        if (treinoDoDia) {
-            const mockWorkout = {
-                tipo: treinoDoDia.tipo_atividade,
-                nome: treinoDoDia.tipo_atividade === 'folga' ? 'Dia de Folga' :
-                      treinoDoDia.tipo_atividade === 'Cardio' ? 'Cardio' :
-                      `Treino ${treinoDoDia.tipo_atividade}`,
-                exercicios: [],
-                numero_treino: treinoDoDia.numero_treino
-            };
-            AppState.set('currentWorkout', mockWorkout);
-        }
+        
 
         if (window.showNotification) {
             window.showNotification('✅ Planejamento salvo com sucesso!', 'success');
