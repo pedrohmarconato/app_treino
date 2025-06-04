@@ -6,9 +6,10 @@ export const workoutTemplate = () => `
                 <path d="M15 18l-6-6 6-6"/>
             </svg>
         </button>
-        
+
         <div class="workout-container">
             <div class="workout-header">
+                <!-- Título e tipo do treino (dinâmico do Supabase/local) -->
                 <h1 id="workout-title">Carregando...</h1>
                 <p id="workout-subtitle" class="text-secondary"></p>
                 <div class="progress-bar-container">
@@ -16,11 +17,33 @@ export const workoutTemplate = () => `
                 </div>
             </div>
 
+            <!-- Lista de exercícios será renderizada dinamicamente -->
             <div id="exercise-list" class="exercise-list">
-                <!-- Exercícios serão carregados dinamicamente -->
+                <!-- Exemplo de card de exercício:
+                <div class='exercise-card'>
+                    <div class='exercise-header'>
+                        <div class='exercise-info'>
+                            <h3>Supino Reto</h3>
+                            <p>Peito • Barra</p>
+                        </div>
+                        <div class='exercise-counter'>1/5</div>
+                    </div>
+                    <div class='series-container'>
+                        <div class='series-header'>
+                            <span>Série</span>
+                            <span>Peso (kg)</span>
+                            <span>Repetições</span>
+                            <span>Status</span>
+                        </div>
+                        <div class='series-list'>
+                            <!-- Séries dinâmicas aqui -->
+                        </div>
+                    </div>
+                </div>
+                -->
             </div>
 
-            <!-- Timer Container -->
+            <!-- Timer de descanso -->
             <div id="timer-container" class="timer-container" style="display: none;">
                 <h3>Tempo de Descanso</h3>
                 <div class="timer-circle">
@@ -37,7 +60,7 @@ export const workoutTemplate = () => `
                 </button>
             </div>
 
-            <!-- Completion Container -->
+            <!-- Tela de conclusão -->
             <div id="completion-container" class="completion-container" style="display: none;">
                 <div class="completion-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -46,7 +69,6 @@ export const workoutTemplate = () => `
                 </div>
                 <h2>Treino Concluído!</h2>
                 <p>Parabéns! Você completou todos os exercícios.</p>
-                
                 <div class="workout-summary">
                     <div class="summary-item">
                         <span class="summary-label">Duração</span>
@@ -61,7 +83,6 @@ export const workoutTemplate = () => `
                         <span class="summary-value" id="total-series">0</span>
                     </div>
                 </div>
-
                 <button class="btn-primary" onclick="finalizarTreino()">
                     Finalizar Treino
                 </button>
@@ -69,6 +90,11 @@ export const workoutTemplate = () => `
         </div>
     </div>
 `;
+// Pontos de integração dinâmica:
+// - O título, subtítulo e lista de exercícios devem ser populados com dados do Supabase ou localStorage.
+// - O progresso, status das séries e conclusão também devem ser atualizados dinamicamente.
+// - O timer e botões devem ser responsivos e visualmente alinhados com o restante do app.
+
 
 // Template para um exercício individual
 export const exerciseItemTemplate = (exercise, index, total) => `

@@ -591,10 +591,6 @@ class WorkoutExecutionManager {
 // Instância global
 export const workoutExecutionManager = new WorkoutExecutionManager();
 
-// Função global para iniciar treino
-window.iniciarTreino = async function() {
-    await workoutExecutionManager.iniciarTreino();
-};
 
 // Função para voltar para home
 window.voltarParaHome = function() {

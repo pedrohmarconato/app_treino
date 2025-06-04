@@ -71,6 +71,7 @@ export const homeTemplate = () => `
                             <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
                     </button>
+
                 </div>
             </div>
 
@@ -118,18 +119,9 @@ export const homeTemplate = () => `
             </div>
 
             <!-- Planejamento Semanal Customizado -->
-            <div class="weekly-plan-section">
-                <div class="section-header">
-                    <h2>Seu Planejamento</h2>
-                    <button class="btn-secondary" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                        Personalizar
-                    </button>
-                </div>
-                <div class="weekly-plan-list" id="weekly-plan-list">
+            
+                
+                
                     <!-- Preenchido dinamicamente -->
                 </div>
             </div>
@@ -401,14 +393,38 @@ export const homeStyles = `
 
     .workout-start-btn {
         width: 100%;
+        max-width: 320px;
+        min-height: 48px;
         position: relative;
         z-index: 1;
         font-size: 1rem;
-        padding: 16px 24px;
+        padding: 10px 18px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
+        gap: 8px;
+        border-radius: var(--radius-full);
+        margin: 0 auto;
+        box-sizing: border-box;
+        transition: var(--transition);
+    }
+
+    .workout-start-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    @media (max-width: 480px) {
+        .workout-start-btn {
+            font-size: 0.95rem;
+            min-height: 42px;
+            padding: 8px 12px;
+            max-width: 95vw;
+        }
+        .workout-start-btn svg {
+            width: 18px;
+            height: 18px;
+        }
     }
 
     .workout-start-btn:disabled {

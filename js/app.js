@@ -136,10 +136,12 @@ function setupGlobalFunctions() {
                 console.warn('[app.js] ⚠️ Home screen inicializada com funcionalidade limitada');
                 setupBasicHomeElements(currentUser);
             }
+            setupHomeEventListeners(); // Adiciona listeners após a inicialização da home
             
         } catch (error) {
             console.error('[app.js] Erro na inicialização da home:', error);
             setupBasicHomeElements(AppState.get('currentUser'));
+            setupHomeEventListeners(); // Adiciona listeners mesmo em caso de erro, se elementos básicos foram configurados
         }
     };
     
@@ -161,10 +163,48 @@ function setupGlobalFunctions() {
     };
     
     // === TREINO ===
-    // Função será configurada pelo protocolo quando carregar
-    window.iniciarTreino = () => {
-        showNotification('Sistema de treino carregando...', 'info');
+    // Redireciona para o fluxo correto de execução do treino
+    window.iniciarTreino = async () => {
+        const startButton = document.getElementById('start-workout-btn');
+        const originalButtonText = document.getElementById('btn-text')?.textContent || 'Iniciar Treino';
+
+        if (startButton) {
+            const btnTextSpan = startButton.querySelector('#btn-text');
+            if (btnTextSpan) btnTextSpan.textContent = 'Carregando...';
+            startButton.disabled = true;
+            console.log('[app.js] Botão Iniciar Treino: Estado de carregamento ativado.');
+        }
+
+        try {
+            console.log('[app.js] Chamando workoutExecutionManager.iniciarTreino');
+            const { workoutExecutionManager } = await import('../feature/workoutExecution.js');
+            await workoutExecutionManager.iniciarTreino();
+            console.log('[app.js] workoutExecutionManager.iniciarTreino concluído.');
+        } catch (error) {
+            console.error('[app.js] Erro ao iniciar treino:', error);
+            showNotification('Erro ao iniciar treino: ' + (error.message || error), 'error');
+        } finally {
+            if (startButton) {
+                const btnTextSpan = startButton.querySelector('#btn-text');
+                if (btnTextSpan) btnTextSpan.textContent = originalButtonText;
+                startButton.disabled = false;
+                console.log('[app.js] Botão Iniciar Treino: Estado de carregamento desativado.');
+            }
+        }
     };
+}
+
+// Função para configurar event listeners da tela home
+function setupHomeEventListeners() {
+    console.log('[app.js] Configurando event listeners da home...');
+    const startWorkoutButton = document.getElementById('start-workout-btn');
+    if (startWorkoutButton) {
+        startWorkoutButton.removeEventListener('click', window.iniciarTreino); // Remover listener antigo para evitar duplicidade
+        startWorkoutButton.addEventListener('click', window.iniciarTreino);
+        console.log('[app.js] Event listener adicionado ao botão #start-workout-btn.');
+    } else {
+        console.warn('[app.js] Botão #start-workout-btn não encontrado no DOM para adicionar event listener.');
+    }
 }
 
 // Configurar elementos básicos da home (fallback)
