@@ -48,6 +48,70 @@ h1, h2, h3, h4 {
 
 h1 { font-size: 2.5rem; }
 h2 { font-size: 1.875rem; }
+
+/* Estilos para o modo de edição do planejamento */
+.treino-assigned.completed {
+  opacity: 0.7;
+  background: rgba(168, 255, 0, 0.1);
+  border: 1px solid var(--accent-green);
+}
+
+.treino-assigned.completed .treino-info {
+  pointer-events: none;
+}
+
+.completed-badge {
+  color: var(--accent-green);
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+.planning-mode-indicator {
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.day-item.non-editable {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.day-item.non-editable:hover {
+  background-color: var(--bg-card);
+  transform: none;
+}
+
+/* Seção de ações */
+.section-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.section-actions .btn-secondary {
+  font-size: 0.875rem;
+  padding: 8px 12px;
+}
+
+.section-actions .btn-secondary svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Estilo para mensagens de informação */
+.info {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+}
 h3 { font-size: 1.25rem; }
 h4 { font-size: 1rem; }
 

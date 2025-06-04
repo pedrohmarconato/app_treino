@@ -4,7 +4,9 @@
 import AppState from '../state/appState.js';
 import { 
     saveWeeklyPlan, 
-    getActiveWeeklyPlan
+    getActiveWeeklyPlan,
+    editWeeklyPlan,
+    getEditableDays
 } from '../services/weeklyPlanningService.js';
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 import { fetchTiposTreinoMuscular } from '../services/userService.js';
@@ -17,6 +19,8 @@ let planejamentoAtual = {};
 let treinosDisponiveis = [];
 let usuarioIdAtual = null;
 let nomeDiaAtual = '';
+let diasEditaveis = []; // Controla quais dias podem ser editados
+let modoEdicao = false; // Indica se está em modo de edição
 
 // Mapear emojis para os tipos de treino
 const treinoEmojis = {
@@ -31,19 +35,27 @@ const treinoEmojis = {
 };
 
 // Inicializar planejamento
-export async function inicializarPlanejamento(usuarioId) {
+export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false) {
     console.log('[inicializarPlanejamento] Iniciando para usuário:', usuarioId);
     usuarioIdAtual = usuarioId;
+    modoEdicao = modoEdicaoParam;
     
     try {
         // 1. Verificar se já existe plano ativo no banco
         const planoExistente = await getActiveWeeklyPlan(usuarioId);
         
-        if (planoExistente) {
+        if (planoExistente && !modoEdicao) {
             console.log('[inicializarPlanejamento] Plano existente encontrado, carregando...');
             planejamentoAtual = planoExistente;
             await finalizarPlanejamentoExistente();
             return;
+        }
+        
+        if (planoExistente && modoEdicao) {
+            console.log('[inicializarPlanejamento] Modo de edição ativado');
+            planejamentoAtual = planoExistente;
+            diasEditaveis = await getEditableDays(usuarioId);
+            console.log('[inicializarPlanejamento] Dias editáveis:', diasEditaveis);
         }
         
         // 2. Buscar tipos de treino muscular do plano do usuário
@@ -204,7 +216,56 @@ function renderizarPlanejamentoExistente() {
             atualizarVisualizacaoDia(dia, treino);
         }
     });
+    
+    // Se está em modo edição, desabilitar dias não editáveis
+    if (modoEdicao && diasEditaveis.length > 0) {
+        diasEditaveis.forEach(diaInfo => {
+            const diaElement = document.querySelector(`[onclick*="abrirSeletorTreino('${diaInfo.dia_semana}"]`);
+            if (diaElement && !diaInfo.editavel) {
+                diaElement.style.cursor = 'not-allowed';
+                diaElement.style.opacity = '0.6';
+                diaElement.onclick = () => {
+                    showNotification('Este treino já foi realizado e não pode ser alterado', 'warning');
+                };
+            }
+        });
+        
+        // Adicionar indicador visual de modo edição
+        adicionarIndicadorModoEdicao();
+    }
+    
     validarPlanejamento();
+}
+
+// Adicionar indicador de modo edição
+function adicionarIndicadorModoEdicao() {
+    const container = document.querySelector('.planning-page-container') || 
+                     document.querySelector('.modal-content') ||
+                     document.querySelector('#modalPlanejamento');
+    
+    if (container) {
+        // Remover indicador existente se houver
+        const indicadorExistente = container.querySelector('.planning-mode-indicator');
+        if (indicadorExistente) {
+            indicadorExistente.remove();
+        }
+        
+        // Criar novo indicador
+        const indicador = document.createElement('div');
+        indicador.className = 'planning-mode-indicator';
+        indicador.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="m18.5 2.5 1 1-10 10-4 1 1-4 10-10z"/>
+                </svg>
+                <span>MODO EDIÇÃO - Apenas treinos não realizados podem ser alterados</span>
+            </div>
+        `;
+        
+        // Inserir no início do container
+        container.insertBefore(indicador, container.firstChild);
+    }
 }
 
 // Validar planejamento
@@ -217,7 +278,27 @@ function validarPlanejamento() {
     const messages = [];
     const tiposMuscularesNoPlano = {};
 
-    // Contar dias preenchidos
+    // Em modo edição, validação é diferente
+    if (modoEdicao) {
+        // No modo edição, consideramos válido se há pelo menos mudanças válidas
+        messages.push('ℹ️ Modo de edição ativo. Alterações serão salvas automaticamente.');
+        
+        if (validationMessageElement) {
+            validationMessageElement.innerHTML = messages.join('<br>');
+            validationMessageElement.classList.remove('error', 'success');
+            validationMessageElement.classList.add('info');
+            validationMessageElement.style.display = 'block';
+        }
+        
+        // No modo edição, não precisamos do botão salvar tradicional
+        if (btnSalvar) {
+            btnSalvar.style.display = 'none';
+        }
+        
+        return true;
+    }
+
+    // Contar dias preenchidos (modo normal)
     for (const diaKey in planejamentoAtual) {
         if (planejamentoAtual.hasOwnProperty(diaKey) && planejamentoAtual[diaKey]) {
             diasPreenchidos++;
@@ -253,7 +334,7 @@ function validarPlanejamento() {
 
     // Atualizar UI
     if (validationMessageElement) {
-        validationMessageElement.classList.remove('success', 'error');
+        validationMessageElement.classList.remove('success', 'error', 'info');
         
         if (isValid && diasPreenchidos === 7) {
             validationMessageElement.textContent = '✅ Planejamento válido! Pronto para salvar.';
@@ -270,9 +351,10 @@ function validarPlanejamento() {
 
     if (btnSalvar) {
         btnSalvar.disabled = !isValid || diasPreenchidos < 7;
+        btnSalvar.style.display = 'block';
     }
 
-    console.log('[validarPlanejamento] Validação:', { isValid, diasPreenchidos, messages });
+    console.log('[validarPlanejamento] Validação:', { modoEdicao, isValid, diasPreenchidos, messages });
     return isValid && diasPreenchidos === 7;
 }
 
@@ -281,13 +363,23 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
     const diaAtualSelecionado = dia;
     nomeDiaAtual = nomeDia;
     
+    // Verificar se o dia pode ser editado
+    if (modoEdicao) {
+        const diaEditavel = diasEditaveis.find(d => d.dia_semana === parseInt(dia));
+        if (diaEditavel && !diaEditavel.editavel) {
+            showNotification('Este treino já foi realizado e não pode ser alterado', 'warning');
+            return;
+        }
+    }
+    
     const popup = document.getElementById('seletorTreinoPopup');
     const title = document.getElementById('popup-day-title');
     const options = document.getElementById('treino-options');
     
     if (!popup || !title || !options) return;
     
-    title.textContent = `${nomeDia} - Selecionar Treino`;
+    const prefixo = modoEdicao ? 'Editar' : 'Selecionar';
+    title.textContent = `${nomeDia} - ${prefixo} Treino`;
     options.innerHTML = '';
     
     // Adicionar opção de folga
@@ -393,7 +485,21 @@ function criarOpcaoTreino(treino, diaDestino) {
 }
 
 // Selecionar treino para um dia
-function selecionarTreinoParaDia(treino, dia) {
+async function selecionarTreinoParaDia(treino, dia) {
+    if (modoEdicao) {
+        // Salvar mudança no banco de dados
+        const resultado = await editWeeklyPlan(usuarioIdAtual, parseInt(dia), treino);
+        
+        if (!resultado.success) {
+            showNotification(`Erro: ${resultado.error}`, 'error');
+            return;
+        }
+        
+        showNotification(`${treino.nome} atualizado para ${nomeDiaAtual}`, 'success');
+    } else {
+        showNotification(`${treino.nome} adicionado para ${nomeDiaAtual}`, 'success');
+    }
+    
     planejamentoAtual[dia] = {
         id: treino.id,
         nome: treino.nome,
@@ -404,10 +510,6 @@ function selecionarTreinoParaDia(treino, dia) {
     atualizarVisualizacaoDia(dia, treino);
     fecharSeletorTreino();
     validarPlanejamento();
-    
-    if (window.showNotification) {
-        window.showNotification(`${treino.nome} adicionado para ${nomeDiaAtual}`, 'success');
-    }
 }
 
 // Atualizar visualização do dia
@@ -415,26 +517,37 @@ function atualizarVisualizacaoDia(dia, treino) {
     const dayContent = document.getElementById(`dia-${dia}-content`);
     if (!dayContent) return;
     
+    // Verificar se o dia pode ser editado
+    let podeEditar = true;
+    if (modoEdicao) {
+        const diaEditavel = diasEditaveis.find(d => d.dia_semana === parseInt(dia));
+        podeEditar = diaEditavel ? diaEditavel.editavel : true;
+    }
+    
+    const statusClass = podeEditar ? '' : 'completed';
+    const botaoRemover = podeEditar ? `<button class="remove-treino" onclick="removerTreinoDoDia('${dia}')">×</button>` : 
+                                     '<span class="completed-badge">✓</span>';
+    
     if (treino.categoria === 'folga') {
         dayContent.innerHTML = `
-            <div class="treino-assigned">
+            <div class="treino-assigned ${statusClass}">
                 <span class="treino-emoji">😴</span>
                 <div class="treino-info">
                     <div class="treino-name">Folga</div>
                     <div class="treino-type">Descanso</div>
                 </div>
-                <button class="remove-treino" onclick="removerTreinoDoDia('${dia}')">×</button>
+                ${botaoRemover}
             </div>
         `;
     } else {
         dayContent.innerHTML = `
-            <div class="treino-assigned">
+            <div class="treino-assigned ${statusClass}">
                 <span class="treino-emoji">${treinoEmojis[treino.tipo] || '🏋️'}</span>
                 <div class="treino-info">
                     <div class="treino-name">${treino.nome}</div>
                     <div class="treino-type">${treino.categoria === 'cardio' ? 'Cardiovascular' : 'Muscular'}</div>
                 </div>
-                <button class="remove-treino" onclick="removerTreinoDoDia('${dia}')">×</button>
+                ${botaoRemover}
             </div>
         `;
     }
@@ -595,9 +708,53 @@ window.salvarPlanejamento = async function() {
     await salvarPlanejamentoSemanal();
 };
 
+// Função para abrir modo de edição
+export async function abrirEdicaoPlanejamento(usuarioId) {
+    console.log('[abrirEdicaoPlanejamento] Iniciando edição para usuário:', usuarioId);
+    
+    try {
+        // Verificar se há plano ativo
+        const planoExistente = await getActiveWeeklyPlan(usuarioId);
+        if (!planoExistente) {
+            showNotification('Não há plano semanal ativo para editar. Crie um planejamento primeiro.', 'warning');
+            return;
+        }
+        
+        // Verificar se há dias editáveis
+        const diasEditaveisData = await getEditableDays(usuarioId);
+        const temDiasEditaveis = diasEditaveisData.some(dia => dia.editavel);
+        
+        if (!temDiasEditaveis) {
+            showNotification('Todos os treinos da semana já foram realizados. Não há nada para editar.', 'info');
+            return;
+        }
+        
+        // Renderizar template de planejamento em modo edição
+        if (window.renderTemplate) {
+            window.renderTemplate('planejamentoSemanalPage');
+            setTimeout(async () => {
+                await inicializarPlanejamento(usuarioId, true); // true = modo edição
+            }, 100);
+        }
+        
+    } catch (error) {
+        console.error('[abrirEdicaoPlanejamento] Erro:', error);
+        
+        // Tratamento específico de erros
+        if (error.message && error.message.includes('Failed to fetch')) {
+            showNotification('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
+        } else if (error.message && error.message.includes('CORS')) {
+            showNotification('Erro de configuração. Contate o administrador.', 'error');
+        } else {
+            showNotification('Erro ao carregar planejamento para edição: ' + (error.message || error), 'error');
+        }
+    }
+}
+
 // Também disponibilizar outras funções necessárias
 window.inicializarPlanejamento = inicializarPlanejamento;
 window.fecharModalPlanejamento = fecharModalPlanejamento;
+window.abrirEdicaoPlanejamento = abrirEdicaoPlanejamento;
 
 // Função global para forçar fechamento (para emergências)
 window.forcarFechamentoModal = forcarFechamentoModal;

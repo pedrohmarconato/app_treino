@@ -31,11 +31,12 @@ export const homeTemplate = () => `
             <div class="training-plan">
                 <div class="section-header">
                     <h2>Semana de Treinos</h2>
-                    <button class="btn-secondary" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
+                    <button class="btn-secondary" onclick="window.editarPlanejamentoSemanal()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 5v14m-7-7h14"/>
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="m18.5 2.5 1 1-10 10-4 1 1-4 10-10z"/>
                         </svg>
-                        Editar
+                        Editar Plano
                     </button>
                 </div>
                 

@@ -162,6 +162,22 @@ function setupGlobalFunctions() {
         }
     };
     
+    // === EDIÇÃO DE PLANEJAMENTO ===
+    window.editarPlanejamentoSemanal = async () => {
+        const currentUser = AppState.get('currentUser');
+        if (currentUser && currentUser.id) {
+            try {
+                const { abrirEdicaoPlanejamento } = await import('../feature/planning.js');
+                await abrirEdicaoPlanejamento(currentUser.id);
+            } catch (error) {
+                console.error('[app.js] Erro ao abrir edição de planejamento:', error);
+                showNotification('Erro ao abrir edição de planejamento', 'error');
+            }
+        } else {
+            showNotification('Faça login para editar o planejamento.', 'error');
+        }
+    };
+    
     // === TREINO ===
     // Redireciona para o fluxo correto de execução do treino
     window.iniciarTreino = async () => {

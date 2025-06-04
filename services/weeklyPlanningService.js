@@ -142,9 +142,16 @@ export async function saveWeeklyPlan(userId, planejamento) {
                     'd': 4, 'ombro': 4, 'ombro e braço': 4
                 };
                 
-                const diaSemanaProtocolo = tipoTreinoMap[tipoAtual] || 1; // Usar tipoAtual (minúsculo)
+                const diaSemanaProtocolo = tipoTreinoMap[tipoAtual] || 1;
                 const semanaProtocolo = protocoloAtivo.semana_atual || 1;
-                numeroTreino = ((semanaProtocolo - 1) * (Object.keys(tipoTreinoMap).length / 2)) + diaSemanaProtocolo; // Ajuste para o número de treinos distintos
+                
+                // Validar se semanaProtocolo é um número válido
+                if (!isNaN(semanaProtocolo) && !isNaN(diaSemanaProtocolo)) {
+                    numeroTreino = ((parseInt(semanaProtocolo) - 1) * 4) + parseInt(diaSemanaProtocolo);
+                } else {
+                    console.warn(`[saveWeeklyPlan] Valores inválidos para cálculo: semana=${semanaProtocolo}, dia=${diaSemanaProtocolo}`);
+                    numeroTreino = null;
+                }
             }
             
             registros.push({
@@ -283,6 +290,132 @@ export async function checkAndCreateNewWeek(userId) {
     }
     
     return false; // Ainda há dias pendentes
+}
+
+/**
+ * Editar plano semanal (apenas dias não concluídos)
+ */
+export async function editWeeklyPlan(userId, diaIndex, novoTreino) {
+    console.log('[editWeeklyPlan] Parâmetros recebidos:', { userId, diaIndex, novoTreino });
+    
+    // Validar parâmetros de entrada
+    if (!userId || isNaN(userId)) {
+        return { success: false, error: 'ID do usuário inválido' };
+    }
+    
+    if (diaIndex === undefined || isNaN(diaIndex) || diaIndex < 0 || diaIndex > 6) {
+        return { success: false, error: 'Índice do dia inválido' };
+    }
+    
+    if (!novoTreino || !novoTreino.tipo || !novoTreino.categoria) {
+        return { success: false, error: 'Dados do treino inválidos' };
+    }
+    
+    const { ano, semana } = getCurrentWeekKey();
+    const diaSemanaDB = diaIndex === 0 ? 7 : diaIndex;
+    
+    try {
+        // Verificar se o dia ainda pode ser editado
+        const { data: diaAtual } = await query('planejamento_semanal', {
+            eq: { 
+                usuario_id: parseInt(userId),
+                ano: ano,
+                semana: semana,
+                dia_semana: diaSemanaDB
+            },
+            limit: 1
+        });
+        
+        if (!diaAtual || diaAtual.length === 0) {
+            return { success: false, error: 'Dia não encontrado no planejamento atual' };
+        }
+        
+        if (diaAtual[0].concluido) {
+            return { success: false, error: 'Treino já foi realizado e não pode ser alterado' };
+        }
+        
+        // Calcular numero_treino se necessário
+        let numeroTreino = null;
+        if (novoTreino.categoria === 'muscular' || novoTreino.categoria === 'treino') {
+            // Buscar protocolo ativo para calcular numero_treino
+            const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
+            if (protocoloAtivo && protocoloAtivo.semana_atual) {
+                const tipoTreinoMap = {
+                    'peito': 1, 'a': 1,
+                    'costas': 2, 'b': 2,
+                    'pernas': 3, 'c': 3,
+                    'ombro': 4, 'ombro e braço': 4, 'd': 4
+                };
+                
+                const tipoLower = novoTreino.tipo.toLowerCase();
+                const diaTreino = tipoTreinoMap[tipoLower];
+                if (diaTreino) {
+                    numeroTreino = ((protocoloAtivo.semana_atual - 1) * 4) + diaTreino;
+                }
+            }
+        }
+        
+        // Preparar dados da atualização com validação
+        const dadosAtualizacao = {
+            tipo_atividade: novoTreino.categoria === 'folga' ? 'folga' : 
+                           novoTreino.categoria === 'cardio' ? 'cardio' : 'treino',
+            numero_treino: (numeroTreino && !isNaN(numeroTreino)) ? parseInt(numeroTreino) : null,
+            observacoes: `Plano editado semana ${semana}/${ano} - ${novoTreino.tipo}`
+        };
+        
+        console.log('[editWeeklyPlan] Dados para atualização:', dadosAtualizacao);
+        
+        // Atualizar no banco
+        const { data, error } = await update('planejamento_semanal', 
+            dadosAtualizacao,
+            {
+                eq: {
+                    usuario_id: parseInt(userId),
+                    ano: ano,
+                    semana: semana,
+                    dia_semana: diaSemanaDB
+                }
+            }
+        );
+        
+        if (error) {
+            console.error('[editWeeklyPlan] Erro do Supabase:', error);
+            return { success: false, error: error.message };
+        }
+        
+        console.log('[editWeeklyPlan] Atualização realizada com sucesso');
+        return { success: true, data };
+        
+    } catch (error) {
+        console.error('[editWeeklyPlan] Erro:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Verificar quais dias podem ser editados
+ */
+export async function getEditableDays(userId) {
+    const { ano, semana } = getCurrentWeekKey();
+    
+    const { data: planoAtual } = await query('planejamento_semanal', {
+        eq: { 
+            usuario_id: userId,
+            ano: ano,
+            semana: semana
+        },
+        order: { column: 'dia_semana', ascending: true }
+    });
+    
+    if (!planoAtual) return [];
+    
+    // Retornar apenas dias que podem ser editados
+    return planoAtual.map(dia => ({
+        dia_semana: dia.dia_semana === 7 ? 0 : dia.dia_semana, // Converter de volta para 0-6
+        tipo_atividade: dia.tipo_atividade,
+        concluido: dia.concluido,
+        editavel: !dia.concluido
+    }));
 }
 
 /**
