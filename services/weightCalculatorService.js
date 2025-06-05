@@ -29,13 +29,19 @@ export class WeightCalculatorService {
             }
             
             // 2. Buscar configuração do protocolo para esta semana
+            // Validar parâmetros antes da consulta
+            if (!exercicioId || !semanaAtual || !numeroTreino || !protocoloId) {
+                console.warn(`[WeightCalculator] Parâmetros inválidos:`, { exercicioId, semanaAtual, numeroTreino, protocoloId });
+                return this.calcularComPercentuaisPadrao(rm1, semanaAtual || 1);
+            }
+            
             const { data: protocoloTreino, error } = await query('protocolo_treinos', {
                 select: '*',
                 eq: {
-                    exercicio_id: exercicioId,
-                    semana_referencia: semanaAtual,
-                    numero_treino: numeroTreino,
-                    protocolo_id: protocoloId
+                    exercicio_id: parseInt(exercicioId),
+                    semana_referencia: parseInt(semanaAtual),
+                    numero_treino: parseInt(numeroTreino),
+                    protocolo_id: parseInt(protocoloId)
                 },
                 single: true
             });
@@ -75,6 +81,12 @@ export class WeightCalculatorService {
      */
     static async calcularPesosTreino(userId, numeroTreino, protocoloId, semanaAtual) {
         try {
+            // 1. Validar parâmetros
+            if (!numeroTreino || !protocoloId || !semanaAtual) {
+                console.warn(`[WeightCalculator] Parâmetros inválidos para buscar treino:`, { numeroTreino, protocoloId, semanaAtual });
+                return [];
+            }
+            
             // 1. Buscar exercícios do treino para a semana
             const { data: exerciciosTreino, error } = await query('protocolo_treinos', {
                 select: `
@@ -87,9 +99,9 @@ export class WeightCalculatorService {
                     )
                 `,
                 eq: {
-                    numero_treino: numeroTreino,
-                    protocolo_id: protocoloId,
-                    semana_referencia: semanaAtual
+                    numero_treino: parseInt(numeroTreino),
+                    protocolo_id: parseInt(protocoloId),
+                    semana_referencia: parseInt(semanaAtual)
                 },
                 order: { column: 'ordem_exercicio', ascending: true }
             });

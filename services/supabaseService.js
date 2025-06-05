@@ -1,5 +1,6 @@
 // js/services/supabaseService.js
 // Centraliza a conexão e queries básicas do Supabase
+// Updated: Added remove function
 
 // Verificar se as configurações estão disponíveis
 if (!window.SUPABASE_CONFIG) {
@@ -35,8 +36,14 @@ export async function query(table, options = {}) {
         // Aplicar filtros
         if (options.eq) {
             Object.entries(options.eq).forEach(([key, value]) => {
-                console.log(`[query] Aplicando filtro eq: ${key} = ${value}`);
-                q = q.eq(key, value);
+                // Tratar valores null e undefined
+                if (value === null || value === undefined || value === 'null' || value === 'undefined') {
+                    console.log(`[query] Aplicando filtro is null: ${key}`);
+                    q = q.is(key, null);
+                } else {
+                    console.log(`[query] Aplicando filtro eq: ${key} = ${value}`);
+                    q = q.eq(key, value);
+                }
             });
         }
         
@@ -77,18 +84,47 @@ export async function insert(table, data) {
     }
 }
 
-export async function update(table, id, data) {
+export async function update(table, data, filters) {
     try {
-        const { data: result, error } = await supabase
-            .from(table)
-            .update(data)
-            .eq('id', id)
-            .select();
+        console.log(`[supabaseService] update chamado:`, { table, data, filters });
+        
+        let q = supabase.from(table).update(data);
+        
+        // Se filters é um número, assume que é um ID
+        if (typeof filters === 'number' || typeof filters === 'string') {
+            console.log(`[supabaseService] Usando ID filter:`, filters);
+            q = q.eq('id', filters);
+        } 
+        // Se filters é um objeto, aplica os filtros
+        else if (filters && typeof filters === 'object' && filters.eq) {
+            console.log(`[supabaseService] Aplicando filtros .eq:`, filters.eq);
+            Object.entries(filters.eq).forEach(([key, value]) => {
+                q = q.eq(key, value);
+            });
+        } 
+        // Suporte ao formato antigo (retrocompatibilidade)
+        else if (filters && typeof filters === 'object') {
+            console.warn('[supabaseService] Formato antigo de update detectado, use { eq: {...} }');
+            console.warn('[supabaseService] Filters recebido:', filters);
+            Object.entries(filters).forEach(([key, value]) => {
+                if (key !== 'eq') { // Evitar processar 'eq' como coluna
+                    q = q.eq(key, value);
+                }
+            });
+        }
+        // Se filters está undefined
+        else {
+            console.error('[supabaseService] ERRO: filters não fornecido ou inválido:', filters);
+            throw new Error('Filters obrigatório para update');
+        }
+        
+        const { data: result, error } = await q.select();
         
         if (error) throw error;
         return { data: result, error: null };
     } catch (error) {
-        console.error(`Erro ao atualizar ${table}:`, error);
+        console.error(`[supabaseService] Erro ao atualizar ${table}:`, error);
+        console.error(`[supabaseService] Parâmetros: table=${table}, data=`, data, 'filters=', filters);
         return { data: null, error };
     }
 }
@@ -107,3 +143,4 @@ export async function upsert(table, data, options = {}) {
         return { data: null, error };
     }
 }
+

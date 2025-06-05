@@ -4,7 +4,7 @@
 import AppState from '../state/appState.js';
 import { fetchUsuarios, fetchProtocoloAtivoUsuario } from '../services/userService.js';
 import { fetchProximoTreino } from '../services/workoutService.js';
-import { needsWeekPlanning, getWeekPlan } from '../utils/weekPlanStorage.js';
+import WeeklyPlanService from '../services/weeklyPlanningService.js';
 import { needsWeekPlanningAsync } from './planning.js';
 import { showLoading, hideLoading, showNotification } from '../ui/notifications.js';
 import { mostrarTela, adicionarBotaoOrdemSemana } from '../ui/navigation.js';
@@ -107,29 +107,25 @@ export async function selecionarUsuario(usuario) {
         // 3. CORREÇÃO: SEMPRE ir para home, nunca para OrderWeekPage
         console.log('[selecionarUsuario] ➡️ REDIRECIONANDO para HOME (planejamento já existe)');
         
-        // Navegar para home
+        // Debug: verificar se renderTemplate está disponível
+        console.log('[selecionarUsuario] Verificando renderTemplate:', !!window.renderTemplate);
+        console.log('[selecionarUsuario] Funções window disponíveis:', Object.keys(window).filter(k => k.includes('render')));
+        
+        // Navegar para home usando renderTemplate
         if (window.renderTemplate) {
-            console.log('[selecionarUsuario] Usando renderTemplate para ir para home');
-            window.renderTemplate('home');
+            console.log('[selecionarUsuario] ✅ Usando renderTemplate para ir para home');
+            try {
+                window.renderTemplate('home');
+                console.log('[selecionarUsuario] ✅ renderTemplate("home") executado com sucesso');
+            } catch (error) {
+                console.error('[selecionarUsuario] ❌ Erro ao executar renderTemplate:', error);
+                console.log('[selecionarUsuario] Fallback: usando mostrarTela');
+                mostrarTela('home-screen');
+            }
         } else {
-            console.log('[selecionarUsuario] Usando mostrarTela para ir para home-screen');
+            console.error('[selecionarUsuario] ❌ renderTemplate não disponível! Usando fallback');
             mostrarTela('home-screen');
         }
-        
-        // Carregar dashboard após navegação
-        setTimeout(async () => {
-            console.log('[selecionarUsuario] Carregando dashboard...');
-            try {
-                if (window.carregarDashboard) {
-                    await window.carregarDashboard();
-                    console.log('[selecionarUsuario] ✅ Dashboard carregado com sucesso');
-                } else {
-                    console.warn('[selecionarUsuario] window.carregarDashboard não disponível');
-                }
-            } catch (dashboardError) {
-                console.error('[selecionarUsuario] Erro no dashboard:', dashboardError);
-            }
-        }, 300);
         
         console.log('[selecionarUsuario] ===== SELEÇÃO CONCLUÍDA =====');
         
@@ -141,13 +137,27 @@ export async function selecionarUsuario(usuario) {
 
 // Mostrar tela de planejamento semanal
 function mostrarModalPlanejamento(usuarioId) {
-    console.log('[mostrarModalPlanejamento] Iniciando para usuário:', usuarioId);
-    // Corrigir para navegar para a página de planejamento semanal
-    if (window.mostrarTela) {
-        // O mapeamento correto é 'planejamentoSemanal' → 'planejamentoSemanalPage', conforme navigation.js
-        window.mostrarTela('planejamentoSemanal'); // usuarioId já está no AppState
+    console.log('[mostrarModalPlanejamento] 📅 Iniciando para usuário:', usuarioId);
+    
+    // Debug: verificar renderTemplate
+    console.log('[mostrarModalPlanejamento] Verificando renderTemplate:', !!window.renderTemplate);
+    
+    if (window.renderTemplate) {
+        console.log('[mostrarModalPlanejamento] ✅ Usando renderTemplate para planejamento');
+        try {
+            window.renderTemplate('planejamentoSemanalPage');
+            console.log('[mostrarModalPlanejamento] ✅ Navegação para planejamento executada');
+        } catch (error) {
+            console.error('[mostrarModalPlanejamento] ❌ Erro ao navegar:', error);
+            if (window.mostrarTela) {
+                window.mostrarTela('planejamentoSemanal');
+            }
+        }
+    } else if (window.mostrarTela) {
+        console.log('[mostrarModalPlanejamento] Usando mostrarTela como fallback');
+        window.mostrarTela('planejamentoSemanal');
     } else {
-        console.error('Função window.mostrarTela não encontrada.');
+        console.error('[mostrarModalPlanejamento] ❌ Nenhum método de navegação disponível');
         showNotification('Erro ao tentar abrir o planejamento semanal.', 'error');
     }
 }

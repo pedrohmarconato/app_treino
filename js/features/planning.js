@@ -8,7 +8,7 @@ import {
 } from '../services/weeklyPlanningService.js';
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 import { fetchTiposTreinoMuscular } from '../services/userService.js';
-import { saveWeekPlanToSupabase, getWeekPlanFromSupabase, saveWeekPlan, getWeekPlan } from '../../utils/weekPlanStorage.js';
+// Functions now handled by weeklyPlanningService.js
 import { showNotification } from '../ui/notifications.js';
 
 // ✅ REMOVIDO: import não utilizado

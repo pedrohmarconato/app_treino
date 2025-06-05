@@ -47,8 +47,30 @@ export class WorkoutProtocolService {
                 };
             }
             
-            // 3. Buscar exercícios do treino com pesos calculados
-            const numeroTreino = planejamentoHoje.numero_treino;
+            // 3. Buscar exercícios do treino baseado no tipo de atividade
+            // Calcular numero_treino baseado no tipo de atividade e semana atual
+            let numeroTreino = 1; // Default
+            
+            if (planejamentoHoje.tipo_atividade === 'treino') {
+                // Mapear tipo de treino para número baseado no dia da semana
+                const hoje = new Date();
+                const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
+                
+                // Mapear dia da semana para número do treino (1-4)
+                const mapeamentoDias = {
+                    0: 1, // domingo -> treino 1
+                    1: 1, // segunda -> treino 1  
+                    2: 2, // terça -> treino 2
+                    3: 3, // quarta -> treino 3
+                    4: 4, // quinta -> treino 4
+                    5: 1, // sexta -> treino 1
+                    6: 2  // sábado -> treino 2
+                };
+                
+                const diaTreino = mapeamentoDias[diaSemana] || 1;
+                numeroTreino = ((semanaAtual - 1) * 4) + diaTreino;
+            }
+            
             const exerciciosComPesos = await WeightCalculatorService.calcularPesosTreino(
                 userId,
                 numeroTreino,
@@ -98,22 +120,54 @@ export class WorkoutProtocolService {
      * Buscar qual treino fazer hoje baseado no planejamento semanal
      */
     static async buscarTreinoDeHoje(userId) {
-        const hoje = new Date();
-        const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
-        const ano = hoje.getFullYear();
-        const semana = this.getWeekNumber(hoje);
-        
-        const { data: planejamento } = await query('planejamento_semanal', {
-            eq: {
-                usuario_id: userId,
-                ano: ano,
-                semana: semana,
-                dia_semana: diaSemana
-            },
-            single: true
-        });
-        
-        return { data: planejamento };
+        try {
+            // Validar userId
+            if (!userId) {
+                console.warn('[WorkoutProtocol] userId não fornecido para buscarTreinoDeHoje');
+                return { data: null, error: 'userId é obrigatório' };
+            }
+            
+            const hoje = new Date();
+            const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
+            const ano = hoje.getFullYear();
+            const semana = this.getWeekNumber(hoje);
+            
+            console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaSemana}, ano=${ano}, semana=${semana}`);
+            
+            const { data: planejamento, error } = await query('planejamento_semanal', {
+                eq: {
+                    usuario_id: parseInt(userId),
+                    ano: ano,
+                    semana: semana,
+                    dia_semana: diaSemana
+                },
+                single: true
+            });
+            
+            if (error) {
+                console.error('[WorkoutProtocol] Erro ao buscar planejamento:', error);
+                return { data: null, error: error.message };
+            }
+            
+            if (!planejamento) {
+                console.warn(`[WorkoutProtocol] Nenhum planejamento encontrado para hoje`);
+                // Retornar folga como padrão
+                return { 
+                    data: {
+                        tipo_atividade: 'folga',
+                        numero_treino: null,
+                        concluido: false
+                    } 
+                };
+            }
+            
+            console.log('[WorkoutProtocol] ✅ Planejamento encontrado:', planejamento);
+            return { data: planejamento, error: null };
+            
+        } catch (error) {
+            console.error('[WorkoutProtocol] Erro em buscarTreinoDeHoje:', error);
+            return { data: null, error: error.message };
+        }
     }
     
     /**

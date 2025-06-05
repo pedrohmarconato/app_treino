@@ -1,8 +1,8 @@
 // templates/home.js - Template da tela home COMPLETO
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
-        <button class="back-button" onclick="logout()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="back-button btn-back" onclick="logout()">
+            <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 18l-6-6 6-6"/>
             </svg>
         </button>
@@ -31,12 +31,12 @@ export const homeTemplate = () => `
             <div class="training-plan">
                 <div class="section-header">
                     <h2>Semana de Treinos</h2>
-                    <button class="btn-secondary" onclick="window.editarPlanejamentoSemanal()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn-secondary btn-edit" onclick="window.editarPlanejamentoSemanal()">
+                        <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="m18.5 2.5 1 1-10 10-4 1 1-4 10-10z"/>
                         </svg>
-                        Editar Plano
+                        <span class="btn-text">Editar</span>
                     </button>
                 </div>
                 
@@ -45,33 +45,61 @@ export const homeTemplate = () => `
                     <!-- Preenchido dinamicamente -->
                 </div>
 
-                <!-- Card do Treino Atual -->
-                <div class="current-workout-card" id="current-workout-card">
-                    <div class="workout-header">
-                        <div class="workout-info">
+                <!-- Card do Treino Atual Expansível -->
+                <div class="current-workout-card expandable-card" id="current-workout-card">
+                    <!-- Botão Iniciar Treino (Topo - Apenas quando reduzido) -->
+                    <div class="top-action-area" id="top-action-area">
+                        <button class="btn-primary workout-start-btn-top" id="start-workout-btn">
+                            <span id="btn-text">Iniciar Treino</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Cabeçalho Sempre Visível -->
+                    <div class="workout-header-compact">
+                        <div class="workout-info-compact">
                             <span class="workout-type" id="workout-type">Carregando...</span>
                             <h3 id="workout-name">Preparando seu treino</h3>
+                        </div>
+                        <button class="expand-toggle" id="workout-toggle" onclick="toggleWorkoutCard()">
+                            <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M6 9l6 6 6-6"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    
+                    <!-- Conteúdo Expansível -->
+                    <div class="expandable-content" id="expandable-content" style="display: none;">
+                        <div class="workout-details">
                             <div class="workout-meta">
                                 <span id="workout-exercises">0 exercícios</span>
                                 <span>•</span>
                                 <span id="workout-duration">~30min</span>
                             </div>
                         </div>
-                        <div class="workout-progress">
-                            <svg class="progress-circle" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="40" class="progress-bg"/>
-                                <circle cx="50" cy="50" r="40" class="progress-fill" id="workout-progress-circle"/>
-                            </svg>
-                            <div class="progress-text" id="workout-progress-text">0%</div>
+                    
+
+                    <!-- Exercícios de Hoje Integrados -->
+                    <div class="exercises-preview-integrated" id="exercises-preview">
+                        <div class="exercises-header">
+                            <h4>Exercícios de Hoje</h4>
+                            <button class="btn-expand" id="expand-exercises" onclick="toggleExercises()">
+                                <span class="expand-text">Ver treino completo</span>
+                                <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="exercises-list" id="exercises-list">
+                            <!-- Preenchido dinamicamente com exercícios -->
+                        </div>
+                        <div class="exercises-expanded" id="exercises-expanded" style="display: none;">
+                            <!-- Treino completo expandido -->
                         </div>
                     </div>
-                    
-                    <button class="btn-primary workout-start-btn" id="start-workout-btn">
-                        <span id="btn-text">Iniciar Treino</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                    </button>
 
                 </div>
             </div>
@@ -119,13 +147,7 @@ export const homeTemplate = () => `
                 </div>
             </div>
 
-            <!-- Planejamento Semanal Customizado -->
-            
-                
-                
-                    <!-- Preenchido dinamicamente -->
-                </div>
-            </div>
+
         </div>
     </div>
 `;
@@ -223,23 +245,73 @@ export const homeStyles = `
         color: var(--text-primary);
     }
 
-    /* Week Indicators */
+    /* Botões reestilizados */
+    .btn-edit {
+        padding: 8px 12px !important;
+        font-size: 0.875rem !important;
+        min-height: 36px !important;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .edit-icon {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .btn-text {
+        font-weight: 500;
+    }
+
+    .btn-back {
+        width: 36px !important;
+        height: 36px !important;
+        padding: 8px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-secondary) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: var(--radius-md) !important;
+        transition: var(--transition) !important;
+    }
+
+    .btn-back:hover {
+        background: var(--accent-green) !important;
+        border-color: var(--accent-green) !important;
+    }
+
+    .btn-back:hover .back-icon {
+        stroke: var(--bg-primary) !important;
+    }
+
+    .back-icon {
+        width: 18px !important;
+        height: 18px !important;
+        stroke: var(--text-secondary);
+        transition: var(--transition);
+    }
+
+    /* Week Indicators - Design System Neon */
     .week-indicators {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 8px;
+        gap: 12px;
         margin-bottom: 24px;
     }
 
     .day-indicator {
-        background: var(--bg-secondary);
-        border-radius: var(--radius-md);
-        padding: 12px 8px;
+        background: #1a1a1a;
+        border-radius: var(--radius-lg);
+        padding: 16px 12px;
         text-align: center;
-        transition: var(--transition);
-        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        border: 2px solid #333;
         position: relative;
         overflow: hidden;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
     .day-indicator::before {
@@ -254,55 +326,122 @@ export const homeStyles = `
         transition: opacity 0.3s ease;
     }
 
+    /* Estados dos Dias - Sistema Neon */
     .day-indicator.today {
-        border-color: var(--accent-green);
-        background: var(--accent-green-bg);
-    }
-
-    .day-indicator.today::before {
-        opacity: 0.1;
+        border-color: #00ff00;
+        background: rgba(0, 255, 0, 0.1);
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
     }
 
     .day-indicator.completed {
-        background: var(--accent-green);
-        color: var(--bg-primary);
+        background: rgba(0, 255, 0, 0.15);
+        border-color: #00ff00;
+        color: #00ff00;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+    }
+
+    .day-indicator.cancelled {
+        background: rgba(255, 0, 64, 0.15);
+        border-color: #ff0040;
+        color: #ff0040;
+        box-shadow: 0 0 15px rgba(255, 0, 64, 0.4);
+    }
+
+    .day-indicator.cancelled .day-type {
+        text-decoration: line-through;
+        opacity: 0.8;
+    }
+
+    .day-indicator.pending {
+        background: #1a1a1a;
+        border-color: #333;
+        color: #999;
+    }
+
+    .day-indicator:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 255, 0, 0.2);
     }
 
     .day-name {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 4px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 6px;
         text-transform: uppercase;
+        letter-spacing: 0.1em;
         position: relative;
         z-index: 1;
     }
 
-    .day-indicator.today .day-name,
     .day-indicator.completed .day-name {
-        color: inherit;
+        color: #00ff00;
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+
+    .day-indicator.cancelled .day-name {
+        color: #ff0040;
+        text-shadow: 0 0 10px rgba(255, 0, 64, 0.5);
+    }
+
+    .day-indicator.pending .day-name {
+        color: #999;
     }
 
     .day-type {
-        font-size: 0.875rem;
+        font-size: 0.75rem;
         font-weight: 500;
-        color: var(--text-primary);
+        color: #fff;
         position: relative;
         z-index: 1;
+        text-align: center;
+        margin-top: 4px;
+        line-height: 1.2;
     }
 
     .day-indicator.completed .day-type {
-        color: var(--bg-primary);
+        color: #00ff00;
+        font-weight: 600;
     }
 
-    /* Current Workout Card */
+    .day-indicator.cancelled .day-type {
+        color: #ff0040;
+        font-weight: 600;
+    }
+
+    .day-indicator.pending .day-type {
+        color: #666;
+        font-style: italic;
+    }
+
+    .empty-day {
+        border: 2px dashed var(--border-color);
+        background: transparent;
+    }
+
+    .empty-day .day-type {
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+
+    /* Current Workout Card - Expansível */
     .current-workout-card {
-        background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
         border-radius: var(--radius-lg);
-        padding: 24px;
-        border: 1px solid var(--border-color);
+        border: 2px solid #333;
         position: relative;
         overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .expandable-card {
+        cursor: pointer;
+    }
+
+    .expandable-card.expanded {
+        border-color: #00ff00;
+        box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
     }
 
     .current-workout-card::before {
@@ -312,37 +451,81 @@ export const homeStyles = `
         left: 0;
         right: 0;
         bottom: 0;
-        background: radial-gradient(circle at top right, var(--accent-green-bg) 0%, transparent 60%);
-        opacity: 0.5;
+        background: radial-gradient(circle at top right, rgba(0, 255, 0, 0.1) 0%, transparent 60%);
+        opacity: 0.3;
+        transition: opacity 0.3s ease;
     }
 
-    .workout-header {
+    .expandable-card.expanded::before {
+        opacity: 0.6;
+    }
+
+    /* Header Compacto */
+    .workout-header-compact {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 20px;
+        align-items: center;
+        padding: 20px 24px 16px;
         position: relative;
         z-index: 1;
     }
 
-    .workout-type {
-        display: inline-block;
-        background: var(--accent-green);
-        color: var(--bg-primary);
-        padding: 4px 12px;
-        border-radius: var(--radius-full);
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 8px;
+    .workout-info-compact {
+        flex: 1;
     }
 
-    .workout-info h3 {
-        font-size: 1.5rem;
+    .expand-toggle {
+        background: none;
+        border: 2px solid #333;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-left: 16px;
+    }
+
+    .expand-toggle:hover {
+        border-color: #00ff00;
+        background: rgba(0, 255, 0, 0.1);
+    }
+
+    .expand-toggle .expand-icon {
+        width: 20px;
+        height: 20px;
+        stroke: #fff;
+        transition: all 0.3s ease;
+    }
+
+    .expand-toggle.expanded .expand-icon {
+        transform: rotate(180deg);
+        stroke: #00ff00;
+    }
+
+    .workout-type {
+        display: inline-block;
+        background: linear-gradient(45deg, #00ff00, #00cc00);
+        color: #000;
+        padding: 6px 16px;
+        border-radius: var(--radius-full);
+        font-size: 0.75rem;
         font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 12px;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        text-shadow: none;
+    }
+
+    .workout-info-compact h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #fff;
+        margin: 0;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
     }
 
     .workout-meta {
@@ -353,90 +536,110 @@ export const homeStyles = `
         align-items: center;
     }
 
-    .workout-progress {
+
+    /* Botão Iniciar Treino no Topo */
+    .top-action-area {
+        padding: 20px 24px 16px;
+        display: flex;
+        justify-content: center;
         position: relative;
-        width: 80px;
-        height: 80px;
-        flex-shrink: 0;
+        z-index: 2;
+        border-bottom: 1px solid #333;
+        background: rgba(0, 0, 0, 0.2);
     }
 
-    .progress-circle {
+    .workout-start-btn-top {
         width: 100%;
-        height: 100%;
-        transform: rotate(-90deg);
-    }
-
-    .progress-bg {
-        fill: none;
-        stroke: var(--bg-secondary);
-        stroke-width: 8;
-    }
-
-    .progress-fill {
-        fill: none;
-        stroke: var(--accent-green);
-        stroke-width: 8;
-        stroke-linecap: round;
-        stroke-dasharray: 251.2;
-        stroke-dashoffset: 251.2;
-        transition: stroke-dashoffset 0.5s ease;
-    }
-
-    .progress-text {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: var(--accent-green);
-    }
-
-    .workout-start-btn {
-        width: 100%;
-        max-width: 320px;
+        max-width: 280px;
         min-height: 48px;
-        position: relative;
-        z-index: 1;
         font-size: 1rem;
-        padding: 10px 18px;
+        padding: 12px 24px;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
         border-radius: var(--radius-full);
-        margin: 0 auto;
         box-sizing: border-box;
-        transition: var(--transition);
+        transition: all 0.3s ease;
+        background: linear-gradient(45deg, #00ff00, #00cc00);
+        color: #000;
+        border: none;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        cursor: pointer;
     }
 
-    .workout-start-btn svg {
-        width: 22px;
-        height: 22px;
+    .workout-start-btn-top:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+        background: linear-gradient(45deg, #00ff00, #00ff00);
+    }
+
+    .workout-start-btn-top:active {
+        transform: translateY(0);
+    }
+
+    /* Estado oculto do botão do topo */
+    .top-action-area.hidden {
+        display: none;
+    }
+
+    .workout-start-btn-top svg {
+        width: 20px;
+        height: 20px;
+        stroke: #000;
     }
 
     @media (max-width: 480px) {
-        .workout-start-btn {
-            font-size: 0.95rem;
-            min-height: 42px;
-            padding: 8px 12px;
+        .workout-start-btn-top {
+            font-size: 0.9rem;
+            min-height: 44px;
+            padding: 10px 20px;
             max-width: 95vw;
         }
-        .workout-start-btn svg {
+        .workout-start-btn-top svg {
             width: 18px;
             height: 18px;
         }
     }
 
-    .workout-start-btn:disabled {
-        background: var(--bg-secondary);
-        color: var(--text-secondary);
+    .workout-start-btn-top:disabled {
+        background: #333;
+        color: #666;
         cursor: not-allowed;
+        box-shadow: none;
     }
 
-    .workout-start-btn:disabled svg {
+    .workout-start-btn-top:disabled svg {
         opacity: 0.5;
+        stroke: #666;
     }
+
+
+    /* Conteúdo Expansível */
+    .expandable-content {
+        border-top: 1px solid #333;
+        background: rgba(0, 0, 0, 0.2);
+        animation: slideDown 0.4s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            max-height: 0;
+        }
+        to {
+            opacity: 1;
+            max-height: 1000px;
+        }
+    }
+
+    .workout-details {
+        padding: 24px;
+    }
+
 
     /* Metrics Section */
     .metrics-section {
@@ -574,68 +777,390 @@ export const homeStyles = `
         width: 100%;
     }
 
-    /* Weekly Plan Section */
-    .weekly-plan-section {
-        background: var(--bg-card);
-        border-radius: var(--radius-lg);
-        padding: 24px;
+    /* Exercises Preview Integrated */
+    .exercises-preview-integrated {
+        margin: 16px 0;
+        position: relative;
+        z-index: 1;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
         border: 1px solid var(--border-color);
+        overflow: hidden;
     }
 
-    .weekly-plan-list {
+    .exercises-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-primary);
+    }
+
+    .exercises-header h4 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .btn-expand {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: none;
+        color: var(--accent-green);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        transition: var(--transition);
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .btn-expand:hover {
+        background: var(--accent-green-bg);
+    }
+
+    .expand-icon {
+        width: 16px;
+        height: 16px;
+        transition: transform 0.3s ease;
+    }
+
+    .btn-expand.expanded .expand-icon {
+        transform: rotate(180deg);
+    }
+
+    .exercises-list {
+        padding: 12px 16px;
+    }
+
+    .exercises-expanded {
+        padding: 16px;
+        background: var(--bg-primary);
+        border-top: 1px solid var(--border-color);
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            max-height: 0;
+        }
+        to {
+            opacity: 1;
+            max-height: 500px;
+        }
+    }
+
+    .exercises-preview {
         display: flex;
         flex-direction: column;
         gap: 8px;
     }
 
-    .plan-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
+    .exercise-preview-card {
         background: var(--bg-secondary);
         border-radius: var(--radius-md);
+        padding: 16px;
+        border: 1px solid var(--border-color);
         transition: var(--transition);
     }
 
-    .plan-item:hover {
+    .exercise-preview-card:hover {
         background: var(--bg-primary);
+        border-color: var(--accent-green);
     }
 
-    .plan-day {
+    .exercise-preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .exercise-name {
+        font-size: 1rem;
         font-weight: 600;
         color: var(--text-primary);
-        min-width: 80px;
     }
 
-    .plan-activity {
-        flex: 1;
+    .exercise-group {
+        font-size: 0.875rem;
         color: var(--text-secondary);
-        text-align: left;
-        margin-left: 16px;
     }
 
-    .plan-status {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-        border-radius: var(--radius-sm);
-        font-weight: 500;
+    .exercise-rm-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
     }
 
-    .plan-status.completed {
+    .rm-badge {
         background: var(--accent-green);
         color: var(--bg-primary);
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
     }
 
-    .plan-status.today {
-        background: var(--accent-green-bg);
+    .exercise-preview-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .exercise-detail {
+        text-align: center;
+    }
+
+    .exercise-detail-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
+
+    .exercise-detail-value {
+        font-size: 1rem;
+        font-weight: 600;
         color: var(--accent-green);
     }
 
-    .plan-status.pending {
+    /* Novos estilos para exercícios detalhados */
+    .rest-day-card {
+        background: linear-gradient(135deg, var(--accent-green-bg) 0%, var(--bg-secondary) 100%);
+        border-color: var(--accent-green);
+    }
+
+    .rest-day-suggestions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .suggestion-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
         background: var(--bg-primary);
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
         color: var(--text-secondary);
     }
+
+    .suggestion-icon {
+        font-size: 1.2rem;
+    }
+
+    .cardio-badge {
+        background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        color: white;
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .workout-summary-card {
+        background: linear-gradient(135deg, var(--accent-green-bg) 0%, var(--bg-secondary) 100%);
+        border-color: var(--accent-green);
+        margin-bottom: 20px;
+    }
+
+    .workout-summary-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 16px;
+    }
+
+    .summary-stat {
+        text-align: center;
+        padding: 12px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-md);
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent-green);
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .exercise-number {
+        background: var(--accent-green);
+        color: var(--bg-primary);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-right: 8px;
+    }
+
+    .first-exercise {
+        border-color: var(--accent-green);
+        box-shadow: 0 0 0 1px var(--accent-green-bg);
+    }
+
+    .exercise-weight-range {
+        margin: 16px 0;
+        padding: 12px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-md);
+    }
+
+    .weight-indicator {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .weight-min, .weight-max {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        min-width: 40px;
+    }
+
+    .weight-bar {
+        flex: 1;
+        height: 8px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-full);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .weight-range-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-green) 0%, var(--accent-green-dark) 100%);
+        border-radius: var(--radius-full);
+        transition: width 0.5s ease;
+    }
+
+    .weight-target {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 12px;
+        height: 12px;
+        background: var(--accent-green);
+        border-radius: 50%;
+        border: 2px solid var(--bg-primary);
+        box-shadow: 0 0 0 2px var(--accent-green);
+    }
+
+    .weight-target-label {
+        text-align: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--accent-green);
+    }
+
+    .exercise-progress {
+        margin: 12px 0;
+        padding: 8px 12px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-md);
+        border-left: 3px solid var(--accent-green);
+    }
+
+    .progress-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .progress-icon {
+        font-size: 1.1rem;
+    }
+
+    .progress-text {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .exercise-tips {
+        display: flex;
+        gap: 16px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .tip-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .tip-icon {
+        font-size: 1rem;
+    }
+
+    .error-card {
+        background: linear-gradient(135deg, #ff6b6b20 0%, var(--bg-secondary) 100%);
+        border-color: #ff6b6b;
+    }
+
+    .error-actions {
+        margin-top: 12px;
+        text-align: center;
+    }
+
+    /* Responsividade para exercícios detalhados */
+    @media (max-width: 768px) {
+        .rest-day-suggestions {
+            grid-template-columns: 1fr;
+        }
+
+        .workout-summary-stats {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .summary-stat {
+            padding: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+        }
+
+        .exercise-tips {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .weight-indicator {
+            gap: 8px;
+        }
+
+        .weight-min, .weight-max {
+            min-width: 35px;
+            font-size: 0.75rem;
+        }
+    }
+
 
     /* Responsive Design */
     @media (max-width: 768px) {

@@ -2,16 +2,9 @@
 // Versão corrigida que fecha o modal adequadamente
 
 import AppState from '../state/appState.js';
-import { 
-    saveWeeklyPlan, 
-    getActiveWeeklyPlan,
-    editWeeklyPlan,
-    getEditableDays
-} from '../services/weeklyPlanningService.js';
+import WeeklyPlanService from '../services/weeklyPlanningService.js';
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 import { fetchTiposTreinoMuscular } from '../services/userService.js';
-import { saveWeekPlanToSupabase, getWeekPlanFromSupabase } from '../utils/weekPlanStorage.js';
-import { saveWeekPlan, getWeekPlan } from '../utils/weekPlanStorage.js';
 import { showNotification } from '../ui/notifications.js';
 
 // Variáveis do planejamento
@@ -42,7 +35,7 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
     
     try {
         // 1. Verificar se já existe plano ativo no banco
-        const planoExistente = await getActiveWeeklyPlan(usuarioId);
+        const planoExistente = await WeeklyPlanService.getPlan(usuarioId);
         
         if (planoExistente && !modoEdicao) {
             console.log('[inicializarPlanejamento] Plano existente encontrado, carregando...');
@@ -54,7 +47,7 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         if (planoExistente && modoEdicao) {
             console.log('[inicializarPlanejamento] Modo de edição ativado');
             planejamentoAtual = planoExistente;
-            diasEditaveis = await getEditableDays(usuarioId);
+            diasEditaveis = await WeeklyPlanService.getEditableDays(usuarioId);
             console.log('[inicializarPlanejamento] Dias editáveis:', diasEditaveis);
         }
         
@@ -87,12 +80,8 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         
         console.log('[inicializarPlanejamento] Treinos disponíveis montados:', treinosDisponiveis);
 
-        // 4. Buscar planejamento existente (Supabase primeiro, depois localStorage)
-        let planoSalvo = await getWeekPlanFromSupabase(usuarioId);
-        if (!planoSalvo) {
-            console.log('[inicializarPlanejamento] Nenhum plano no Supabase, buscando localStorage...');
-            planoSalvo = getWeekPlan(usuarioId);
-        }
+        // 4. Buscar planejamento existente
+        const planoSalvo = await WeeklyPlanService.getPlan(usuarioId, false); // Não usar cache na inicialização
         
         if (planoSalvo) {
             planejamentoAtual = planoSalvo;
@@ -360,12 +349,18 @@ function validarPlanejamento() {
 
 // Abrir seletor de treino
 window.abrirSeletorTreino = function(dia, nomeDia) {
-    const diaAtualSelecionado = dia;
+    // Converter string do dia para número (0-6)
+    const diasMap = {
+        'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3,
+        'quinta': 4, 'sexta': 5, 'sabado': 6
+    };
+    
+    const diaAtualSelecionado = typeof dia === 'string' ? diasMap[dia] : parseInt(dia);
     nomeDiaAtual = nomeDia;
     
     // Verificar se o dia pode ser editado
     if (modoEdicao) {
-        const diaEditavel = diasEditaveis.find(d => d.dia_semana === parseInt(dia));
+        const diaEditavel = diasEditaveis.find(d => d.dia_semana === diaAtualSelecionado);
         if (diaEditavel && !diaEditavel.editavel) {
             showNotification('Este treino já foi realizado e não pode ser alterado', 'warning');
             return;
@@ -390,7 +385,7 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
         descricao: 'Dia de descanso',
         tipo: 'folga',
         categoria: 'folga'
-    }, dia);
+    }, diaAtualSelecionado);
     options.appendChild(folgaOption);
     
     // Adicionar opção de cardio
@@ -401,7 +396,7 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
         descricao: 'Exercícios cardiovasculares',
         tipo: 'Cardio',
         categoria: 'cardio'
-    }, dia);
+    }, diaAtualSelecionado);
     options.appendChild(cardioOption);
     
     // Adicionar treinos musculares
@@ -414,7 +409,7 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
                 descricao: `Treino ${treino.tipo}`,
                 tipo: treino.tipo,
                 categoria: 'muscular'
-            }, dia);
+            }, diaAtualSelecionado);
             options.appendChild(option);
         }
     });
@@ -487,8 +482,8 @@ function criarOpcaoTreino(treino, diaDestino) {
 // Selecionar treino para um dia
 async function selecionarTreinoParaDia(treino, dia) {
     if (modoEdicao) {
-        // Salvar mudança no banco de dados
-        const resultado = await editWeeklyPlan(usuarioIdAtual, parseInt(dia), treino);
+        // Salvar mudança no banco de dados usando novo serviço
+        const resultado = await WeeklyPlanService.updateDay(usuarioIdAtual, dia, treino);
         
         if (!resultado.success) {
             showNotification(`Erro: ${resultado.error}`, 'error');
@@ -624,8 +619,8 @@ export async function salvarPlanejamentoSemanal() {
         }
         console.log('[salvarPlanejamentoSemanal] Objeto indexado para Supabase:', planejamentoParaSupabase);
 
-        // Salva no Supabase (usando o serviço correto)
-        const resultado = await saveWeeklyPlan(usuarioIdAtual, planejamentoParaSupabase);
+        // Salva no Supabase usando novo serviço unificado
+        const resultado = await WeeklyPlanService.savePlan(usuarioIdAtual, planejamentoParaSupabase);
 
         if (!resultado.success) {
             throw new Error(resultado.error || 'Erro ao salvar no banco');
@@ -690,14 +685,9 @@ export function fecharModalPlanejamento() {
     nomeDiaAtual = '';
 }
 
-// Função para verificar se precisa de planejamento - SUPABASE + localStorage
+// Função para verificar se precisa de planejamento
 export async function needsWeekPlanningAsync(userId) {
-    // Primeiro verifica Supabase
-    const supabasePlan = await getWeekPlanFromSupabase(userId);
-    if (supabasePlan) return false;
-    // Fallback para localStorage
-    const localPlan = getWeekPlan(userId);
-    return !localPlan;
+    return await WeeklyPlanService.needsPlanning(userId);
 }
 
 // Exportar função removerTreinoDoDia para compatibilidade
@@ -714,14 +704,14 @@ export async function abrirEdicaoPlanejamento(usuarioId) {
     
     try {
         // Verificar se há plano ativo
-        const planoExistente = await getActiveWeeklyPlan(usuarioId);
+        const planoExistente = await WeeklyPlanService.getPlan(usuarioId);
         if (!planoExistente) {
             showNotification('Não há plano semanal ativo para editar. Crie um planejamento primeiro.', 'warning');
             return;
         }
         
         // Verificar se há dias editáveis
-        const diasEditaveisData = await getEditableDays(usuarioId);
+        const diasEditaveisData = await WeeklyPlanService.getEditableDays(usuarioId);
         const temDiasEditaveis = diasEditaveisData.some(dia => dia.editavel);
         
         if (!temDiasEditaveis) {

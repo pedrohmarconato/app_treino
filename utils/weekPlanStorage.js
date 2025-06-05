@@ -1,96 +1,9 @@
-// js/utils/weekPlanStorage.js
-// Gerenciamento do plano semanal no localStorage
+// utils/weekPlanStorage.js
+// Utilitários auxiliares para gerenciamento de planos semanais
+// NOTA: A funcionalidade principal foi movida para services/weeklyPlanningService.js
 
-// --- Integração com Supabase ---
-import { upsert, query } from '../services/supabaseService.js';
-
-// Salvar plano semanal no Supabase
-export async function saveWeekPlanToSupabase(userId, plan) {
-    try {
-        const now = new Date();
-        const year = now.getFullYear();
-        const week = getWeekNumber(now);
-
-        // Inserir registros individuais para cada dia (garantindo robustez)
-        const registros = [];
-        for (let dia = 0; dia < 7; dia++) {
-            let planoDia = plan[dia];
-            if (!planoDia || typeof planoDia !== 'object') {
-                planoDia = { tipo: 'folga', categoria: 'folga', numero_treino: null };
-            }
-            registros.push({
-                usuario_id: userId,
-                ano: year,
-                semana: week,
-                dia_semana: dia,
-                tipo_atividade: planoDia.tipo || 'folga',
-                numero_treino: planoDia.numero_treino || null,
-                concluido: false
-            });
-        }
-        console.log('[saveWeekPlanToSupabase] Registros a inserir:', registros);
-        // Usar insert ao invés de upsert
-        const { data, error } = await insert('planejamento_semanal', registros);
-
-        if (error) {
-            console.error('Erro ao salvar no Supabase:', error);
-            return false;
-        }
-
-        console.log('Planejamento salvo no Supabase:', data);
-        return true;
-    } catch (error) {
-        console.error('Erro ao salvar planejamento no Supabase:', error);
-        return false;
-    }
-}
-
-// Buscar plano semanal do Supabase
-export async function getWeekPlanFromSupabase(userId) {
-    try {
-        const now = new Date();
-        const year = now.getFullYear();
-        const week = getWeekNumber(now);
-
-        const { data, error } = await query('planejamento_semanal', {
-            eq: {
-                usuario_id: userId,
-                ano: year,
-                semana: week
-            }
-            // Não usar 'single: true' para evitar erro 406
-        });
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 = not found
-            console.error('Erro ao buscar do Supabase:', error);
-            return null;
-        }
-
-        // Se não houver dados, retorna null
-        if (!data || data.length === 0) return null;
-
-        // Se houver apenas um registro, retorna o planejamento
-        if (data.length === 1) return data[0].planejamento || null;
-
-        // Se houver múltiplos registros, retorna o mais recente pelo updated_at
-        const sorted = data.slice().sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-        return sorted[0].planejamento || null;
-    } catch (error) {
-        console.error('Erro ao buscar planejamento do Supabase:', error);
-        return null;
-    }
-}
-
-// Obter chave da semana atual
-function getWeekKey() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const week = getWeekNumber(now);
-    return `${year}_${week}`;
-}
-
-// Calcular número da semana
-function getWeekNumber(date) {
+// Calcular número da semana ISO 8601
+export function getWeekNumber(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -98,48 +11,15 @@ function getWeekNumber(date) {
     return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
-// Verificar se precisa de planejamento semanal
-export function needsWeekPlanning(userId) {
-    const key = `weekPlan_${userId}_${getWeekKey()}`;
-    const plan = localStorage.getItem(key);
-    return !plan;
+// Obter chave da semana atual para localStorage
+export function getWeekKey() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const week = getWeekNumber(now);
+    return `${year}_${week}`;
 }
 
-
-
-// Limpar plano semanal
-export function clearWeekPlan(userId) {
-    if (!userId) {
-        console.error('clearWeekPlan: userId é obrigatório');
-        return false;
-    }
-    
-    const key = `weekPlan_${userId}_${getWeekKey()}`;
-    try {
-        localStorage.removeItem(key);
-        console.log(`Plano semanal removido para usuário ${userId}`);
-        return true;
-    } catch (error) {
-        console.error('Erro ao remover plano semanal:', error);
-        return false;
-    }
-}
-
-// Obter plano semanal do localStorage
-export function getWeekPlan(userId) {
-    const key = `weekPlan_${userId}_${getWeekKey()}`;
-    const plan = localStorage.getItem(key);
-    return plan ? JSON.parse(plan) : null;
-}
-
-// Salvar plano semanal no localStorage
-export function saveWeekPlan(userId, plan) {
-    const key = `weekPlan_${userId}_${getWeekKey()}`;
-    localStorage.setItem(key, JSON.stringify(plan));
-}
-
-
-// Obter todos os planos do usuário (histórico)
+// Obter todos os planos do usuário do localStorage (histórico)
 export function getAllUserWeekPlans(userId) {
     const plans = [];
     const prefix = `weekPlan_${userId}_`;

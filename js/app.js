@@ -87,12 +87,31 @@ function setupGlobalFunctions() {
     // === DASHBOARD ===
     window.carregarDashboard = async () => {
         try {
+            // Verificar se há usuário antes de carregar dashboard
+            const currentUser = AppState.get('currentUser');
+            if (!currentUser || !currentUser.id) {
+                console.error('[app.js] ❌ Tentativa de carregar dashboard sem usuário válido');
+                console.log('[app.js] currentUser:', currentUser);
+                showNotification('Usuário não está logado. Faça login novamente.', 'error');
+                
+                if (window.renderTemplate) {
+                    window.renderTemplate('login');
+                }
+                return;
+            }
+            
+            console.log('[app.js] ✅ Carregando dashboard para usuário:', currentUser.nome);
             const { carregarDashboard } = await import('../feature/dashboard.js');
             await carregarDashboard();
             console.log('[app.js] Dashboard carregado');
         } catch (error) {
-            console.error('[app.js] Erro no dashboard:', error);
-            showNotification('Erro ao carregar dashboard', 'warning');
+            console.error('[app.js] Erro no dashboard:', {
+                message: error?.message,
+                stack: error?.stack,
+                name: error?.name,
+                fullError: error
+            });
+            showNotification('Erro ao carregar dashboard: ' + (error?.message || 'Erro desconhecido'), 'error');
         }
     };
     
@@ -117,8 +136,12 @@ function setupGlobalFunctions() {
         try {
             const currentUser = AppState.get('currentUser');
             
-            if (!currentUser) {
-                console.warn('[app.js] Usuário não logado, redirecionando');
+            if (!currentUser || !currentUser.id) {
+                console.error('[app.js] ❌ Usuário não logado ou sem ID');
+                console.log('[app.js] currentUser atual:', currentUser);
+                console.log('[app.js] Estado completo do AppState:', AppState.state);
+                
+                showNotification('Usuário não está logado. Redirecionando...', 'warning');
                 setTimeout(() => {
                     if (window.renderTemplate) {
                         window.renderTemplate('login');
@@ -126,6 +149,8 @@ function setupGlobalFunctions() {
                 }, 500);
                 return;
             }
+            
+            console.log('[app.js] ✅ Usuário válido encontrado:', currentUser.nome, `(ID: ${currentUser.id})`);
             
             // Usar serviço de integração
             const success = await integrationService.initialize();
@@ -181,6 +206,8 @@ function setupGlobalFunctions() {
     // === TREINO ===
     // Redireciona para o fluxo correto de execução do treino
     window.iniciarTreino = async () => {
+        console.log('[app.js] 🏋️ Função iniciarTreino chamada!');
+        
         const startButton = document.getElementById('start-workout-btn');
         const originalButtonText = document.getElementById('btn-text')?.textContent || 'Iniciar Treino';
 
@@ -192,12 +219,45 @@ function setupGlobalFunctions() {
         }
 
         try {
-            console.log('[app.js] Chamando workoutExecutionManager.iniciarTreino');
+            // Verificar se há usuário logado
+            const currentUser = AppState.get('currentUser');
+            if (!currentUser) {
+                throw new Error('Usuário não está logado');
+            }
+            console.log('[app.js] ✅ Usuário logado:', currentUser.nome);
+            
+            // Verificar se há treino configurado
+            const currentWorkout = AppState.get('currentWorkout');
+            console.log('[app.js] Treino atual no estado:', currentWorkout);
+            
+            if (!currentWorkout) {
+                console.log('[app.js] ❌ Nenhum treino configurado, abrindo planejamento...');
+                if (window.abrirPlanejamentoParaUsuarioAtual) {
+                    window.abrirPlanejamentoParaUsuarioAtual();
+                } else {
+                    showNotification('Configure seu planejamento primeiro', 'warning');
+                }
+                return;
+            }
+            
+            // Verificar tipo de treino
+            if (currentWorkout.tipo === 'folga') {
+                showNotification('Hoje é dia de descanso! 😴', 'info');
+                return;
+            }
+            
+            if (currentWorkout.tipo === 'cardio' || currentWorkout.tipo === 'Cardio') {
+                showNotification('Treino de cardio! 🏃‍♂️ Configure seu equipamento.', 'info');
+                return;
+            }
+            
+            console.log('[app.js] Carregando workoutExecutionManager...');
             const { workoutExecutionManager } = await import('../feature/workoutExecution.js');
+            console.log('[app.js] Chamando workoutExecutionManager.iniciarTreino');
             await workoutExecutionManager.iniciarTreino();
             console.log('[app.js] workoutExecutionManager.iniciarTreino concluído.');
         } catch (error) {
-            console.error('[app.js] Erro ao iniciar treino:', error);
+            console.error('[app.js] ❌ Erro ao iniciar treino:', error);
             showNotification('Erro ao iniciar treino: ' + (error.message || error), 'error');
         } finally {
             if (startButton) {

@@ -2,13 +2,12 @@
 // Serviço para gerenciar treinos e exercícios
 
 import { query, insert, update } from './supabaseService.js';
-// ✅ IMPORT CORRIGIDO - usando as funções exportadas
-import { getWeekPlan } from '../../utils/weekPlanStorage.js';
+import WeeklyPlanService from './weeklyPlanningService.js';
 
 // Buscar próximo treino do usuário
 export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
     // Primeiro verificar o plano semanal do usuário
-    const weekPlan = getWeekPlan(userId);
+    const weekPlan = await WeeklyPlanService.obterPlanejamento(userId);
     const today = new Date().getDay();
     
     if (weekPlan && weekPlan[today] && 
@@ -124,20 +123,30 @@ export async function fetchExerciciosTreino(numeroTreino, protocoloId) {
     return exerciciosUnicos;
 }
 
-// Buscar pesos sugeridos para o usuário
+// Buscar pesos sugeridos para o usuário usando cálculo dinâmico
 export async function carregarPesosSugeridos(userId, protocoloTreinoId) {
-    const { data } = await query('pesos_usuario', {
-        eq: {
-            usuario_id: userId,
-            protocolo_treino_id: protocoloTreinoId,
-            status: 'ativo'
-        },
-        order: { column: 'data_calculo', ascending: false },
-        limit: 1,
-        single: true
-    });
-    
-    return { data, error: null };
+    try {
+        console.log('[workoutService] carregarPesosSugeridos chamado (usando cálculo dinâmico)');
+        
+        // NOTA: A tabela pesos_usuario foi substituída por cálculo dinâmico
+        // Os pesos são calculados em tempo real pelo WeightCalculatorService
+        // Esta função mantém compatibilidade com a interface existente
+        
+        return { 
+            data: {
+                usuario_id: userId,
+                protocolo_treino_id: protocoloTreinoId,
+                status: 'ativo',
+                fonte: 'calculo_dinamico',
+                observacao: 'Pesos calculados dinamicamente baseados em 1RM'
+            }, 
+            error: null 
+        };
+        
+    } catch (error) {
+        console.error('[workoutService] Erro ao buscar pesos sugeridos:', error);
+        return { data: null, error: error.message };
+    }
 }
 
 // Salvar execução de exercício

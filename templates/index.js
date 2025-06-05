@@ -24,6 +24,9 @@ export function renderTemplate(templateName, container = 'app') {
     }
     
     try {
+        // Limpar classes .active de todas as telas antes de renderizar nova
+        clearActiveScreens();
+        
         switch(templateName) {
             case 'login':
                 console.log('[renderTemplate] Renderizando login');
@@ -31,13 +34,34 @@ export function renderTemplate(templateName, container = 'app') {
                 break;
                 
             case 'home':
-                console.log('[renderTemplate] Renderizando home NOVA');
-                containerEl.innerHTML = homeTemplate();
+                console.log('[renderTemplate] 🏠 Renderizando home NOVA');
+                console.log('[renderTemplate] Container:', containerEl);
+                console.log('[renderTemplate] homeTemplate disponível:', !!homeTemplate);
                 
-                // Inicializar componentes da home
-                setTimeout(() => {
-                    initializeHomeComponents();
-                }, 100);
+                try {
+                    const htmlContent = homeTemplate();
+                    console.log('[renderTemplate] HTML gerado, tamanho:', htmlContent.length);
+                    containerEl.innerHTML = htmlContent;
+                    console.log('[renderTemplate] ✅ HTML inserido no container');
+                    
+                    // CORREÇÃO: Garantir que a tela home fique visível
+                    const homeScreen = document.getElementById('home-screen');
+                    if (homeScreen) {
+                        homeScreen.classList.add('active');
+                        console.log('[renderTemplate] ✅ Classe "active" adicionada à tela home');
+                    } else {
+                        console.warn('[renderTemplate] ⚠️ Elemento #home-screen não encontrado');
+                    }
+                    
+                    // Inicializar componentes da home
+                    setTimeout(() => {
+                        console.log('[renderTemplate] Inicializando componentes da home...');
+                        initializeHomeComponents();
+                    }, 100);
+                } catch (error) {
+                    console.error('[renderTemplate] ❌ Erro ao renderizar home template:', error);
+                    throw error;
+                }
                 break;
                 
             case 'workout':
@@ -80,18 +104,21 @@ export function renderTemplate(templateName, container = 'app') {
 
 // Inicializar componentes específicos da home
 async function initializeHomeComponents() {
-    console.log('[initializeHomeComponents] Inicializando componentes da home...');
+    console.log('[initializeHomeComponents] 🚀 Inicializando componentes da home...');
     
     try {
+        console.log('[initializeHomeComponents] Verificando AppState:', !!window.AppState);
         const currentUser = window.AppState?.get('currentUser');
         
         if (!currentUser) {
-            console.warn('[initializeHomeComponents] Nenhum usuário logado, redirecionando para login');
+            console.warn('[initializeHomeComponents] ❌ Nenhum usuário logado');
+            console.log('[initializeHomeComponents] AppState atual:', window.AppState?.state);
+            console.log('[initializeHomeComponents] Redirecionando para login em 500ms...');
             setTimeout(() => renderTemplate('login'), 500);
             return;
         }
         
-        console.log('[initializeHomeComponents] Inicializando para usuário:', currentUser.nome);
+        console.log('[initializeHomeComponents] ✅ Usuário encontrado:', currentUser.nome, 'ID:', currentUser.id);
         
         // 1. Atualizar informações do usuário
         updateUserInfo(currentUser);
@@ -365,6 +392,19 @@ function updateElement(id, value) {
         }
     } catch (error) {
         console.error(`[updateElement] Erro ao atualizar ${id}:`, error);
+    }
+}
+
+// Função para limpar classes .active de todas as telas
+function clearActiveScreens() {
+    try {
+        const activeScreens = document.querySelectorAll('.screen.active');
+        activeScreens.forEach(screen => {
+            screen.classList.remove('active');
+        });
+        console.log(`[clearActiveScreens] ✅ Removidas ${activeScreens.length} classes .active`);
+    } catch (error) {
+        console.error('[clearActiveScreens] Erro:', error);
     }
 }
 

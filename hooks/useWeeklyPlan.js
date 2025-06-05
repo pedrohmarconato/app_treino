@@ -1,5 +1,4 @@
 // hooks/useWeeklyPlan.js - Manager para planejamento semanal
-import { getWeekPlan, saveWeekPlan } from '../utils/weekPlanStorage.js';
 import { saveWeeklyPlan, getActiveWeeklyPlan } from '../services/weeklyPlanningService.js';
 import AppState from '../state/appState.js';
 
