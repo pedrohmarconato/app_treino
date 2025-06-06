@@ -226,60 +226,47 @@ function forcarFechamentoModal() {
     }
 }
 
-// Renderizar planejamento existente - OTIMIZADO
 function renderizarPlanejamentoExistente() {
-    // Usar requestAnimationFrame para melhor performance
-    requestAnimationFrame(() => {
-        // Batch DOM operations
-        const fragment = document.createDocumentFragment();
-        const updates = [];
+    console.log('[renderizarPlanejamentoExistente] Iniciando renderização...');
+    
+    // Garantir que o modal está visível
+    const modal = document.getElementById('modalPlanejamento');
+    if (!modal) {
+        console.error('[renderizarPlanejamentoExistente] Modal não encontrado!');
+        return;
+    }
+    
+    // Atualizar contadores
+    let diasPreenchidos = 0;
+    let totalTreinos = 0;
+    
+    // Mapear dias corretamente (1-7 ao invés de 0-6)
+    for (let dia = 1; dia <= 7; dia++) {
+        const treino = planejamentoAtual[dia - 1]; // Ajustar índice
         
-        // Preparar todas as atualizações antes de aplicar ao DOM
-        Object.keys(planejamentoAtual).forEach(dia => {
-            const treino = planejamentoAtual[dia];
-            if (treino && treino.id && treino.nome && treino.tipo) {
-                updates.push({ dia, treino });
+        if (treino && treino.tipo !== 'folga') {
+            diasPreenchidos++;
+            totalTreinos++;
+            
+            // Atualizar visualização do dia
+            const diaContent = document.getElementById(`dia-${dia}-content`);
+            if (diaContent) {
+                diaContent.innerHTML = `
+                    <div class="treino-assigned">
+                        <span class="treino-nome">${treino.nome}</span>
+                        <button class="btn-remover" onclick="removerTreinoDoDia(${dia - 1})">×</button>
+                    </div>
+                `;
             }
-        });
-        
-        // Aplicar atualizações em batch
-        updates.forEach(({ dia, treino }) => {
-            atualizarVisualizacaoDia(dia, treino);
-        });
-        
-        // Otimizar modo edição com cache de elementos
-        if (modoEdicao && diasEditaveis.length > 0) {
-            // Cache elements to avoid repeated DOM queries
-            const diasElementsCache = new Map();
-            
-            diasEditaveis.forEach(diaInfo => {
-                let diaElement = diasElementsCache.get(diaInfo.dia_semana);
-                if (!diaElement) {
-                    diaElement = document.querySelector(`[onclick*="abrirSeletorTreino('${diaInfo.dia_semana}"]`);
-                    if (diaElement) {
-                        diasElementsCache.set(diaInfo.dia_semana, diaElement);
-                    }
-                }
-                
-                if (diaElement && !diaInfo.editavel) {
-                    // Batch style changes
-                    Object.assign(diaElement.style, {
-                        cursor: 'not-allowed',
-                        opacity: '0.6'
-                    });
-                    diaElement.onclick = () => {
-                        showNotification('Este treino já foi realizado e não pode ser alterado', 'warning');
-                    };
-                }
-            });
-            
-            // Adicionar indicador visual de modo edição
-            adicionarIndicadorModoEdicao();
         }
-        
-        // Validar após todas as mudanças
-        validarPlanejamentoDebounced();
-    });
+    }
+    
+    // Atualizar estatísticas
+    document.getElementById('planned-days').textContent = diasPreenchidos;
+    document.getElementById('workout-count').textContent = totalTreinos;
+    
+    // Validar
+    validarPlanejamento();
 }
 
 // Adicionar indicador de modo edição
