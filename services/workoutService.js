@@ -183,13 +183,35 @@ export async function fetchExecucoesExercicio(userId, protocoloTreinoId, exercic
     return { data: data || [], error };
 }
 
-// Marcar treino como concluído
-export async function marcarTreinoConcluido(userId, protocoloTreinoId) {
-    // Aqui você pode adicionar lógica para marcar o treino como concluído
-    // Por exemplo, criar um registro em uma tabela de treinos_concluidos
-    // ou atualizar o status em alguma tabela existente
-    
-    return { error: null };
+// Marcar treino como concluído usando planejamento_semanal
+export async function marcarTreinoConcluido(userId) {
+    try {
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const semana = WeeklyPlanService.getWeekNumber(hoje);
+        const diaSemana = hoje.getDay() === 0 ? 7 : hoje.getDay(); // Converter para formato DB
+        
+        const { error } = await update('planejamento_semanal', 
+            { 
+                concluido: true, 
+                data_conclusao: new Date().toISOString() 
+            },
+            {
+                eq: { 
+                    usuario_id: userId, 
+                    ano, 
+                    semana, 
+                    dia_semana: diaSemana 
+                }
+            }
+        );
+        
+        return { error };
+        
+    } catch (error) {
+        console.error('[workoutService] Erro ao marcar treino concluído:', error);
+        return { error: error.message };
+    }
 }
 
 // Buscar grupos musculares dos treinos

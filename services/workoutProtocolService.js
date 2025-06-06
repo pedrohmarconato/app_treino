@@ -47,34 +47,34 @@ export class WorkoutProtocolService {
                 };
             }
             
-            // 3. Buscar exercícios do treino baseado no tipo de atividade
-            // Calcular numero_treino baseado no tipo de atividade e semana atual
-            let numeroTreino = 1; // Default
+            // 3. Usar numero_treino do planejamento (que já foi validado com o protocolo)
+            let numeroTreino = planejamentoHoje.numero_treino;
             
-            if (planejamentoHoje.tipo_atividade === 'treino') {
-                // Mapear tipo de treino para número baseado no dia da semana
-                const hoje = new Date();
-                const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
+            // Se não houver numero_treino no planejamento, calcular baseado no protocolo
+            if (!numeroTreino && planejamentoHoje.tipo_atividade === 'treino') {
+                // Buscar treinos disponíveis no protocolo do usuário
+                const { data: protocoloTreinos } = await query('protocolo_treinos', {
+                    eq: { protocolo_id: planoUsuario.protocolo_treinamento_id },
+                    select: 'numero_treino',
+                    order: { column: 'numero_treino', ascending: true }
+                });
                 
-                // Mapear dia da semana para número do treino (1-4)
-                const mapeamentoDias = {
-                    0: 1, // domingo -> treino 1
-                    1: 1, // segunda -> treino 1  
-                    2: 2, // terça -> treino 2
-                    3: 3, // quarta -> treino 3
-                    4: 4, // quinta -> treino 4
-                    5: 1, // sexta -> treino 1
-                    6: 2  // sábado -> treino 2
-                };
-                
-                const diaTreino = mapeamentoDias[diaSemana] || 1;
-                numeroTreino = ((semanaAtual - 1) * 4) + diaTreino;
+                if (protocoloTreinos && protocoloTreinos.length > 0) {
+                    const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
+                    // Usar primeiro treino disponível
+                    numeroTreino = treinosDisponiveis[0];
+                } else {
+                    numeroTreino = 1; // Fallback
+                }
             }
+            
+            // Usar protocolo_id do planejamento (garantindo consistência)
+            const protocoloId = planejamentoHoje.protocolo_treinamento_id || planoUsuario.protocolo_treinamento_id;
             
             const exerciciosComPesos = await WeightCalculatorService.calcularPesosTreino(
                 userId,
                 numeroTreino,
-                planoUsuario.protocolo_treinamento_id,
+                protocoloId,
                 semanaAtual
             );
             
@@ -117,7 +117,7 @@ export class WorkoutProtocolService {
     }
     
     /**
-     * Buscar qual treino fazer hoje baseado no planejamento semanal
+     * Buscar qual treino fazer hoje usando JOIN com protocolo do usuário
      */
     static async buscarTreinoDeHoje(userId) {
         try {
@@ -129,17 +129,19 @@ export class WorkoutProtocolService {
             
             const hoje = new Date();
             const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
+            const diaDb = diaSemana === 0 ? 7 : diaSemana; // Converter para formato DB
             const ano = hoje.getFullYear();
             const semana = this.getWeekNumber(hoje);
             
-            console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaSemana}, ano=${ano}, semana=${semana}`);
+            console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaDb}, ano=${ano}, semana=${semana}`);
             
-            const { data: planejamento, error } = await query('planejamento_semanal', {
+            // Usar view v_planejamento_completo para JOIN otimizado
+            const { data: planejamento, error } = await query('v_planejamento_completo', {
                 eq: {
                     usuario_id: parseInt(userId),
                     ano: ano,
                     semana: semana,
-                    dia_semana: diaSemana
+                    dia_semana: diaDb
                 },
                 single: true
             });
@@ -382,13 +384,13 @@ export class WorkoutProtocolService {
     }
     
     /**
-     * Marcar treino como concluído no planejamento
+     * Marcar treino como concluído no planejamento semanal
      */
     static async marcarTreinoComoConcluido(userId) {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const semana = this.getWeekNumber(hoje);
-        const diaSemana = hoje.getDay();
+        const diaSemana = hoje.getDay() === 0 ? 7 : hoje.getDay(); // Converter para formato DB
         
         await update('planejamento_semanal', 
             { 

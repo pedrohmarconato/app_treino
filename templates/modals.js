@@ -1,193 +1,220 @@
-// Modal de Planejamento Template
+// Modal de Planejamento Template - Estrutura corrigida
 
 export const modalPlanejamentoTemplate = () => `
-    <div class="planning-page-container" id="modalPlanejamento">
-        <div class="planning-container">
-            <div class="planning-header">
-                <div class="header-top">
-                    <div class="header-left">
-                        <button class="btn-back" onclick="window.mostrarTela('home-screen');">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M15 18l-6-6 6-6"/>
-                            </svg>
-                        </button>
-                        <div class="header-text">
-                            <h2>Planejamento Semanal</h2>
-                            <p class="header-subtitle">Configure seus treinos da semana</p>
-                        </div>
-                    </div>
-                    <div class="planning-stats">
-                        <div class="stat-badge">
-                            <span class="stat-number" id="planned-days">0</span>
-                            <span class="stat-label">dias</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="planning-content">
-                <!-- Resumo Semanal -->
-                <div class="week-summary">
-                    <div class="summary-cards">
-                        <div class="summary-card">
-                            <div class="card-icon">🏋️</div>
-                            <div class="card-content">
-                                <span class="card-value" id="total-exercises">0</span>
-                                <span class="card-label">exercícios</span>
-                            </div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="card-icon">⏱️</div>
-                            <div class="card-content">
-                                <span class="card-value" id="total-duration">0min</span>
-                                <span class="card-label">duração</span>
-                            </div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="card-icon">🎯</div>
-                            <div class="card-content">
-                                <span class="card-value" id="weekly-goal">4</span>
-                                <span class="card-label">meta</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Calendar dos Dias -->
-                <div class="week-calendar-modern">
-                    <div class="day-card compact" onclick="abrirSeletorTreino('segunda', 'Segunda-feira')" id="card-segunda">
-                        <div class="day-name">SEG</div>
-                        <div class="day-content" id="dia-segunda-content">
-                            <div class="add-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="day-card compact" onclick="abrirSeletorTreino('terca', 'Terça-feira')" id="card-terca">
-                        <div class="day-name">TER</div>
-                        <div class="day-content" id="dia-terca-content">
-                            <div class="add-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="day-card compact" onclick="abrirSeletorTreino('quarta', 'Quarta-feira')" id="card-quarta">
-                        <div class="day-name">QUA</div>
-                        <div class="day-content" id="dia-quarta-content">
-                            <div class="add-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="day-card compact" onclick="abrirSeletorTreino('quinta', 'Quinta-feira')" id="card-quinta">
-                        <div class="day-name">QUI</div>
-                        <div class="day-content" id="dia-quinta-content">
-                            <div class="add-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="day-card compact" onclick="abrirSeletorTreino('sexta', 'Sexta-feira')" id="card-sexta">
-                        <div class="day-name">SEX</div>
-                        <div class="day-content" id="dia-sexta-content">
-                            <div class="add-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="day-card compact" onclick="abrirSeletorTreino('sabado', 'Sábado')" id="card-sabado">
-                        <div class="day-name">SAB</div>
-                        <div class="day-content" id="dia-sabado-content">
-                            <div class="add-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="day-card compact" onclick="abrirSeletorTreino('domingo', 'Domingo')" id="card-domingo">
-                        <div class="day-name">DOM</div>
-                        <div class="day-content" id="dia-domingo-content">
-                            <div class="add-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="planning-footer">
-                <div class="validation-message" id="validationMessage"></div>
-                <div class="footer-actions">
-                    <button class="btn-secondary" onclick="window.mostrarTela('home-screen');">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M15 18l-6-6 6-6"/>
-                        </svg>
-                        Voltar
-                    </button>
-                    <button class="btn-primary" onclick="salvarPlanejamento()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20,6 9,17 4,12"/>
-                        </svg>
-                        Salvar Plano
-                    </button>
+    <div id="planning-screen" class="screen">
+        <!-- Back Button padronizado seguindo o padrão do app -->
+        <button class="back-button btn-back" onclick="window.mostrarTela('home-screen');">
+            <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+        </button>
+        
+        <!-- Header padronizado seguindo o padrão do app -->
+        <div class="planning-header">
+            <div class="header-content">
+                <div class="page-info">
+                    <h1 class="page-title">Planejamento Semanal</h1>
+                    <p class="page-subtitle">Configure seus treinos da semana</p>
                 </div>
             </div>
         </div>
+        
+        <div class="planning-content">
+            <!-- Main Planning Section -->
+            <div class="planning-main">
+                <div class="section-header">
+                    <h2>Dias da Semana</h2>
+                </div>
+                
+                <!-- Days Grid seguindo padrão do app -->
+                <div class="week-days-grid">
+                    <div class="day-card" onclick="abrirSeletorTreino('segunda', 'Segunda-feira')" id="card-segunda">
+                        <div class="day-header">
+                            <span class="day-name">SEG</span>
+                            <span class="day-full">Segunda</span>
+                        </div>
+                        <div class="day-content" id="dia-1-content">
+                            <div class="empty-slot">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14m-7-7h14"/>
+                                </svg>
+                                <span>Adicionar</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="day-card" onclick="abrirSeletorTreino('terca', 'Terça-feira')" id="card-terca">
+                        <div class="day-header">
+                            <span class="day-name">TER</span>
+                            <span class="day-full">Terça</span>
+                        </div>
+                        <div class="day-content" id="dia-2-content">
+                            <div class="empty-slot">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14m-7-7h14"/>
+                                </svg>
+                                <span>Adicionar</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="day-card" onclick="abrirSeletorTreino('quarta', 'Quarta-feira')" id="card-quarta">
+                        <div class="day-header">
+                            <span class="day-name">QUA</span>
+                            <span class="day-full">Quarta</span>
+                        </div>
+                        <div class="day-content" id="dia-3-content">
+                            <div class="empty-slot">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14m-7-7h14"/>
+                                </svg>
+                                <span>Adicionar</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="day-card" onclick="abrirSeletorTreino('quinta', 'Quinta-feira')" id="card-quinta">
+                        <div class="day-header">
+                            <span class="day-name">QUI</span>
+                            <span class="day-full">Quinta</span>
+                        </div>
+                        <div class="day-content" id="dia-4-content">
+                            <div class="empty-slot">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14m-7-7h14"/>
+                                </svg>
+                                <span>Adicionar</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="day-card" onclick="abrirSeletorTreino('sexta', 'Sexta-feira')" id="card-sexta">
+                        <div class="day-header">
+                            <span class="day-name">SEX</span>
+                            <span class="day-full">Sexta</span>
+                        </div>
+                        <div class="day-content" id="dia-5-content">
+                            <div class="empty-slot">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14m-7-7h14"/>
+                                </svg>
+                                <span>Adicionar</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="day-card" onclick="abrirSeletorTreino('sabado', 'Sábado')" id="card-sabado">
+                        <div class="day-header">
+                            <span class="day-name">SAB</span>
+                            <span class="day-full">Sábado</span>
+                        </div>
+                        <div class="day-content" id="dia-6-content">
+                            <div class="empty-slot">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14m-7-7h14"/>
+                                </svg>
+                                <span>Adicionar</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="day-card" onclick="abrirSeletorTreino('domingo', 'Domingo')" id="card-domingo">
+                        <div class="day-header">
+                            <span class="day-name">DOM</span>
+                            <span class="day-full">Domingo</span>
+                        </div>
+                        <div class="day-content" id="dia-0-content">
+                            <div class="empty-slot">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14m-7-7h14"/>
+                                </svg>
+                                <span>Adicionar</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Planning Metrics Section seguindo padrão das métricas do home -->
+                <div class="planning-metrics">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon">📅</div>
+                            <div class="metric-value" id="planned-days">0</div>
+                            <div class="metric-label">Dias Planejados</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">🏋️</div>
+                            <div class="metric-value" id="workout-count">0</div>
+                            <div class="metric-label">Treinos</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Validation Message -->
+                <div class="validation-message" id="validationMessage"></div>
+            </div>
+        </div>
+        
+        <!-- Fixed Save Button seguindo padrão do app -->
+        <div class="action-button-container">
+            <button class="btn-primary save-btn" id="confirm-plan-btn" onclick="salvarPlanejamento()" disabled>
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20,6 9,17 4,12"/>
+                </svg>
+                <span>Salvar Plano</span>
+            </button>
+        </div>
     </div>
-    
-
 `;
 
 export const modalPlanejamentoStyles = `
-/* Planejamento Semanal - Design Moderno */
-.planning-page-container {
+/* Planning Screen - Estrutura padronizada seguindo o app */
+#planning-screen {
     background: var(--bg-primary);
-    width: 100%;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
-.planning-container {
-    background: var(--bg-primary);
-    width: 100%;
-    max-width: 900px;
-    margin: 0 auto;
+/* Back Button padronizado seguindo home.js */
+.back-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    width: 40px;
+    height: 40px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     display: flex;
-    flex-direction: column;
-    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
 }
 
+.back-button:hover {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+}
 
+.back-button:hover .back-icon {
+    stroke: var(--bg-primary);
+}
+
+.back-icon {
+    width: 20px;
+    height: 20px;
+    stroke: var(--text-secondary);
+    transition: var(--transition);
+}
+
+/* Header padronizado seguindo home.js */
 .planning-header {
-    padding: 24px;
-    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    background: linear-gradient(135deg, var(--bg-secondary) 0%, #1e1e1e 100%);
+    padding: 80px 24px 20px 24px; /* Top padding para compensar o back button */
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
@@ -195,328 +222,322 @@ export const modalPlanejamentoStyles = `
     backdrop-filter: blur(10px);
 }
 
-.header-top {
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.page-info {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex: 1;
-}
-
-.btn-back {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-full);
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-.btn-back:hover {
-    background: var(--accent-green);
-    color: var(--bg-primary);
-    border-color: var(--accent-green);
-}
-
-.header-text h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0 0 4px 0;
-}
-
-.header-subtitle {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.planning-stats {
-    display: flex;
     gap: 8px;
 }
 
-.stat-badge {
-    background: var(--accent-green-bg);
-    border: 1px solid var(--accent-green);
-    border-radius: var(--radius-md);
-    padding: 8px 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 60px;
-}
-
-.stat-number {
-    font-size: 1.25rem;
+.page-title {
+    font-size: 1.875rem;
     font-weight: 700;
-    color: var(--accent-green);
-    line-height: 1;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.2;
 }
 
-.stat-label {
-    font-size: 0.75rem;
-    color: var(--accent-green);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.planning-content {
-    flex: 1;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-/* Resumo Semanal */
-.week-summary {
-    margin-bottom: 8px;
-}
-
-.summary-cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-}
-
-.summary-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: var(--transition);
-}
-
-.summary-card:hover {
-    border-color: var(--accent-green);
-    box-shadow: var(--shadow-sm);
-}
-
-.card-icon {
-    font-size: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: var(--accent-green-bg);
-    border-radius: var(--radius-md);
-}
-
-.card-content {
-    display: flex;
-    flex-direction: column;
-}
-
-.card-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--accent-green);
-    line-height: 1;
-}
-
-.card-label {
-    font-size: 0.75rem;
+.page-subtitle {
+    font-size: 0.875rem;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 2px;
+    margin: 0;
+    line-height: 1.4;
 }
 
-/* Calendar Moderno */
-.week-calendar-modern {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 12px;
-    max-width: 800px;
+/* Content seguindo padrão do home */
+.planning-content {
+    max-width: 1200px;
     margin: 0 auto;
-}
-
-.day-card.compact {
-    background: var(--bg-card);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-height: 80px;
+    padding: 24px;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+}
+
+.planning-main {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    flex: 1;
+}
+
+/* Section Header seguindo padrão do home */
+.section-header {
+    margin-bottom: 24px;
+}
+
+.section-header h2 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    text-align: center;
+}
+
+/* Week Days Grid */
+.week-days-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+/* Day Cards */
+.day-card {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px 12px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
     align-items: center;
     text-align: center;
+    min-height: 100px;
     position: relative;
 }
 
-.day-card.compact:hover {
+.day-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
     border-color: var(--accent-green);
     background: var(--accent-green-bg);
 }
 
-/* Estados dos cards */
-.day-card.completed {
-    background: #fef3c7;
-    border-color: #f59e0b;
-    color: #92400e;
-}
-
-.day-card.cancelled {
-    background: #fee2e2;
-    border-color: #ef4444;
-    color: #dc2626;
-}
-
-.day-card.completed:hover,
-.day-card.cancelled:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+.day-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 12px;
 }
 
 .day-name {
     font-size: 0.75rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--accent-green);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 8px;
+    margin-bottom: 2px;
 }
 
-.day-card.completed .day-name {
-    color: #92400e;
+.day-full {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
-.day-card.cancelled .day-name {
-    color: #dc2626;
-}
-
-
+/* Day Content States */
 .day-content {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-direction: column;
-    gap: 4px;
+    flex: 1;
+    width: 100%;
 }
 
-.add-icon {
+.empty-slot {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-md);
-    transition: var(--transition);
+    gap: 6px;
     opacity: 0.6;
+    transition: var(--transition);
 }
 
-.add-icon svg {
+.empty-slot svg {
     stroke: var(--text-secondary);
     transition: var(--transition);
 }
 
-.day-card.compact:hover .add-icon {
-    border-color: var(--accent-green);
+.empty-slot span {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.day-card:hover .empty-slot {
     opacity: 1;
 }
 
-.day-card.compact:hover .add-icon svg {
+.day-card:hover .empty-slot svg {
     stroke: var(--accent-green);
 }
 
-/* Conteúdo quando preenchido */
-.muscle-group {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    text-align: center;
-    line-height: 1.2;
+.day-card:hover .empty-slot span {
+    color: var(--accent-green);
 }
 
-.day-card.completed .muscle-group {
-    color: #92400e;
-}
-
-.day-card.cancelled .muscle-group {
-    color: #dc2626;
-}
-
-.day-card.cancelled .muscle-group {
-    text-decoration: line-through;
-    opacity: 0.7;
-}
-
-.filled-state {
+/* Filled workout states */
+.treino-assigned {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    text-align: center;
+    gap: 6px;
     width: 100%;
-    gap: 4px;
+    position: relative;
 }
 
-.workout-emoji {
-    font-size: 1.25rem;
-    display: block;
+.treino-emoji {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
 }
 
-.workout-name {
-    font-size: 0.7rem;
+.treino-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.treino-name {
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-primary);
     line-height: 1.1;
-    text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
+    margin-bottom: 2px;
 }
 
-.rest-state {
+.treino-type {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.remove-treino {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: #6366f120;
-    border-radius: var(--radius-md);
+    transition: var(--transition);
+    z-index: 2;
+}
+
+.remove-treino:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+/* Completed states */
+.day-card.completed {
+    background: var(--accent-green-bg);
+    border-color: var(--accent-green);
+    opacity: 0.8;
+}
+
+.day-card.completed .day-name {
+    color: var(--accent-green);
+}
+
+.day-card.completed .treino-name {
+    color: var(--accent-green);
+}
+
+.completed-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    color: var(--accent-green);
     font-size: 1rem;
+    font-weight: bold;
 }
 
-.planning-footer {
-    padding: 24px;
-    border-top: 1px solid var(--border-color);
+/* Planning Metrics seguindo padrão das métricas do home */
+.planning-metrics {
+    margin-bottom: 24px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+}
+
+.metric-card {
     background: var(--bg-secondary);
-    margin-top: auto;
-    position: sticky;
-    bottom: 0;
-    backdrop-filter: blur(10px);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
 }
 
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--accent-green-bg) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent-green);
+}
+
+.metric-card:hover::before {
+    opacity: 1;
+}
+
+.metric-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-green);
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 1;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+}
+
+/* Validation Message */
 .validation-message {
     font-size: 0.875rem;
-    margin-bottom: 16px;
+    margin: 16px 0;
     text-align: center;
     padding: 12px;
     border-radius: var(--radius-md);
     font-weight: 500;
+    min-height: 20px;
 }
 
 .validation-message.success {
@@ -531,182 +552,182 @@ export const modalPlanejamentoStyles = `
     border: 1px solid #fecaca;
 }
 
+.validation-message.info {
+    color: #3b82f6;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+}
+
 .validation-message:empty {
     display: none;
 }
 
-.footer-actions {
-    display: flex;
-    gap: 16px;
+/* Fixed Action Button seguindo padrão do app */
+.action-button-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 24px;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-color);
+    z-index: 100;
+    backdrop-filter: blur(10px);
 }
 
-.footer-actions button {
-    flex: 1;
-    padding: 14px 20px;
-    border-radius: var(--radius-lg);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
+.save-btn {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    min-height: 48px;
-}
-
-.btn-secondary {
-    background: var(--bg-card);
-    color: var(--text-primary);
-    border: 2px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-    background: var(--bg-primary);
-    border-color: var(--accent-green);
-    color: var(--accent-green);
-}
-
-.btn-primary {
     background: var(--accent-green);
     color: var(--bg-primary);
-    border: 2px solid var(--accent-green);
-}
-
-.btn-primary:hover {
-    background: var(--accent-green-dark);
-    border-color: var(--accent-green-dark);
-    transform: translateY(-1px);
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 16px 24px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: var(--transition);
     box-shadow: var(--shadow-md);
+    min-height: 56px;
 }
 
-.btn-primary:disabled {
-    background: var(--text-secondary);
-    border-color: var(--text-secondary);
-    cursor: not-allowed;
-    opacity: 0.7;
-    transform: none;
+.save-btn:hover:not(:disabled) {
+    background: var(--accent-green-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
 }
 
-.btn-secondary svg,
-.btn-primary svg {
-    width: 18px;
-    height: 18px;
-}
-
-/* Estilos para o .treino-popup, .popup-overlay, etc. FORAM REMOVIDOS DAQUI 
-   pois o popup correto está em index.html e estilizado por styles.css */
-
-.option-info {
-    flex: 1;
-}
-
-.option-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
-
-.option-description {
-    font-size: 0.875rem;
+.save-btn:disabled {
+    background: var(--text-muted);
     color: var(--text-secondary);
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
 }
 
-.option-status {
-    font-size: 0.75rem;
-    color: #ef4444;
-    font-weight: 500;
+.btn-icon {
+    width: 20px;
+    height: 20px;
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 480px) {
     .planning-header {
-        padding: 20px 16px;
+        padding: 70px 16px 16px 16px;
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+    }
+    
+    .page-subtitle {
+        font-size: 0.8rem;
     }
     
     .planning-content {
         padding: 16px;
-        gap: 20px;
+        padding-bottom: 100px; /* Espaço para o botão fixo */
     }
     
-    .header-left {
-        gap: 12px;
-    }
-    
-    .header-text h2 {
-        font-size: 1.25rem;
-    }
-    
-    .summary-cards {
+    .week-days-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
     }
     
-    .summary-card {
-        padding: 12px;
-        flex-direction: column;
-        gap: 8px;
-        text-align: center;
-    }
-    
-    .card-icon {
-        width: 32px;
-        height: 32px;
-        font-size: 1.25rem;
-    }
-    
-    .week-calendar-modern {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-    }
-    
-    .day-card.compact {
-        padding: 10px;
-        min-height: 70px;
+    .day-card {
+        padding: 12px 8px;
+        min-height: 85px;
     }
     
     .day-name {
         font-size: 0.7rem;
-        margin-bottom: 6px;
     }
     
-    .add-icon {
-        width: 24px;
-        height: 24px;
+    .day-full {
+        font-size: 0.6rem;
     }
     
-    .muscle-group {
+    .empty-slot span {
+        font-size: 0.65rem;
+    }
+    
+    .treino-name {
         font-size: 0.7rem;
     }
     
-    .planning-footer {
-        padding: 16px;
+    .treino-type {
+        font-size: 0.6rem;
     }
     
-    .footer-actions {
-        gap: 12px;
+    .save-btn {
+        padding: 14px 20px;
+        font-size: 1rem;
     }
     
-    .footer-actions button {
+    .action-button-container {
         padding: 12px 16px;
-        font-size: 0.9rem;
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .planning-content {
+        padding-bottom: 100px;
+    }
+    
+    .week-days-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+    
+    .day-card {
+        min-height: 90px;
     }
 }
 
 @media (min-width: 769px) {
-    .week-calendar-modern {
+    .planning-header {
+        padding: 80px 32px 24px 32px;
+    }
+    
+    .planning-content {
+        padding: 32px 24px 100px 24px;
+        max-width: 800px;
+    }
+    
+    .week-days-grid {
         grid-template-columns: repeat(7, 1fr);
-        gap: 12px;
+        gap: 16px;
+    }
+    
+    .day-card {
+        padding: 20px 16px;
+        min-height: 110px;
+    }
+    
+    .save-btn {
+        max-width: 300px;
+        font-size: 1.125rem;
     }
 }
 
 @media (min-width: 1024px) {
-    .planning-container {
+    .planning-content {
         max-width: 900px;
     }
     
-    .summary-cards {
-        max-width: 600px;
+    .week-days-grid {
+        gap: 20px;
+    }
+    
+    .planning-metrics .metrics-grid {
+        max-width: 400px;
         margin: 0 auto;
     }
 }

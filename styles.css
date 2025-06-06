@@ -1913,3 +1913,345 @@ button {
         width: 100%;
     }
 }
+
+/* ========================================
+   POPUP STYLES FOR PLANNING SCREEN
+   ======================================== */
+
+/* Popup Overlay - Centralized and properly positioned */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.popup-overlay[style*="display: flex"] {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Popup Content Container */
+.popup-content {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    max-width: 500px;
+    width: 100%;
+    max-height: 80vh;
+    overflow: hidden;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.3s ease;
+}
+
+.popup-overlay[style*="display: flex"] .popup-content {
+    transform: translateY(0) scale(1);
+}
+
+/* Popup Header */
+.popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.popup-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.popup-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    font-weight: 400;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup-close-btn:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+/* Popup Body */
+.popup-body {
+    padding: 20px 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Training Options */
+.treino-option {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--bg-secondary);
+}
+
+.treino-option:hover:not(.disabled) {
+    background: var(--bg-card-hover);
+    border-color: var(--accent-green);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.treino-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-secondary);
+}
+
+.treino-option.disabled:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-color);
+}
+
+/* Option Elements */
+.option-emoji {
+    font-size: 2rem;
+    min-width: 40px;
+    text-align: center;
+}
+
+.option-info {
+    flex: 1;
+}
+
+.option-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.option-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.option-status {
+    font-size: 0.75rem;
+    color: var(--accent-green);
+    font-weight: 500;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Responsive Design for Popup */
+@media (max-width: 480px) {
+    .popup-overlay {
+        padding: 16px;
+    }
+    
+    .popup-content {
+        max-height: 90vh;
+    }
+    
+    .popup-header {
+        padding: 16px 20px;
+    }
+    
+    .popup-header h3 {
+        font-size: 1.125rem;
+    }
+    
+    .popup-body {
+        padding: 16px 20px;
+        max-height: 70vh;
+    }
+    
+    .treino-option {
+        padding: 12px;
+        gap: 12px;
+    }
+    
+    .option-emoji {
+        font-size: 1.75rem;
+        min-width: 36px;
+    }
+    
+    .option-name {
+        font-size: 0.9rem;
+    }
+    
+    .option-description {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .popup-content {
+        margin: 8px;
+    }
+    
+    .treino-option {
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .option-emoji {
+        font-size: 1.5rem;
+        min-width: 32px;
+    }
+}
+
+/* Planning Mode Indicator */
+.planning-mode-indicator {
+    background: linear-gradient(45deg, #ff8c00, #ffa500);
+    color: #000;
+    padding: 12px 20px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #ff8c00;
+    box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
+}
+
+.planning-mode-indicator svg {
+    stroke: #000;
+}
+
+/* ========================================
+   BUTTON STANDARDIZATION ENHANCEMENTS
+   ======================================== */
+
+/* Ensure all buttons have consistent base styles */
+button {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: var(--transition);
+    outline: none;
+}
+
+button:focus-visible {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 2px;
+}
+
+/* Interactive states for day cards */
+.day-card[onclick] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.day-card[onclick]:focus {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 2px;
+}
+
+/* Remove button enhancements */
+.remove-treino:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 1px;
+}
+
+.remove-treino:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+/* Save button specific enhancements */
+.save-btn:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
+}
+
+/* Back button enhancements */
+.back-button:focus-visible {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 2px;
+}
+
+/* ========================================
+   CSS PERFORMANCE OPTIMIZATIONS
+   ======================================== */
+
+/* Optimize animations with will-change */
+.day-card,
+.treino-option,
+.popup-overlay,
+.popup-content,
+.save-btn,
+.back-button {
+    will-change: transform, opacity;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .day-card:hover,
+    .treino-option:hover,
+    .save-btn:hover,
+    .back-button:hover {
+        transform: none !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .day-card {
+        border-width: 2px;
+    }
+    
+    .popup-overlay {
+        background: rgba(0, 0, 0, 0.95);
+    }
+    
+    .treino-option {
+        border-width: 2px;
+    }
+}
+
+/* Dark mode adjustments (if needed) */
+@media (prefers-color-scheme: dark) {
+    /* Already using dark theme, but ensuring consistency */
+    .popup-overlay {
+        background: rgba(0, 0, 0, 0.9);
+    }
+}

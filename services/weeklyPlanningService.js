@@ -45,32 +45,63 @@ class WeeklyPlanService {
 
     // ==================== OPERAÇÕES PRINCIPAIS ====================
     
-    // Salvar plano completo
+    // Salvar plano completo com validação de numero_treino
     static async savePlan(userId, plan) {
         const { ano, semana } = this.getCurrentWeek();
         
         try {
-            // 1. Deletar plano anterior (se existir)
+            // 1. Buscar protocolo ativo do usuário
+            const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
+            if (!protocoloAtivo) {
+                throw new Error('Usuário não possui protocolo ativo');
+            }
+            
+            // 2. Deletar plano anterior (se existir)
             await this.deletePlan(userId, ano, semana);
             
-            // 2. Preparar registros
-            const registros = Object.entries(plan).map(([dia, config]) => ({
-                usuario_id: userId,
-                ano,
-                semana,
-                dia_semana: this.dayToDb(parseInt(dia)),
-                tipo_atividade: config.categoria || 'folga',
-                numero_treino: config.numero_treino || null,
-                concluido: false,
-                observacoes: config.tipo
-            }));
+            // 3. Preparar registros com validação
+            const registros = [];
             
-            // 3. Inserir no Supabase
+            for (const [dia, config] of Object.entries(plan)) {
+                let numeroTreino = null;
+                
+                // Se for treino, validar numero_treino com protocolo do usuário
+                if (config.categoria === 'treino' || config.categoria === 'muscular') {
+                    // Buscar numero_treino válido do protocolo ativo
+                    const { data: protocoloTreinos } = await query('protocolo_treinos', {
+                        eq: { protocolo_id: protocoloAtivo.protocolo_treinamento_id },
+                        select: 'numero_treino',
+                        order: { column: 'numero_treino', ascending: true }
+                    });
+                    
+                    if (protocoloTreinos && protocoloTreinos.length > 0) {
+                        // Mapear tipo de treino para numero_treino baseado no protocolo
+                        const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
+                        
+                        // Usar primeiro treino disponível ou calcular baseado no dia
+                        const diaIndex = parseInt(dia);
+                        const treinoIndex = diaIndex % treinosDisponiveis.length;
+                        numeroTreino = treinosDisponiveis[treinoIndex] || treinosDisponiveis[0];
+                    }
+                }
+                
+                registros.push({
+                    usuario_id: userId,
+                    ano,
+                    semana,
+                    dia_semana: this.dayToDb(parseInt(dia)),
+                    tipo_atividade: config.categoria || 'folga',
+                    numero_treino: numeroTreino,
+                    concluido: false
+                });
+            }
+            
+            // 4. Inserir no Supabase
             const { data, error } = await insert('planejamento_semanal', registros);
             
             if (error) throw error;
             
-            // 4. Salvar backup no localStorage
+            // 5. Salvar backup no localStorage
             this.saveToLocal(userId, plan);
             
             return { success: true, data };
@@ -81,7 +112,7 @@ class WeeklyPlanService {
         }
     }
     
-    // Buscar plano atual
+    // Buscar plano atual usando view v_planejamento_completo
     static async getPlan(userId, useCache = true) {
         const { ano, semana } = this.getCurrentWeek();
         
@@ -92,11 +123,14 @@ class WeeklyPlanService {
         }
         
         try {
-            // 2. Buscar do Supabase
-            const { data, error } = await query('planejamento_semanal', {
-                eq: { usuario_id: userId, ano, semana },
-                order: { column: 'dia_semana', ascending: true }
-            });
+            // 2. Buscar do Supabase usando view otimizada
+            const { data, error } = await supabase
+                .from('v_planejamento_completo')
+                .select('*')
+                .eq('usuario_id', userId)
+                .eq('ano', ano)
+                .eq('semana', semana)
+                .order('dia_semana', { ascending: true });
             
             if (error || !data?.length) return null;
             
@@ -105,10 +139,11 @@ class WeeklyPlanService {
             data.forEach(dia => {
                 const jsDay = this.dbToDay(dia.dia_semana);
                 plan[jsDay] = {
-                    tipo: dia.observacoes || dia.tipo_atividade,
+                    tipo: dia.tipo_atividade,
                     categoria: dia.tipo_atividade,
                     numero_treino: dia.numero_treino,
-                    concluido: dia.concluido
+                    concluido: dia.concluido,
+                    protocolo_id: dia.protocolo_treinamento_id
                 };
             });
             
@@ -262,65 +297,60 @@ class WeeklyPlanService {
 
     // ==================== FUNCIONALIDADES AVANÇADAS ====================
     
-    // Buscar treino do dia baseado no plano semanal
+    // Buscar treino do dia usando view v_planejamento_completo
     static async getTodaysWorkout(userId) {
         const hoje = new Date().getDay(); // 0 = domingo, 1 = segunda, etc.
-        const planoSemanal = await this.getPlan(userId);
+        const { ano, semana } = this.getCurrentWeek();
         
-        if (!planoSemanal || !planoSemanal[hoje]) {
+        try {
+            // Usar view v_planejamento_completo para JOIN otimizado
+            const { data, error } = await supabase
+                .from('v_planejamento_completo')
+                .select('*')
+                .eq('usuario_id', userId)
+                .eq('ano', ano)
+                .eq('semana', semana)
+                .eq('dia_semana', this.dayToDb(hoje))
+                .single();
+            
+            if (error || !data) {
+                console.log('[getTodaysWorkout] Nenhum planejamento para hoje');
+                return null;
+            }
+            
+            const planoDoDia = data;
+            
+            // Se não for treino, retornar info do dia
+            if (planoDoDia.tipo_atividade === 'folga' || planoDoDia.tipo_atividade === 'cardio') {
+                return {
+                    tipo: planoDoDia.tipo_atividade,
+                    nome: planoDoDia.tipo_atividade === 'folga' ? 'Dia de Folga' : 'Cardio',
+                    exercicios: []
+                };
+            }
+            
+            // Se for treino, usar numero_treino do planejamento
+            if (planoDoDia.tipo_atividade === 'treino' && planoDoDia.numero_treino) {
+                const exercicios = await fetchExerciciosTreino(
+                    planoDoDia.numero_treino, 
+                    planoDoDia.protocolo_treinamento_id
+                );
+                
+                return {
+                    tipo: 'treino',
+                    nome: `Treino ${planoDoDia.observacoes || planoDoDia.tipo_atividade}`,
+                    numero_treino: planoDoDia.numero_treino,
+                    exercicios: exercicios,
+                    protocolo_treino_id: planoDoDia.protocolo_treinamento_id
+                };
+            }
+            
+            return null;
+            
+        } catch (error) {
+            console.error('[getTodaysWorkout] Erro:', error);
             return null;
         }
-        
-        const planoDoDia = planoSemanal[hoje];
-        
-        // Se não for treino, retornar info do dia
-        if (planoDoDia.categoria === 'folga' || planoDoDia.categoria === 'cardio') {
-            return {
-                tipo: planoDoDia.categoria,
-                nome: planoDoDia.categoria === 'folga' ? 'Dia de Folga' : 'Cardio',
-                exercicios: []
-            };
-        }
-        
-        // Se for treino, buscar exercícios e pesos
-        if (planoDoDia.categoria === 'treino') {
-            const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
-            if (!protocoloAtivo) return null;
-            
-            // Calcular numero_treino baseado no dia atual e tipo de treino
-            const hoje = new Date();
-            const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
-            const semanaAtual = protocoloAtivo.semana_atual || 1;
-            
-            // Mapear dia da semana para número do treino (1-4)
-            const mapeamentoDias = {
-                0: 1, // domingo -> treino 1
-                1: 1, // segunda -> treino 1  
-                2: 2, // terça -> treino 2
-                3: 3, // quarta -> treino 3
-                4: 4, // quinta -> treino 4
-                5: 1, // sexta -> treino 1
-                6: 2  // sábado -> treino 2
-            };
-            
-            const diaTreino = mapeamentoDias[diaSemana] || 1;
-            const numeroTreino = ((semanaAtual - 1) * 4) + diaTreino;
-            
-            const exercicios = await fetchExerciciosTreino(
-                numeroTreino, 
-                protocoloAtivo.protocolo_treinamento_id
-            );
-            
-            return {
-                tipo: 'treino',
-                nome: `Treino ${planoDoDia.tipo}`,
-                numero_treino: numeroTreino,
-                exercicios: exercicios,
-                protocolo_treino_id: protocoloAtivo.protocolo_treinamento_id
-            };
-        }
-        
-        return null;
     }
 
     // Verificar quais dias podem ser editados

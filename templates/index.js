@@ -67,6 +67,15 @@ export function renderTemplate(templateName, container = 'app') {
             case 'workout':
                 console.log('[renderTemplate] Renderizando workout');
                 containerEl.innerHTML = workoutTemplate();
+                
+                // CORREÇÃO: Garantir que a tela workout fique visível
+                const workoutScreen = document.getElementById('workout-screen');
+                if (workoutScreen) {
+                    workoutScreen.classList.add('active');
+                    console.log('[renderTemplate] ✅ Classe "active" adicionada à tela workout');
+                } else {
+                    console.warn('[renderTemplate] ⚠️ Elemento #workout-screen não encontrado');
+                }
                 break;
                 
             case 'orderWeek':

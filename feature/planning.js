@@ -4,7 +4,8 @@
 import AppState from '../state/appState.js';
 import WeeklyPlanService from '../services/weeklyPlanningService.js';
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
-import { fetchTiposTreinoMuscular } from '../services/userService.js';
+import { fetchTiposTreinoMuscular, fetchProtocoloAtivoUsuario } from '../services/userService.js';
+import { query } from '../services/supabaseService.js';
 import { showNotification } from '../ui/notifications.js';
 
 // Variáveis do planejamento
@@ -14,6 +15,10 @@ let usuarioIdAtual = null;
 let nomeDiaAtual = '';
 let diasEditaveis = []; // Controla quais dias podem ser editados
 let modoEdicao = false; // Indica se está em modo de edição
+
+// Performance optimizations
+let validationTimeout = null;
+const VALIDATION_DEBOUNCE_MS = 150;
 
 // Mapear emojis para os tipos de treino
 const treinoEmojis = {
@@ -197,33 +202,60 @@ function forcarFechamentoModal() {
     }
 }
 
-// Renderizar planejamento existente
+// Renderizar planejamento existente - OTIMIZADO
 function renderizarPlanejamentoExistente() {
-    Object.keys(planejamentoAtual).forEach(dia => {
-        const treino = planejamentoAtual[dia];
-        if (treino && treino.id && treino.nome && treino.tipo) {
-            atualizarVisualizacaoDia(dia, treino);
-        }
-    });
-    
-    // Se está em modo edição, desabilitar dias não editáveis
-    if (modoEdicao && diasEditaveis.length > 0) {
-        diasEditaveis.forEach(diaInfo => {
-            const diaElement = document.querySelector(`[onclick*="abrirSeletorTreino('${diaInfo.dia_semana}"]`);
-            if (diaElement && !diaInfo.editavel) {
-                diaElement.style.cursor = 'not-allowed';
-                diaElement.style.opacity = '0.6';
-                diaElement.onclick = () => {
-                    showNotification('Este treino já foi realizado e não pode ser alterado', 'warning');
-                };
+    // Usar requestAnimationFrame para melhor performance
+    requestAnimationFrame(() => {
+        // Batch DOM operations
+        const fragment = document.createDocumentFragment();
+        const updates = [];
+        
+        // Preparar todas as atualizações antes de aplicar ao DOM
+        Object.keys(planejamentoAtual).forEach(dia => {
+            const treino = planejamentoAtual[dia];
+            if (treino && treino.id && treino.nome && treino.tipo) {
+                updates.push({ dia, treino });
             }
         });
         
-        // Adicionar indicador visual de modo edição
-        adicionarIndicadorModoEdicao();
-    }
-    
-    validarPlanejamento();
+        // Aplicar atualizações em batch
+        updates.forEach(({ dia, treino }) => {
+            atualizarVisualizacaoDia(dia, treino);
+        });
+        
+        // Otimizar modo edição com cache de elementos
+        if (modoEdicao && diasEditaveis.length > 0) {
+            // Cache elements to avoid repeated DOM queries
+            const diasElementsCache = new Map();
+            
+            diasEditaveis.forEach(diaInfo => {
+                let diaElement = diasElementsCache.get(diaInfo.dia_semana);
+                if (!diaElement) {
+                    diaElement = document.querySelector(`[onclick*="abrirSeletorTreino('${diaInfo.dia_semana}"]`);
+                    if (diaElement) {
+                        diasElementsCache.set(diaInfo.dia_semana, diaElement);
+                    }
+                }
+                
+                if (diaElement && !diaInfo.editavel) {
+                    // Batch style changes
+                    Object.assign(diaElement.style, {
+                        cursor: 'not-allowed',
+                        opacity: '0.6'
+                    });
+                    diaElement.onclick = () => {
+                        showNotification('Este treino já foi realizado e não pode ser alterado', 'warning');
+                    };
+                }
+            });
+            
+            // Adicionar indicador visual de modo edição
+            adicionarIndicadorModoEdicao();
+        }
+        
+        // Validar após todas as mudanças
+        validarPlanejamentoDebounced();
+    });
 }
 
 // Adicionar indicador de modo edição
@@ -257,10 +289,17 @@ function adicionarIndicadorModoEdicao() {
     }
 }
 
-// Validar planejamento
+// Validar planejamento - OTIMIZADO
 function validarPlanejamento() {
-    const btnSalvar = document.querySelector('.btn-save') || document.getElementById('confirm-plan-btn');
-    const validationMessageElement = document.getElementById('validationMessage');
+    // Cache DOM elements to avoid repeated queries
+    if (!validarPlanejamento._cachedElements) {
+        validarPlanejamento._cachedElements = {
+            btnSalvar: document.querySelector('.save-btn') || document.getElementById('confirm-plan-btn'),
+            validationMessageElement: document.getElementById('validationMessage')
+        };
+    }
+    
+    const { btnSalvar, validationMessageElement } = validarPlanejamento._cachedElements;
     
     let diasPreenchidos = 0;
     let isValid = true;
@@ -273,10 +312,12 @@ function validarPlanejamento() {
         messages.push('ℹ️ Modo de edição ativo. Alterações serão salvas automaticamente.');
         
         if (validationMessageElement) {
-            validationMessageElement.innerHTML = messages.join('<br>');
-            validationMessageElement.classList.remove('error', 'success');
-            validationMessageElement.classList.add('info');
-            validationMessageElement.style.display = 'block';
+            // Batch DOM updates
+            requestAnimationFrame(() => {
+                validationMessageElement.innerHTML = messages.join('<br>');
+                validationMessageElement.className = 'validation-message info';
+                validationMessageElement.style.display = 'block';
+            });
         }
         
         // No modo edição, não precisamos do botão salvar tradicional
@@ -287,16 +328,16 @@ function validarPlanejamento() {
         return true;
     }
 
-    // Contar dias preenchidos (modo normal)
-    for (const diaKey in planejamentoAtual) {
-        if (planejamentoAtual.hasOwnProperty(diaKey) && planejamentoAtual[diaKey]) {
-            diasPreenchidos++;
-            const treinoDoDia = planejamentoAtual[diaKey];
-            if (treinoDoDia.categoria === 'muscular') {
-                tiposMuscularesNoPlano[treinoDoDia.tipo] = (tiposMuscularesNoPlano[treinoDoDia.tipo] || 0) + 1;
-            }
+    // Contar dias preenchidos (modo normal) - Otimizada com Object.values
+    const treinosValidos = Object.values(planejamentoAtual).filter(treino => treino);
+    diasPreenchidos = treinosValidos.length;
+    
+    // Processo de contagem otimizado
+    treinosValidos.forEach(treino => {
+        if (treino.categoria === 'muscular') {
+            tiposMuscularesNoPlano[treino.tipo] = (tiposMuscularesNoPlano[treino.tipo] || 0) + 1;
         }
-    }
+    });
 
     // Validação 1: Todos os 7 dias devem estar preenchidos
     if (diasPreenchidos < 7) {
@@ -340,11 +381,47 @@ function validarPlanejamento() {
 
     if (btnSalvar) {
         btnSalvar.disabled = !isValid || diasPreenchidos < 7;
-        btnSalvar.style.display = 'block';
+        btnSalvar.style.display = 'flex';
     }
+
+    // Atualizar estatísticas na interface
+    atualizarEstatisticasPlanejamento(diasPreenchidos);
 
     console.log('[validarPlanejamento] Validação:', { modoEdicao, isValid, diasPreenchidos, messages });
     return isValid && diasPreenchidos === 7;
+}
+
+// Debounced validation wrapper - OTIMIZAÇÃO DE PERFORMANCE
+function validarPlanejamentoDebounced() {
+    if (validationTimeout) {
+        clearTimeout(validationTimeout);
+    }
+    
+    validationTimeout = setTimeout(() => {
+        validarPlanejamento();
+        validationTimeout = null;
+    }, VALIDATION_DEBOUNCE_MS);
+}
+
+// Atualizar estatísticas do planejamento
+function atualizarEstatisticasPlanejamento(diasPreenchidos) {
+    try {
+        const plannedDaysEl = document.getElementById('planned-days');
+        const workoutCountEl = document.getElementById('workout-count');
+        
+        if (plannedDaysEl) {
+            plannedDaysEl.textContent = diasPreenchidos;
+        }
+        
+        if (workoutCountEl) {
+            const totalTreinos = Object.values(planejamentoAtual).filter(treino => 
+                treino && (treino.categoria === 'muscular' || treino.categoria === 'cardio' || treino.categoria === 'treino')
+            ).length;
+            workoutCountEl.textContent = totalTreinos;
+        }
+    } catch (error) {
+        console.warn('[atualizarEstatisticasPlanejamento] Erro:', error);
+    }
 }
 
 // Abrir seletor de treino
@@ -479,8 +556,41 @@ function criarOpcaoTreino(treino, diaDestino) {
     return option;
 }
 
-// Selecionar treino para um dia
+// Selecionar treino para um dia com validação de numero_treino
 async function selecionarTreinoParaDia(treino, dia) {
+    // Validar numero_treino se for treino muscular
+    if (treino.categoria === 'muscular' || treino.categoria === 'treino') {
+        try {
+            // Buscar protocolo ativo do usuário
+            const protocoloAtivo = await fetchProtocoloAtivoUsuario(usuarioIdAtual);
+            if (!protocoloAtivo) {
+                showNotification('Erro: usuário sem protocolo ativo', 'error');
+                return;
+            }
+            
+            // Verificar se existe numero_treino válido para este protocolo
+            const { data: protocoloTreinos } = await query('protocolo_treinos', {
+                eq: { protocolo_id: protocoloAtivo.protocolo_treinamento_id },
+                select: 'numero_treino'
+            });
+            
+            if (!protocoloTreinos || protocoloTreinos.length === 0) {
+                showNotification('Erro: protocolo sem treinos configurados', 'error');
+                return;
+            }
+            
+            // Adicionar numero_treino válido ao treino
+            const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
+            const treinoIndex = parseInt(dia) % treinosDisponiveis.length;
+            treino.numero_treino = treinosDisponiveis[treinoIndex] || treinosDisponiveis[0];
+            
+        } catch (error) {
+            console.error('[selecionarTreinoParaDia] Erro na validação:', error);
+            showNotification('Erro ao validar treino com protocolo', 'error');
+            return;
+        }
+    }
+    
     if (modoEdicao) {
         // Salvar mudança no banco de dados usando novo serviço
         const resultado = await WeeklyPlanService.updateDay(usuarioIdAtual, dia, treino);
@@ -504,48 +614,47 @@ async function selecionarTreinoParaDia(treino, dia) {
     
     atualizarVisualizacaoDia(dia, treino);
     fecharSeletorTreino();
-    validarPlanejamento();
+    validarPlanejamentoDebounced();
 }
 
-// Atualizar visualização do dia
+// Atualizar visualização do dia - OTIMIZADO
 function atualizarVisualizacaoDia(dia, treino) {
     const dayContent = document.getElementById(`dia-${dia}-content`);
     if (!dayContent) return;
     
-    // Verificar se o dia pode ser editado
-    let podeEditar = true;
-    if (modoEdicao) {
-        const diaEditavel = diasEditaveis.find(d => d.dia_semana === parseInt(dia));
-        podeEditar = diaEditavel ? diaEditavel.editavel : true;
-    }
+    // Cache calculation for better performance
+    const podeEditar = modoEdicao ? 
+        (diasEditaveis.find(d => d.dia_semana === parseInt(dia))?.editavel ?? true) : 
+        true;
     
+    // Pre-calculate values to avoid repeated computation
     const statusClass = podeEditar ? '' : 'completed';
-    const botaoRemover = podeEditar ? `<button class="remove-treino" onclick="removerTreinoDoDia('${dia}')">×</button>` : 
-                                     '<span class="completed-badge">✓</span>';
+    const botaoRemover = podeEditar ? 
+        `<button class="remove-treino" onclick="removerTreinoDoDia('${dia}')">×</button>` : 
+        '<span class="completed-badge">✓</span>';
     
-    if (treino.categoria === 'folga') {
-        dayContent.innerHTML = `
-            <div class="treino-assigned ${statusClass}">
-                <span class="treino-emoji">😴</span>
-                <div class="treino-info">
-                    <div class="treino-name">Folga</div>
-                    <div class="treino-type">Descanso</div>
-                </div>
-                ${botaoRemover}
+    // Optimized template rendering with single template
+    const treinoData = treino.categoria === 'folga' ? {
+        emoji: '😴',
+        nome: 'Folga',
+        tipo: 'Descanso'
+    } : {
+        emoji: treinoEmojis[treino.tipo] || '🏋️',
+        nome: treino.nome,
+        tipo: treino.categoria === 'cardio' ? 'Cardiovascular' : 'Muscular'
+    };
+    
+    // Single template with conditional data
+    dayContent.innerHTML = `
+        <div class="treino-assigned ${statusClass}">
+            <span class="treino-emoji">${treinoData.emoji}</span>
+            <div class="treino-info">
+                <div class="treino-name">${treinoData.nome}</div>
+                <div class="treino-type">${treinoData.tipo}</div>
             </div>
-        `;
-    } else {
-        dayContent.innerHTML = `
-            <div class="treino-assigned ${statusClass}">
-                <span class="treino-emoji">${treinoEmojis[treino.tipo] || '🏋️'}</span>
-                <div class="treino-info">
-                    <div class="treino-name">${treino.nome}</div>
-                    <div class="treino-type">${treino.categoria === 'cardio' ? 'Cardiovascular' : 'Muscular'}</div>
-                </div>
-                ${botaoRemover}
-            </div>
-        `;
-    }
+            ${botaoRemover}
+        </div>
+    `;
 }
 
 // Remover treino do dia
@@ -556,21 +665,21 @@ window.removerTreinoDoDia = function(dia) {
     if (dayContent) {
         dayContent.innerHTML = `
             <div class="empty-slot">
-                <svg viewBox="0 0 24 24" width="24" height="24">
-                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14m-7-7h14"/>
                 </svg>
                 <span>Adicionar</span>
             </div>
         `;
     }
     
-    validarPlanejamento();
+    validarPlanejamentoDebounced();
     if (window.showNotification) {
         window.showNotification('Treino removido', 'info');
     }
 };
 
-// FUNÇÃO PRINCIPAL: Salvar planejamento semanal - VERSÃO CORRIGIDA
+// FUNÇÃO PRINCIPAL: Salvar planejamento semanal com validação
 export async function salvarPlanejamentoSemanal() {
     console.log('[salvarPlanejamentoSemanal] Iniciando salvamento...');
 
@@ -593,13 +702,19 @@ export async function salvarPlanejamentoSemanal() {
             window.showNotification('Salvando planejamento...', 'info');
         }
 
+        // Validar protocolo ativo antes de salvar
+        const protocoloAtivo = await fetchProtocoloAtivoUsuario(usuarioIdAtual);
+        if (!protocoloAtivo) {
+            throw new Error('Usuário não possui protocolo ativo');
+        }
+
         // Mapeamento textual para índice de dias da semana (0=Dom, 6=Sáb)
         const diasMap = {
             'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3,
             'quinta': 4, 'sexta': 5, 'sabado': 6
         };
 
-        // Montar objeto indexado para Supabase, garantindo todos os dias e tipo_atividade em minúsculo
+        // Montar objeto indexado para Supabase com validação de numero_treino
         const planejamentoParaSupabase = {};
         for (let dia = 0; dia < 7; dia++) {
             let treino = null;
@@ -610,10 +725,31 @@ export async function salvarPlanejamentoSemanal() {
                     break;
                 }
             }
+            
+            // Validar numero_treino para treinos musculares
+            let numeroTreino = null;
+            if (treino && (treino.categoria === 'muscular' || treino.categoria === 'treino')) {
+                numeroTreino = treino.numero_treino;
+                // Se não foi definido, usar um válido do protocolo
+                if (!numeroTreino) {
+                    const { data: protocoloTreinos } = await query('protocolo_treinos', {
+                        eq: { protocolo_id: protocoloAtivo.protocolo_treinamento_id },
+                        select: 'numero_treino',
+                        order: { column: 'numero_treino', ascending: true }
+                    });
+                    
+                    if (protocoloTreinos && protocoloTreinos.length > 0) {
+                        const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
+                        const treinoIndex = dia % treinosDisponiveis.length;
+                        numeroTreino = treinosDisponiveis[treinoIndex] || treinosDisponiveis[0];
+                    }
+                }
+            }
+            
             planejamentoParaSupabase[dia] = {
                 tipo: treino && treino.tipo ? treino.tipo.toLowerCase() : 'folga',
                 categoria: treino && treino.categoria ? treino.categoria.toLowerCase() : 'folga',
-                numero_treino: treino && treino.numero_treino ? treino.numero_treino : null,
+                numero_treino: numeroTreino,
                 concluido: false
             };
         }
