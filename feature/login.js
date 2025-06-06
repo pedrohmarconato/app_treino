@@ -34,12 +34,28 @@ function renderizarUsuarios(usuarios) {
     const container = document.getElementById('users-grid');
     
     if (!container) {
-        console.error('[renderizarUsuarios] Container users-grid não encontrado, tentando novamente...');
-        // Tentar novamente após um delay maior
-        setTimeout(() => {
-            console.log('[renderizarUsuarios] Tentativa adicional...');
-            renderizarUsuarios(usuarios);
-        }, 1000);
+        console.warn('[renderizarUsuarios] Container users-grid não encontrado.');
+        
+        // Verificar se estamos na tela de login antes de tentar novamente
+        const loginScreen = document.getElementById('login-screen');
+        const currentScreen = document.querySelector('.screen.active');
+        
+        if (!loginScreen || (currentScreen && currentScreen.id !== 'login-screen')) {
+            console.log('[renderizarUsuarios] Não estamos na tela de login, abortando renderização');
+            return;
+        }
+        
+        // Tentar novamente apenas se estivermos na tela de login e for a primeira tentativa
+        if (!renderizarUsuarios._tentativas) {
+            renderizarUsuarios._tentativas = 1;
+            setTimeout(() => {
+                console.log('[renderizarUsuarios] Tentativa adicional...');
+                renderizarUsuarios(usuarios);
+            }, 1000);
+        } else {
+            console.log('[renderizarUsuarios] Máximo de tentativas atingido, abortando');
+            renderizarUsuarios._tentativas = 0;
+        }
         return;
     }
     

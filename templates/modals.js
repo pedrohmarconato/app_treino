@@ -1,15 +1,17 @@
 // Modal de Planejamento Template - Estrutura corrigida
 
 export const modalPlanejamentoTemplate = () => `
-    <div id="planning-screen" class="screen">
-        <!-- Back Button padronizado seguindo o padrão do app -->
-        <button class="back-button btn-back" onclick="window.mostrarTela('home-screen');">
+    <div id="modalPlanejamento" class="modal-overlay" style="display: flex !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.9) !important; z-index: 9999 !important; align-items: flex-start !important; justify-content: center !important; overflow-y: auto !important; padding: 20px !important; box-sizing: border-box !important; visibility: visible !important; opacity: 1 !important;">
+        <div class="modal-content-wrapper" style="background: #1a1a1a; border-radius: 16px; width: 100%; max-width: 900px; min-height: 90vh; position: relative; border: 1px solid #333; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+        <div id="planning-screen" class="planning-screen-content" style="width: 100%; height: 100%; background: #1a1a1a; position: relative; overflow: visible; display: block !important; color: white;">
+        
+        
+        <button class="back-button btn-back" onclick="window.fecharModalPlanejamento();">
             <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M15 18l-6-6 6-6"/>
             </svg>
         </button>
         
-        <!-- Header padronizado seguindo o padrão do app -->
         <div class="planning-header">
             <div class="header-content">
                 <div class="page-info">
@@ -20,13 +22,10 @@ export const modalPlanejamentoTemplate = () => `
         </div>
         
         <div class="planning-content">
-            <!-- Main Planning Section -->
             <div class="planning-main">
                 <div class="section-header">
                     <h2>Dias da Semana</h2>
                 </div>
-                
-                <!-- Days Grid seguindo padrão do app -->
                 <div class="week-days-grid">
                     <div class="day-card" onclick="abrirSeletorTreino('segunda', 'Segunda-feira')" id="card-segunda">
                         <div class="day-header">
@@ -134,7 +133,6 @@ export const modalPlanejamentoTemplate = () => `
                     </div>
                 </div>
                 
-                <!-- Planning Metrics Section seguindo padrão das métricas do home -->
                 <div class="planning-metrics">
                     <div class="metrics-grid">
                         <div class="metric-card">
@@ -150,12 +148,10 @@ export const modalPlanejamentoTemplate = () => `
                     </div>
                 </div>
                 
-                <!-- Validation Message -->
                 <div class="validation-message" id="validationMessage"></div>
             </div>
         </div>
         
-        <!-- Fixed Save Button seguindo padrão do app -->
         <div class="action-button-container">
             <button class="btn-primary save-btn" id="confirm-plan-btn" onclick="salvarPlanejamento()" disabled>
                 <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -164,17 +160,182 @@ export const modalPlanejamentoTemplate = () => `
                 <span>Salvar Plano</span>
             </button>
         </div>
+        </div>
+    </div>
+    </div>
+    
+    <div id="seletorTreinoPopup" class="modal-overlay" style="display: none;">
+        <div class="modal-content-small">
+            <div class="popup-header">
+                <h3 id="popup-day-title">Selecionar Treino</h3>
+                <button class="close-btn" onclick="fecharSeletorTreino()">×</button>
+            </div>
+            <div class="popup-body">
+                <div id="treino-options" class="treino-options-grid">
+                </div>
+            </div>
+        </div>
     </div>
 `;
 
 export const modalPlanejamentoStyles = `
-/* Planning Screen - Estrutura padronizada seguindo o app */
-#planning-screen {
+/* Modal Overlay - Base */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.modal-content {
     background: var(--bg-primary);
-    min-height: 100vh;
+    border-radius: var(--radius-lg);
+    max-width: 95vw;
+    max-height: 95vh;
+    width: 100%;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Small Modal Content for Popups */
+.modal-content-small {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    max-width: 400px;
+    width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Popup Header */
+.popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.popup-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.close-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.close-btn:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+}
+
+/* Popup Body */
+.popup-body {
+    padding: 20px 24px 24px;
+}
+
+/* Treino Options Grid */
+.treino-options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.treino-option {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.treino-option:hover {
+    border-color: var(--accent-green);
+    background: var(--accent-green-bg);
+    transform: translateY(-1px);
+}
+
+.treino-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-muted);
+}
+
+.treino-option.disabled:hover {
+    transform: none;
+    border-color: var(--border-color);
+    background: var(--bg-muted);
+}
+
+.option-emoji {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.option-info {
+    flex: 1;
+}
+
+.option-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.option-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.option-status {
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-weight: 500;
+}
+
+/* Planning Screen - Estrutura padronizada seguindo o app */
+.planning-screen-content {
+    background: transparent;
+    min-height: 100%;
     display: flex;
     flex-direction: column;
     position: relative;
+    padding: 0;
+    margin: 0;
 }
 
 /* Back Button padronizado seguindo home.js */
@@ -214,12 +375,11 @@ export const modalPlanejamentoStyles = `
 /* Header padronizado seguindo home.js */
 .planning-header {
     background: linear-gradient(135deg, var(--bg-secondary) 0%, #1e1e1e 100%);
-    padding: 80px 24px 20px 24px; /* Top padding para compensar o back button */
+    padding: 60px 24px 24px 24px;
     border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
+    border-radius: 16px 16px 0 0;
+    position: relative;
     z-index: 10;
-    backdrop-filter: blur(10px);
 }
 
 .header-content {
@@ -285,9 +445,10 @@ export const modalPlanejamentoStyles = `
 /* Week Days Grid */
 .week-days-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 16px;
     margin-bottom: 32px;
+    padding: 0 8px;
 }
 
 /* Day Cards */
@@ -295,15 +456,16 @@ export const modalPlanejamentoStyles = `
     background: var(--bg-secondary);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: 16px 12px;
+    padding: 20px 16px;
     cursor: pointer;
     transition: var(--transition);
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    min-height: 100px;
+    min-height: 120px;
     position: relative;
+    box-shadow: var(--shadow-sm);
 }
 
 .day-card:hover {
@@ -317,22 +479,24 @@ export const modalPlanejamentoStyles = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    gap: 4px;
 }
 
 .day-name {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     font-weight: 700;
     color: var(--accent-green);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 2px;
+    letter-spacing: 0.1em;
+    line-height: 1;
 }
 
 .day-full {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     font-weight: 500;
+    line-height: 1;
 }
 
 /* Day Content States */
@@ -348,28 +512,39 @@ export const modalPlanejamentoStyles = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    opacity: 0.6;
+    gap: 8px;
+    opacity: 0.7;
     transition: var(--transition);
+    padding: 12px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .empty-slot svg {
     stroke: var(--text-secondary);
     transition: var(--transition);
+    width: 24px;
+    height: 24px;
 }
 
 .empty-slot span {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .day-card:hover .empty-slot {
     opacity: 1;
+    border-color: var(--accent-green);
+    background: var(--accent-green-bg);
 }
 
 .day-card:hover .empty-slot svg {
     stroke: var(--accent-green);
+    transform: scale(1.1);
 }
 
 .day-card:hover .empty-slot span {
@@ -619,8 +794,15 @@ export const modalPlanejamentoStyles = `
 
 /* Responsive Design */
 @media (max-width: 480px) {
+    .modal-content-wrapper {
+        margin: 10px;
+        max-width: calc(100vw - 20px);
+        min-height: calc(100vh - 20px);
+    }
+    
     .planning-header {
-        padding: 70px 16px 16px 16px;
+        padding: 50px 16px 20px 16px;
+        border-radius: 16px 16px 0 0;
     }
     
     .page-title {
@@ -628,42 +810,44 @@ export const modalPlanejamentoStyles = `
     }
     
     .page-subtitle {
-        font-size: 0.8rem;
+        font-size: 0.875rem;
     }
     
     .planning-content {
         padding: 16px;
-        padding-bottom: 100px; /* Espaço para o botão fixo */
+        padding-bottom: 100px;
     }
     
     .week-days-grid {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 0 4px;
     }
     
     .day-card {
-        padding: 12px 8px;
-        min-height: 85px;
+        padding: 16px 12px;
+        min-height: 100px;
     }
     
     .day-name {
-        font-size: 0.7rem;
+        font-size: 0.8rem;
     }
     
     .day-full {
-        font-size: 0.6rem;
-    }
-    
-    .empty-slot span {
-        font-size: 0.65rem;
-    }
-    
-    .treino-name {
         font-size: 0.7rem;
     }
     
-    .treino-type {
-        font-size: 0.6rem;
+    .empty-slot {
+        padding: 8px;
+    }
+    
+    .empty-slot svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .empty-slot span {
+        font-size: 0.7rem;
     }
     
     .save-btn {
@@ -673,6 +857,13 @@ export const modalPlanejamentoStyles = `
     
     .action-button-container {
         padding: 12px 16px;
+    }
+    
+    .back-button {
+        top: 15px;
+        left: 15px;
+        width: 36px;
+        height: 36px;
     }
 }
 

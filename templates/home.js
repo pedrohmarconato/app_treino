@@ -26,141 +26,13 @@ export const homeTemplate = () => `
             </div>
         </div>
 
-        <!-- Modal de Planejamento Semanal - CORRIGIDO E OTIMIZADO -->
-        <div id="planejamentoSemanalModal" class="planning-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 3000; padding: 0; box-sizing: border-box; overflow-y: auto;">
-          <div class="planning-modal-container" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; width: 100vw;">
-            <div class="planning-modal-content" style="background: #1a1a1a; color: #fff; padding: 24px; border-radius: 16px; max-width: 700px; width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); position: relative; border: 1px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;">
-              <!-- Log de Debug -->
-              <div style="position: absolute; top: 5px; left: 5px; background: #00ff00; color: #000; padding: 2px 6px; font-size: 10px; border-radius: 3px; z-index: 10;">MODAL ATIVO</div>
-              <!-- Botão Fechar -->
-              <button class="close-modal-btn" onclick="fecharPlanejamentoSemanal()" style="position: absolute; top: 12px; right: 16px; background: #ff4444; border: none; color: #fff; font-size: 20px; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1;">&times;</button>
-              
-              <!-- Header do Modal -->
-              <div class="planning-modal-header" style="text-align: center; margin-bottom: 24px; padding-top: 16px;">
-                <h1 style="font-size: 1.75rem; margin-bottom: 8px; color: #fff; font-weight: 700;">🗓️ Planejamento Semanal</h1>
-                <p style="font-size: 1rem; margin: 0; color: #aaa;">Configure seus treinos da semana</p>
-              </div>
-              
-              <!-- Conteúdo Principal -->
-              <div class="planning-modal-body" style="margin-bottom: 24px;">
-                
-                <!-- Seção dos Dias -->
-                <div class="days-section" style="margin-bottom: 24px;">
-                  <h3 style="font-size: 1.25rem; margin-bottom: 16px; text-align: center; color: #fff;">📅 Dias da Semana</h3>
-                  <div class="days-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                    <div class="day-card-modal" style="background: #333; padding: 16px 12px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 2px solid #555; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='#00ff00'" onmouseout="this.style.borderColor='#555'">
-                      <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">SEG</div>
-                      <div style="font-size: 0.75rem; color: #ccc;">Segunda</div>
-                    </div>
-                    <div class="day-card-modal" style="background: #333; padding: 16px 12px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 2px solid #555; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='#00ff00'" onmouseout="this.style.borderColor='#555'">
-                      <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">TER</div>
-                      <div style="font-size: 0.75rem; color: #ccc;">Terça</div>
-                    </div>
-                    <div class="day-card-modal" style="background: #333; padding: 16px 12px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 2px solid #555; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='#00ff00'" onmouseout="this.style.borderColor='#555'">
-                      <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">QUA</div>
-                      <div style="font-size: 0.75rem; color: #ccc;">Quarta</div>
-                    </div>
-                    <div class="day-card-modal" style="background: #333; padding: 16px 12px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 2px solid #555; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='#00ff00'" onmouseout="this.style.borderColor='#555'">
-                      <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">QUI</div>
-                      <div style="font-size: 0.75rem; color: #ccc;">Quinta</div>
-                    </div>
-                    <div class="day-card-modal" style="background: #333; padding: 16px 12px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 2px solid #555; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='#00ff00'" onmouseout="this.style.borderColor='#555'">
-                      <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">SEX</div>
-                      <div style="font-size: 0.75rem; color: #ccc;">Sexta</div>
-                    </div>
-                    <div class="day-card-modal" style="background: #333; padding: 16px 12px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 2px solid #555; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='#00ff00'" onmouseout="this.style.borderColor='#555'">
-                      <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">SAB</div>
-                      <div style="font-size: 0.75rem; color: #ccc;">Sábado</div>
-                    </div>
-                    <div class="day-card-modal" style="background: #333; padding: 16px 12px; border-radius: 12px; text-align: center; font-size: 0.9rem; border: 2px solid #555; transition: all 0.3s ease; cursor: pointer;" onmouseover="this.style.borderColor='#00ff00'" onmouseout="this.style.borderColor='#555'">
-                      <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">DOM</div>
-                      <div style="font-size: 0.75rem; color: #ccc;">Domingo</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Status de Renderização -->
-                <div style="background: #2a2a2a; padding: 16px; border-radius: 12px; text-align: center; border: 1px solid #444;">
-                  <div style="color: #00ff00; font-weight: bold; margin-bottom: 8px;">✅ MODAL CARREGADO COM SUCESSO!</div>
-                  <div style="font-size: 0.9rem; color: #ccc;">Todos os elementos do planejamento semanal estão visíveis</div>
-                  <div style="font-size: 0.8rem; color: #888; margin-top: 8px;">Se você está vendo esta mensagem, o modal está funcionando perfeitamente</div>
-                </div>
-                
-              </div>
-              
-              <!-- Botões de Ação -->
-              <div class="planning-modal-actions" style="display: flex; gap: 12px; flex-wrap: wrap;">
-                <button onclick="fecharPlanejamentoSemanal()" style="flex: 1; min-width: 120px; background: #666; color: #fff; padding: 14px 20px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.background='#777'" onmouseout="this.style.background='#666'">Cancelar</button>
-                <button onclick="alert('Função salvar planejamento em desenvolvimento!')" style="flex: 2; min-width: 160px; background: #00ff00; color: #000; padding: 14px 20px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.background='#00cc00'" onmouseout="this.style.background='#00ff00'">💾 Salvar Plano</button>
-              </div>
-              
-            </div>
-          </div>
-        </div>
-
-        <script>
-        function abrirPlanejamentoSemanal() {
-          console.log('🚀 Abrindo modal de planejamento semanal...');
-          const modal = document.getElementById('planejamentoSemanalModal');
-          if (modal) {
-            modal.style.display = 'flex';
-            document.body.style.overflow = 'hidden'; // Previne scroll da página
-            console.log('✅ Modal aberto com sucesso!');
-            
-            // Log adicional para debug
-            setTimeout(() => {
-              console.log('🔍 Verificando visibilidade do modal...');
-              const modalContent = modal.querySelector('.planning-modal-content');
-              if (modalContent) {
-                console.log('✅ Conteúdo do modal encontrado e visível');
-                console.log('📊 Dimensões do modal:', modalContent.getBoundingClientRect());
-              }
-            }, 100);
-          } else {
-            console.error('❌ Modal não encontrado!');
-          }
-        }
-        
-        function fecharPlanejamentoSemanal() {
-          console.log('🔒 Fechando modal de planejamento semanal...');
-          const modal = document.getElementById('planejamentoSemanalModal');
-          if (modal) {
-            modal.style.display = 'none';
-            document.body.style.overflow = ''; // Restaura scroll da página
-            console.log('✅ Modal fechado com sucesso!');
-          }
-        }
-        
-        // Fechar modal ao clicar fora do conteúdo
-        document.addEventListener('click', function(event) {
-          const modal = document.getElementById('planejamentoSemanalModal');
-          const modalContent = modal?.querySelector('.planning-modal-content');
-          
-          if (modal && modal.style.display === 'flex') {
-            if (event.target === modal && !modalContent?.contains(event.target)) {
-              fecharPlanejamentoSemanal();
-            }
-          }
-        });
-        
-        // Fechar modal com tecla ESC
-        document.addEventListener('keydown', function(event) {
-          if (event.key === 'Escape') {
-            const modal = document.getElementById('planejamentoSemanalModal');
-            if (modal && modal.style.display === 'flex') {
-              fecharPlanejamentoSemanal();
-            }
-          }
-        });
-        </script>
-
         <!-- Home Content Principal - ESTRUTURA CORRIGIDA -->
         <div class="home-content">
             <!-- Semana de Treinos -->
             <div class="training-plan">
                 <div class="section-header">
                     <h2>Semana de Treinos</h2>
-                    <button class="btn-secondary btn-edit" onclick="abrirPlanejamentoSemanal()">
+                    <button class="btn-secondary btn-edit" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
                         <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="m18.5 2.5 1 1-10 10-4 1 1-4 10-10z"/>
@@ -178,7 +50,7 @@ export const homeTemplate = () => `
                 <div class="current-workout-card expandable-card" id="current-workout-card">
                     <!-- Botão Iniciar Treino (Topo - Apenas quando reduzido) -->
                     <div class="top-action-area" id="top-action-area">
-                        <button class="btn-primary workout-start-btn-top" id="start-workout-btn" onclick="abrirPlanejamentoSemanal()">
+                        <button class="btn-primary workout-start-btn-top" id="start-workout-btn" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
                             <span id="btn-text">Iniciar Treino</span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M5 12h14M12 5l7 7-7 7"/>

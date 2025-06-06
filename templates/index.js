@@ -87,8 +87,39 @@ export function renderTemplate(templateName, container = 'app') {
                 break;
                 
             case 'planejamentoSemanalPage':
-                console.log('[renderTemplate] Renderizando planejamentoSemanalPage');
-                containerEl.innerHTML = window.modalPlanejamentoTemplate();
+                console.log('[renderTemplate] 🚀 Renderizando planejamentoSemanalPage');
+                console.log('[renderTemplate] Container:', containerEl);
+                console.log('[renderTemplate] modalPlanejamentoTemplate disponível:', !!window.modalPlanejamentoTemplate);
+                
+                if (!window.modalPlanejamentoTemplate) {
+                    console.error('[renderTemplate] ❌ modalPlanejamentoTemplate não encontrado!');
+                    return;
+                }
+                
+                const planejamentoHTML = window.modalPlanejamentoTemplate();
+                console.log('[renderTemplate] HTML gerado para planejamento, tamanho:', planejamentoHTML.length);
+                console.log('[renderTemplate] Primeiros 200 chars:', planejamentoHTML.substring(0, 200));
+                
+                containerEl.innerHTML = planejamentoHTML;
+                console.log('[renderTemplate] ✅ HTML inserido no container');
+                
+                // Verificar se o modal foi criado
+                setTimeout(() => {
+                    const modal = document.getElementById('modalPlanejamento');
+                    console.log('[renderTemplate] Modal criado no DOM:', !!modal);
+                    if (modal) {
+                        console.log('[renderTemplate] Modal encontrado:', {
+                            id: modal.id,
+                            classList: Array.from(modal.classList),
+                            style: modal.style.cssText,
+                            computedDisplay: window.getComputedStyle(modal).display,
+                            computedPosition: window.getComputedStyle(modal).position,
+                            computedZIndex: window.getComputedStyle(modal).zIndex
+                        });
+                    }
+                }, 50);
+                
+                console.log('[renderTemplate] ✅ Template de planejamento renderizado, aguardando inicialização externa');
                 break;
                 
             default:

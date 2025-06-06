@@ -35,31 +35,33 @@ const treinoEmojis = {
 // Inicializar planejamento
 export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false) {
     console.log('[inicializarPlanejamento] Iniciando para usuário:', usuarioId);
+    
+    // Garantir que temos um usuário válido
+    if (!usuarioId) {
+        const currentUser = AppState.get('currentUser');
+        usuarioId = currentUser?.id;
+        console.log('[inicializarPlanejamento] UserId obtido do AppState:', usuarioId);
+    }
+    
+    if (!usuarioId) {
+        console.error('[inicializarPlanejamento] Nenhum usuário encontrado!');
+        showNotification('Erro: usuário não identificado', 'error');
+        return;
+    }
+    
     usuarioIdAtual = usuarioId;
     modoEdicao = modoEdicaoParam;
     
+    console.log('[inicializarPlanejamento] Variáveis definidas:', {
+        usuarioIdAtual,
+        modoEdicao
+    });
+    
     try {
-        // 1. Verificar se já existe plano ativo no banco
-        const planoExistente = await WeeklyPlanService.getPlan(usuarioId);
-        
-        if (planoExistente && !modoEdicao) {
-            console.log('[inicializarPlanejamento] Plano existente encontrado, carregando...');
-            planejamentoAtual = planoExistente;
-            await finalizarPlanejamentoExistente();
-            return;
-        }
-        
-        if (planoExistente && modoEdicao) {
-            console.log('[inicializarPlanejamento] Modo de edição ativado');
-            planejamentoAtual = planoExistente;
-            diasEditaveis = await WeeklyPlanService.getEditableDays(usuarioId);
-            console.log('[inicializarPlanejamento] Dias editáveis:', diasEditaveis);
-        }
-        
-        // 2. Buscar tipos de treino muscular do plano do usuário
+        // 1. Buscar tipos de treino muscular do plano do usuário
         const tiposMusculares = await fetchTiposTreinoMuscular(usuarioId);
 
-        // 3. Criar treinos disponíveis
+        // 2. Criar treinos disponíveis
         treinosDisponiveis = [];
         let treinoIdCounter = 1;
 
@@ -85,15 +87,34 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         
         console.log('[inicializarPlanejamento] Treinos disponíveis montados:', treinosDisponiveis);
 
-        // 4. Buscar planejamento existente
-        const planoSalvo = await WeeklyPlanService.getPlan(usuarioId, false); // Não usar cache na inicialização
+        // 3. Verificar se já existe plano ativo
+        const planoExistente = await WeeklyPlanService.getPlan(usuarioId);
         
-        if (planoSalvo) {
-            planejamentoAtual = planoSalvo;
-            console.log('[inicializarPlanejamento] Plano carregado:', planoSalvo);
+        // CORREÇÃO: NUNCA fechar automaticamente, sempre renderizar o modal
+        if (planoExistente && modoEdicao) {
+            console.log('[inicializarPlanejamento] Modo de edição ativado');
+            planejamentoAtual = planoExistente;
+            diasEditaveis = await WeeklyPlanService.getEditableDays(usuarioId);
+        } else if (planoExistente && !modoEdicao) {
+            console.log('[inicializarPlanejamento] Plano existente encontrado, carregando para visualização/edição...');
+            planejamentoAtual = planoExistente;
         } else {
+            // Nenhum plano, iniciar vazio
             planejamentoAtual = {};
             console.log('[inicializarPlanejamento] Nenhum plano encontrado, iniciando vazio');
+        }
+        
+        // 4. IMPORTANTE: Garantir que o modal esteja visível
+        const modal = document.getElementById('modalPlanejamento') || 
+                      document.getElementById('modal-planejamento');
+        
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            console.log('[inicializarPlanejamento] Modal exibido');
         }
         
         // 5. Renderizar interface
@@ -115,14 +136,17 @@ async function finalizarPlanejamentoExistente() {
             const planResult = await weeklyPlanManager.initialize(currentUser.id);
             
             if (!planResult.needsPlanning) {
-                // CORREÇÃO: Fechar modal explicitamente antes de navegar
-                forcarFechamentoModal();
                 
                 if (window.renderTemplate) {
                     window.renderTemplate('home');
                 } else if (window.mostrarTela) {
                     window.mostrarTela('home-screen');
                 }
+                
+                // CORREÇÃO: Fechar modal APÓS navegar, não antes
+                setTimeout(() => {
+                    forcarFechamentoModal();
+                }, 100);
                 
                 if (window.carregarDashboard) {
                     setTimeout(async () => {
@@ -380,8 +404,18 @@ function validarPlanejamento() {
     }
 
     if (btnSalvar) {
-        btnSalvar.disabled = !isValid || diasPreenchidos < 7;
+        const shouldDisable = !isValid || diasPreenchidos < 7;
+        btnSalvar.disabled = shouldDisable;
         btnSalvar.style.display = 'flex';
+        
+        console.log('[validarPlanejamento] Botão salvar:', {
+            isValid,
+            diasPreenchidos,
+            shouldDisable,
+            disabled: btnSalvar.disabled
+        });
+    } else {
+        console.warn('[validarPlanejamento] Botão salvar não encontrado!');
     }
 
     // Atualizar estatísticas na interface
@@ -425,7 +459,7 @@ function atualizarEstatisticasPlanejamento(diasPreenchidos) {
 }
 
 // Abrir seletor de treino
-window.abrirSeletorTreino = function(dia, nomeDia) {
+window.abrirSeletorTreino = async function(dia, nomeDia) {
     // Converter string do dia para número (0-6)
     const diasMap = {
         'domingo': 0, 'segunda': 1, 'terca': 2, 'quarta': 3,
@@ -448,7 +482,23 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
     const title = document.getElementById('popup-day-title');
     const options = document.getElementById('treino-options');
     
-    if (!popup || !title || !options) return;
+    console.log('[abrirSeletorTreino] Elementos encontrados:', {
+        popup: !!popup,
+        title: !!title,
+        options: !!options
+    });
+    
+    if (!popup) {
+        console.error('[abrirSeletorTreino] Popup não encontrado! Elementos disponíveis:', 
+            Array.from(document.querySelectorAll('[id*="popup"], [id*="Popup"], [id*="seletor"]')).map(el => el.id)
+        );
+        return;
+    }
+    
+    if (!title || !options) {
+        console.error('[abrirSeletorTreino] Elementos internos não encontrados!', { title: !!title, options: !!options });
+        return;
+    }
     
     const prefixo = modoEdicao ? 'Editar' : 'Selecionar';
     title.textContent = `${nomeDia} - ${prefixo} Treino`;
@@ -477,6 +527,49 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
     options.appendChild(cardioOption);
     
     // Adicionar treinos musculares
+    console.log('[abrirSeletorTreino] Treinos disponíveis:', treinosDisponiveis);
+    
+    if (treinosDisponiveis.length === 0) {
+        console.warn('[abrirSeletorTreino] Nenhum treino disponível! Recarregando...');
+        
+        // Tentar recarregar treinos
+        try {
+            // Garantir que temos um usuário válido
+            let userId = usuarioIdAtual;
+            if (!userId) {
+                const currentUser = AppState.get('currentUser');
+                userId = currentUser?.id;
+                console.log('[abrirSeletorTreino] UserId obtido do AppState:', userId);
+            }
+            
+            if (!userId) {
+                console.error('[abrirSeletorTreino] Nenhum usuário encontrado!');
+                showNotification('Erro: usuário não identificado', 'error');
+                return;
+            }
+            
+            const tiposMusculares = await fetchTiposTreinoMuscular(userId);
+            console.log('[abrirSeletorTreino] Tipos musculares recarregados:', tiposMusculares);
+            
+            // Recriar lista de treinos
+            treinosDisponiveis = [];
+            let treinoIdCounter = 1;
+            
+            tiposMusculares.forEach(tipo => {
+                treinosDisponiveis.push({
+                    id: `muscular_${treinoIdCounter++}`,
+                    nome: `Muscular: ${tipo}`,
+                    tipo: tipo,
+                    categoria: 'muscular' 
+                });
+            });
+            
+            console.log('[abrirSeletorTreino] Treinos recriados:', treinosDisponiveis);
+        } catch (error) {
+            console.error('[abrirSeletorTreino] Erro ao recarregar treinos:', error);
+        }
+    }
+    
     treinosDisponiveis.forEach(treino => {
         if (treino.categoria === 'muscular') {
             const option = criarOpcaoTreino({
@@ -491,13 +584,33 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
         }
     });
     
-    // Garantir popup visível independentemente do CSS
-    popup.style.display = 'flex';
-    popup.style.visibility = 'visible';
-    popup.style.opacity = '1';
-    popup.style.zIndex = 1050;
+    // Garantir popup visível com estilos forçados
+    popup.style.cssText = `
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        z-index: 10000 !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 20px !important;
+        box-sizing: border-box !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    `;
+    
     document.body.style.overflow = 'hidden';
     console.log('[abrirSeletorTreino] Popup exibido para', nomeDia, dia);
+    console.log('[abrirSeletorTreino] Popup DOM element:', popup);
+    console.log('[abrirSeletorTreino] Popup computed styles:', {
+        display: window.getComputedStyle(popup).display,
+        position: window.getComputedStyle(popup).position,
+        zIndex: window.getComputedStyle(popup).zIndex,
+        visibility: window.getComputedStyle(popup).visibility
+    });
 };
 
 // Fechar seletor de treino
@@ -558,11 +671,23 @@ function criarOpcaoTreino(treino, diaDestino) {
 
 // Selecionar treino para um dia com validação de numero_treino
 async function selecionarTreinoParaDia(treino, dia) {
+    // Garantir que temos um usuário válido
+    let userId = usuarioIdAtual;
+    if (!userId) {
+        const currentUser = AppState.get('currentUser');
+        userId = currentUser?.id;
+    }
+    
+    if (!userId) {
+        showNotification('Erro: usuário não identificado', 'error');
+        return;
+    }
+    
     // Validar numero_treino se for treino muscular
     if (treino.categoria === 'muscular' || treino.categoria === 'treino') {
         try {
             // Buscar protocolo ativo do usuário
-            const protocoloAtivo = await fetchProtocoloAtivoUsuario(usuarioIdAtual);
+            const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
             if (!protocoloAtivo) {
                 showNotification('Erro: usuário sem protocolo ativo', 'error');
                 return;
@@ -593,7 +718,7 @@ async function selecionarTreinoParaDia(treino, dia) {
     
     if (modoEdicao) {
         // Salvar mudança no banco de dados usando novo serviço
-        const resultado = await WeeklyPlanService.updateDay(usuarioIdAtual, dia, treino);
+        const resultado = await WeeklyPlanService.updateDay(userId, dia, treino);
         
         if (!resultado.success) {
             showNotification(`Erro: ${resultado.error}`, 'error');
@@ -611,6 +736,12 @@ async function selecionarTreinoParaDia(treino, dia) {
         tipo: treino.tipo,
         categoria: treino.categoria
     };
+    
+    console.log('[selecionarTreinoParaDia] Treino adicionado:', {
+        dia,
+        treino: planejamentoAtual[dia],
+        planejamentoCompleto: planejamentoAtual
+    });
     
     atualizarVisualizacaoDia(dia, treino);
     fecharSeletorTreino();
@@ -690,12 +821,22 @@ export async function salvarPlanejamentoSemanal() {
         return;
     }
 
-    if (!usuarioIdAtual) {
+    // Garantir que temos um usuário válido
+    let userId = usuarioIdAtual;
+    if (!userId) {
+        const currentUser = AppState.get('currentUser');
+        userId = currentUser?.id;
+        console.log('[salvarPlanejamentoSemanal] UserId obtido do AppState:', userId);
+    }
+
+    if (!userId) {
         if (window.showNotification) {
             window.showNotification('Erro: usuário não identificado', 'error');
         }
         return;
     }
+    
+    console.log('[salvarPlanejamentoSemanal] Salvando para usuário:', userId);
 
     try {
         if (window.showNotification) {
@@ -703,7 +844,7 @@ export async function salvarPlanejamentoSemanal() {
         }
 
         // Validar protocolo ativo antes de salvar
-        const protocoloAtivo = await fetchProtocoloAtivoUsuario(usuarioIdAtual);
+        const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
         if (!protocoloAtivo) {
             throw new Error('Usuário não possui protocolo ativo');
         }
@@ -756,7 +897,7 @@ export async function salvarPlanejamentoSemanal() {
         console.log('[salvarPlanejamentoSemanal] Objeto indexado para Supabase:', planejamentoParaSupabase);
 
         // Salva no Supabase usando novo serviço unificado
-        const resultado = await WeeklyPlanService.savePlan(usuarioIdAtual, planejamentoParaSupabase);
+        const resultado = await WeeklyPlanService.savePlan(userId, planejamentoParaSupabase);
 
         if (!resultado.success) {
             throw new Error(resultado.error || 'Erro ao salvar no banco');
@@ -821,22 +962,73 @@ export function fecharModalPlanejamento() {
     nomeDiaAtual = '';
 }
 
-// Função para verificar se precisa de planejamento
-export async function needsWeekPlanningAsync(userId) {
-    return await WeeklyPlanService.needsPlanning(userId);
+// Função para CRIAR novo planejamento
+export async function abrirCriacaoPlanejamento(usuarioId) {
+    console.log('[abrirCriacaoPlanejamento] Criando novo planejamento para usuário:', usuarioId);
+    
+    try {
+        // Garantir que o template seja renderizado primeiro
+        if (window.renderTemplate) {
+            await window.renderTemplate('planejamentoSemanalPage');
+            
+            // Aguardar o DOM ser atualizado
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Inicializar o planejamento em modo CRIAÇÃO
+        await inicializarPlanejamento(usuarioId, false);
+        
+        // Exibir modal com debug detalhado
+        const modal = document.getElementById('modalPlanejamento');
+        console.log('[abrirCriacaoPlanejamento] Procurando modal... encontrado:', !!modal);
+        
+        if (modal) {
+            console.log('[abrirCriacaoPlanejamento] Estado inicial do modal:', {
+                display: modal.style.display,
+                visibility: modal.style.visibility,
+                opacity: modal.style.opacity,
+                zIndex: modal.style.zIndex,
+                position: window.getComputedStyle(modal).position
+            });
+            
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '9999';
+            document.body.style.overflow = 'hidden';
+            
+            console.log('[abrirCriacaoPlanejamento] Estado final do modal:', {
+                display: modal.style.display,
+                visibility: modal.style.visibility,
+                opacity: modal.style.opacity,
+                zIndex: modal.style.zIndex,
+                boundingRect: modal.getBoundingClientRect()
+            });
+            
+            // Debug do conteúdo
+            const content = modal.querySelector('.modal-content-wrapper, #planning-screen');
+            console.log('[abrirCriacaoPlanejamento] Conteúdo encontrado:', !!content);
+            if (content) {
+                console.log('[abrirCriacaoPlanejamento] Dimensões do conteúdo:', content.getBoundingClientRect());
+            }
+            
+            console.log('[abrirCriacaoPlanejamento] ✅ Modal de criação exibido');
+        } else {
+            console.error('[abrirCriacaoPlanejamento] ❌ Modal não encontrado no DOM!');
+            console.log('[abrirCriacaoPlanejamento] Elementos disponíveis:', 
+                Array.from(document.querySelectorAll('[id*="modal"], [id*="Modal"]')).map(el => el.id)
+            );
+        }
+        
+    } catch (error) {
+        console.error('[abrirCriacaoPlanejamento] Erro:', error);
+        showNotification('Erro ao abrir criação de planejamento', 'error');
+    }
 }
 
-// Exportar função removerTreinoDoDia para compatibilidade
-export const removerTreinoDoDia = window.removerTreinoDoDia;
-
-// Função global para compatibilidade com o template
-window.salvarPlanejamento = async function() {
-    await salvarPlanejamentoSemanal();
-};
-
-// Função para abrir modo de edição
+// Função para EDITAR planejamento existente
 export async function abrirEdicaoPlanejamento(usuarioId) {
-    console.log('[abrirEdicaoPlanejamento] Iniciando edição para usuário:', usuarioId);
+    console.log('[abrirEdicaoPlanejamento] Editando planejamento para usuário:', usuarioId);
     
     try {
         // Verificar se há plano ativo
@@ -855,12 +1047,23 @@ export async function abrirEdicaoPlanejamento(usuarioId) {
             return;
         }
         
-        // Renderizar template de planejamento em modo edição
+        // Renderizar template de planejamento
         if (window.renderTemplate) {
-            window.renderTemplate('planejamentoSemanalPage');
-            setTimeout(async () => {
-                await inicializarPlanejamento(usuarioId, true); // true = modo edição
-            }, 100);
+            await window.renderTemplate('planejamentoSemanalPage');
+            
+            // Aguardar o DOM ser atualizado
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Inicializar o planejamento em modo EDIÇÃO
+        await inicializarPlanejamento(usuarioId, true);
+        
+        // Exibir modal
+        const modal = document.getElementById('modalPlanejamento');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            console.log('[abrirEdicaoPlanejamento] Modal de edição exibido');
         }
         
     } catch (error) {
@@ -876,6 +1079,93 @@ export async function abrirEdicaoPlanejamento(usuarioId) {
         }
     }
 }
+
+// Função auxiliar para detectar e abrir o tipo correto
+export async function abrirModalPlanejamento(usuarioId) {
+    console.log('[abrirModalPlanejamento] Detectando tipo de abertura para usuário:', usuarioId);
+    
+    try {
+        // Verificar se já existe plano
+        const planoExistente = await WeeklyPlanService.getPlan(usuarioId);
+        
+        if (planoExistente) {
+            console.log('[abrirModalPlanejamento] Plano existente encontrado, abrindo edição');
+            await abrirEdicaoPlanejamento(usuarioId);
+        } else {
+            console.log('[abrirModalPlanejamento] Nenhum plano encontrado, abrindo criação');
+            await abrirCriacaoPlanejamento(usuarioId);
+        }
+        
+    } catch (error) {
+        console.error('[abrirModalPlanejamento] Erro:', error);
+        // Fallback para criação
+        await abrirCriacaoPlanejamento(usuarioId);
+    }
+}
+
+// Função para verificar se precisa de planejamento
+export async function needsWeekPlanningAsync(userId) {
+    return await WeeklyPlanService.needsPlanning(userId);
+}
+
+// Exportar função removerTreinoDoDia para compatibilidade
+export const removerTreinoDoDia = window.removerTreinoDoDia;
+
+// Função global para compatibilidade com o template
+window.salvarPlanejamento = async function() {
+    console.log('[window.salvarPlanejamento] Função chamada!');
+    try {
+        await salvarPlanejamentoSemanal();
+    } catch (error) {
+        console.error('[window.salvarPlanejamento] Erro:', error);
+        if (window.showNotification) {
+            window.showNotification('Erro ao salvar: ' + error.message, 'error');
+        }
+    }
+};
+
+// Atualizar as funções globais
+window.abrirPlanejamentoParaUsuarioAtual = async function() {
+    console.log('[abrirPlanejamentoParaUsuarioAtual] Iniciando...');
+    const currentUser = AppState.get('currentUser');
+    
+    if (!currentUser || !currentUser.id) {
+        console.error('[abrirPlanejamentoParaUsuarioAtual] Usuário não encontrado');
+        showNotification('Faça login para acessar o planejamento', 'error');
+        return;
+    }
+    
+    await abrirModalPlanejamento(currentUser.id);
+};
+
+// Função específica para criação (para botões "Criar Plano")
+window.criarPlanejamentoParaUsuarioAtual = async function() {
+    console.log('[criarPlanejamentoParaUsuarioAtual] Iniciando criação...');
+    const currentUser = AppState.get('currentUser');
+    
+    if (!currentUser || !currentUser.id) {
+        console.error('[criarPlanejamentoParaUsuarioAtual] Usuário não encontrado');
+        showNotification('Faça login para criar planejamento', 'error');
+        return;
+    }
+    
+    await abrirCriacaoPlanejamento(currentUser.id);
+};
+
+// Função específica para edição (para botões "Editar Plano")
+window.editarPlanejamentoParaUsuarioAtual = async function() {
+    console.log('[editarPlanejamentoParaUsuarioAtual] Iniciando edição...');
+    const currentUser = AppState.get('currentUser');
+    
+    if (!currentUser || !currentUser.id) {
+        console.error('[editarPlanejamentoParaUsuarioAtual] Usuário não encontrado');
+        showNotification('Faça login para editar planejamento', 'error');
+        return;
+    }
+    
+    await abrirEdicaoPlanejamento(currentUser.id);
+};
+
 
 // Também disponibilizar outras funções necessárias
 window.inicializarPlanejamento = inicializarPlanejamento;
