@@ -1,5 +1,5 @@
 export const planejamentoSemanalPageTemplate = () => `
-    <div id="modalPlanejamento" class="modal planning-modal">
+    <div id="modalPlanejamento" class="modal planning-modal" style="display: flex !important;">
         <div class="modal-content planning-content">
             <div class="modal-header planning-header">
                 <h2>Planejamento Semanal</h2>
@@ -45,6 +45,20 @@ export const planejamentoSemanalPageTemplate = () => `
                 <button class="btn-primary btn-salvar" id="btn-salvar-plano" onclick="salvarPlanejamento()">
                     Salvar Plano
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Popup Seletor de Treino -->
+    <div id="seletorTreinoPopup" class="modal-overlay" style="display: none;">
+        <div class="modal-content-small">
+            <div class="popup-header">
+                <h3 id="popup-day-title">Selecionar Treino</h3>
+                <button class="close-btn" onclick="fecharSeletorTreino()">×</button>
+            </div>
+            <div class="popup-body">
+                <div id="treino-options" class="treino-options-grid">
+                </div>
             </div>
         </div>
     </div>

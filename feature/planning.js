@@ -36,6 +36,9 @@ const treinoEmojis = {
 export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false) {
     console.log('[inicializarPlanejamento] Iniciando para usuário:', usuarioId);
     
+    // Aguardar DOM estar pronto
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     // Garantir que temos um usuário válido
     if (!usuarioId) {
         const currentUser = AppState.get('currentUser');
@@ -119,6 +122,20 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         
         // 5. Renderizar interface
         renderizarPlanejamentoExistente();
+        
+        // 6. Garantir que o modal está visível
+        setTimeout(() => {
+            const modal = document.getElementById('modalPlanejamento');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                modal.classList.remove('hidden');
+                console.log('[inicializarPlanejamento] Modal forçado a ficar visível');
+            } else {
+                console.error('[inicializarPlanejamento] Modal não encontrado para forçar exibição');
+            }
+        }, 100);
         
     } catch (error) {
         console.error('[inicializarPlanejamento] Erro:', error);
@@ -568,8 +585,11 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
                 categoria: 'muscular'
             }, diaAtualSelecionado);
             options.appendChild(option);
+            console.log('[abrirSeletorTreino] Opção adicionada:', treino.tipo);
         }
     });
+    
+    console.log('[abrirSeletorTreino] Total de opções adicionadas:', options.children.length);
     
     // Garantir popup visível com estilos forçados
     popup.style.cssText = `
@@ -580,7 +600,7 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
         right: 0 !important;
         bottom: 0 !important;
         background: rgba(0, 0, 0, 0.8) !important;
-        z-index: 10000 !important;
+        z-index: 200000 !important;
         align-items: center !important;
         justify-content: center !important;
         padding: 20px !important;
@@ -590,6 +610,26 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
     `;
     
     document.body.style.overflow = 'hidden';
+    
+    // Verificar modal-content-small também
+    const modalContent = popup.querySelector('.modal-content-small');
+    if (modalContent) {
+        modalContent.style.cssText = `
+            background: #242424 !important;
+            border-radius: 16px !important;
+            max-width: 400px !important;
+            width: 90vw !important;
+            max-height: 80vh !important;
+            overflow-y: auto !important;
+            position: relative !important;
+            border: 1px solid #333 !important;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+            color: white !important;
+            z-index: 200001 !important;
+        `;
+        console.log('[abrirSeletorTreino] Modal content styles aplicados');
+    }
+    
     console.log('[abrirSeletorTreino] Popup exibido para', nomeDia, dia);
     console.log('[abrirSeletorTreino] Popup DOM element:', popup);
     console.log('[abrirSeletorTreino] Popup computed styles:', {
@@ -875,13 +915,23 @@ export async function salvarPlanejamentoSemanal() {
             }
             
             planejamentoParaSupabase[dia] = {
-                tipo: treino && treino.tipo ? treino.tipo.toLowerCase() : 'folga',
-                categoria: treino && treino.categoria ? treino.categoria.toLowerCase() : 'folga',
+                tipo: treino && treino.tipo ? treino.tipo : 'folga',
+                categoria: treino && treino.categoria ? treino.categoria : 'folga',
                 numero_treino: numeroTreino,
                 concluido: false
             };
         }
-        console.log('[salvarPlanejamentoSemanal] Objeto indexado para Supabase:', planejamentoParaSupabase);
+        console.log('[salvarPlanejamentoSemanal] 🚀 OBJETO COMPLETO PARA SUPABASE:', planejamentoParaSupabase);
+        
+        // Log detalhado de cada dia
+        Object.entries(planejamentoParaSupabase).forEach(([dia, config]) => {
+            console.log(`[salvarPlanejamentoSemanal] 📅 DIA ${dia}:`, {
+                tipo: config.tipo,
+                categoria: config.categoria,
+                numero_treino: config.numero_treino,
+                config_completa: config
+            });
+        });
 
         // Salva no Supabase usando novo serviço unificado
         const resultado = await WeeklyPlanService.savePlan(userId, planejamentoParaSupabase);
@@ -890,8 +940,15 @@ export async function salvarPlanejamentoSemanal() {
             throw new Error(resultado.error || 'Erro ao salvar no banco');
         }
 
-        // Atualiza estado global
+        // Atualiza estado global para disparar atualização automática da interface
         AppState.set('weekPlan', planejamentoParaSupabase);
+        
+        // Forçar atualização imediata dos indicadores na home
+        setTimeout(() => {
+            if (window.carregarIndicadoresSemana) {
+                window.carregarIndicadoresSemana();
+            }
+        }, 100);
         
 
         if (window.showNotification) {

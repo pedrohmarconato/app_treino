@@ -57,12 +57,19 @@ class WeeklyPlanService {
             }
             
             // 2. Deletar plano anterior (se existir)
+            console.log('[WeeklyPlanService.savePlan] 🗑️ Deletando plano anterior para:', { userId, ano, semana });
             await this.deletePlan(userId, ano, semana);
+            console.log('[WeeklyPlanService.savePlan] ✅ Plano anterior deletado');
             
             // 3. Preparar registros com validação
             const registros = [];
             
             for (const [dia, config] of Object.entries(plan)) {
+                console.log(`[WeeklyPlanService.savePlan] 🔍 SALVANDO - Dia ${dia}:`, {
+                    tipo: config.tipo,
+                    categoria: config.categoria,
+                    config_completa: config
+                });
                 let numeroTreino = null;
                 
                 // Se for treino, validar numero_treino com protocolo do usuário
@@ -85,21 +92,32 @@ class WeeklyPlanService {
                     }
                 }
                 
-                registros.push({
+                const registro = {
                     usuario_id: userId,
                     ano,
                     semana,
                     dia_semana: this.dayToDb(parseInt(dia)),
-                    tipo_atividade: config.categoria || 'folga',
+                    tipo_atividade: config.tipo || config.categoria || 'folga', // Salvar tipo específico diretamente
                     numero_treino: numeroTreino,
+                    observacoes: config.categoria, // Categoria de backup
                     concluido: false
-                });
+                };
+                
+                console.log(`[WeeklyPlanService.savePlan] 📝 REGISTRO CRIADO - Dia ${dia}:`, registro);
+                registros.push(registro);
             }
             
             // 4. Inserir no Supabase
+            console.log('[WeeklyPlanService.savePlan] 📤 Salvando', registros.length, 'registros para usuário', userId);
+            
             const { data, error } = await insert('planejamento_semanal', registros);
             
-            if (error) throw error;
+            if (error) {
+                console.error('[WeeklyPlanService.savePlan] ❌ Erro do Supabase:', error);
+                throw error;
+            }
+            
+            console.log('[WeeklyPlanService.savePlan] ✅ Plano semanal salvo no Supabase!');
             
             // 5. Salvar backup no localStorage
             this.saveToLocal(userId, plan);
@@ -114,7 +132,9 @@ class WeeklyPlanService {
     
     // Buscar plano atual usando view v_planejamento_completo
     static async getPlan(userId, useCache = true) {
+        console.log('[WeeklyPlanService.getPlan] 🔍 INICIANDO busca do plano para usuário:', userId);
         const { ano, semana } = this.getCurrentWeek();
+        console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana:', { ano, semana });
         
         // 1. Tentar cache local primeiro (se habilitado)
         if (useCache) {
@@ -132,19 +152,31 @@ class WeeklyPlanService {
                 .eq('semana', semana)
                 .order('dia_semana', { ascending: true });
             
-            if (error || !data?.length) return null;
+            if (error || !data?.length) {
+                console.log('[WeeklyPlanService.getPlan] ❌ Nenhum plano encontrado:', { error, dataLength: data?.length });
+                return null;
+            }
             
             // 3. Converter para formato da app
             const plan = {};
+            console.log('[WeeklyPlanService.getPlan] 🔍 DADOS DO BANCO:', data);
+            
             data.forEach(dia => {
                 const jsDay = this.dbToDay(dia.dia_semana);
-                plan[jsDay] = {
-                    tipo: dia.tipo_atividade,
-                    categoria: dia.tipo_atividade,
+                const planoDia = {
+                    tipo: dia.tipo_atividade, // Usar tipo_atividade diretamente do banco
+                    categoria: dia.observacoes || dia.tipo_atividade, // Categoria de backup
                     numero_treino: dia.numero_treino,
                     concluido: dia.concluido,
                     protocolo_id: dia.protocolo_treinamento_id
                 };
+                
+                console.log(`[WeeklyPlanService.getPlan] 📊 CONVERTENDO - Dia ${jsDay} (DB: ${dia.dia_semana}):`, {
+                    original: dia,
+                    convertido: planoDia
+                });
+                
+                plan[jsDay] = planoDia;
             });
             
             // 4. Salvar no cache
@@ -250,17 +282,26 @@ class WeeklyPlanService {
     // Deletar plano
     static async deletePlan(userId, ano, semana) {
         try {
-            await supabase
+            console.log('[WeeklyPlanService.deletePlan] 🗑️ Iniciando deleção:', { userId, ano, semana });
+            
+            const { data, error } = await supabase
                 .from('planejamento_semanal')
                 .delete()
                 .eq('usuario_id', userId)
                 .eq('ano', ano)
                 .eq('semana', semana);
             
+            if (error) {
+                console.error('[WeeklyPlanService.deletePlan] ❌ Erro no Supabase:', error);
+                throw error;
+            }
+            
+            console.log('[WeeklyPlanService.deletePlan] ✅ Registros deletados:', data);
             this.clearLocal(userId);
             
         } catch (error) {
-            console.error('[WeeklyPlanService] Erro ao deletar:', error);
+            console.error('[WeeklyPlanService.deletePlan] ❌ Erro ao deletar:', error);
+            throw error; // Re-throw para o caller saber que houve erro
         }
     }
 

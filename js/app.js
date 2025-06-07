@@ -129,6 +129,16 @@ function setupGlobalFunctions() {
     window.inicializarPlanejamento = inicializarPlanejamento;
     window.fecharModalPlanejamento = fecharModalPlanejamento;
     
+    // Função de debug para testar indicadores da semana
+    window.testarIndicadoresSemana = async () => {
+        console.log('[DEBUG] Testando carregamento dos indicadores da semana...');
+        const { carregarIndicadoresSemana } = await import('../feature/dashboard.js');
+        await carregarIndicadoresSemana();
+    };
+    
+    // Funções do seletor de treino (já definidas em feature/planning.js)
+    // Garantir que estão disponíveis globalmente
+    
     // === HOME SCREEN AVANÇADA ===
     window.initializeHomeScreen = async function() {
         console.log('[app.js] Inicializando home screen avançada...');

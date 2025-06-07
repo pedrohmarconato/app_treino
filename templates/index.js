@@ -3,11 +3,13 @@ import { modalPlanejamentoTemplate, modalPlanejamentoStyles } from './modals.js'
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';
 import { workoutTemplate, workoutStyles } from './workout.js';
+import { planejamentoSemanalPageTemplate } from './planejamentoSemanalPage.js';
 import { MetricsWidget, metricsWidgetStyles } from '../components/MetricsWidget.js';
 
 // Exportar componentes globalmente
 window.modalPlanejamentoTemplate = modalPlanejamentoTemplate;
 window.modalPlanejamentoStyles = modalPlanejamentoStyles;
+window.planejamentoSemanalPageTemplate = planejamentoSemanalPageTemplate;
 window.MetricsWidget = MetricsWidget;
 
 // Função principal para renderizar templates
@@ -89,14 +91,14 @@ export function renderTemplate(templateName, container = 'app') {
             case 'planejamentoSemanalPage':
                 console.log('[renderTemplate] 🚀 Renderizando planejamentoSemanalPage');
                 console.log('[renderTemplate] Container:', containerEl);
-                console.log('[renderTemplate] modalPlanejamentoTemplate disponível:', !!window.modalPlanejamentoTemplate);
+                console.log('[renderTemplate] planejamentoSemanalPageTemplate disponível:', !!window.planejamentoSemanalPageTemplate);
                 
-                if (!window.modalPlanejamentoTemplate) {
-                    console.error('[renderTemplate] ❌ modalPlanejamentoTemplate não encontrado!');
+                if (!window.planejamentoSemanalPageTemplate) {
+                    console.error('[renderTemplate] ❌ planejamentoSemanalPageTemplate não encontrado!');
                     return;
                 }
                 
-                const planejamentoHTML = window.modalPlanejamentoTemplate();
+                const planejamentoHTML = window.planejamentoSemanalPageTemplate();
                 console.log('[renderTemplate] HTML gerado para planejamento, tamanho:', planejamentoHTML.length);
                 console.log('[renderTemplate] Primeiros 200 chars:', planejamentoHTML.substring(0, 200));
                 
@@ -345,6 +347,7 @@ export function injectTemplateStyles() {
         ${loginStyles}
         ${homeStyles}
         ${workoutStyles}
+        ${modalPlanejamentoStyles}
         ${metricsWidgetStyles}
         
         /* Animações globais */
@@ -454,4 +457,5 @@ export {
     homeTemplate,
     workoutTemplate,
     workoutStyles,
+    planejamentoSemanalPageTemplate,
 };

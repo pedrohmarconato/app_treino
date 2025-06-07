@@ -37,6 +37,9 @@ function formatarNomeTreino(treino) {
 }
 
 // Função principal para carregar dashboard
+// Exportar função para debug
+export { carregarIndicadoresSemana };
+
 export async function carregarDashboard() {
     console.log('[carregarDashboard] Iniciando carregamento completo...');
     
@@ -88,6 +91,7 @@ export async function carregarDashboard() {
 
 // Carregar e renderizar indicadores da semana com informações detalhadas
 async function carregarIndicadoresSemana() {
+    console.log('[carregarIndicadoresSemana] 🚀 INICIANDO carregamento dos indicadores da semana');
     try {
         const currentUser = AppState.get('currentUser');
         
@@ -104,11 +108,13 @@ async function carregarIndicadoresSemana() {
         }
 
         // Usar serviço unificado para buscar planejamento
+        console.log('[carregarIndicadoresSemana] 📞 Chamando WeeklyPlanService.getPlan para usuário:', currentUser.id);
         const weekPlan = await WeeklyPlanService.getPlan(currentUser.id);
+        console.log('[carregarIndicadoresSemana] 📊 Resultado do WeeklyPlanService.getPlan:', weekPlan);
         const hoje = new Date();
         const diaAtual = hoje.getDay();
         
-        console.log('[carregarIndicadoresSemana] Plano semanal:', weekPlan);
+        console.log('[carregarIndicadoresSemana] Plano semanal carregado com', Object.keys(weekPlan || {}).length, 'dias');
         
         if (!weekPlan) {
             console.warn('[carregarIndicadoresSemana] ⚠️ Nenhum planejamento encontrado para esta semana');
@@ -127,14 +133,7 @@ async function carregarIndicadoresSemana() {
             return;
         }
         
-        // Buscar execuções para mostrar progresso real
-        const { query } = await import('../services/supabaseService.js');
-        const { data: execucoesSemana } = await query('execucao_exercicio_usuario', {
-            eq: { usuario_id: currentUser.id },
-            gte: { data_execucao: `${hoje.getFullYear()}-01-01` },
-            lte: { data_execucao: new Date().toISOString() }
-        });
-        
+        // Renderizar indicadores da semana (formato original)
         let html = '';
 
         for (let i = 0; i < 7; i++) {
@@ -142,41 +141,26 @@ async function carregarIndicadoresSemana() {
             const isToday = i === diaAtual;
             const isCompleted = diaPlan?.concluido || false;
             
-            // Calcular execuções para este dia da semana
-            const execucoesDia = execucoesSemana?.filter(exec => {
-                const dataExec = new Date(exec.data_execucao);
-                return dataExec.getDay() === i;
-            }) || [];
+            console.log(`[carregarIndicadoresSemana] 🎯 RENDERIZANDO - Dia ${i} (${DIAS_SEMANA[i]}):`, {
+                diaPlan: diaPlan,
+                tipo: diaPlan?.tipo,
+                categoria: diaPlan?.categoria
+            });
             
-            const totalExecucoes = execucoesDia.length;
-            const volumeTotal = execucoesDia.reduce((total, exec) => 
-                total + (exec.peso_utilizado * exec.repeticoes), 0
-            );
-            
-            let dayType = 'Sem Plano';
+            // Usar dados diretos da tabela planejamento_semanal
+            let dayType = 'Configure';
             let dayClass = 'day-indicator';
             
-            if (diaPlan) {
-                if (diaPlan.categoria === 'folga') {
-                    dayType = 'Folga';
-                } else if (diaPlan.categoria === 'cardio') {
-                    dayType = 'Cardio';
-                } else if (diaPlan.categoria === 'treino') {
-                    dayType = diaPlan.tipo || 'Treino';
-                } else {
-                    dayType = 'Treino';
-                }
+            if (diaPlan && diaPlan.tipo) {
+                // Usar exatamente o valor de tipo_atividade do banco
+                dayType = diaPlan.tipo;
+                console.log(`[carregarIndicadoresSemana] ✅ Tipo definido para dia ${i}: "${dayType}"`);
+            } else {
+                console.log(`[carregarIndicadoresSemana] ❌ Sem plano para dia ${i}:`, diaPlan);
             }
             
             if (isToday) dayClass += ' today';
             if (isCompleted) dayClass += ' completed';
-            
-            // Sistema de cores baseado no status
-            if (diaPlan?.status === 'completed') {
-                dayClass += ' completed';
-            } else if (diaPlan?.status === 'cancelled') {
-                dayClass += ' cancelled';
-            }
             
             html += `
                 <div class="${dayClass}">
@@ -227,9 +211,14 @@ async function carregarTreinoAtual() {
         // Atualizar UI do treino atual
         atualizarUITreinoAtual(treinoFormatado);
         
-        // Salvar no estado
+        // Salvar no estado (apenas currentWorkout para evitar loop)
         AppState.set('currentWorkout', treinoFormatado);
-        AppState.set('weekPlan', await WeeklyPlanService.getPlan(currentUser.id));
+        
+        // Só atualizar weekPlan se não existir para evitar loop infinito
+        const weekPlanAtual = AppState.get('weekPlan');
+        if (!weekPlanAtual) {
+            AppState.set('weekPlan', await WeeklyPlanService.getPlan(currentUser.id));
+        }
         
         console.log('[carregarTreinoAtual] ✅ Treino atual configurado:', treinoFormatado?.nome || 'Nenhum');
         
@@ -391,7 +380,11 @@ async function carregarPlanejamentoSemanal() {
         
         const container = document.getElementById('weekly-plan-list');
         if (!container) {
-            console.warn('[carregarPlanejamentoSemanal] Container não encontrado');
+            // Silenciar o warning se não estamos na tela home
+            const homeScreen = document.getElementById('home-screen');
+            if (homeScreen && homeScreen.classList.contains('active')) {
+                console.warn('[carregarPlanejamentoSemanal] Container weekly-plan-list não encontrado na tela home');
+            }
             return;
         }
         
@@ -937,13 +930,34 @@ function configurarBotaoIniciar() {
 }
 
 // Configurar event listeners
+// Variável para evitar múltiplos registros de listeners
+let listenersConfigured = false;
+let debounceTimer = null;
+
 function configurarEventListeners() {
-    // Listener para mudanças no estado
+    if (listenersConfigured) {
+        console.log('[configurarEventListeners] Listeners já configurados, pulando...');
+        return;
+    }
+    
+    // Listener para mudanças no estado com debounce
     AppState.subscribe('weekPlan', (newPlan) => {
         console.log('[dashboard] Plano semanal atualizado, recarregando...');
-        carregarIndicadoresSemana();
-        carregarTreinoAtual();
-        carregarPlanejamentoSemanal();
+        
+        // Debounce para evitar execuções muito frequentes
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        
+        debounceTimer = setTimeout(() => {
+            // Verificar se estamos na tela home antes de recarregar
+            const homeScreen = document.getElementById('home-screen');
+            if (homeScreen && homeScreen.classList.contains('active')) {
+                // Recarregar indicadores da semana para refletir mudanças automaticamente
+                carregarIndicadoresSemana();
+                carregarPlanejamentoSemanal();
+            }
+        }, 300); // Reduzido para resposta mais rápida
     });
     
     AppState.subscribe('currentUser', (newUser) => {
@@ -952,6 +966,9 @@ function configurarEventListeners() {
             carregarDashboard();
         }
     });
+    
+    listenersConfigured = true;
+    console.log('[configurarEventListeners] ✅ Event listeners configurados');
     
     // Atualizar a cada minuto para mostrar progresso do dia
     setInterval(() => {
