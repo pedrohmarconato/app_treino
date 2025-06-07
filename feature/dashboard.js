@@ -133,7 +133,7 @@ async function carregarIndicadoresSemana() {
             return;
         }
         
-        // Renderizar indicadores da semana (formato original)
+        // Renderizar indicadores da semana com dados reais
         let html = '';
 
         for (let i = 0; i < 7; i++) {
@@ -147,31 +147,49 @@ async function carregarIndicadoresSemana() {
                 categoria: diaPlan?.categoria
             });
             
-            // Usar dados diretos da tabela planejamento_semanal
+            // Determinar tipo e classe do dia
             let dayType = 'Configure';
             let dayClass = 'day-indicator';
             
             if (diaPlan && diaPlan.tipo) {
-                // Usar exatamente o valor de tipo_atividade do banco
-                dayType = diaPlan.tipo;
+                // Exibir tipo correto baseado no banco
+                switch(diaPlan.tipo.toLowerCase()) {
+                    case 'folga':
+                        dayType = 'Folga';
+                        dayClass += ' rest-day';
+                        break;
+                    case 'cardio':
+                        dayType = 'Cardio';
+                        dayClass += ' cardio-day';
+                        break;
+                    default:
+                        // Tipo muscular específico
+                        dayType = diaPlan.tipo;
+                        dayClass += ' workout-day';
+                        break;
+                }
                 console.log(`[carregarIndicadoresSemana] ✅ Tipo definido para dia ${i}: "${dayType}"`);
             } else {
                 console.log(`[carregarIndicadoresSemana] ❌ Sem plano para dia ${i}:`, diaPlan);
             }
             
+            // Adicionar classes de estado
             if (isToday) dayClass += ' today';
             if (isCompleted) dayClass += ' completed';
+            
+            // Adicionar check para dias concluídos
+            const completedCheck = isCompleted ? '<span class="completed-check">✓</span>' : '';
             
             html += `
                 <div class="${dayClass}">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
-                    <div class="day-type">${dayType}</div>
+                    <div class="day-type">${dayType}${completedCheck}</div>
                 </div>
             `;
         }
         
         container.innerHTML = html;
-        console.log('[carregarIndicadoresSemana] ✅ Indicadores da semana carregados com estatísticas');
+        console.log('[carregarIndicadoresSemana] ✅ Indicadores da semana carregados com dados reais');
         
     } catch (error) {
         console.error('[carregarIndicadoresSemana] ❌ ERRO CRÍTICO:', error);

@@ -99,7 +99,6 @@ class WeeklyPlanService {
                     dia_semana: this.dayToDb(parseInt(dia)),
                     tipo_atividade: config.tipo || config.categoria || 'folga', // Salvar tipo específico diretamente
                     numero_treino: numeroTreino,
-                    observacoes: config.categoria, // Categoria de backup
                     concluido: false
                 };
                 
@@ -165,7 +164,7 @@ class WeeklyPlanService {
                 const jsDay = this.dbToDay(dia.dia_semana);
                 const planoDia = {
                     tipo: dia.tipo_atividade, // Usar tipo_atividade diretamente do banco
-                    categoria: dia.observacoes || dia.tipo_atividade, // Categoria de backup
+                    categoria: dia.tipo_atividade, // Usar tipo_atividade como categoria também
                     numero_treino: dia.numero_treino,
                     concluido: dia.concluido,
                     protocolo_id: dia.protocolo_treinamento_id
@@ -222,8 +221,7 @@ class WeeklyPlanService {
             const { error } = await update('planejamento_semanal', 
                 {
                     tipo_atividade: config.categoria || 'folga',
-                    numero_treino: config.numero_treino || null,
-                    observacoes: config.tipo
+                    numero_treino: config.numero_treino || null
                 },
                 {
                     eq: {
@@ -379,7 +377,7 @@ class WeeklyPlanService {
                 
                 return {
                     tipo: 'treino',
-                    nome: `Treino ${planoDoDia.observacoes || planoDoDia.tipo_atividade}`,
+                    nome: `Treino ${planoDoDia.tipo_atividade}`,
                     numero_treino: planoDoDia.numero_treino,
                     exercicios: exercicios,
                     protocolo_treino_id: planoDoDia.protocolo_treinamento_id
