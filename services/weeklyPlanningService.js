@@ -11,7 +11,7 @@ import { fetchExerciciosTreino, carregarPesosSugeridos } from './workoutService.
 // Formato padrão para toda a aplicação (0-6 = Dom-Sáb)
 // {
 //   0: { tipo: 'peito', categoria: 'treino', numero_treino: 1 },  // Domingo
-//   1: { tipo: 'folga', categoria: 'folga', numero_treino: null }, // Segunda
+//   1: { tipo: 'cardio', categoria: 'cardio', numero_treino: null }, // Segunda
 //   ...
 // }
 
@@ -106,7 +106,7 @@ class WeeklyPlanService {
                     ano,
                     semana,
                     dia_semana: this.dayToDb(parseInt(dia)),
-                    tipo_atividade: config.tipo || config.categoria || 'folga', // Salvar tipo específico diretamente
+                    tipo_atividade: config.tipo || config.categoria, // Salvar tipo específico diretamente
                     numero_treino: numeroTreino,
                     concluido: false
                 };
@@ -183,10 +183,7 @@ class WeeklyPlanService {
                 console.warn('[WeeklyPlanService.getPlan] ⚠️ View falhou, usando tabela base:', error.message);
                 const fallbackResult = await supabase
                     .from('planejamento_semanal')
-                    .select(`
-                        *,
-                        usuario_plano_treino!inner(protocolo_treinamento_id)
-                    `)
+                    .select('*')
                     .eq('usuario_id', userId)
                     .eq('ano', ano)
                     .eq('semana', semana)
@@ -214,9 +211,9 @@ class WeeklyPlanService {
                 const jsDay = this.dbToDay(dia.dia_semana);
                 
                 // Validação e limpeza dos dados
-                let tipoAtividade = dia.tipo_atividade || dia.tipo || 'folga';
-                if (tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
-                    tipoAtividade = 'folga';
+                let tipoAtividade = dia.tipo_atividade || dia.tipo;
+                if (!tipoAtividade || tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
+                    return; // Pular dias sem atividade definida
                 }
                 
                 const planoDia = {
@@ -225,7 +222,7 @@ class WeeklyPlanService {
                     categoria: tipoAtividade,
                     numero_treino: dia.numero_treino,
                     concluido: Boolean(dia.concluido),
-                    protocolo_id: dia.protocolo_treinamento_id || dia.usuario_plano_treino?.protocolo_treinamento_id
+                    protocolo_id: dia.protocolo_treinamento_id || 1 // Fallback para protocolo padrão
                 };
                 
                 console.log(`[WeeklyPlanService.getPlan] 📊 CONVERTENDO - Dia ${jsDay}:`, {
@@ -292,7 +289,7 @@ class WeeklyPlanService {
         try {
             const { error } = await update('planejamento_semanal', 
                 {
-                    tipo_atividade: config.categoria || 'folga',
+                    tipo_atividade: config.categoria,
                     numero_treino: config.numero_treino || null
                 },
                 {
@@ -436,10 +433,7 @@ class WeeklyPlanService {
                 console.warn('[getTodaysWorkout] ⚠️ View falhou, usando tabela base:', error.message);
                 const fallbackResult = await supabase
                     .from('planejamento_semanal')
-                    .select(`
-                        *,
-                        usuario_plano_treino!inner(protocolo_treinamento_id)
-                    `)
+                    .select('*')
                     .eq('usuario_id', userId)
                     .eq('ano', ano)
                     .eq('semana', semana)
@@ -459,23 +453,23 @@ class WeeklyPlanService {
             console.log('[getTodaysWorkout] 📊 Dados do dia encontrados:', planoDoDia);
             
             // Validação e limpeza do tipo de atividade
-            let tipoAtividade = planoDoDia.tipo_atividade || planoDoDia.tipo || 'folga';
-            if (tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
-                tipoAtividade = 'folga';
+            let tipoAtividade = planoDoDia.tipo_atividade || planoDoDia.tipo;
+            if (!tipoAtividade || tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
+                return null; // Não há treino definido para hoje
             }
             
-            // Se for folga ou cardio, retornar info básica
-            if (tipoAtividade.toLowerCase() === 'folga' || tipoAtividade.toLowerCase() === 'cardio') {
+            // Se for cardio, retornar info básica
+            if (tipoAtividade.toLowerCase() === 'cardio') {
                 return {
                     tipo: tipoAtividade,
                     tipo_atividade: tipoAtividade,
-                    nome: tipoAtividade.toLowerCase() === 'folga' ? 'Dia de Folga' : 'Treino Cardiovascular',
+                    nome: 'Treino Cardiovascular',
                     exercicios: []
                 };
             }
             
             // Para treinos de força, buscar exercícios
-            const protocoloId = planoDoDia.protocolo_treinamento_id || planoDoDia.usuario_plano_treino?.protocolo_treinamento_id;
+            const protocoloId = planoDoDia.protocolo_treinamento_id || 1; // Fallback para protocolo padrão
             
             if (planoDoDia.numero_treino && protocoloId) {
                 console.log('[getTodaysWorkout] 🏋️ Buscando exercícios:', { 

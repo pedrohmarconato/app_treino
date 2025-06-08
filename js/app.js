@@ -22,14 +22,11 @@ function checkDependencies() {
         return false;
     }
     
-    console.log('✅ Todas as dependências carregadas');
     return true;
 }
 
 // Inicializar aplicação
 async function initApp() {
-    console.log('[app.js] 🚀 Iniciando aplicação...');
-    
     if (!checkDependencies()) {
         console.error('❌ Falha na verificação de dependências');
         return;
@@ -38,24 +35,19 @@ async function initApp() {
     try {
         // 1. Configurar funções globais
         setupGlobalFunctions();
-        console.log('✅ Funções globais configuradas');
         
         // 2. Inicializar protocolo
         await initializeProtocol();
-        console.log('✅ Protocolo inicializado');
         
         // 3. Iniciar na tela de login
         if (window.initLogin) {
             await window.initLogin();
-            console.log('✅ Tela de login inicializada');
         } else {
             throw new Error('window.initLogin não está definido');
         }
         
         // 4. Configurar debug (desenvolvimento)
         setupDebugSystem();
-        
-        console.log('[app.js] ✅ Aplicação inicializada com sucesso!');
         
     } catch (error) {
         console.error('❌ Erro crítico na inicialização:', error);
@@ -67,12 +59,10 @@ async function initApp() {
 function setupGlobalFunctions() {
     // === NAVEGAÇÃO ===
     window.mostrarTela = (tela) => {
-        console.log('[app.js] Navegando para:', tela);
         mostrarTela(tela);
     };
     
     window.voltarParaHome = () => {
-        console.log('[app.js] Voltando para home');
         mostrarTela('home-screen');
     };
     
@@ -91,7 +81,6 @@ function setupGlobalFunctions() {
             const currentUser = AppState.get('currentUser');
             if (!currentUser || !currentUser.id) {
                 console.error('[app.js] ❌ Tentativa de carregar dashboard sem usuário válido');
-                console.log('[app.js] currentUser:', currentUser);
                 showNotification('Usuário não está logado. Faça login novamente.', 'error');
                 
                 if (window.renderTemplate) {
@@ -100,10 +89,8 @@ function setupGlobalFunctions() {
                 return;
             }
             
-            console.log('[app.js] ✅ Carregando dashboard para usuário:', currentUser.nome);
             const { carregarDashboard } = await import('../feature/dashboard.js');
             await carregarDashboard();
-            console.log('[app.js] Dashboard carregado');
         } catch (error) {
             console.error('[app.js] Erro no dashboard:', {
                 message: error?.message,
@@ -119,7 +106,6 @@ function setupGlobalFunctions() {
     window.salvarPlanejamento = async () => {
         try {
             await salvarPlanejamentoSemanal();
-            console.log('[app.js] Planejamento salvo');
         } catch (error) {
             console.error('[app.js] Erro ao salvar planejamento:', error);
             showNotification('Erro ao salvar planejamento', 'error');
@@ -251,10 +237,6 @@ function setupGlobalFunctions() {
             }
             
             // Verificar tipo de treino
-            if (currentWorkout.tipo === 'folga') {
-                showNotification('Hoje é dia de descanso! 😴', 'info');
-                return;
-            }
             
             if (currentWorkout.tipo === 'cardio' || currentWorkout.tipo === 'Cardio') {
                 showNotification('Treino de cardio! 🏃‍♂️ Configure seu equipamento.', 'info');
@@ -305,9 +287,6 @@ function setupBasicHomeElements(user) {
                 const workout = AppState.get('currentWorkout');
                 if (workout) {
                     switch(workout.tipo) {
-                        case 'folga':
-                            showNotification('Hoje é dia de descanso! 😴', 'info');
-                            break;
                         case 'cardio':
                             showNotification('Hora do cardio! 🏃‍♂️', 'info');
                             break;

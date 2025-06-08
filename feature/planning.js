@@ -27,7 +27,6 @@ const treinoEmojis = {
     'Pernas': '🦵',
     'Ombro e Braço': '💪',
     'Cardio': '🏃',
-    'Folga': '😴',
     'Ombro': '🎯',
     'Braço': '💪'
 };
@@ -261,7 +260,7 @@ function renderizarPlanejamentoExistente() {
     for (let dia = 1; dia <= 7; dia++) {
         const treino = planejamentoAtual[dia - 1]; // Ajustar índice
         
-        if (treino && treino.tipo !== 'folga') {
+        if (treino && treino.tipo) {
             diasPreenchidos++;
             totalTreinos++;
             
@@ -508,16 +507,6 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
     title.textContent = `${nomeDia} - ${prefixo} Treino`;
     options.innerHTML = '';
     
-    // Adicionar opção de folga
-    const folgaOption = criarOpcaoTreino({
-        id: 'folga',
-        emoji: '😴',
-        nome: 'Folga',
-        descricao: 'Dia de descanso',
-        tipo: 'folga',
-        categoria: 'folga'
-    }, diaAtualSelecionado);
-    options.appendChild(folgaOption);
     
     // Adicionar opção de cardio
     const cardioOption = criarOpcaoTreino({
@@ -792,11 +781,7 @@ function atualizarVisualizacaoDia(dia, treino) {
         '<span class="completed-badge">✓</span>';
     
     // Optimized template rendering with single template
-    const treinoData = treino.categoria === 'folga' ? {
-        emoji: '😴',
-        nome: 'Folga',
-        tipo: 'Descanso'
-    } : {
+    const treinoData = {
         emoji: treinoEmojis[treino.tipo] || '🏋️',
         nome: treino.nome,
         tipo: treino.categoria === 'cardio' ? 'Cardiovascular' : 'Muscular'
@@ -914,12 +899,14 @@ export async function salvarPlanejamentoSemanal() {
                 }
             }
             
-            planejamentoParaSupabase[dia] = {
-                tipo: treino && treino.tipo ? treino.tipo : 'folga',
-                categoria: treino && treino.categoria ? treino.categoria : 'folga',
-                numero_treino: numeroTreino,
-                concluido: false
-            };
+            if (treino && treino.tipo) {
+                planejamentoParaSupabase[dia] = {
+                    tipo: treino.tipo,
+                    categoria: treino.categoria,
+                    numero_treino: numeroTreino,
+                    concluido: false
+                };
+            }
         }
         console.log('[salvarPlanejamentoSemanal] 🚀 OBJETO COMPLETO PARA SUPABASE:', planejamentoParaSupabase);
         
@@ -1324,12 +1311,9 @@ window.testSalvamentoSupabase = async function() {
         // Dados de teste simples
         const dadosTeste = {
             0: { tipo: 'Peito', categoria: 'muscular', numero_treino: 1, concluido: false },
-            1: { tipo: 'folga', categoria: 'folga', numero_treino: null, concluido: false },
             2: { tipo: 'Costas', categoria: 'muscular', numero_treino: 2, concluido: false },
-            3: { tipo: 'folga', categoria: 'folga', numero_treino: null, concluido: false },
             4: { tipo: 'Pernas', categoria: 'muscular', numero_treino: 3, concluido: false },
-            5: { tipo: 'Cardio', categoria: 'cardio', numero_treino: null, concluido: false },
-            6: { tipo: 'folga', categoria: 'folga', numero_treino: null, concluido: false }
+            5: { tipo: 'Cardio', categoria: 'cardio', numero_treino: null, concluido: false }
         };
         
         console.log('[testSalvamentoSupabase] 📋 Dados de teste:', dadosTeste);

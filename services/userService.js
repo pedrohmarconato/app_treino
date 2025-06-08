@@ -123,32 +123,27 @@ export async function fetchProtocoloAtivoUsuario(userId) {
     };
 }
 
-// Buscar grupos musculares do plano semanal do usuário
+// Buscar grupos musculares disponíveis da tabela exercicios
 export async function fetchTiposTreinoMuscular(userId) {
-    console.log('[fetchTiposTreinoMuscular] Buscando grupos musculares do plano para usuário:', userId);
-    if (!userId) {
-        console.error('[fetchTiposTreinoMuscular] userId não fornecido.');
-        return [];
-    }
+    console.log('[fetchTiposTreinoMuscular] Buscando grupos musculares da tabela exercicios para usuário:', userId);
 
-    const { data, error } = await query('v_plano_usuario_semana', { 
-        select: 'grupo_muscular',
-        eq: { usuario_id: userId } // ASSUMINDO que a coluna em v_plano_usuario_semana é 'usuario_id'
+    const { data, error } = await query('exercicios', { 
+        select: 'grupo_muscular'
     });
 
     if (error) {
-        console.error('[fetchTiposTreinoMuscular] Erro ao buscar grupos musculares do plano:', error.message);
+        console.error('[fetchTiposTreinoMuscular] Erro ao buscar grupos musculares:', error.message);
         return [];
     }
 
     if (!data || data.length === 0) {
-        console.warn('[fetchTiposTreinoMuscular] Nenhum grupo muscular encontrado no plano para o usuário:', userId);
+        console.warn('[fetchTiposTreinoMuscular] Nenhum exercício encontrado na tabela exercicios');
         return [];
     }
 
     // Extrair os valores de grupo_muscular e garantir que sejam únicos
     const gruposUnicos = [...new Set(data.map(item => item.grupo_muscular).filter(gm => gm))];
-    console.log('[fetchTiposTreinoMuscular] Grupos musculares únicos do plano para o usuário', userId, 'encontrados:', gruposUnicos);
+    console.log('[fetchTiposTreinoMuscular] Grupos musculares únicos encontrados:', gruposUnicos);
     return gruposUnicos;
 }
 
