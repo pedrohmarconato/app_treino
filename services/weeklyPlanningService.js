@@ -50,11 +50,19 @@ class WeeklyPlanService {
         const { ano, semana } = this.getCurrentWeek();
         
         try {
+            console.log('[WeeklyPlanService.savePlan] 🚀 INICIANDO SALVAMENTO COMPLETO');
+            console.log('[WeeklyPlanService.savePlan] 👤 UserId:', userId);
+            console.log('[WeeklyPlanService.savePlan] 📅 Período:', { ano, semana });
+            console.log('[WeeklyPlanService.savePlan] 📋 Plano recebido:', JSON.stringify(plan, null, 2));
+            
             // 1. Buscar protocolo ativo do usuário
+            console.log('[WeeklyPlanService.savePlan] 🔍 Buscando protocolo ativo...');
             const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
             if (!protocoloAtivo) {
+                console.error('[WeeklyPlanService.savePlan] ❌ Protocolo ativo não encontrado');
                 throw new Error('Usuário não possui protocolo ativo');
             }
+            console.log('[WeeklyPlanService.savePlan] ✅ Protocolo ativo encontrado:', protocoloAtivo);
             
             // 2. Deletar plano anterior (se existir)
             console.log('[WeeklyPlanService.savePlan] 🗑️ Deletando plano anterior para:', { userId, ano, semana });
@@ -62,6 +70,7 @@ class WeeklyPlanService {
             console.log('[WeeklyPlanService.savePlan] ✅ Plano anterior deletado');
             
             // 3. Preparar registros com validação
+            console.log('[WeeklyPlanService.savePlan] 📝 Preparando registros para inserção...');
             const registros = [];
             
             for (const [dia, config] of Object.entries(plan)) {
@@ -107,20 +116,28 @@ class WeeklyPlanService {
             }
             
             // 4. Inserir no Supabase
-            console.log('[WeeklyPlanService.savePlan] 📤 Salvando', registros.length, 'registros para usuário', userId);
+            console.log('[WeeklyPlanService.savePlan] 📤 PREPARANDO PARA ENVIAR AO SUPABASE');
+            console.log('[WeeklyPlanService.savePlan] 📊 Quantidade de registros:', registros.length);
+            console.log('[WeeklyPlanService.savePlan] 📄 Registros completos:', JSON.stringify(registros, null, 2));
             
+            console.log('[WeeklyPlanService.savePlan] 🚀 ENVIANDO PARA SUPABASE...');
             const { data, error } = await insert('planejamento_semanal', registros);
             
             if (error) {
-                console.error('[WeeklyPlanService.savePlan] ❌ Erro do Supabase:', error);
+                console.error('[WeeklyPlanService.savePlan] ❌ ERRO CRÍTICO do Supabase:', error);
+                console.error('[WeeklyPlanService.savePlan] 🔍 Dados que causaram erro:', registros);
                 throw error;
             }
             
-            console.log('[WeeklyPlanService.savePlan] ✅ Plano semanal salvo no Supabase!');
+            console.log('[WeeklyPlanService.savePlan] ✅ SUCESSO! Plano semanal salvo no Supabase!');
+            console.log('[WeeklyPlanService.savePlan] 📥 Dados retornados do Supabase:', data);
             
             // 5. Salvar backup no localStorage
+            console.log('[WeeklyPlanService.savePlan] 💾 Salvando backup no localStorage...');
             this.saveToLocal(userId, plan);
+            console.log('[WeeklyPlanService.savePlan] ✅ Backup salvo no localStorage');
             
+            console.log('[WeeklyPlanService.savePlan] 🎉 SALVAMENTO COMPLETAMENTE FINALIZADO!');
             return { success: true, data };
             
         } catch (error) {
@@ -635,6 +652,16 @@ class WeeklyPlanService {
             exercicios: exerciciosComPesos
         };
     }
+
+    // FUNÇÃO TEMPORARIAMENTE DESABILITADA - Tabelas workouts/weekly_plan não existem na estrutura atual
+    // Esta função seria usada se houvesse um modelo de dados diferente com essas tabelas
+    static async getWorkoutsWithWeeklyPlan(userId) {
+        console.warn('[getWorkoutsWithWeeklyPlan] ⚠️ Esta função não se aplica à estrutura atual do banco');
+        console.warn('[getWorkoutsWithWeeklyPlan] ℹ️ Use getPlan() para buscar planejamento semanal');
+        
+        // Retornar o plano semanal atual como fallback
+        return await this.getPlan(userId);
+    }
 }
 
 // ==================== EXPORTAÇÕES E COMPATIBILIDADE ====================
@@ -682,6 +709,10 @@ export async function checkAndCreateNewWeek(userId) {
 
 export async function getTodaysWorkoutWithWeights(userId) {
     return await weeklyPlanService.getTodaysWorkoutWithWeights(userId);
+}
+
+export async function getWorkoutsWithWeeklyPlan(userId) {
+    return await weeklyPlanService.getWorkoutsWithWeeklyPlan(userId);
 }
 
 // Exportação principal do serviço

@@ -71,15 +71,29 @@ export async function query(table, options = {}) {
 
 export async function insert(table, data) {
     try {
+        console.log(`[insert] 📤 INICIANDO INSERT na tabela: ${table}`);
+        console.log(`[insert] 📄 DADOS PARA INSERIR:`, JSON.stringify(data, null, 2));
+        console.log(`[insert] 📊 QUANTIDADE DE REGISTROS:`, Array.isArray(data) ? data.length : 1);
+        
         const { data: result, error } = await supabase
             .from(table)
             .insert(data)
             .select();
         
-        if (error) throw error;
+        if (error) {
+            console.error(`[insert] ❌ ERRO do Supabase na tabela ${table}:`, error);
+            console.error(`[insert] 🔍 DADOS QUE CAUSARAM ERRO:`, JSON.stringify(data, null, 2));
+            throw error;
+        }
+        
+        console.log(`[insert] ✅ SUCESSO ao inserir em ${table}!`);
+        console.log(`[insert] 📥 RESULTADO RETORNADO:`, JSON.stringify(result, null, 2));
+        console.log(`[insert] 📈 REGISTROS INSERIDOS:`, result?.length || 0);
+        
         return { data: result, error: null };
     } catch (error) {
-        console.error(`Erro ao inserir em ${table}:`, error);
+        console.error(`[insert] ❌ ERRO CRÍTICO ao inserir em ${table}:`, error);
+        console.error(`[insert] 🔍 DADOS PROBLEMÁTICOS:`, JSON.stringify(data, null, 2));
         return { data: null, error };
     }
 }

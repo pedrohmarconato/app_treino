@@ -933,12 +933,22 @@ export async function salvarPlanejamentoSemanal() {
             });
         });
 
+        // Log detalhado antes de enviar para o WeeklyPlanService
+        console.log('[salvarPlanejamentoSemanal] 🚀 ENVIANDO PARA WeeklyPlanService.savePlan');
+        console.log('[salvarPlanejamentoSemanal] 👤 UserId:', userId);
+        console.log('[salvarPlanejamentoSemanal] 📋 Dados completos:', JSON.stringify(planejamentoParaSupabase, null, 2));
+        
         // Salva no Supabase usando novo serviço unificado
+        console.log('[salvarPlanejamentoSemanal] ⏳ Chamando WeeklyPlanService.savePlan...');
         const resultado = await WeeklyPlanService.savePlan(userId, planejamentoParaSupabase);
+        console.log('[salvarPlanejamentoSemanal] 📥 Resultado retornado:', resultado);
 
         if (!resultado.success) {
+            console.error('[salvarPlanejamentoSemanal] ❌ FALHA no salvamento:', resultado.error);
             throw new Error(resultado.error || 'Erro ao salvar no banco');
         }
+        
+        console.log('[salvarPlanejamentoSemanal] ✅ SUCESSO no WeeklyPlanService.savePlan!');
 
         // Atualiza estado global para disparar atualização automática da interface
         AppState.set('weekPlan', planejamentoParaSupabase);
@@ -1229,3 +1239,299 @@ window.debugPlanejamento = function() {
 
 // Função global para forçar fechamento (para emergências)
 window.forcarFechamentoModal = forcarFechamentoModal;
+
+// Função de debug simplificada para testar inserção direta na tabela planejamento_semanal
+window.testInsercaoDireta = async function() {
+    console.log('[testInsercaoDireta] 🧪 TESTE DE INSERÇÃO DIRETA');
+    
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            console.error('[testInsercaoDireta] ❌ Usuário não encontrado');
+            return { success: false, error: 'Usuário não encontrado' };
+        }
+        
+        // Importar supabase diretamente para teste
+        const { supabase } = await import('../services/supabaseService.js');
+        
+        // Dados de teste simples para inserção direta
+        const registro = {
+            usuario_id: currentUser.id,
+            ano: 2025,
+            semana: 1,
+            dia_semana: 1, // Segunda-feira
+            tipo_atividade: 'teste_direto',
+            numero_treino: null,
+            concluido: false
+        };
+        
+        console.log('[testInsercaoDireta] 📋 Dados para inserir:', registro);
+        
+        // Tentar inserir diretamente
+        const { data, error } = await supabase
+            .from('planejamento_semanal')
+            .insert(registro)
+            .select();
+            
+        if (error) {
+            console.error('[testInsercaoDireta] ❌ ERRO:', error);
+            if (window.showNotification) {
+                window.showNotification('❌ Erro na inserção: ' + error.message, 'error');
+            }
+            return { success: false, error: error.message };
+        }
+        
+        console.log('[testInsercaoDireta] ✅ SUCESSO! Dados inseridos:', data);
+        
+        // Limpar o registro de teste
+        if (data && data[0] && data[0].id) {
+            console.log('[testInsercaoDireta] 🧹 Limpando registro de teste...');
+            await supabase
+                .from('planejamento_semanal')
+                .delete()
+                .eq('id', data[0].id);
+            console.log('[testInsercaoDireta] ✅ Registro de teste removido');
+        }
+        
+        if (window.showNotification) {
+            window.showNotification('✅ Teste de inserção direta PASSOU!', 'success');
+        }
+        
+        return { success: true, data };
+        
+    } catch (error) {
+        console.error('[testInsercaoDireta] ❌ ERRO CRÍTICO:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Erro crítico: ' + error.message, 'error');
+        }
+        return { success: false, error: error.message };
+    }
+};
+
+// Função de debug para testar salvamento no Supabase
+window.testSalvamentoSupabase = async function() {
+    console.log('[testSalvamentoSupabase] 🧪 INICIANDO TESTE DE SALVAMENTO');
+    
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            console.error('[testSalvamentoSupabase] ❌ Usuário não encontrado');
+            return { success: false, error: 'Usuário não encontrado' };
+        }
+        
+        console.log('[testSalvamentoSupabase] 👤 Usuário encontrado:', currentUser.id);
+        
+        // Dados de teste simples
+        const dadosTeste = {
+            0: { tipo: 'Peito', categoria: 'muscular', numero_treino: 1, concluido: false },
+            1: { tipo: 'folga', categoria: 'folga', numero_treino: null, concluido: false },
+            2: { tipo: 'Costas', categoria: 'muscular', numero_treino: 2, concluido: false },
+            3: { tipo: 'folga', categoria: 'folga', numero_treino: null, concluido: false },
+            4: { tipo: 'Pernas', categoria: 'muscular', numero_treino: 3, concluido: false },
+            5: { tipo: 'Cardio', categoria: 'cardio', numero_treino: null, concluido: false },
+            6: { tipo: 'folga', categoria: 'folga', numero_treino: null, concluido: false }
+        };
+        
+        console.log('[testSalvamentoSupabase] 📋 Dados de teste:', dadosTeste);
+        
+        // Testar salvamento
+        const resultado = await WeeklyPlanService.savePlan(currentUser.id, dadosTeste);
+        
+        console.log('[testSalvamentoSupabase] 📥 Resultado:', resultado);
+        
+        if (resultado.success) {
+            console.log('[testSalvamentoSupabase] ✅ TESTE PASSOU! Dados salvos com sucesso');
+            if (window.showNotification) {
+                window.showNotification('✅ Teste de salvamento PASSOU!', 'success');
+            }
+        } else {
+            console.error('[testSalvamentoSupabase] ❌ TESTE FALHOU:', resultado.error);
+            if (window.showNotification) {
+                window.showNotification('❌ Teste de salvamento FALHOU: ' + resultado.error, 'error');
+            }
+        }
+        
+        return resultado;
+        
+    } catch (error) {
+        console.error('[testSalvamentoSupabase] ❌ ERRO CRÍTICO:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Erro crítico no teste: ' + error.message, 'error');
+        }
+        return { success: false, error: error.message };
+    }
+};
+
+// Função para verificar acesso à tabela planejamento_semanal
+window.verificarAcessoTabelaPlanejamento = async function() {
+    console.log('[verificarAcessoTabelaPlanejamento] 🔍 VERIFICANDO ACESSO À TABELA');
+    
+    try {
+        // Importar supabase diretamente
+        const { supabase } = await import('../services/supabaseService.js');
+        
+        console.log('[verificarAcessoTabelaPlanejamento] 📊 Testando SELECT na tabela...');
+        
+        // Tentar fazer um select simples para verificar acesso
+        const { data, error } = await supabase
+            .from('planejamento_semanal')
+            .select('*')
+            .limit(1);
+            
+        if (error) {
+            console.error('[verificarAcessoTabelaPlanejamento] ❌ ERRO no SELECT:', error);
+            if (window.showNotification) {
+                window.showNotification('❌ Erro de acesso à tabela: ' + error.message, 'error');
+            }
+            return { success: false, error: error.message };
+        }
+        
+        console.log('[verificarAcessoTabelaPlanejamento] ✅ ACESSO OK! Dados encontrados:', data);
+        if (window.showNotification) {
+            window.showNotification('✅ Acesso à tabela OK!', 'success');
+        }
+        
+        // Testar também INSERT
+        console.log('[verificarAcessoTabelaPlanejamento] 🧪 Testando INSERT...');
+        const dadosTeste = {
+            usuario_id: 999999, // ID fictício para teste
+            ano: 2023,
+            semana: 99,
+            dia_semana: 1,
+            tipo_atividade: 'teste',
+            numero_treino: null,
+            concluido: false
+        };
+        
+        const { data: insertData, error: insertError } = await supabase
+            .from('planejamento_semanal')
+            .insert(dadosTeste)
+            .select();
+            
+        if (insertError) {
+            console.error('[verificarAcessoTabelaPlanejamento] ❌ ERRO no INSERT:', insertError);
+            if (window.showNotification) {
+                window.showNotification('❌ Erro de INSERT na tabela: ' + insertError.message, 'error');
+            }
+            return { success: false, error: insertError.message, step: 'insert' };
+        }
+        
+        console.log('[verificarAcessoTabelaPlanejamento] ✅ INSERT OK! Dados inseridos:', insertData);
+        
+        // Limpar o registro de teste
+        if (insertData && insertData[0] && insertData[0].id) {
+            console.log('[verificarAcessoTabelaPlanejamento] 🧹 Limpando registro de teste...');
+            await supabase
+                .from('planejamento_semanal')
+                .delete()
+                .eq('id', insertData[0].id);
+            console.log('[verificarAcessoTabelaPlanejamento] ✅ Registro de teste removido');
+        }
+        
+        if (window.showNotification) {
+            window.showNotification('✅ Todos os testes de acesso PASSARAM!', 'success');
+        }
+        
+        return { success: true, message: 'Acesso total à tabela confirmado' };
+        
+    } catch (error) {
+        console.error('[verificarAcessoTabelaPlanejamento] ❌ ERRO CRÍTICO:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Erro crítico: ' + error.message, 'error');
+        }
+        return { success: false, error: error.message };
+    }
+};
+
+// Função de diagnóstico completo
+window.diagnosticoCompletoSalvamento = async function() {
+    console.log('[diagnosticoCompletoSalvamento] 🏥 INICIANDO DIAGNÓSTICO COMPLETO');
+    
+    const resultados = {
+        usuario: null,
+        protocoloAtivo: null,
+        acessoTabela: null,
+        testeSalvamento: null
+    };
+    
+    try {
+        // 1. Verificar usuário
+        console.log('[diagnosticoCompletoSalvamento] 1️⃣ Verificando usuário...');
+        const currentUser = AppState.get('currentUser');
+        if (currentUser && currentUser.id) {
+            resultados.usuario = { success: true, data: currentUser };
+            console.log('✅ Usuário OK:', currentUser.id);
+        } else {
+            resultados.usuario = { success: false, error: 'Usuário não encontrado' };
+            console.log('❌ Usuário não encontrado');
+        }
+        
+        // 2. Verificar protocolo ativo
+        if (resultados.usuario.success) {
+            console.log('[diagnosticoCompletoSalvamento] 2️⃣ Verificando protocolo ativo...');
+            try {
+                const protocoloAtivo = await fetchProtocoloAtivoUsuario(currentUser.id);
+                if (protocoloAtivo) {
+                    resultados.protocoloAtivo = { success: true, data: protocoloAtivo };
+                    console.log('✅ Protocolo ativo OK:', protocoloAtivo);
+                } else {
+                    resultados.protocoloAtivo = { success: false, error: 'Protocolo ativo não encontrado' };
+                    console.log('❌ Protocolo ativo não encontrado');
+                }
+            } catch (error) {
+                resultados.protocoloAtivo = { success: false, error: error.message };
+                console.log('❌ Erro ao buscar protocolo:', error.message);
+            }
+        }
+        
+        // 3. Verificar acesso à tabela
+        console.log('[diagnosticoCompletoSalvamento] 3️⃣ Verificando acesso à tabela...');
+        resultados.acessoTabela = await window.verificarAcessoTabelaPlanejamento();
+        
+        // 4. Teste de salvamento completo (apenas se tudo anterior passou)
+        if (resultados.usuario.success && resultados.protocoloAtivo.success && resultados.acessoTabela.success) {
+            console.log('[diagnosticoCompletoSalvamento] 4️⃣ Testando salvamento completo...');
+            resultados.testeSalvamento = await window.testSalvamentoSupabase();
+        } else {
+            resultados.testeSalvamento = { success: false, error: 'Pré-requisitos não atendidos' };
+        }
+        
+        // Gerar relatório
+        console.log('[diagnosticoCompletoSalvamento] 📋 RELATÓRIO COMPLETO:');
+        console.log('1️⃣ Usuário:', resultados.usuario);
+        console.log('2️⃣ Protocolo Ativo:', resultados.protocoloAtivo);
+        console.log('3️⃣ Acesso à Tabela:', resultados.acessoTabela);
+        console.log('4️⃣ Teste de Salvamento:', resultados.testeSalvamento);
+        
+        // Gerar mensagem resumida
+        let mensagem = '';
+        let tipo = 'info';
+        
+        if (resultados.testeSalvamento.success) {
+            mensagem = '✅ TUDO OK! O salvamento deve funcionar normalmente.';
+            tipo = 'success';
+        } else {
+            const problemas = [];
+            if (!resultados.usuario.success) problemas.push('Usuário não logado');
+            if (!resultados.protocoloAtivo.success) problemas.push('Protocolo ativo ausente');
+            if (!resultados.acessoTabela.success) problemas.push('Problema de acesso à tabela');
+            if (!resultados.testeSalvamento.success) problemas.push('Falha no teste de salvamento');
+            
+            mensagem = `❌ PROBLEMAS ENCONTRADOS: ${problemas.join(', ')}`;
+            tipo = 'error';
+        }
+        
+        if (window.showNotification) {
+            window.showNotification(mensagem, tipo);
+        }
+        
+        return resultados;
+        
+    } catch (error) {
+        console.error('[diagnosticoCompletoSalvamento] ❌ ERRO CRÍTICO:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Erro crítico no diagnóstico: ' + error.message, 'error');
+        }
+        return { success: false, error: error.message, resultados };
+    }
+};

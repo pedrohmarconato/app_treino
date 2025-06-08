@@ -1071,6 +1071,175 @@ function configurarBotaoIniciar() {
 // Variável para evitar múltiplos registros de listeners
 let listenersConfigured = false;
 let debounceTimer = null;
+let supabaseChannel = null;
+
+// Configurar listener do Supabase para mudanças em tempo real
+async function configurarSupabaseListener() {
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            console.warn('[configurarSupabaseListener] ❌ Usuário não está definido');
+            return;
+        }
+
+        // Importar supabase
+        const { supabase } = await import('../services/supabaseService.js');
+        
+        // Remover canal anterior se existir
+        if (supabaseChannel) {
+            console.log('[configurarSupabaseListener] 🗑️ Removendo canal anterior');
+            supabase.removeChannel(supabaseChannel);
+        }
+
+        // Criar novo canal para mudanças na planejamento_semanal
+        supabaseChannel = supabase
+            .channel('planejamento_semanal_changes')
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'planejamento_semanal',
+                    filter: `usuario_id=eq.${currentUser.id}`
+                }, 
+                (payload) => {
+                    console.log('[configurarSupabaseListener] 📡 Mudança detectada na planejamento_semanal:', payload);
+                    
+                    // Debounce para evitar múltiplas chamadas
+                    if (debounceTimer) {
+                        clearTimeout(debounceTimer);
+                    }
+                    
+                    debounceTimer = setTimeout(() => {
+                        fetchWorkouts();
+                    }, 500);
+                }
+            )
+            .subscribe((status) => {
+                console.log('[configurarSupabaseListener] 📡 Status da subscription:', status);
+            });
+
+        console.log('[configurarSupabaseListener] ✅ Listener Supabase configurado para usuário:', currentUser.id);
+
+    } catch (error) {
+        console.error('[configurarSupabaseListener] ❌ Erro ao configurar listener:', error);
+    }
+}
+
+// Função para buscar workouts (adaptada para o contexto atual)
+async function fetchWorkouts() {
+    try {
+        console.log('[fetchWorkouts] 🔄 Recarregando workouts...');
+        
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            console.warn('[fetchWorkouts] ❌ Usuário não está definido');
+            return;
+        }
+
+        // Como as tabelas workouts/weekly_plan não existem, vamos atualizar os dados do planejamento atual
+        console.log('[fetchWorkouts] 🔄 Atualizando dados do planejamento semanal...');
+        
+        // Buscar plano semanal atual do usuário - usando exportações de compatibilidade primeiro
+        let planAtual = null;
+        try {
+            // Método prioritário: Usar exportação de compatibilidade (mais confiável)
+            const { getActiveWeeklyPlan } = await import('../services/weeklyPlanningService.js');
+            planAtual = await getActiveWeeklyPlan(currentUser.id);
+            console.log('[fetchWorkouts] ✅ Plano carregado via exportação de compatibilidade');
+        } catch (error) {
+            console.error('[fetchWorkouts] ❌ Erro ao buscar plano semanal:', error.message);
+        }
+        
+        // Atualizar estado com plano atualizado
+        if (planAtual) {
+            AppState.set('weekPlan', planAtual);
+            console.log('[fetchWorkouts] ✅ Plano semanal atualizado:', planAtual);
+        }
+        
+        // Recarregar componentes relevantes se estivermos na tela home
+        const homeScreen = document.getElementById('home-screen');
+        if (homeScreen && homeScreen.classList.contains('active')) {
+            await carregarIndicadoresSemana();
+            await carregarTreinoAtual();
+            await carregarExerciciosDoDia();
+        }
+        
+        console.log('[fetchWorkouts] ✅ Dados atualizados com sucesso!');
+        
+    } catch (error) {
+        console.error('[fetchWorkouts] ❌ Erro ao recarregar workouts:', error);
+    }
+}
+
+// Função para limpar listeners (para uso em cleanup)
+async function limparEventListeners() {
+    try {
+        if (supabaseChannel) {
+            console.log('[limparEventListeners] 🗑️ Removendo canal Supabase...');
+            const { supabase } = await import('../services/supabaseService.js');
+            supabase.removeChannel(supabaseChannel);
+            supabaseChannel = null;
+        }
+        
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+            debounceTimer = null;
+        }
+        
+        listenersConfigured = false;
+        console.log('[limparEventListeners] ✅ Event listeners limpos');
+        
+    } catch (error) {
+        console.error('[limparEventListeners] ❌ Erro ao limpar listeners:', error);
+    }
+}
+
+// Configurar listener para visibilidade da página (equivalente ao useFocusEffect)
+function configurarVisibilityListener() {
+    try {
+        // Listener para mudança de visibilidade da página
+        document.addEventListener('visibilitychange', () => {
+            // Só refetch se a página ficou visível e estamos na home screen
+            if (!document.hidden) {
+                const homeScreen = document.getElementById('home-screen');
+                if (homeScreen && homeScreen.classList.contains('active')) {
+                    console.log('[configurarVisibilityListener] 👁️ Página voltou ao foco, refetchando dados...');
+                    
+                    // Debounce para evitar execuções muito frequentes
+                    if (debounceTimer) {
+                        clearTimeout(debounceTimer);
+                    }
+                    
+                    debounceTimer = setTimeout(() => {
+                        fetchWorkouts();
+                    }, 300);
+                }
+            }
+        });
+
+        // Listener para quando a janela volta ao foco
+        window.addEventListener('focus', () => {
+            const homeScreen = document.getElementById('home-screen');
+            if (homeScreen && homeScreen.classList.contains('active')) {
+                console.log('[configurarVisibilityListener] 🔄 Janela voltou ao foco, refetchando dados...');
+                
+                // Debounce para evitar execuções muito frequentes
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                }
+                
+                debounceTimer = setTimeout(() => {
+                    fetchWorkouts();
+                }, 300);
+            }
+        });
+
+        console.log('[configurarVisibilityListener] ✅ Visibility listeners configurados');
+
+    } catch (error) {
+        console.error('[configurarVisibilityListener] ❌ Erro ao configurar visibility listeners:', error);
+    }
+}
 
 function configurarEventListeners() {
     if (listenersConfigured) {
@@ -1104,6 +1273,12 @@ function configurarEventListeners() {
             carregarDashboard();
         }
     });
+
+    // Configurar listener Supabase para mudanças na weekly_plan
+    configurarSupabaseListener();
+    
+    // Configurar listener para quando a página volta ao foco (equivalente ao useFocusEffect)
+    configurarVisibilityListener();
     
     listenersConfigured = true;
     console.log('[configurarEventListeners] ✅ Event listeners configurados');
@@ -1177,7 +1352,44 @@ export function recarregarDashboard() {
     carregarDashboard();
 }
 
+// Função de teste para verificar se fetchWorkouts funciona
+window.testFetchWorkouts = async function() {
+    console.log('[testFetchWorkouts] 🧪 TESTANDO FUNÇÃO fetchWorkouts');
+    
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            console.error('[testFetchWorkouts] ❌ Usuário não encontrado');
+            if (window.showNotification) {
+                window.showNotification('❌ Faça login primeiro', 'error');
+            }
+            return { success: false, error: 'Usuário não encontrado' };
+        }
+        
+        console.log('[testFetchWorkouts] 👤 Usuário:', currentUser.id);
+        
+        // Chamar a função fetchWorkouts
+        await fetchWorkouts();
+        
+        console.log('[testFetchWorkouts] ✅ fetchWorkouts executou sem erros');
+        if (window.showNotification) {
+            window.showNotification('✅ fetchWorkouts funcionando!', 'success');
+        }
+        
+        return { success: true };
+        
+    } catch (error) {
+        console.error('[testFetchWorkouts] ❌ ERRO:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Erro no fetchWorkouts: ' + error.message, 'error');
+        }
+        return { success: false, error: error.message };
+    }
+};
+
 // Exportar para compatibilidade
 window.carregarDashboard = carregarDashboard;
 window.recarregarDashboard = recarregarDashboard;
 window.carregarIndicadoresSemana = carregarIndicadoresSemana;
+window.limparEventListeners = limparEventListeners;
+window.fetchWorkouts = fetchWorkouts;

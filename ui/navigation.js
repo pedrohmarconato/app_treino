@@ -15,6 +15,9 @@ const screenTemplateMap = {
 export function mostrarTela(telaId) {
     console.log('[mostrarTela] Navegando para:', telaId);
     
+    // Cleanup da tela anterior antes de navegar
+    onScreenLeave();
+    
     // Se estiver usando o sistema de templates
     if (window.renderTemplate) {
         const templateName = screenTemplateMap[telaId] || telaId;
@@ -60,6 +63,122 @@ function fallbackToOldSystem(telaId) {
     }
 }
 
+// Callback executado antes de sair de uma tela (cleanup)
+function onScreenLeave() {
+    try {
+        // Detectar tela atual antes de sair
+        const currentScreen = document.querySelector('.screen.active');
+        if (!currentScreen) return;
+        
+        const currentScreenId = currentScreen.id;
+        console.log('[onScreenLeave] Saindo da tela:', currentScreenId);
+        
+        switch(currentScreenId) {
+            case 'home-screen':
+                // Limpar listeners do Supabase para mudanças em tempo real
+                if (window.limparEventListeners) {
+                    console.log('[onScreenLeave] Limpando listeners da home screen...');
+                    window.limparEventListeners();
+                }
+                break;
+                
+            case 'workout-screen':
+                // Cleanup da tela de treino se necessário
+                console.log('[onScreenLeave] Cleanup da workout screen...');
+                break;
+                
+            case 'planejamentoSemanal':
+                // Cleanup da tela de planejamento se necessário
+                console.log('[onScreenLeave] Cleanup da planning screen...');
+                break;
+                
+            default:
+                // Nenhum cleanup específico necessário
+                break;
+        }
+        
+    } catch (error) {
+        console.error('[onScreenLeave] Erro durante cleanup:', error);
+    }
+}
+
+// Refetch workouts quando foca na tela home (equivalente ao useFocusEffect)
+async function refetchOnHomeFocus() {
+    try {
+        console.log('[refetchOnHomeFocus] 🔄 Recarregando dados da home screen...');
+        
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            console.warn('[refetchOnHomeFocus] ❌ Usuário não está definido');
+            return;
+        }
+
+        // Aguardar um pouco para garantir que a tela foi totalmente renderizada
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Importar função de fetch workouts
+        const fetchWorkouts = window.fetchWorkouts || await importFetchWorkouts();
+        
+        if (fetchWorkouts) {
+            // Executar refetch dos workouts
+            await fetchWorkouts();
+            console.log('[refetchOnHomeFocus] ✅ Workouts recarregados com sucesso');
+        } else {
+            console.warn('[refetchOnHomeFocus] ⚠️ Função fetchWorkouts não disponível');
+        }
+        
+    } catch (error) {
+        console.error('[refetchOnHomeFocus] ❌ Erro ao refetch:', error);
+    }
+}
+
+// Helper para importar fetchWorkouts se não estiver disponível globalmente
+async function importFetchWorkouts() {
+    try {
+        // Tentar importar do dashboard
+        const dashboardModule = await import('../feature/dashboard.js');
+        
+        // Se não estiver exportado, tentar acessar via window
+        if (window.fetchWorkouts) {
+            return window.fetchWorkouts;
+        }
+        
+        // Criar uma versão local se necessário
+        return async function() {
+            console.log('[importFetchWorkouts] Executando refetch local...');
+            
+            const currentUser = AppState.get('currentUser');
+            if (!currentUser?.id) return;
+
+            // Como não temos tabelas workouts/weekly_plan, vamos atualizar o planejamento semanal
+            let planAtualizado = null;
+            try {
+                const { getActiveWeeklyPlan } = await import('../services/weeklyPlanningService.js');
+                planAtualizado = await getActiveWeeklyPlan(currentUser.id);
+                console.log('[importFetchWorkouts] ✅ Plano carregado');
+            } catch (error) {
+                console.error('[importFetchWorkouts] ❌ Erro ao buscar plano:', error.message);
+            }
+            
+            // Atualizar estado
+            if (planAtualizado) {
+                AppState.set('weekPlan', planAtualizado);
+            }
+            
+            // Recarregar dashboard se a função estiver disponível
+            if (window.recarregarDashboard) {
+                window.recarregarDashboard();
+            }
+            
+            console.log('[importFetchWorkouts] ✅ Refetch local concluído');
+        };
+        
+    } catch (error) {
+        console.error('[importFetchWorkouts] ❌ Erro ao importar fetchWorkouts:', error);
+        return null;
+    }
+}
+
 // Callback executado após renderizar uma tela
 function onScreenRendered(telaId, templateName = null) {
     console.log('[onScreenRendered] Tela renderizada:', telaId, 'Template:', templateName);
@@ -78,6 +197,9 @@ function onScreenRendered(telaId, templateName = null) {
                 // CORRIGIDO: Inicializar home screen adequadamente
                 console.log('[onScreenRendered] Inicializando tela home...');
                 initializeHomeScreen();
+                
+                // Refetch workouts ao focar na tela home (equivalente ao useFocusEffect)
+                refetchOnHomeFocus();
                 break;
                 
             case 'workout-screen':

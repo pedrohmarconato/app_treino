@@ -19,6 +19,31 @@ let planejamentoAtual = {};
 let treinosDisponiveis = [];
 let usuarioIdAtual = null;
 let nomeDiaAtual = '';
+let diaSendoEditado = null;
+
+// Adiciona delegação de eventos ao container do modal (executar uma vez)
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('treino-options') || document.getElementById('opcoes-treino-container');
+    if (container) {
+        container.addEventListener('click', (event) => {
+            const option = event.target.closest('.treino-option, .opcao-treino');
+            if (option && option.dataset.treino) {
+                try {
+                    const treino = JSON.parse(option.dataset.treino);
+                    if (typeof selecionarTreinoParaDia === 'function') {
+                        selecionarTreinoParaDia(treino, diaSendoEditado);
+                    }
+                    // Fechar modal se necessário
+                    if (window.fecharSeletorTreino) {
+                        window.fecharSeletorTreino();
+                    }
+                } catch (e) {
+                    console.error('Erro ao processar treino selecionado:', e);
+                }
+            }
+        });
+    }
+});
 
 // Mapear emojis para os tipos de treino
 const treinoEmojis = {
@@ -27,7 +52,7 @@ const treinoEmojis = {
     'Pernas': '🦵',
     'Ombro e Braço': '💪',
     'Cardio': '🏃',
-    'Folga': '😴',
+    '': '',
     'Ombro': '🎯',
     'Braço': '💪'
 };
@@ -280,8 +305,10 @@ function validarPlanejamento() {
 
 // Abrir seletor de treino
 window.abrirSeletorTreino = function(dia, nomeDia) {
-    const diaAtualSelecionado = dia;
+    diaSendoEditado = dia;
     nomeDiaAtual = nomeDia;
+    console.log('[abrirSeletorTreino] diaSendoEditado atualizado:', diaSendoEditado);
+
     
     const popup = document.getElementById('seletorTreinoPopup');
     const title = document.getElementById('popup-day-title');
@@ -292,26 +319,16 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
     title.textContent = `${nomeDia} - Selecionar Treino`;
     options.innerHTML = '';
     
-    // Adicionar opção de folga
-    const folgaOption = criarOpcaoTreino({
-        id: 'folga',
-        emoji: '😴',
-        nome: 'Folga',
-        descricao: 'Dia de descanso',
-        tipo: 'folga',
-        categoria: 'folga'
-    }, dia);
-    options.appendChild(folgaOption);
-    
-    // Adicionar opção de cardio
+
+    // Adicionar opção de cardio (tipo minúsculo, padronizado)
     const cardioOption = criarOpcaoTreino({
         id: 'cardio',
         emoji: '🏃',
         nome: 'Cardio',
         descricao: 'Exercícios cardiovasculares',
-        tipo: 'Cardio',
+        tipo: 'cardio', // corrigido para minúsculo
         categoria: 'cardio'
-    }, dia);
+    });
     options.appendChild(cardioOption);
     
     // Adicionar treinos musculares
@@ -324,7 +341,7 @@ window.abrirSeletorTreino = function(dia, nomeDia) {
                 descricao: `Treino ${treino.tipo}`,
                 tipo: treino.tipo,
                 categoria: 'muscular'
-            }, dia);
+            });
             options.appendChild(option);
         }
     });
@@ -376,28 +393,26 @@ function criarOpcaoTreino(treino, diaDestino) {
         </div>
     `;
     
-    if (!isDisabled) {
-        option.addEventListener('click', () => {
-            selecionarTreinoParaDia(treino, diaDestino);
-        });
-    }
-    
     return option;
 }
 
 // Selecionar treino para um dia
 function selecionarTreinoParaDia(treino, dia) {
+    console.log('[selecionarTreinoParaDia] treino selecionado:', treino, 'dia:', dia);
+    if (!treino || !treino.tipo || !treino.nome) {
+        console.error('[selecionarTreinoParaDia] Treino inválido recebido:', treino);
+        return;
+    }
     planejamentoAtual[dia] = {
         id: treino.id,
         nome: treino.nome,
         tipo: treino.tipo,
         categoria: treino.categoria
     };
-    
+    console.log('[selecionarTreinoParaDia] planejamentoAtual após seleção:', JSON.stringify(planejamentoAtual));
     atualizarVisualizacaoDia(dia, treino);
-    fecharSeletorTreino();
+    if (typeof fecharSeletorTreino === 'function') fecharSeletorTreino();
     validarPlanejamento();
-    
     if (window.showNotification) {
         window.showNotification(`${treino.nome} adicionado para ${nomeDiaAtual}`, 'success');
     }
@@ -408,18 +423,11 @@ function atualizarVisualizacaoDia(dia, treino) {
     const dayContent = document.getElementById(`dia-${dia}-content`);
     if (!dayContent) return;
     
-    if (treino.categoria === 'folga') {
-        dayContent.innerHTML = `
-            <div class="treino-assigned">
-                <span class="treino-emoji">😴</span>
-                <div class="treino-info">
-                    <div class="treino-name">Folga</div>
-                    <div class="treino-type">Descanso</div>
-                </div>
-                <button class="remove-treino" onclick="removerTreinoDoDia('${dia}')">×</button>
+    if (treino.categoria === '') {
             </div>
-        `;
-    } else {
+            <button class="remove-treino" onclick="removerTreinoDoDia('${dia}')">×</button>
+        </div>
+    `;
         dayContent.innerHTML = `
             <div class="treino-assigned">
                 <span class="treino-emoji">${treinoEmojis[treino.tipo] || '🏋️'}</span>
@@ -460,6 +468,7 @@ export async function salvarPlanejamentoSemanal() {
     console.log('[salvarPlanejamentoSemanal] Iniciando salvamento...');
 
     if (!validarPlanejamento()) {
+        console.warn('[salvarPlanejamentoSemanal] ❌ Planejamento inválido!');
         if (window.showNotification) {
             window.showNotification('Planejamento inválido. Verifique as mensagens.', 'error');
         }
@@ -467,6 +476,7 @@ export async function salvarPlanejamentoSemanal() {
     }
 
     if (!usuarioIdAtual) {
+        console.warn('[salvarPlanejamentoSemanal] ❌ Usuário não identificado! usuarioIdAtual:', usuarioIdAtual);
         if (window.showNotification) {
             window.showNotification('Erro: usuário não identificado', 'error');
         }
@@ -484,12 +494,12 @@ export async function salvarPlanejamentoSemanal() {
             'quinta': 4, 'sexta': 5, 'sabado': 6
         };
 
-        // Inicializa todos os dias como folga
+        // Inicializa todos os dias como vazio
         const planejamentoParaSupabase = {};
         for (let dia = 0; dia < 7; dia++) {
             planejamentoParaSupabase[dia] = {
-                tipo: 'folga',
-                categoria: 'folga',
+                tipo: null,
+                categoria: null,
                 numero_treino: null,
                 concluido: false
             };
@@ -500,8 +510,8 @@ export async function salvarPlanejamentoSemanal() {
             const diaIndex = diasMap[diaKey];
             if (diaIndex !== undefined && treino) {
                 planejamentoParaSupabase[diaIndex] = {
-                    tipo: treino.tipo || 'folga',
-                    categoria: treino.categoria || 'folga',
+                    tipo: treino.tipo || '',
+                    categoria: treino.categoria || '',
                     numero_treino: treino.numero_treino || null,
                     concluido: false
                 };
@@ -511,9 +521,14 @@ export async function salvarPlanejamentoSemanal() {
         console.log('[salvarPlanejamentoSemanal] Planejamento convertido:', planejamentoParaSupabase);
 
         // Salva no Supabase
+        console.log('[salvarPlanejamentoSemanal] 🚀 Chamando saveWeeklyPlan...');
         const resultado = await saveWeeklyPlan(usuarioIdAtual, planejamentoParaSupabase);
+        console.log('[salvarPlanejamentoSemanal] 📋 Resultado do saveWeeklyPlan:', resultado);
 
         if (!resultado.success) {
+            if (window.showNotification) {
+                window.showNotification('❌ Erro ao salvar no Supabase: ' + (resultado.error || 'Erro desconhecido'), 'error');
+            }
             throw new Error(resultado.error || 'Erro ao salvar no banco');
         }
 
@@ -533,7 +548,7 @@ export async function salvarPlanejamentoSemanal() {
         if (treinoDoDia) {
             const mockWorkout = {
                 tipo: treinoDoDia.tipo,
-                nome: treinoDoDia.tipo === 'folga' ? 'Dia de Folga' :
+                nome: treinoDoDia.tipo === '' ? 'Dia de ' :
                       treinoDoDia.tipo === 'Cardio' ? 'Cardio' :
                       `Treino ${treinoDoDia.tipo}`,
                 exercicios: [],
