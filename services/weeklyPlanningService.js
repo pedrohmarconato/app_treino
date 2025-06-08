@@ -129,21 +129,31 @@ class WeeklyPlanService {
         }
     }
     
-    // Buscar plano atual usando view v_planejamento_completo
+    // Buscar plano atual com fallback robusto
     static async getPlan(userId, useCache = true) {
         console.log('[WeeklyPlanService.getPlan] 🔍 INICIANDO busca do plano para usuário:', userId);
+        
+        if (!userId) {
+            console.error('[WeeklyPlanService.getPlan] ❌ userId é obrigatório');
+            return null;
+        }
+        
         const { ano, semana } = this.getCurrentWeek();
         console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana:', { ano, semana });
         
         // 1. Tentar cache local primeiro (se habilitado)
         if (useCache) {
             const cached = this.getFromLocal(userId);
-            if (cached) return cached;
+            if (cached) {
+                console.log('[WeeklyPlanService.getPlan] ✅ Dados do cache:', cached);
+                return cached;
+            }
         }
         
         try {
-            // 2. Buscar do Supabase usando view otimizada
-            const { data, error } = await supabase
+            // 2. Tentar buscar usando view otimizada primeiro
+            console.log('[WeeklyPlanService.getPlan] 🔄 Tentando view v_planejamento_completo...');
+            let { data, error } = await supabase
                 .from('v_planejamento_completo')
                 .select('*')
                 .eq('usuario_id', userId)
@@ -151,41 +161,86 @@ class WeeklyPlanService {
                 .eq('semana', semana)
                 .order('dia_semana', { ascending: true });
             
-            if (error || !data?.length) {
-                console.log('[WeeklyPlanService.getPlan] ❌ Nenhum plano encontrado:', { error, dataLength: data?.length });
+            // 3. Se view falhar, usar tabela base como fallback
+            if (error) {
+                console.warn('[WeeklyPlanService.getPlan] ⚠️ View falhou, usando tabela base:', error.message);
+                const fallbackResult = await supabase
+                    .from('planejamento_semanal')
+                    .select(`
+                        *,
+                        usuario_plano_treino!inner(protocolo_treinamento_id)
+                    `)
+                    .eq('usuario_id', userId)
+                    .eq('ano', ano)
+                    .eq('semana', semana)
+                    .order('dia_semana', { ascending: true });
+                
+                data = fallbackResult.data;
+                error = fallbackResult.error;
+                
+                if (error) {
+                    console.error('[WeeklyPlanService.getPlan] ❌ Fallback também falhou:', error);
+                    return null;
+                }
+            }
+            
+            if (!data?.length) {
+                console.log('[WeeklyPlanService.getPlan] 📭 Nenhum plano encontrado para esta semana');
                 return null;
             }
             
-            // 3. Converter para formato da app
+            // 4. Converter para formato da app com validação
             const plan = {};
-            console.log('[WeeklyPlanService.getPlan] 🔍 DADOS DO BANCO:', data);
+            console.log('[WeeklyPlanService.getPlan] 🔍 DADOS BRUTOS DO BANCO:', data);
             
             data.forEach(dia => {
                 const jsDay = this.dbToDay(dia.dia_semana);
+                
+                // Validação e limpeza dos dados
+                let tipoAtividade = dia.tipo_atividade || dia.tipo || 'folga';
+                if (tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
+                    tipoAtividade = 'folga';
+                }
+                
                 const planoDia = {
-                    tipo: dia.tipo_atividade, // Usar tipo_atividade diretamente do banco
-                    categoria: dia.tipo_atividade, // Usar tipo_atividade como categoria também
+                    tipo: tipoAtividade,
+                    tipo_atividade: tipoAtividade, // Garantir ambos os campos
+                    categoria: tipoAtividade,
                     numero_treino: dia.numero_treino,
-                    concluido: dia.concluido,
-                    protocolo_id: dia.protocolo_treinamento_id
+                    concluido: Boolean(dia.concluido),
+                    protocolo_id: dia.protocolo_treinamento_id || dia.usuario_plano_treino?.protocolo_treinamento_id
                 };
                 
-                console.log(`[WeeklyPlanService.getPlan] 📊 CONVERTENDO - Dia ${jsDay} (DB: ${dia.dia_semana}):`, {
+                console.log(`[WeeklyPlanService.getPlan] 📊 CONVERTENDO - Dia ${jsDay}:`, {
                     original: dia,
-                    convertido: planoDia
+                    convertido: planoDia,
+                    tipoAtividade: tipoAtividade
                 });
                 
                 plan[jsDay] = planoDia;
             });
             
-            // 4. Salvar no cache
+            // 5. Validar resultado
+            if (Object.keys(plan).length === 0) {
+                console.warn('[WeeklyPlanService.getPlan] ⚠️ Plano vazio após conversão');
+                return null;
+            }
+            
+            // 6. Salvar no cache
             this.saveToLocal(userId, plan);
+            console.log('[WeeklyPlanService.getPlan] ✅ Plano carregado com sucesso:', plan);
             
             return plan;
             
         } catch (error) {
-            console.error('[WeeklyPlanService] Erro ao buscar:', error);
-            return this.getFromLocal(userId); // Fallback para cache
+            console.error('[WeeklyPlanService.getPlan] ❌ ERRO CRÍTICO:', error);
+            // Fallback para cache em caso de erro
+            const cachedPlan = this.getFromLocal(userId);
+            if (cachedPlan) {
+                console.log('[WeeklyPlanService.getPlan] 🔄 Usando cache como fallback');
+                return cachedPlan;
+            }
+            return null;
         }
     }
     
@@ -336,14 +391,21 @@ class WeeklyPlanService {
 
     // ==================== FUNCIONALIDADES AVANÇADAS ====================
     
-    // Buscar treino do dia usando view v_planejamento_completo
+    // Buscar treino do dia com fallback robusto
     static async getTodaysWorkout(userId) {
+        if (!userId) {
+            console.error('[getTodaysWorkout] ❌ userId é obrigatório');
+            return null;
+        }
+        
         const hoje = new Date().getDay(); // 0 = domingo, 1 = segunda, etc.
         const { ano, semana } = this.getCurrentWeek();
         
+        console.log('[getTodaysWorkout] 🔍 Buscando treino do dia:', { userId, hoje, ano, semana });
+        
         try {
-            // Usar view v_planejamento_completo para JOIN otimizado
-            const { data, error } = await supabase
+            // 1. Tentar view primeiro
+            let { data, error } = await supabase
                 .from('v_planejamento_completo')
                 .select('*')
                 .eq('usuario_id', userId)
@@ -352,42 +414,85 @@ class WeeklyPlanService {
                 .eq('dia_semana', this.dayToDb(hoje))
                 .single();
             
+            // 2. Fallback para tabela base se view falhar
+            if (error) {
+                console.warn('[getTodaysWorkout] ⚠️ View falhou, usando tabela base:', error.message);
+                const fallbackResult = await supabase
+                    .from('planejamento_semanal')
+                    .select(`
+                        *,
+                        usuario_plano_treino!inner(protocolo_treinamento_id)
+                    `)
+                    .eq('usuario_id', userId)
+                    .eq('ano', ano)
+                    .eq('semana', semana)
+                    .eq('dia_semana', this.dayToDb(hoje))
+                    .single();
+                
+                data = fallbackResult.data;
+                error = fallbackResult.error;
+            }
+            
             if (error || !data) {
-                console.log('[getTodaysWorkout] Nenhum planejamento para hoje');
+                console.log('[getTodaysWorkout] 📭 Nenhum planejamento para hoje:', error?.message);
                 return null;
             }
             
             const planoDoDia = data;
+            console.log('[getTodaysWorkout] 📊 Dados do dia encontrados:', planoDoDia);
             
-            // Se não for treino, retornar info do dia
-            if (planoDoDia.tipo_atividade === 'folga' || planoDoDia.tipo_atividade === 'cardio') {
+            // Validação e limpeza do tipo de atividade
+            let tipoAtividade = planoDoDia.tipo_atividade || planoDoDia.tipo || 'folga';
+            if (tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
+                tipoAtividade = 'folga';
+            }
+            
+            // Se for folga ou cardio, retornar info básica
+            if (tipoAtividade.toLowerCase() === 'folga' || tipoAtividade.toLowerCase() === 'cardio') {
                 return {
-                    tipo: planoDoDia.tipo_atividade,
-                    nome: planoDoDia.tipo_atividade === 'folga' ? 'Dia de Folga' : 'Cardio',
+                    tipo: tipoAtividade,
+                    tipo_atividade: tipoAtividade,
+                    nome: tipoAtividade.toLowerCase() === 'folga' ? 'Dia de Folga' : 'Treino Cardiovascular',
                     exercicios: []
                 };
             }
             
-            // Se for treino, usar numero_treino do planejamento
-            if (planoDoDia.tipo_atividade === 'treino' && planoDoDia.numero_treino) {
+            // Para treinos de força, buscar exercícios
+            const protocoloId = planoDoDia.protocolo_treinamento_id || planoDoDia.usuario_plano_treino?.protocolo_treinamento_id;
+            
+            if (planoDoDia.numero_treino && protocoloId) {
+                console.log('[getTodaysWorkout] 🏋️ Buscando exercícios:', { 
+                    numero_treino: planoDoDia.numero_treino, 
+                    protocolo_id: protocoloId 
+                });
+                
                 const exercicios = await fetchExerciciosTreino(
-                    planoDoDia.numero_treino, 
-                    planoDoDia.protocolo_treinamento_id
+                    planoDoDia.numero_treino,
+                    protocoloId
                 );
                 
                 return {
-                    tipo: 'treino',
-                    nome: `Treino ${planoDoDia.tipo_atividade}`,
+                    tipo: tipoAtividade,
+                    tipo_atividade: tipoAtividade,
+                    nome: `Treino ${tipoAtividade}`,
+                    grupo_muscular: tipoAtividade,
                     numero_treino: planoDoDia.numero_treino,
-                    exercicios: exercicios,
-                    protocolo_treino_id: planoDoDia.protocolo_treinamento_id
+                    exercicios: exercicios || []
                 };
             }
             
-            return null;
+            // Fallback para treino sem exercícios
+            return {
+                tipo: tipoAtividade,
+                tipo_atividade: tipoAtividade,
+                nome: `Treino ${tipoAtividade}`,
+                grupo_muscular: tipoAtividade,
+                numero_treino: planoDoDia.numero_treino,
+                exercicios: []
+            };
             
         } catch (error) {
-            console.error('[getTodaysWorkout] Erro:', error);
+            console.error('[getTodaysWorkout] ❌ ERRO CRÍTICO:', error);
             return null;
         }
     }

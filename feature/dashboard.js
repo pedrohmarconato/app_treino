@@ -69,7 +69,6 @@ export async function carregarDashboard() {
             carregarIndicadoresSemana(),
             carregarTreinoAtual(),
             carregarMetricasUsuario(),
-            carregarPlanejamentoSemanal(),
             carregarExerciciosDoDia(),
             carregarEstatisticasAvancadas()
         ]);
@@ -97,7 +96,6 @@ async function carregarIndicadoresSemana() {
         
         if (!currentUser || !currentUser.id) {
             console.error('[carregarIndicadoresSemana] ❌ currentUser é null ou sem ID');
-            console.log('[carregarIndicadoresSemana] currentUser atual:', currentUser);
             throw new Error('Usuário não está definido para carregar indicadores da semana');
         }
         
@@ -107,70 +105,89 @@ async function carregarIndicadoresSemana() {
             return;
         }
 
-        // Usar serviço unificado para buscar planejamento
-        console.log('[carregarIndicadoresSemana] 📞 Chamando WeeklyPlanService.getPlan para usuário:', currentUser.id);
+        // Buscar planejamento semanal
         const weekPlan = await WeeklyPlanService.getPlan(currentUser.id);
-        console.log('[carregarIndicadoresSemana] 📊 Resultado do WeeklyPlanService.getPlan:', weekPlan);
         const hoje = new Date();
         const diaAtual = hoje.getDay();
         
-        console.log('[carregarIndicadoresSemana] Plano semanal carregado com', Object.keys(weekPlan || {}).length, 'dias');
+        // DEBUG: Log dos dados carregados
+        console.log('[DEBUG] Plano carregado:', weekPlan);
+        console.log('[DEBUG] Tipo de treino hoje:', weekPlan?.[diaAtual]);
         
         if (!weekPlan) {
-            console.warn('[carregarIndicadoresSemana] ⚠️ Nenhum planejamento encontrado para esta semana');
-            // Mostrar semana vazia minimalista
-            let html = '';
-            for (let i = 0; i < 7; i++) {
-                const isToday = i === diaAtual;
-                html += `
-                    <div class="day-indicator ${isToday ? 'today' : ''} empty-day">
-                        <div class="day-name">${DIAS_SEMANA[i]}</div>
-                        <div class="day-type">Configure</div>
-                    </div>
-                `;
-            }
-            container.innerHTML = html;
+            console.warn('[carregarIndicadoresSemana] ⚠️ Nenhum planejamento encontrado');
+            renderizarSemanaVazia(container, diaAtual);
             return;
         }
         
-        // Renderizar indicadores da semana com dados reais
+        // Renderizar indicadores com dados reais
         let html = '';
-
         for (let i = 0; i < 7; i++) {
             const diaPlan = weekPlan[i];
             const isToday = i === diaAtual;
             const isCompleted = diaPlan?.concluido || false;
             
-            console.log(`[carregarIndicadoresSemana] 🎯 RENDERIZANDO - Dia ${i} (${DIAS_SEMANA[i]}):`, {
-                diaPlan: diaPlan,
+            // DEBUG: Log de cada dia
+            console.log(`[DEBUG] Dia ${i} (${DIAS_SEMANA[i]}):`, {
+                plano: diaPlan,
+                tipo_atividade: diaPlan?.tipo_atividade,
                 tipo: diaPlan?.tipo,
-                categoria: diaPlan?.categoria
+                concluido: diaPlan?.concluido
             });
             
             // Determinar tipo e classe do dia
             let dayType = 'Configure';
             let dayClass = 'day-indicator';
+            let emoji = '';
             
-            if (diaPlan && diaPlan.tipo) {
-                // Exibir tipo correto baseado no banco
-                switch(diaPlan.tipo.toLowerCase()) {
+            if (diaPlan) {
+                // CORREÇÃO ROBUSTA: Múltiplos fallbacks para garantir dados válidos
+                let tipoTreino = diaPlan.tipo_atividade || diaPlan.tipo || diaPlan.categoria || '';
+                
+                // Limpeza de dados inválidos
+                if (!tipoTreino || 
+                    tipoTreino === 'undefined' || 
+                    tipoTreino === 'null' || 
+                    tipoTreino.trim() === '' ||
+                    tipoTreino === 'Configure') {
+                    tipoTreino = 'folga';
+                }
+                
+                // Log para debug
+                console.log(`[DEBUG] Dia ${i} - tipoTreino determinado:`, {
+                    tipoTreino,
+                    diaPlan,
+                    tipo_atividade: diaPlan.tipo_atividade,
+                    tipo: diaPlan.tipo,
+                    categoria: diaPlan.categoria
+                });
+                
+                switch(tipoTreino.toLowerCase()) {
                     case 'folga':
+                    case 'descanso':
                         dayType = 'Folga';
                         dayClass += ' rest-day';
+                        emoji = '😴';
                         break;
                     case 'cardio':
+                    case 'cardiovascular':
                         dayType = 'Cardio';
                         dayClass += ' cardio-day';
+                        emoji = '🏃';
                         break;
                     default:
-                        // Tipo muscular específico
-                        dayType = diaPlan.tipo;
-                        dayClass += ' workout-day';
+                        if (tipoTreino && tipoTreino !== 'folga') {
+                            // Mostrar o grupo muscular específico
+                            dayType = tipoTreino;
+                            dayClass += ' workout-day';
+                            emoji = TREINO_EMOJIS[tipoTreino] || '🏋️';
+                        } else {
+                            // Fallback seguro
+                            dayType = 'Configure';
+                            emoji = '⚙️';
+                        }
                         break;
                 }
-                console.log(`[carregarIndicadoresSemana] ✅ Tipo definido para dia ${i}: "${dayType}"`);
-            } else {
-                console.log(`[carregarIndicadoresSemana] ❌ Sem plano para dia ${i}:`, diaPlan);
             }
             
             // Adicionar classes de estado
@@ -183,19 +200,36 @@ async function carregarIndicadoresSemana() {
             html += `
                 <div class="${dayClass}">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
-                    <div class="day-type">${dayType}${completedCheck}</div>
+                    <div class="day-type">
+                        ${emoji ? `<span class="day-emoji">${emoji}</span>` : ''}
+                        ${dayType}${completedCheck}
+                    </div>
                 </div>
             `;
         }
         
         container.innerHTML = html;
-        console.log('[carregarIndicadoresSemana] ✅ Indicadores da semana carregados com dados reais');
+        console.log('[carregarIndicadoresSemana] ✅ Indicadores carregados com sucesso');
         
     } catch (error) {
-        console.error('[carregarIndicadoresSemana] ❌ ERRO CRÍTICO:', error);
-        showNotification('Erro ao carregar planejamento da semana: ' + error.message, 'error');
-        throw error; // Propagar o erro
+        console.error('[carregarIndicadoresSemana] ❌ ERRO:', error);
+        showNotification('Erro ao carregar planejamento da semana', 'error');
     }
+}
+
+// Função auxiliar para renderizar semana vazia
+function renderizarSemanaVazia(container, diaAtual) {
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+        const isToday = i === diaAtual;
+        html += `
+            <div class="day-indicator ${isToday ? 'today' : ''} empty-day">
+                <div class="day-name">${DIAS_SEMANA[i]}</div>
+                <div class="day-type">Configure</div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
 }
 
 // Carregar treino atual do dia
@@ -209,8 +243,12 @@ async function carregarTreinoAtual() {
             return;
         }
         
-        // Usar serviço unificado para buscar treino de hoje
+        // Buscar treino do dia com detalhes completos
         const treinoDoDia = await WeeklyPlanService.getTodaysWorkout(currentUser.id);
+        
+        // DEBUG: Log do treino do dia
+        console.log('[DEBUG] Treino do dia:', treinoDoDia);
+        console.log('[DEBUG] Tipo atividade:', treinoDoDia?.tipo_atividade);
         
         if (!treinoDoDia) {
             console.warn('[carregarTreinoAtual] Nenhum treino encontrado para hoje');
@@ -218,32 +256,123 @@ async function carregarTreinoAtual() {
             return;
         }
         
-        // Converter para formato esperado pela UI
+        // Formatar treino com informações completas
         const treinoFormatado = {
-            tipo: treinoDoDia.tipo,
-            nome: formatarNomeTreino(treinoDoDia),
+            tipo: treinoDoDia.tipo_atividade || treinoDoDia.tipo,
+            nome: formatarNomeTreinoCompleto(treinoDoDia),
+            grupo_muscular: treinoDoDia.tipo_atividade || treinoDoDia.tipo,
             numero_treino: treinoDoDia.numero_treino,
-            exercicios: treinoDoDia.exercicios || []
+            exercicios: treinoDoDia.exercicios || [],
+            total_exercicios: treinoDoDia.exercicios?.length || 0,
+            duracao_estimada: calcularDuracaoEstimada(treinoDoDia.exercicios)
         };
         
         // Atualizar UI do treino atual
-        atualizarUITreinoAtual(treinoFormatado);
+        atualizarUITreinoAtualCompleto(treinoFormatado);
         
-        // Salvar no estado (apenas currentWorkout para evitar loop)
+        // Salvar no estado
         AppState.set('currentWorkout', treinoFormatado);
         
-        // Só atualizar weekPlan se não existir para evitar loop infinito
-        const weekPlanAtual = AppState.get('weekPlan');
-        if (!weekPlanAtual) {
-            AppState.set('weekPlan', await WeeklyPlanService.getPlan(currentUser.id));
-        }
-        
-        console.log('[carregarTreinoAtual] ✅ Treino atual configurado:', treinoFormatado?.nome || 'Nenhum');
+        console.log('[carregarTreinoAtual] ✅ Treino carregado:', treinoFormatado.nome);
         
     } catch (error) {
         console.error('[carregarTreinoAtual] ❌ Erro:', error);
         atualizarUITreinoAtual(null);
         showNotification('Erro ao carregar treino do dia', 'error');
+    }
+}
+
+// Função auxiliar para formatar nome do treino completo
+function formatarNomeTreinoCompleto(treino) {
+    if (!treino) return 'Sem treino';
+    
+    const tipo = treino.tipo_atividade || treino.tipo;
+    
+    switch(tipo?.toLowerCase()) {
+        case 'folga':
+            return 'Dia de Folga';
+        case 'cardio':
+            return 'Treino Cardiovascular';
+        default:
+            return `Treino ${tipo}`;
+    }
+}
+
+// Função auxiliar para calcular duração estimada
+function calcularDuracaoEstimada(exercicios) {
+    if (!exercicios || exercicios.length === 0) return 0;
+    
+    // Cálculo baseado em: (séries × tempo_descanso) + (séries × 30s execução) por exercício
+    const duracaoTotal = exercicios.reduce((total, exercicio) => {
+        const series = exercicio.series || 3;
+        const descanso = exercicio.tempo_descanso || 60;
+        const tempoExecucao = 30; // segundos estimados por série
+        
+        return total + (series * (descanso + tempoExecucao));
+    }, 0);
+    
+    // Retornar em minutos
+    return Math.round(duracaoTotal / 60);
+}
+
+// Função atualizada para UI do treino atual com informações completas
+function atualizarUITreinoAtualCompleto(treino) {
+    const workoutTypeEl = document.getElementById('workout-type');
+    const workoutNameEl = document.getElementById('workout-name');
+    const workoutExercisesEl = document.getElementById('workout-exercises');
+    const btnTextEl = document.getElementById('btn-text');
+    const progressTextEl = document.getElementById('workout-progress-text');
+    const progressCircleEl = document.getElementById('workout-progress-circle');
+    
+    if (!treino) {
+        // Fallback para função original se não há treino
+        atualizarUITreinoAtual(null);
+        return;
+    }
+    
+    // Configurar baseado no tipo de treino
+    switch(treino.tipo?.toLowerCase()) {
+        case 'folga':
+            updateElement(workoutTypeEl, 'Descanso');
+            updateElement(workoutNameEl, 'Dia de Folga');
+            updateElement(workoutExercisesEl, 'Repouso e recuperação');
+            updateElement(btnTextEl, 'Dia de Descanso');
+            updateElement(progressTextEl, '😴');
+            break;
+            
+        case 'cardio':
+            updateElement(workoutTypeEl, 'Cardio');
+            updateElement(workoutNameEl, 'Treino Cardiovascular');
+            updateElement(workoutExercisesEl, 'Exercícios aeróbicos • 30-45min');
+            updateElement(btnTextEl, 'Iniciar Cardio');
+            updateElement(progressTextEl, '🏃');
+            break;
+            
+        default:
+            // Treino de força com informações detalhadas
+            const grupoMuscular = treino.grupo_muscular;
+            const emoji = TREINO_EMOJIS[grupoMuscular] || '🏋️';
+            
+            updateElement(workoutTypeEl, `Treino ${grupoMuscular}`);
+            updateElement(workoutNameEl, treino.nome);
+            updateElement(workoutExercisesEl, 
+                `${treino.total_exercicios} exercícios • ${treino.duracao_estimada}min • ${grupoMuscular}`
+            );
+            updateElement(btnTextEl, 'Iniciar Treino');
+            updateElement(progressTextEl, emoji);
+            break;
+    }
+    
+    // Atualizar progresso circular se necessário
+    if (progressCircleEl && treino.tipo?.toLowerCase() !== 'folga') {
+        const hoje = new Date().getDay();
+        const progressoSemanal = Math.min((hoje / 7) * 100, 100);
+        const offset = 251.2 - (progressoSemanal / 100) * 251.2;
+        progressCircleEl.style.strokeDashoffset = offset.toString();
+        
+        if (treino.tipo?.toLowerCase() === 'cardio') {
+            updateElement(progressTextEl, `${Math.round(progressoSemanal)}%`);
+        }
     }
 }
 
@@ -398,11 +527,8 @@ async function carregarPlanejamentoSemanal() {
         
         const container = document.getElementById('weekly-plan-list');
         if (!container) {
-            // Silenciar o warning se não estamos na tela home
-            const homeScreen = document.getElementById('home-screen');
-            if (homeScreen && homeScreen.classList.contains('active')) {
-                console.warn('[carregarPlanejamentoSemanal] Container weekly-plan-list não encontrado na tela home');
-            }
+            // Container não existe na nova estrutura da home - usar indicadores da semana em vez disso
+            console.log('[carregarPlanejamentoSemanal] Container weekly-plan-list não encontrado - usando indicadores da semana');
             return;
         }
         
@@ -496,8 +622,7 @@ async function carregarExerciciosDoDia() {
         
         if (!currentUser || !currentUser.id) {
             console.error('[carregarExerciciosDoDia] ❌ currentUser é null ou sem ID');
-            console.log('[carregarExerciciosDoDia] currentUser atual:', currentUser);
-            throw new Error('Usuário não está definido para carregar exercícios do dia');
+            return;
         }
         
         const container = document.getElementById('exercises-preview');
@@ -506,221 +631,216 @@ async function carregarExerciciosDoDia() {
             return;
         }
 
-        // Usar serviço unificado para carregar treino completo
+        // Buscar treino completo com exercícios e pesos
         const treinoCompleto = await WeeklyPlanService.getTodaysWorkoutWithWeights(currentUser.id);
         
+        console.log('[DEBUG] Treino completo com exercícios:', treinoCompleto);
+        
         if (!treinoCompleto || treinoCompleto.tipo === 'folga') {
-            container.innerHTML = `
-                <div class="exercise-preview-card rest-day-card">
-                    <div class="exercise-preview-header">
-                        <div>
-                            <div class="exercise-name">Dia de Descanso</div>
-                            <div class="exercise-group">Recuperação muscular ativa</div>
-                        </div>
-                        <div class="exercise-rm-info">
-                            <span class="rest-icon">😴</span>
-                        </div>
-                    </div>
-                    <div class="rest-day-suggestions">
-                        <div class="suggestion-item">
-                            <span class="suggestion-icon">🧘</span>
-                            <span>Alongamento leve</span>
-                        </div>
-                        <div class="suggestion-item">
-                            <span class="suggestion-icon">🚶</span>
-                            <span>Caminhada relaxante</span>
-                        </div>
-                        <div class="suggestion-item">
-                            <span class="suggestion-icon">💧</span>
-                            <span>Hidratação adequada</span>
-                        </div>
-                        <div class="suggestion-item">
-                            <span class="suggestion-icon">😴</span>
-                            <span>8+ horas de sono</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+            renderizarDiaDescanso(container);
             return;
         }
         
         if (treinoCompleto && treinoCompleto.tipo === 'cardio') {
-            const cardioSuggestions = [
-                { name: 'Esteira', duration: '20-30min', intensity: 'Moderada', calories: '200-300' },
-                { name: 'Bicicleta', duration: '25-35min', intensity: 'Moderada', calories: '250-350' },
-                { name: 'Elíptico', duration: '20-25min', intensity: 'Moderada-Alta', calories: '220-320' },
-                { name: 'Remo', duration: '15-20min', intensity: 'Alta', calories: '180-280' }
-            ];
-            
-            let cardioHtml = '';
-            cardioSuggestions.forEach(cardio => {
-                cardioHtml += `
-                    <div class="exercise-preview-card">
-                        <div class="exercise-preview-header">
-                            <div>
-                                <div class="exercise-name">${cardio.name}</div>
-                                <div class="exercise-group">Exercício Cardiovascular</div>
-                            </div>
-                            <div class="exercise-rm-info">
-                                <span class="cardio-badge">${cardio.intensity}</span>
-                            </div>
-                        </div>
-                        <div class="exercise-preview-details">
-                            <div class="exercise-detail">
-                                <div class="exercise-detail-label">Duração</div>
-                                <div class="exercise-detail-value">${cardio.duration}</div>
-                            </div>
-                            <div class="exercise-detail">
-                                <div class="exercise-detail-label">Intensidade</div>
-                                <div class="exercise-detail-value">${cardio.intensity}</div>
-                            </div>
-                            <div class="exercise-detail">
-                                <div class="exercise-detail-label">Calorias</div>
-                                <div class="exercise-detail-value">${cardio.calories}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = cardioHtml;
+            renderizarTreinoCardio(container);
             return;
         }
         
-        // Treino de força - mostrar exercícios simplificados
+        // Treino de força - mostrar exercícios com grupo muscular
         if (!treinoCompleto.exercicios || treinoCompleto.exercicios.length === 0) {
-            container.innerHTML = `
-                <div class="exercise-preview-card error-card">
-                    <div class="exercise-preview-header">
-                        <div>
-                            <div class="exercise-name">Nenhum exercício encontrado</div>
-                            <div class="exercise-group">Configure seu protocolo de treino</div>
-                        </div>
-                        <div class="exercise-rm-info">
-                            <span>⚠️</span>
-                        </div>
-                    </div>
-                    <div class="error-actions">
-                        <button class="btn-secondary" onclick="window.location.reload()">
-                            Recarregar
-                        </button>
-                    </div>
-                </div>
-            `;
+            renderizarSemExercicios(container);
             return;
         }
         
-        let html = '';
+        // Renderizar header com grupo muscular
+        const grupoMuscular = treinoCompleto.tipo_atividade || treinoCompleto.tipo || 'Força';
+        let html = `
+            <div class="exercises-section-header">
+                <h3 class="exercises-title">
+                    ${TREINO_EMOJIS[grupoMuscular] || '🏋️'} Treino de ${grupoMuscular}
+                </h3>
+                <span class="exercises-count">${treinoCompleto.exercicios.length} exercícios</span>
+            </div>
+            <div class="exercises-list">
+        `;
         
-        // Mostrar apenas os exercícios (sem card de resumo duplicado)
+        // Renderizar cada exercício
         treinoCompleto.exercicios.forEach((exercicio, index) => {
-            const pesos = exercicio.pesos_sugeridos;
-            const percentuais = pesos?.percentuais || { base: 70, min: 65, max: 75 };
-            const pesoBase = pesos?.peso_base || 0;
-            const pesoMin = pesos?.peso_minimo || 0;
-            const pesoMax = pesos?.peso_maximo || 0;
-            
-            // Buscar execuções anteriores para mostrar progresso
-            const execucoesAnteriores = exercicio.execucoes_anteriores || [];
-            const ultimaExecucao = execucoesAnteriores[0];
-            
-            let progressoInfo = '';
-            if (ultimaExecucao) {
-                const diasAtras = Math.floor((new Date() - new Date(ultimaExecucao.data_execucao)) / (1000 * 60 * 60 * 24));
-                const progressoPeso = ultimaExecucao.peso_utilizado > pesoBase ? '📈' : 
-                                    ultimaExecucao.peso_utilizado < pesoBase ? '📉' : '➡️';
-                
-                progressoInfo = `
-                    <div class="exercise-progress">
-                        <div class="progress-item">
-                            <span class="progress-icon">${progressoPeso}</span>
-                            <span class="progress-text">Último: ${ultimaExecucao.peso_utilizado}kg (${diasAtras}d atrás)</span>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            html += `
-                <div class="exercise-preview-card ${index === 0 ? 'first-exercise' : ''}">
-                    <div class="exercise-preview-header">
-                        <div>
-                            <div class="exercise-name">
-                                <span class="exercise-number">${index + 1}.</span>
-                                ${exercicio.exercicio_nome}
-                            </div>
-                            <div class="exercise-group">${exercicio.exercicio_grupo} • ${exercicio.exercicio_equipamento}</div>
-                        </div>
-                        <div class="exercise-rm-info">
-                            <span class="rm-badge">${percentuais.base}% 1RM</span>
-                        </div>
-                    </div>
-                    
-                    <div class="exercise-weight-range">
-                        <div class="weight-indicator">
-                            <span class="weight-min">${pesoMin}kg</span>
-                            <div class="weight-bar">
-                                <div class="weight-range-fill" style="width: ${pesoMax > pesoMin ? ((pesoBase - pesoMin) / (pesoMax - pesoMin)) * 100 : 50}%"></div>
-                                <div class="weight-target" style="left: ${pesoMax > pesoMin ? ((pesoBase - pesoMin) / (pesoMax - pesoMin)) * 100 : 50}%"></div>
-                            </div>
-                            <span class="weight-max">${pesoMax}kg</span>
-                        </div>
-                        <div class="weight-target-label">Alvo: ${pesoBase}kg</div>
-                    </div>
-                    
-                    <div class="exercise-preview-details">
-                        <div class="exercise-detail">
-                            <div class="exercise-detail-label">Séries</div>
-                            <div class="exercise-detail-value">${exercicio.series || 3}</div>
-                        </div>
-                        <div class="exercise-detail">
-                            <div class="exercise-detail-label">Repetições</div>
-                            <div class="exercise-detail-value">${exercicio.repeticoes_alvo || 10}</div>
-                        </div>
-                        <div class="exercise-detail">
-                            <div class="exercise-detail-label">Descanso</div>
-                            <div class="exercise-detail-value">${Math.floor((exercicio.tempo_descanso || 60) / 60)}min</div>
-                        </div>
-                        <div class="exercise-detail">
-                            <div class="exercise-detail-label">Volume</div>
-                            <div class="exercise-detail-value">${Math.round(pesoBase * (exercicio.series || 3) * (exercicio.repeticoes_alvo || 10))}kg</div>
-                        </div>
-                    </div>
-                    
-                    ${progressoInfo}
-                </div>
-            `;
+            html += renderizarExercicioCard(exercicio, index);
         });
         
+        html += '</div>';
+        
         container.innerHTML = html;
-        console.log('[carregarExerciciosDoDia] ✅ Exercícios detalhados carregados:', treinoCompleto.exercicios.length);
+        console.log('[carregarExerciciosDoDia] ✅ Exercícios carregados:', treinoCompleto.exercicios.length);
         
     } catch (error) {
-        console.error('[carregarExerciciosDoDia] ❌ ERRO CRÍTICO:', error);
-        
-        const container = document.getElementById('exercises-preview');
-        if (container) {
-            container.innerHTML = `
-                <div class="exercise-preview-card error-card">
-                    <div class="exercise-preview-header">
-                        <div>
-                            <div class="exercise-name">Erro ao carregar exercícios</div>
-                            <div class="exercise-group">${error.message}</div>
-                        </div>
-                        <div class="exercise-rm-info">
-                            <span>❌</span>
-                        </div>
+        console.error('[carregarExerciciosDoDia] ❌ ERRO:', error);
+        showNotification('Erro ao carregar exercícios', 'error');
+    }
+}
+
+// Função para renderizar card de exercício individual
+function renderizarExercicioCard(exercicio, index) {
+    const pesos = exercicio.pesos_sugeridos;
+    const percentuais = pesos?.percentuais || { base: 70, min: 65, max: 75 };
+    const pesoBase = pesos?.peso_base || 0;
+    const pesoMin = pesos?.peso_minimo || 0;
+    const pesoMax = pesos?.peso_maximo || 0;
+    
+    return `
+        <div class="exercise-preview-card ${index === 0 ? 'first-exercise' : ''}">
+            <div class="exercise-preview-header">
+                <div>
+                    <div class="exercise-name">
+                        <span class="exercise-number">${index + 1}.</span>
+                        ${exercicio.exercicio_nome}
                     </div>
-                    <div class="error-actions">
-                        <button class="btn-secondary" onclick="window.location.reload()">
-                            Tentar Novamente
-                        </button>
+                    <div class="exercise-group">
+                        ${exercicio.exercicio_grupo} • ${exercicio.exercicio_equipamento}
                     </div>
                 </div>
-            `;
-        }
-        
-        showNotification('Erro ao carregar exercícios do dia: ' + error.message, 'error');
-    }
+                <div class="exercise-rm-info">
+                    <span class="rm-badge">${percentuais.base}% 1RM</span>
+                </div>
+            </div>
+            
+            <div class="exercise-weight-range">
+                <div class="weight-indicator">
+                    <span class="weight-min">${pesoMin}kg</span>
+                    <div class="weight-bar">
+                        <div class="weight-range-fill" 
+                             style="width: ${pesoMax > pesoMin ? ((pesoBase - pesoMin) / (pesoMax - pesoMin)) * 100 : 50}%">
+                        </div>
+                        <div class="weight-target" 
+                             style="left: ${pesoMax > pesoMin ? ((pesoBase - pesoMin) / (pesoMax - pesoMin)) * 100 : 50}%">
+                        </div>
+                    </div>
+                    <span class="weight-max">${pesoMax}kg</span>
+                </div>
+                <div class="weight-target-label">Alvo: ${pesoBase}kg</div>
+            </div>
+            
+            <div class="exercise-preview-details">
+                <div class="exercise-detail">
+                    <div class="exercise-detail-label">Séries</div>
+                    <div class="exercise-detail-value">${exercicio.series || 3}</div>
+                </div>
+                <div class="exercise-detail">
+                    <div class="exercise-detail-label">Repetições</div>
+                    <div class="exercise-detail-value">${exercicio.repeticoes_alvo || 10}</div>
+                </div>
+                <div class="exercise-detail">
+                    <div class="exercise-detail-label">Descanso</div>
+                    <div class="exercise-detail-value">${Math.floor((exercicio.tempo_descanso || 60) / 60)}min</div>
+                </div>
+                <div class="exercise-detail">
+                    <div class="exercise-detail-label">Volume</div>
+                    <div class="exercise-detail-value">
+                        ${Math.round(pesoBase * (exercicio.series || 3) * (exercicio.repeticoes_alvo || 10))}kg
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Funções auxiliares de renderização
+function renderizarDiaDescanso(container) {
+    container.innerHTML = `
+        <div class="exercise-preview-card rest-day-card">
+            <div class="exercise-preview-header">
+                <div>
+                    <div class="exercise-name">Dia de Descanso</div>
+                    <div class="exercise-group">Recuperação muscular ativa</div>
+                </div>
+                <div class="exercise-rm-info">
+                    <span class="rest-icon">😴</span>
+                </div>
+            </div>
+            <div class="rest-day-suggestions">
+                <div class="suggestion-item">
+                    <span class="suggestion-icon">🧘</span>
+                    <span>Alongamento leve</span>
+                </div>
+                <div class="suggestion-item">
+                    <span class="suggestion-icon">🚶</span>
+                    <span>Caminhada relaxante</span>
+                </div>
+                <div class="suggestion-item">
+                    <span class="suggestion-icon">💧</span>
+                    <span>Hidratação adequada</span>
+                </div>
+                <div class="suggestion-item">
+                    <span class="suggestion-icon">😴</span>
+                    <span>8+ horas de sono</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderizarTreinoCardio(container) {
+    const cardioSuggestions = [
+        { name: 'Esteira', duration: '20-30min', intensity: 'Moderada', calories: '200-300' },
+        { name: 'Bicicleta', duration: '25-35min', intensity: 'Moderada', calories: '250-350' },
+        { name: 'Elíptico', duration: '20-25min', intensity: 'Moderada-Alta', calories: '220-320' },
+        { name: 'Remo', duration: '15-20min', intensity: 'Alta', calories: '180-280' }
+    ];
+    
+    let html = '';
+    cardioSuggestions.forEach(cardio => {
+        html += `
+            <div class="exercise-preview-card">
+                <div class="exercise-preview-header">
+                    <div>
+                        <div class="exercise-name">${cardio.name}</div>
+                        <div class="exercise-group">Exercício Cardiovascular</div>
+                    </div>
+                    <div class="exercise-rm-info">
+                        <span class="cardio-badge">${cardio.intensity}</span>
+                    </div>
+                </div>
+                <div class="exercise-preview-details">
+                    <div class="exercise-detail">
+                        <div class="exercise-detail-label">Duração</div>
+                        <div class="exercise-detail-value">${cardio.duration}</div>
+                    </div>
+                    <div class="exercise-detail">
+                        <div class="exercise-detail-label">Intensidade</div>
+                        <div class="exercise-detail-value">${cardio.intensity}</div>
+                    </div>
+                    <div class="exercise-detail">
+                        <div class="exercise-detail-label">Calorias</div>
+                        <div class="exercise-detail-value">${cardio.calories}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function renderizarSemExercicios(container) {
+    container.innerHTML = `
+        <div class="exercise-preview-card error-card">
+            <div class="exercise-preview-header">
+                <div>
+                    <div class="exercise-name">Nenhum exercício encontrado</div>
+                    <div class="exercise-group">Configure seu protocolo de treino</div>
+                </div>
+                <div class="exercise-rm-info">
+                    <span>⚠️</span>
+                </div>
+            </div>
+            <div class="error-actions">
+                <button class="btn-secondary" onclick="window.location.reload()">
+                    Recarregar
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 // Carregar estatísticas avançadas do usuário
@@ -1060,3 +1180,4 @@ export function recarregarDashboard() {
 // Exportar para compatibilidade
 window.carregarDashboard = carregarDashboard;
 window.recarregarDashboard = recarregarDashboard;
+window.carregarIndicadoresSemana = carregarIndicadoresSemana;

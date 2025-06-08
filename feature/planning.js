@@ -1215,6 +1215,17 @@ window.editarPlanejamentoParaUsuarioAtual = async function() {
 window.inicializarPlanejamento = inicializarPlanejamento;
 window.fecharModalPlanejamento = fecharModalPlanejamento;
 window.abrirEdicaoPlanejamento = abrirEdicaoPlanejamento;
+window.salvarPlanejamentoSemanal = salvarPlanejamentoSemanal;
+
+// Função de debug para acessar dados do planejamento
+window.debugPlanejamento = function() {
+    return {
+        planejamentoAtual: planejamentoAtual,
+        usuarioIdAtual: usuarioIdAtual,
+        currentUser: AppState.get('currentUser'),
+        weekPlan: AppState.get('weekPlan')
+    };
+};
 
 // Função global para forçar fechamento (para emergências)
 window.forcarFechamentoModal = forcarFechamentoModal;
