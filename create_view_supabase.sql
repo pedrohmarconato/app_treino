@@ -31,7 +31,8 @@ SELECT
     pt.descricao as protocolo_descricao,
     pt.dias_por_semana,
     pt.total_treinos,
-    pt.nivel_dificuldade
+    pt.duracao_meses,
+    pt.total_semanas
     
 FROM planejamento_semanal ps
 LEFT JOIN usuario_plano_treino upt 
