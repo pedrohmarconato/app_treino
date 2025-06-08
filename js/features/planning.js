@@ -7,7 +7,7 @@ import {
     getActiveWeeklyPlan
 } from '../services/weeklyPlanningService.js';
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
-import { fetchTiposTreinoMuscular } from '../services/userService.js';
+import { buscarOpcoesDeTreino } from './supabase-treino-utils.js';
 // Functions now handled by weeklyPlanningService.js
 import { showNotification } from '../ui/notifications.js';
 
@@ -15,8 +15,18 @@ import { showNotification } from '../ui/notifications.js';
 // import { needsWeeklyPlanning } from '../services/weeklyPlanningService.js';
 
 // Variáveis do planejamento
+// Inicialização centralizada do estado padrão 'Folga' para todos os dias da semana
 let planejamentoAtual = {};
-let treinosDisponiveis = [];
+const diasDaSemana = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+diasDaSemana.forEach(dia => {
+    planejamentoAtual[dia] = {
+        id: 'folga',
+        nome: 'Folga',
+        tipo: 'Folga',
+        categoria: 'folga'
+    };
+});
+// treinosDisponiveis removido, agora tudo é dinâmico via buscarOpcoesDeTreino
 let usuarioIdAtual = null;
 let nomeDiaAtual = '';
 let diaSendoEditado = null;
@@ -59,7 +69,7 @@ const treinoEmojis = {
 
 // Inicializar planejamento
 export async function inicializarPlanejamento(usuarioId) {
-    console.log('[inicializarPlanejamento] Iniciando para usuário:', usuarioId);
+
     usuarioIdAtual = usuarioId;
     
     try {
@@ -67,7 +77,7 @@ export async function inicializarPlanejamento(usuarioId) {
         const planoExistente = await getActiveWeeklyPlan(usuarioId);
         
         if (planoExistente) {
-            console.log('[inicializarPlanejamento] Plano existente encontrado, carregando...');
+
             planejamentoAtual = planoExistente;
             await finalizarPlanejamentoExistente();
             return;
@@ -100,21 +110,19 @@ export async function inicializarPlanejamento(usuarioId) {
             });
         }
         
-        console.log('[inicializarPlanejamento] Treinos disponíveis montados:', treinosDisponiveis);
-
         // 4. Buscar planejamento existente (Supabase primeiro, depois localStorage)
         let planoSalvo = await getWeekPlanFromSupabase(usuarioId);
         if (!planoSalvo) {
-            console.log('[inicializarPlanejamento] Nenhum plano no Supabase, buscando localStorage...');
+
             planoSalvo = getWeekPlan(usuarioId);
         }
         
         if (planoSalvo) {
             planejamentoAtual = planoSalvo;
-            console.log('[inicializarPlanejamento] Plano carregado:', planoSalvo);
+
         } else {
             planejamentoAtual = {};
-            console.log('[inicializarPlanejamento] Nenhum plano encontrado, iniciando vazio');
+
         }
         
         // 5. Renderizar interface
@@ -170,7 +178,7 @@ async function finalizarPlanejamentoExistente() {
 
 // NOVA FUNÇÃO: Forçar fechamento completo do modal
 function forcarFechamentoModal() {
-    console.log('[forcarFechamentoModal] Forçando fechamento do modal...');
+
     
     try {
         // Método 1: modalPlanejamento (ID principal)
@@ -180,7 +188,7 @@ function forcarFechamentoModal() {
             modal1.style.visibility = 'hidden';
             modal1.style.opacity = '0';
             modal1.classList.add('hidden');
-            console.log('[forcarFechamentoModal] Modal modalPlanejamento fechado');
+
         }
         
         // Método 2: modal-planejamento (ID alternativo)
@@ -190,7 +198,7 @@ function forcarFechamentoModal() {
             modal2.style.visibility = 'hidden';
             modal2.style.opacity = '0';
             modal2.classList.add('hidden');
-            console.log('[forcarFechamentoModal] Modal modal-planejamento fechado');
+
         }
         
         // Método 3: Buscar por classe
@@ -200,7 +208,7 @@ function forcarFechamentoModal() {
             modal.style.visibility = 'hidden';
             modal.style.opacity = '0';
             modal.classList.add('hidden');
-            console.log(`[forcarFechamentoModal] Modal ${index + 1} por classe fechado`);
+
         });
         
         // Método 4: Remover overlay do body
@@ -212,11 +220,10 @@ function forcarFechamentoModal() {
         dynamicModals.forEach((el, index) => {
             if (el.style.position === 'fixed' || el.style.position === 'absolute') {
                 el.style.display = 'none';
-                console.log(`[forcarFechamentoModal] Modal dinâmico ${index + 1} fechado`);
+
             }
         });
-        
-        console.log('[forcarFechamentoModal] Fechamento completo concluído');
+       
         
     } catch (error) {
         console.error('[forcarFechamentoModal] Erro:', error);
@@ -299,53 +306,43 @@ function validarPlanejamento() {
         btnSalvar.disabled = !isValid || diasPreenchidos < 7;
     }
 
-    console.log('[validarPlanejamento] Validação:', { isValid, diasPreenchidos, messages });
     return isValid && diasPreenchidos === 7;
 }
 
-// Abrir seletor de treino
-window.abrirSeletorTreino = function(dia, nomeDia) {
+// Abrir seletor de treino (agora dinâmico)
+window.abrirSeletorTreino = async function(dia, nomeDia) {
     diaSendoEditado = dia;
     nomeDiaAtual = nomeDia;
-    console.log('[abrirSeletorTreino] diaSendoEditado atualizado:', diaSendoEditado);
 
-    
     const popup = document.getElementById('seletorTreinoPopup');
     const title = document.getElementById('popup-day-title');
     const options = document.getElementById('treino-options');
-    
     if (!popup || !title || !options) return;
-    
+
     title.textContent = `${nomeDia} - Selecionar Treino`;
     options.innerHTML = '';
-    
 
-    // Adicionar opção de cardio (tipo minúsculo, padronizado)
-    const cardioOption = criarOpcaoTreino({
-        id: 'cardio',
-        emoji: '🏃',
-        nome: 'Cardio',
-        descricao: 'Exercícios cardiovasculares',
-        tipo: 'cardio', // corrigido para minúsculo
-        categoria: 'cardio'
+    // Buscar opções dinâmicas do Supabase
+    const opcoes = await buscarOpcoesDeTreino();
+    opcoes.forEach(treino => {
+        const option = criarOpcaoTreino({
+            id: treino.nome.toLowerCase().replace(/\s+/g, '_'),
+            emoji: treinoEmojis[treino.nome] || '🏋️',
+            nome: treino.nome,
+            descricao: treino.nome === 'Folga' ? 'Dia de descanso' : `Treino ${treino.nome}`,
+            tipo: treino.nome,
+            categoria: treino.nome === 'Folga' ? 'folga' : (treino.nome === 'Cardio' ? 'cardio' : 'muscular')
+        }, dia);
+        // Adiciona o data-attribute para delegação
+        option.dataset.treino = JSON.stringify({
+            id: treino.nome.toLowerCase().replace(/\s+/g, '_'),
+            nome: treino.nome,
+            tipo: treino.nome,
+            categoria: treino.nome === 'Folga' ? 'folga' : (treino.nome === 'Cardio' ? 'cardio' : 'muscular')
+        });
+        options.appendChild(option);
     });
-    options.appendChild(cardioOption);
-    
-    // Adicionar treinos musculares
-    treinosDisponiveis.forEach(treino => {
-        if (treino.categoria === 'muscular') {
-            const option = criarOpcaoTreino({
-                id: treino.id,
-                emoji: treinoEmojis[treino.tipo] || '🏋️',
-                nome: treino.tipo,
-                descricao: `Treino ${treino.tipo}`,
-                tipo: treino.tipo,
-                categoria: 'muscular'
-            });
-            options.appendChild(option);
-        }
-    });
-    
+
     popup.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 };
@@ -398,7 +395,7 @@ function criarOpcaoTreino(treino, diaDestino) {
 
 // Selecionar treino para um dia
 function selecionarTreinoParaDia(treino, dia) {
-    console.log('[selecionarTreinoParaDia] treino selecionado:', treino, 'dia:', dia);
+
     if (!treino || !treino.tipo || !treino.nome) {
         console.error('[selecionarTreinoParaDia] Treino inválido recebido:', treino);
         return;
@@ -409,7 +406,7 @@ function selecionarTreinoParaDia(treino, dia) {
         tipo: treino.tipo,
         categoria: treino.categoria
     };
-    console.log('[selecionarTreinoParaDia] planejamentoAtual após seleção:', JSON.stringify(planejamentoAtual));
+
     atualizarVisualizacaoDia(dia, treino);
     if (typeof fecharSeletorTreino === 'function') fecharSeletorTreino();
     validarPlanejamento();
@@ -465,10 +462,9 @@ window.removerTreinoDoDia = function(dia) {
 
 // FUNÇÃO PRINCIPAL: Salvar planejamento semanal - VERSÃO CORRIGIDA
 export async function salvarPlanejamentoSemanal() {
-    console.log('[salvarPlanejamentoSemanal] Iniciando salvamento...');
 
     if (!validarPlanejamento()) {
-        console.warn('[salvarPlanejamentoSemanal] ❌ Planejamento inválido!');
+        console.warn('Tentativa de salvar um planejamento inválido. A operação foi cancelada.');
         if (window.showNotification) {
             window.showNotification('Planejamento inválido. Verifique as mensagens.', 'error');
         }
@@ -476,7 +472,7 @@ export async function salvarPlanejamentoSemanal() {
     }
 
     if (!usuarioIdAtual) {
-        console.warn('[salvarPlanejamentoSemanal] ❌ Usuário não identificado! usuarioIdAtual:', usuarioIdAtual);
+        console.error('Erro: usuário não identificado ao tentar salvar planejamento.');
         if (window.showNotification) {
             window.showNotification('Erro: usuário não identificado', 'error');
         }
@@ -518,12 +514,9 @@ export async function salvarPlanejamentoSemanal() {
             }
         });
 
-        console.log('[salvarPlanejamentoSemanal] Planejamento convertido:', planejamentoParaSupabase);
-
         // Salva no Supabase
-        console.log('[salvarPlanejamentoSemanal] 🚀 Chamando saveWeeklyPlan...');
+
         const resultado = await saveWeeklyPlan(usuarioIdAtual, planejamentoParaSupabase);
-        console.log('[salvarPlanejamentoSemanal] 📋 Resultado do saveWeeklyPlan:', resultado);
 
         if (!resultado.success) {
             if (window.showNotification) {
@@ -562,14 +555,14 @@ export async function salvarPlanejamentoSemanal() {
         }
 
         // CORREÇÃO PRINCIPAL: Forçar fechamento antes de navegar
-        console.log('[salvarPlanejamentoSemanal] Forçando fechamento do modal...');
+
         forcarFechamentoModal();
         
         // Aguardar fechamento
         await new Promise(resolve => setTimeout(resolve, 200));
         
         // Navegação robusta
-        console.log('[salvarPlanejamentoSemanal] Navegando para home...');
+
         if (window.renderTemplate) {
             window.renderTemplate('home');
         } else if (window.mostrarTela) {
@@ -581,14 +574,14 @@ export async function salvarPlanejamentoSemanal() {
             try {
                 if (window.carregarDashboard) {
                     await window.carregarDashboard();
-                    console.log('[salvarPlanejamentoSemanal] Dashboard carregado com sucesso');
+
                 }
             } catch (dashboardError) {
-                console.warn('[salvarPlanejamentoSemanal] Erro no dashboard (não crítico):', dashboardError);
+                console.warn('Aviso: erro ao carregar dashboard (não crítico):', dashboardError);
             }
         }, 400);
 
-        console.log('[salvarPlanejamentoSemanal] Salvamento concluído com sucesso!');
+        console.log('Planejamento salvo com sucesso no Supabase.');
         
     } catch (error) {
         console.error('[salvarPlanejamentoSemanal] Erro:', error);
