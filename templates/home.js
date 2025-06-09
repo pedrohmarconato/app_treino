@@ -1,4 +1,6 @@
 // templates/home.js - Template da tela home COMPLETO
+import homeService from '../services/homeService.js';
+
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
         <button class="back-button btn-back" onclick="logout()">
@@ -32,13 +34,31 @@ export const homeTemplate = () => `
             <div class="training-plan">
                 <div class="section-header">
                     <h2>Semana de Treinos</h2>
-                    <button class="btn-secondary btn-edit" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
-                        <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="m18.5 2.5 1 1-10 10-4 1 1-4 10-10z"/>
-                        </svg>
-                        <span class="btn-text">Editar</span>
-                    </button>
+                    <div class="header-actions">
+                        <div class="week-selector" id="week-selector">
+                            <button class="btn-icon week-nav" id="week-prev" onclick="window.navegarSemana(-1)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M15 18l-6-6 6-6"/>
+                                </svg>
+                            </button>
+                            <div class="current-week-info" id="current-week-info">
+                                <span class="week-number" id="week-number">Semana 1</span>
+                                <span class="week-status" id="week-status">Ativa</span>
+                            </div>
+                            <button class="btn-icon week-nav" id="week-next" onclick="window.navegarSemana(1)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18l6-6-6-6"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button class="btn-secondary btn-edit" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
+                            <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="m18.5 2.5 1 1-10 10-4 1 1-4 10-10z"/>
+                            </svg>
+                            <span class="btn-text">Editar</span>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Indicadores da Semana -->
@@ -239,12 +259,110 @@ export const homeStyles = `
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px; /* Reduzido de 24px para 16px */
+        flex-wrap: wrap;
+        gap: 12px;
     }
 
     .section-header h2 {
         font-size: 1.375rem;
         font-weight: 700;
         color: var(--text-primary);
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    /* Week Selector */
+    .week-selector {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        padding: 8px 16px;
+        border: 1px solid var(--border-color);
+    }
+
+    .week-nav {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 6px !important;
+        background: transparent !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: var(--radius-md) !important;
+        transition: var(--transition) !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .week-nav:hover {
+        background: var(--accent-green) !important;
+        border-color: var(--accent-green) !important;
+    }
+
+    .week-nav:hover svg {
+        stroke: var(--bg-primary) !important;
+    }
+
+    .week-nav svg {
+        width: 16px !important;
+        height: 16px !important;
+        stroke: var(--text-secondary);
+        transition: var(--transition);
+    }
+
+    .week-nav:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: transparent !important;
+    }
+
+    .week-nav:disabled:hover {
+        background: transparent !important;
+        border-color: var(--border-color) !important;
+    }
+
+    .current-week-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        min-width: 80px;
+    }
+
+    .week-number {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .week-status {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        background: var(--accent-green-bg);
+        color: var(--accent-green);
+    }
+
+    .week-status.programada {
+        background: rgba(0, 255, 0, 0.1);
+        color: #00ff00;
+    }
+
+    .week-status.inativa {
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+    }
+
+    .week-status.atual {
+        background: var(--accent-green);
+        color: var(--bg-primary);
     }
 
     /* Botões reestilizados */
@@ -1181,6 +1299,43 @@ export const homeStyles = `
         
         .section-header {
             margin-bottom: 12px; /* Reduzido em mobile */
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+
+        .header-actions {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .week-selector {
+            padding: 6px 12px;
+            gap: 8px;
+        }
+
+        .week-nav {
+            width: 28px !important;
+            height: 28px !important;
+            padding: 4px !important;
+        }
+
+        .week-nav svg {
+            width: 14px !important;
+            height: 14px !important;
+        }
+
+        .current-week-info {
+            min-width: 70px;
+        }
+
+        .week-number {
+            font-size: 0.8rem;
+        }
+
+        .week-status {
+            font-size: 0.7rem;
+            padding: 1px 6px;
         }
 
         .week-indicators {
@@ -1309,4 +1464,40 @@ export const homeStyles = `
             min-width: unset !important;
         }
     }
+
+    /* Adicionar elemento de loading para dados dinâmicos */
+    .loading-placeholder {
+        background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-primary) 50%, var(--bg-secondary) 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: var(--radius-sm);
+        height: 1.2em;
+        width: 60%;
+    }
+
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
 `;
+
+// Função para inicializar a home com dados dinâmicos
+export async function inicializarHome() {
+    try {
+        console.log('[templates/home.js] Inicializando home...');
+        
+        // Aguardar um pouco para garantir que o template foi renderizado
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Chamar o homeService
+        await homeService.inicializarHome();
+        
+        console.log('[templates/home.js] ✅ Home inicializada com sucesso');
+        
+    } catch (error) {
+        console.error('[templates/home.js] ❌ Erro ao inicializar home:', error);
+    }
+}
+
+// Disponibilizar função globalmente
+window.inicializarHome = inicializarHome;

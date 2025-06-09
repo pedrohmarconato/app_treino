@@ -258,10 +258,42 @@ class WeeklyPlanService {
         }
     }
     
-    // Verificar se precisa de planejamento
+    // Verificar se precisa de planejamento - CORRIGIDO
     static async needsPlanning(userId) {
-        const plan = await this.getPlan(userId, false); // Não usar cache
-        return !plan;
+        try {
+            console.log('[needsPlanning] Verificando se usuário precisa de planejamento:', userId);
+            
+            // 1. Verificar se semana atual já foi programada
+            const { data: status } = await query('v_status_semanas_usuario', {
+                eq: { 
+                    usuario_id: userId,
+                    eh_semana_atual: true 
+                },
+                single: true
+            });
+            
+            console.log('[needsPlanning] Status da semana atual:', status);
+            
+            // Se semana atual já foi programada, NÃO precisa de planejamento
+            if (status && status.semana_programada) {
+                console.log('✅ Semana já programada, indo para home');
+                return false; // NÃO precisa
+            }
+            
+            // Se não foi programada, PRECISA ir para planejamento
+            console.log('⚠️ Semana não programada, indo para planejamento');
+            return true; // PRECISA
+            
+        } catch (error) {
+            console.error('[needsPlanning] Erro ao verificar planejamento:', error);
+            
+            // Fallback: verificar plano existente (método anterior)
+            const plan = await this.getPlan(userId, false);
+            const needsPlanning = !plan;
+            
+            console.log('[needsPlanning] Fallback - plano existente:', !!plan, 'precisa:', needsPlanning);
+            return needsPlanning; // Em caso de erro na view, usa método anterior
+        }
     }
 
     // Atualizar dia específico
@@ -707,6 +739,111 @@ export async function getTodaysWorkoutWithWeights(userId) {
 
 export async function getWorkoutsWithWeeklyPlan(userId) {
     return await weeklyPlanService.getWorkoutsWithWeeklyPlan(userId);
+}
+
+// ==================== NOVAS FUNÇÕES - INTEGRAÇÃO CALENDÁRIO ====================
+
+// Verificar se semana já foi programada
+export async function verificarSemanaJaProgramada(userId, semanaTreino) {
+    try {
+        const { data } = await query('verificar_semana_programada', {
+            rpc: {
+                p_usuario_id: userId,
+                p_semana_treino: semanaTreino
+            }
+        });
+        
+        return data; // true/false
+    } catch (error) {
+        console.error('[verificarSemanaJaProgramada] Erro:', error);
+        return false;
+    }
+}
+
+// Obter semana ativa do usuário
+export async function obterSemanaAtivaUsuario(userId) {
+    try {
+        const { data } = await query('obter_semana_ativa_usuario', {
+            rpc: { p_usuario_id: userId }
+        });
+        
+        return data[0] || null;
+    } catch (error) {
+        console.error('[obterSemanaAtivaUsuario] Erro:', error);
+        return null;
+    }
+}
+
+// Marcar semana como programada
+export async function marcarSemanaProgramada(userId, semanaTreino, usuarioQueProgramou = null) {
+    try {
+        const { data } = await query('marcar_semana_programada', {
+            rpc: {
+                p_usuario_id: userId,
+                p_semana_treino: semanaTreino,
+                p_usuario_que_programou: usuarioQueProgramou || userId
+            }
+        });
+        
+        console.log('✅ Semana marcada como programada:', data);
+        return { success: true, data };
+    } catch (error) {
+        console.error('[marcarSemanaProgramada] Erro:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Carregar status das semanas (para menu)
+export async function carregarStatusSemanas(userId) {
+    try {
+        const { data } = await query('v_status_semanas_usuario', {
+            eq: { usuario_id: userId },
+            order: { column: 'semana_treino', ascending: true }
+        });
+        
+        return data || [];
+    } catch (error) {
+        console.error('[carregarStatusSemanas] Erro:', error);
+        return [];
+    }
+}
+
+// Carregar planejamento completo de uma semana
+export async function carregarPlanejamentoSemana(userId, semanaTreino) {
+    try {
+        const { data } = await query('v_planejamento_calendario_completo', {
+            eq: { 
+                usuario_id: userId,
+                semana_treino: semanaTreino 
+            },
+            order: { column: 'dia_semana', ascending: true }
+        });
+        
+        return data;
+    } catch (error) {
+        console.error('[carregarPlanejamentoSemana] Erro:', error);
+        return [];
+    }
+}
+
+// Obter estatísticas de programação
+export async function obterEstatisticasProgramacao(userId) {
+    try {
+        const { data } = await query('v_status_semanas_usuario', {
+            eq: { usuario_id: userId }
+        });
+        
+        if (!data) return { total: 0, programadas: 0, ativas: 0 };
+        
+        const total = data.length;
+        const programadas = data.filter(s => s.semana_programada).length;
+        const ativas = data.filter(s => s.eh_semana_ativa).length;
+        
+        return { total, programadas, ativas };
+    } catch (error) {
+        console.error('[obterEstatisticasProgramacao] Erro:', error);
+        return { total: 0, programadas: 0, ativas: 0 };
+    }
 }
 
 // Exportação principal do serviço

@@ -4,6 +4,10 @@ export const planejamentoSemanalPageTemplate = () => `
             <div class="modal-header planning-header">
                 <h2>Planejamento Semanal</h2>
                 <p class="modal-subtitle">Configure seus treinos da semana</p>
+                <div id="planning-status-indicator" class="planning-status-indicator" style="display: none;">
+                    <div class="status-badge"></div>
+                    <span class="status-text"></span>
+                </div>
                 <button class="modal-close" onclick="fecharModalPlanejamento()">×</button>
             </div>
             
@@ -62,4 +66,92 @@ export const planejamentoSemanalPageTemplate = () => `
             </div>
         </div>
     </div>
+
+    <style>
+        /* Status badges para o planejamento */
+        .planning-status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            margin: 8px 0;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-badge.info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid #3b82f6;
+        }
+
+        .status-badge.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }
+
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+            border: 1px solid #f59e0b;
+        }
+
+        .status-text {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Modo edição indicator */
+        .planning-mode-indicator {
+            background: var(--accent-green-bg);
+            color: var(--accent-green);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--accent-green);
+            margin-bottom: 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Validation message styles */
+        .validation-message {
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin: 16px 0;
+            font-size: 0.875rem;
+            border: 1px solid;
+        }
+
+        .validation-message.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border-color: #22c55e;
+        }
+
+        .validation-message.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .validation-message.info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border-color: #3b82f6;
+        }
+    </style>
 `;

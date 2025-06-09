@@ -1,7 +1,11 @@
 // js/features/dashboard.js - Dashboard completo com dados reais
 import AppState from '../state/appState.js';
 import { fetchMetricasUsuario } from '../services/userService.js';
-import WeeklyPlanService from '../services/weeklyPlanningService.js';
+import WeeklyPlanService, { 
+    carregarStatusSemanas, 
+    obterSemanaAtivaUsuario 
+} from '../services/weeklyPlanningService.js';
+import homeService from '../services/homeService.js';
 import { showNotification } from '../ui/notifications.js';
 
 // Mapear tipos de treino para emojis
@@ -37,8 +41,145 @@ function formatarNomeTreino(treino) {
 }
 
 // Função principal para carregar dashboard
+// Variáveis de estado para navegação de semanas
+let semanaAtualExibida = null;
+let statusSemanasCache = [];
+
+// Carregar seletor de semanas
+async function carregarSeletorSemanas() {
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) return;
+
+        // Buscar semana ativa
+        const semanaAtiva = await obterSemanaAtivaUsuario(currentUser.id);
+        if (semanaAtiva) {
+            semanaAtualExibida = semanaAtiva;
+        }
+
+        // Buscar status de todas as semanas
+        statusSemanasCache = await carregarStatusSemanas(currentUser.id);
+
+        // Atualizar interface do seletor
+        atualizarSeletorSemanas();
+
+        console.log('[carregarSeletorSemanas] ✅ Seletor carregado:', semanaAtiva);
+    } catch (error) {
+        console.error('[carregarSeletorSemanas] Erro:', error);
+    }
+}
+
+// Navegar entre semanas
+async function navegarSemana(direcao) {
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) return;
+
+        if (!semanaAtualExibida) {
+            showNotification('Carregando informações das semanas...', 'info');
+            return;
+        }
+
+        const novaSemana = semanaAtualExibida.semana_treino + direcao;
+        
+        // Verificar se a semana existe no cache
+        const semanaInfo = statusSemanasCache.find(s => s.semana_treino === novaSemana);
+        if (!semanaInfo) {
+            showNotification('Semana não disponível', 'warning');
+            return;
+        }
+
+        // Atualizar semana exibida
+        semanaAtualExibida = semanaInfo;
+
+        // Atualizar interface
+        atualizarSeletorSemanas();
+
+        // Recarregar dados da nova semana
+        // Note: Aqui você pode implementar carregamento de dados específicos da semana
+        showNotification(`Visualizando semana ${novaSemana}`, 'info');
+
+        console.log('[navegarSemana] Navegado para semana:', novaSemana);
+    } catch (error) {
+        console.error('[navegarSemana] Erro:', error);
+        showNotification('Erro ao navegar entre semanas', 'error');
+    }
+}
+
+// Atualizar interface do seletor de semanas
+function atualizarSeletorSemanas() {
+    try {
+        if (!semanaAtualExibida) return;
+
+        const weekNumber = document.getElementById('week-number');
+        const weekStatus = document.getElementById('week-status');
+        const weekPrev = document.getElementById('week-prev');
+        const weekNext = document.getElementById('week-next');
+
+        if (weekNumber) {
+            weekNumber.textContent = `Semana ${semanaAtualExibida.semana_treino}`;
+        }
+
+        if (weekStatus) {
+            let statusText = 'Inativa';
+            let statusClass = 'inativa';
+
+            if (semanaAtualExibida.eh_semana_atual) {
+                statusText = 'Atual';
+                statusClass = 'atual';
+            } else if (semanaAtualExibida.eh_semana_ativa) {
+                statusText = 'Ativa';
+                statusClass = 'ativa';
+            } else if (semanaAtualExibida.semana_programada) {
+                statusText = 'Programada';
+                statusClass = 'programada';
+            }
+
+            weekStatus.textContent = statusText;
+            weekStatus.className = `week-status ${statusClass}`;
+        }
+
+        // Habilitar/desabilitar botões de navegação
+        if (weekPrev) {
+            const temSemanaAnterior = statusSemanasCache.some(s => 
+                s.semana_treino === semanaAtualExibida.semana_treino - 1
+            );
+            weekPrev.disabled = !temSemanaAnterior;
+        }
+
+        if (weekNext) {
+            const temProximaSemana = statusSemanasCache.some(s => 
+                s.semana_treino === semanaAtualExibida.semana_treino + 1
+            );
+            weekNext.disabled = !temProximaSemana;
+        }
+
+    } catch (error) {
+        console.error('[atualizarSeletorSemanas] Erro:', error);
+    }
+}
+
+// Carregar dados dinâmicos da home usando homeService
+async function carregarDadosDinamicosHome() {
+    try {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) return;
+
+        console.log('[carregarDadosDinamicosHome] Carregando dados dinâmicos...');
+        
+        // Usar o homeService para carregar e atualizar dados
+        const dados = await homeService.carregarDadosHome(currentUser.id);
+        homeService.atualizarUIHome(dados);
+        
+        console.log('[carregarDadosDinamicosHome] ✅ Dados dinâmicos carregados');
+    } catch (error) {
+        console.error('[carregarDadosDinamicosHome] Erro:', error);
+        // Não propagar erro para não quebrar o dashboard
+    }
+}
+
 // Exportar função para debug
-export { carregarIndicadoresSemana };
+export { carregarIndicadoresSemana, navegarSemana, carregarSeletorSemanas, carregarDadosDinamicosHome };
 
 export async function carregarDashboard() {
     console.log('[carregarDashboard] Iniciando carregamento completo...');
@@ -70,7 +211,9 @@ export async function carregarDashboard() {
             carregarTreinoAtual(),
             carregarMetricasUsuario(),
             carregarExerciciosDoDia(),
-            carregarEstatisticasAvancadas()
+            carregarEstatisticasAvancadas(),
+            carregarSeletorSemanas(),
+            carregarDadosDinamicosHome() // NOVO: Carregar dados dinâmicos
         ]);
 
         // Configurar funcionalidades
@@ -1393,3 +1536,9 @@ window.recarregarDashboard = recarregarDashboard;
 window.carregarIndicadoresSemana = carregarIndicadoresSemana;
 window.limparEventListeners = limparEventListeners;
 window.fetchWorkouts = fetchWorkouts;
+
+// Função global para navegação de semanas
+window.navegarSemana = navegarSemana;
+
+// Função global para carregar dados dinâmicos
+window.carregarDadosDinamicosHome = carregarDadosDinamicosHome;

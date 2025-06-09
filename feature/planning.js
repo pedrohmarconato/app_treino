@@ -2,7 +2,12 @@
 // Versão corrigida que fecha o modal adequadamente
 
 import AppState from '../state/appState.js';
-import WeeklyPlanService from '../services/weeklyPlanningService.js';
+import WeeklyPlanService, { 
+    verificarSemanaJaProgramada, 
+    obterSemanaAtivaUsuario, 
+    marcarSemanaProgramada,
+    carregarStatusSemanas 
+} from '../services/weeklyPlanningService.js';
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 import { fetchTiposTreinoMuscular, fetchProtocoloAtivoUsuario } from '../services/userService.js';
 import { query } from '../services/supabaseService.js';
@@ -15,6 +20,8 @@ let usuarioIdAtual = null;
 let nomeDiaAtual = '';
 let diasEditaveis = []; // Controla quais dias podem ser editados
 let modoEdicao = false; // Indica se está em modo de edição
+let semanaAtivaAtual = null; // Dados da semana ativa
+let jaProgramadaAtual = false; // Status de programação
 
 // Performance optimizations
 let validationTimeout = null;
@@ -60,10 +67,28 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
     });
     
     try {
-        // 1. Buscar tipos de treino muscular do plano do usuário
+        // 1. Obter semana ativa do usuário
+        const semanaAtiva = await obterSemanaAtivaUsuario(usuarioId);
+        
+        if (!semanaAtiva) {
+            showNotification('Nenhuma semana ativa encontrada. Configure o calendário primeiro.', 'warning');
+            return;
+        }
+        
+        console.log('[inicializarPlanejamento] Semana ativa:', semanaAtiva);
+        
+        // 2. Verificar se semana já foi programada
+        const jaProgramada = await verificarSemanaJaProgramada(userId, semanaAtiva.semana_treino);
+        console.log('[inicializarPlanejamento] Semana já programada:', jaProgramada);
+        
+        // Guardar dados para uso posterior
+        semanaAtivaAtual = semanaAtiva;
+        jaProgramadaAtual = jaProgramada;
+        
+        // 3. Buscar tipos de treino muscular do plano do usuário
         const tiposMusculares = await fetchTiposTreinoMuscular(usuarioId);
 
-        // 2. Criar treinos disponíveis
+        // 4. Criar treinos disponíveis
         treinosDisponiveis = [];
         let treinoIdCounter = 1;
 
@@ -89,8 +114,22 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         
         console.log('[inicializarPlanejamento] Treinos disponíveis montados:', treinosDisponiveis);
 
-        // 3. Verificar se já existe plano ativo
+        // 5. Verificar se já existe plano ativo
         const planoExistente = await WeeklyPlanService.getPlan(usuarioId);
+        
+        // 6. Definir modo baseado no status da programação
+        if (jaProgramada && planoExistente) {
+            console.log('[inicializarPlanejamento] Semana já programada - Modo visualização/edição limitada');
+            modoEdicao = true; // Permitir edição limitada
+            diasEditaveis = await WeeklyPlanService.getEditableDays(usuarioId);
+        } else if (jaProgramada && !planoExistente) {
+            console.log('[inicializarPlanejamento] Inconsistência: marcada como programada mas sem plano');
+            // Permitir reprogramação
+            modoEdicao = false;
+        } else {
+            console.log('[inicializarPlanejamento] Semana não programada - Modo criação/edição completa');
+            modoEdicao = modoEdicaoParam;
+        }
         
         // CORREÇÃO: NUNCA fechar automaticamente, sempre renderizar o modal
         if (planoExistente && modoEdicao) {
@@ -122,7 +161,10 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         // 5. Renderizar interface
         renderizarPlanejamentoExistente();
         
-        // 6. Garantir que o modal está visível
+        // 6. Atualizar indicadores de status
+        atualizarIndicadoresStatus(semanaAtivaAtual, jaProgramadaAtual, diasEditaveis);
+        
+        // 7. Garantir que o modal está visível
         setTimeout(() => {
             const modal = document.getElementById('modalPlanejamento');
             if (modal) {
@@ -285,7 +327,48 @@ function renderizarPlanejamentoExistente() {
     validarPlanejamento();
 }
 
-// Adicionar indicador de modo edição
+// Atualizar indicadores de status da programação
+function atualizarIndicadoresStatus(semanaAtiva, jaProgramada, diasEditaveis = []) {
+    const statusIndicator = document.getElementById('planning-status-indicator');
+    const statusBadge = statusIndicator?.querySelector('.status-badge');
+    const statusText = statusIndicator?.querySelector('.status-text');
+    
+    if (!statusIndicator || !statusBadge || !statusText) {
+        console.warn('[atualizarIndicadoresStatus] Elementos de status não encontrados');
+        return;
+    }
+    
+    statusIndicator.style.display = 'flex';
+    
+    if (jaProgramada) {
+        const diasEditaveisCount = diasEditaveis.filter(d => d.editavel).length;
+        
+        if (diasEditaveisCount > 0) {
+            // Programada mas com dias editáveis
+            statusBadge.className = 'status-badge warning';
+            statusBadge.textContent = '⚠️';
+            statusText.textContent = `Semana ${semanaAtiva.semana_treino} programada - ${diasEditaveisCount} dias editáveis`;
+        } else {
+            // Totalmente programada e realizada
+            statusBadge.className = 'status-badge success';
+            statusBadge.textContent = '✅';
+            statusText.textContent = `Semana ${semanaAtiva.semana_treino} completamente programada`;
+        }
+    } else {
+        // Não programada
+        statusBadge.className = 'status-badge info';
+        statusBadge.textContent = '📅';
+        statusText.textContent = `Semana ${semanaAtiva.semana_treino} - Nova programação`;
+    }
+    
+    // Atualizar subtítulo baseado no percentual de 1RM
+    const subtitle = document.querySelector('.modal-subtitle');
+    if (subtitle && semanaAtiva.percentual_1rm_calculado) {
+        subtitle.textContent = `Configure seus treinos - ${semanaAtiva.percentual_1rm_calculado}% 1RM`;
+    }
+}
+
+// Adicionar indicador de modo edição (mantido para compatibilidade)
 function adicionarIndicadorModoEdicao() {
     const container = document.querySelector('.planning-page-container') || 
                      document.querySelector('.modal-content') ||
@@ -936,6 +1019,17 @@ export async function salvarPlanejamentoSemanal() {
         }
         
         console.log('[salvarPlanejamentoSemanal] ✅ SUCESSO no WeeklyPlanService.savePlan!');
+        
+        // NOVO: Após salvar com sucesso, marcar como programada
+        const semanaAtiva = await obterSemanaAtivaUsuario(userId);
+        if (semanaAtiva) {
+            const marcacaoResult = await marcarSemanaProgramada(userId, semanaAtiva.semana_treino, userId);
+            if (marcacaoResult.success) {
+                console.log('✅ Semana marcada como programada:', marcacaoResult.data);
+            } else {
+                console.warn('⚠️ Erro ao marcar semana como programada:', marcacaoResult.error);
+            }
+        }
 
         // Atualiza estado global para disparar atualização automática da interface
         AppState.set('weekPlan', planejamentoParaSupabase);
@@ -967,12 +1061,18 @@ export async function salvarPlanejamentoSemanal() {
             window.mostrarTela('home-screen');
         }
 
-        // Carregar dashboard
+        // Carregar dashboard e inicializar home
         setTimeout(async () => {
             try {
                 if (window.carregarDashboard) {
                     await window.carregarDashboard();
                     console.log('[salvarPlanejamentoSemanal] Dashboard carregado com sucesso');
+                }
+                
+                // NOVO: Inicializar home com dados dinâmicos
+                if (window.inicializarHome) {
+                    await window.inicializarHome();
+                    console.log('[salvarPlanejamentoSemanal] Home inicializada com dados dinâmicos');
                 }
             } catch (dashboardError) {
                 console.warn('[salvarPlanejamentoSemanal] Erro no dashboard (não crítico):', dashboardError);
