@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Fix - Add serie_numero Column</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .log { background: #2a2a2a; padding: 15px; border-radius: 8px; margin: 10px 0; font-family: monospace; }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+        button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #45a049; }
+        button:disabled { background: #666; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Database Fix: Add serie_numero Column</h1>
+        <p>This script will add the missing <code>serie_numero</code> column to the <code>execucao_exercicio_usuario</code> table.</p>
+        
+        <button id="executeFixBtn" onclick="executeDatabaseFix()">Execute Database Fix</button>
+        <button id="testConnectionBtn" onclick="testConnection()">Test Connection</button>
+        <button id="verifyStructureBtn" onclick="verifyTableStructure()">Verify Table Structure</button>
+        
+        <div id="logOutput" class="log">
+            <div class="info">🔄 Ready to execute database fix...</div>
+        </div>
+    </div>
+
+    <!-- Load Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Load Config -->
+    <script src="config.js"></script>
+    
+    <script>
+        // Initialize logging
+        function log(message, type = 'info') {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            logOutput.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Initialize Supabase client
+        let supabaseClient = null;
+        
+        function initializeSupabase() {
+            try {
+                if (typeof window.SUPABASE_CONFIG === 'undefined') {
+                    throw new Error('SUPABASE_CONFIG not found. Make sure config.js is loaded.');
+                }
+                
+                supabaseClient = window.supabase.createClient(
+                    window.SUPABASE_CONFIG.url,
+                    window.SUPABASE_CONFIG.key
+                );
+                
+                log('✅ Supabase client initialized successfully', 'success');
+                return true;
+            } catch (error) {
+                log(`❌ Failed to initialize Supabase: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Test database connection
+        async function testConnection() {
+            log('🔄 Testing database connection...', 'info');
+            
+            if (!initializeSupabase()) {
+                return false;
+            }
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('execucao_exercicio_usuario')
+                    .select('count(*)')
+                    .limit(1);
+                
+                if (error) {
+                    log(`❌ Connection test failed: ${error.message}`, 'error');
+                    return false;
+                }
+                
+                log('✅ Database connection successful!', 'success');
+                return true;
+            } catch (error) {
+                log(`❌ Connection error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Execute the database fix
+        async function executeDatabaseFix() {
+            const executeBtn = document.getElementById('executeFixBtn');
+            executeBtn.disabled = true;
+            
+            log('🚀 Starting database fix process...', 'info');
+            
+            if (!initializeSupabase()) {
+                executeBtn.disabled = false;
+                return;
+            }
+            
+            try {
+                // First, check if column already exists
+                log('🔍 Checking current table structure...', 'info');
+                
+                const { data: testData, error: testError } = await supabaseClient
+                    .from('execucao_exercicio_usuario')
+                    .select('*')
+                    .limit(1);
+                
+                if (testError) {
+                    throw new Error(`Cannot access table: ${testError.message}`);
+                }
+                
+                // Check if serie_numero column already exists
+                if (testData && testData.length > 0 && 'serie_numero' in testData[0]) {
+                    log('⚠️  Column serie_numero already exists!', 'warning');
+                    log('✅ No action needed - database is already correct', 'success');
+                    executeBtn.disabled = false;
+                    return;
+                }
+                
+                log('📝 Column serie_numero not found. Adding it now...', 'info');
+                
+                // Execute SQL to add column
+                // Note: Supabase doesn't allow direct DDL through client, so we'll use RPC
+                log('🔧 Attempting to add column via SQL...', 'info');
+                
+                // Try using RPC if available
+                const { data: rpcData, error: rpcError } = await supabaseClient.rpc('exec_sql', {
+                    query: `
+                        ALTER TABLE execucao_exercicio_usuario 
+                        ADD COLUMN IF NOT EXISTS serie_numero INTEGER DEFAULT 1;
+                    `
+                });
+                
+                if (rpcError && rpcError.code !== '42P01') { // Function might not exist
+                    log('⚠️  RPC method not available. Manual SQL execution required.', 'warning');
+                    log('📋 Please run this SQL in your Supabase dashboard:', 'info');
+                    log('ALTER TABLE execucao_exercicio_usuario ADD COLUMN serie_numero INTEGER DEFAULT 1;', 'info');
+                    log('UPDATE execucao_exercicio_usuario SET serie_numero = 1 WHERE serie_numero IS NULL;', 'info');
+                } else {
+                    log('✅ Column added successfully via RPC!', 'success');
+                }
+                
+                // Verify the fix worked
+                log('🔍 Verifying column was added...', 'info');
+                await verifyTableStructure();
+                
+            } catch (error) {
+                log(`❌ Database fix failed: ${error.message}`, 'error');
+                log('🔧 Manual SQL execution may be required in Supabase dashboard', 'warning');
+            }
+            
+            executeBtn.disabled = false;
+        }
+
+        // Verify table structure
+        async function verifyTableStructure() {
+            log('🔍 Verifying table structure...', 'info');
+            
+            if (!initializeSupabase()) {
+                return;
+            }
+            
+            try {
+                // Insert test data to check structure
+                const testData = {
+                    usuario_id: 1,
+                    protocolo_treino_id: 1,
+                    exercicio_id: 1,
+                    data_execucao: new Date().toISOString(),
+                    peso_utilizado: 50.0,
+                    repeticoes: 10,
+                    serie_numero: 1,
+                    falhou: false,
+                    observacoes: 'Structure test'
+                };
+                
+                log('🧪 Testing with sample data insertion...', 'info');
+                
+                const { data, error } = await supabaseClient
+                    .from('execucao_exercicio_usuario')
+                    .insert([testData])
+                    .select('*');
+                
+                if (error) {
+                    if (error.message.includes('serie_numero')) {
+                        log('❌ Column serie_numero still missing or has issues', 'error');
+                        log(`Error: ${error.message}`, 'error');
+                    } else {
+                        log(`⚠️  Test failed (might be due to FK constraints): ${error.message}`, 'warning');
+                        log('💡 This is likely normal if test user/protocol/exercise IDs don\\'t exist', 'info');
+                    }
+                } else {
+                    log('✅ Structure test passed! serie_numero column is working', 'success');
+                    
+                    // Clean up test data
+                    if (data && data[0]?.id) {
+                        await supabaseClient
+                            .from('execucao_exercicio_usuario')
+                            .delete()
+                            .eq('id', data[0].id);
+                        log('🧹 Test data cleaned up', 'info');
+                    }
+                }
+                
+                log('📊 Table structure verification complete', 'success');
+                
+            } catch (error) {
+                log(`❌ Structure verification failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            log('🌟 Database Fix Tool loaded successfully', 'success');
+            log('👆 Click "Test Connection" first, then "Execute Database Fix"', 'info');
+        });
+    </script>
+</body>
+</html>

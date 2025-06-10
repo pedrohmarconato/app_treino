@@ -251,6 +251,7 @@ function setupGlobalFunctions() {
     // === TREINO ===
     // Redireciona para o fluxo correto de execução do treino
     window.iniciarTreino = async () => {
+    console.log('[TESTE] Botão Iniciar Treino clicado!');
         console.log('[app.js] 🏋️ Função iniciarTreino chamada!');
         
         const startButton = document.getElementById('start-workout-btn');
@@ -287,8 +288,10 @@ function setupGlobalFunctions() {
             
             console.log('[app.js] Carregando workoutExecutionManager...');
             const { workoutExecutionManager } = await import('../feature/workoutExecution.js');
-            console.log('[app.js] Chamando workoutExecutionManager.iniciarTreino');
-            await workoutExecutionManager.iniciarTreino();
+            console.log('[TESTE] Import de workoutExecutionManager realizado:', !!workoutExecutionManager);
+console.log('[app.js] Chamando workoutExecutionManager.iniciarTreino');
+            console.log('[TESTE] Chamando workoutExecutionManager.iniciarTreino:', typeof workoutExecutionManager?.iniciarTreino);
+await workoutExecutionManager.iniciarTreino();
             console.log('[app.js] workoutExecutionManager.iniciarTreino concluído.');
         } catch (error) {
             console.error('[app.js] ❌ Erro ao iniciar treino:', error);
