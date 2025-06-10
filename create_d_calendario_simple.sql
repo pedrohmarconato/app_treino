@@ -1,8 +1,8 @@
--- Script SQL simplificado para criar a tabela D_calendario no Supabase
+-- Script SQL simplificado para criar a tabela d_calendario no Supabase
 -- Execute este script no SQL Editor do Supabase Dashboard
 
--- Criar a tabela D_calendario
-CREATE TABLE IF NOT EXISTS D_calendario (
+-- Criar a tabela d_calendario
+CREATE TABLE IF NOT EXISTS d_calendario (
     id BIGSERIAL PRIMARY KEY,
     data_completa DATE NOT NULL UNIQUE,
     ano INTEGER NOT NULL,
@@ -20,23 +20,23 @@ CREATE TABLE IF NOT EXISTS D_calendario (
 );
 
 -- Criar índices para otimizar consultas
-CREATE INDEX IF NOT EXISTS idx_d_calendario_data ON D_calendario(data_completa);
-CREATE INDEX IF NOT EXISTS idx_d_calendario_ano_semana ON D_calendario(ano, semana_ano);
-CREATE INDEX IF NOT EXISTS idx_d_calendario_semana_treino ON D_calendario(semana_treino);
-CREATE INDEX IF NOT EXISTS idx_d_calendario_atual ON D_calendario(eh_semana_atual) WHERE eh_semana_atual = TRUE;
-CREATE INDEX IF NOT EXISTS idx_d_calendario_ativa ON D_calendario(eh_semana_ativa) WHERE eh_semana_ativa = TRUE;
+CREATE INDEX IF NOT EXISTS idx_d_calendario_data ON d_calendario(data_completa);
+CREATE INDEX IF NOT EXISTS idx_d_calendario_ano_semana ON d_calendario(ano, semana_ano);
+CREATE INDEX IF NOT EXISTS idx_d_calendario_semana_treino ON d_calendario(semana_treino);
+CREATE INDEX IF NOT EXISTS idx_d_calendario_atual ON d_calendario(eh_semana_atual) WHERE eh_semana_atual = TRUE;
+CREATE INDEX IF NOT EXISTS idx_d_calendario_ativa ON d_calendario(eh_semana_ativa) WHERE eh_semana_ativa = TRUE;
 
 -- Constraint para garantir que apenas uma semana seja marcada como atual
-CREATE UNIQUE INDEX IF NOT EXISTS idx_d_calendario_unica_atual ON D_calendario(eh_semana_atual) 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_d_calendario_unica_atual ON d_calendario(eh_semana_atual) 
 WHERE eh_semana_atual = TRUE;
 
 -- Comentários nas colunas
-COMMENT ON TABLE D_calendario IS 'Tabela de calendário com referências de semanas de treino e percentuais de 1RM';
-COMMENT ON COLUMN D_calendario.data_completa IS 'Data completa no formato YYYY-MM-DD';
-COMMENT ON COLUMN D_calendario.semana_treino IS 'Número da semana do protocolo de treino (1, 2, 3, ...)';
-COMMENT ON COLUMN D_calendario.percentual_1rm IS 'Percentual de 1RM a ser usado nesta semana (ex: 75.00%)';
-COMMENT ON COLUMN D_calendario.eh_semana_atual IS 'Indica se esta é a semana atual do treino (apenas uma por vez)';
-COMMENT ON COLUMN D_calendario.eh_semana_ativa IS 'Indica se a semana está ativa para treino';
+COMMENT ON TABLE d_calendario IS 'Tabela de calendário com referências de semanas de treino e percentuais de 1RM';
+COMMENT ON COLUMN d_calendario.data_completa IS 'Data completa no formato YYYY-MM-DD';
+COMMENT ON COLUMN d_calendario.semana_treino IS 'Número da semana do protocolo de treino (1, 2, 3, ...)';
+COMMENT ON COLUMN d_calendario.percentual_1rm IS 'Percentual de 1RM a ser usado nesta semana (ex: 75.00%)';
+COMMENT ON COLUMN d_calendario.eh_semana_atual IS 'Indica se esta é a semana atual do treino (apenas uma por vez)';
+COMMENT ON COLUMN d_calendario.eh_semana_ativa IS 'Indica se a semana está ativa para treino';
 
 -- Verificar se a tabela foi criada corretamente
 SELECT 

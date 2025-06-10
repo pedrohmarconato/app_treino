@@ -33,6 +33,25 @@ export function renderTemplate(templateName, container = 'app') {
             case 'login':
                 console.log('[renderTemplate] Renderizando login');
                 containerEl.innerHTML = loginTemplate();
+                
+                // Garantir que a tela de login fique visível
+                // Força o DOM a ser atualizado antes de procurar o elemento
+                containerEl.offsetHeight; // Força reflow
+                const loginScreen = document.getElementById('login-screen');
+                if (loginScreen) {
+                    loginScreen.classList.add('active');
+                    console.log('[renderTemplate] ✅ Classe "active" adicionada à tela login');
+                } else {
+                    console.warn('[renderTemplate] ⚠️ Elemento #login-screen não encontrado');
+                    // Tentar novamente com timeout
+                    setTimeout(() => {
+                        const loginScreenDelayed = document.getElementById('login-screen');
+                        if (loginScreenDelayed) {
+                            loginScreenDelayed.classList.add('active');
+                            console.log('[renderTemplate] ✅ Classe "active" adicionada à tela login (com delay)');
+                        }
+                    }, 10);
+                }
                 break;
                 
             case 'home':
@@ -47,12 +66,24 @@ export function renderTemplate(templateName, container = 'app') {
                     console.log('[renderTemplate] ✅ HTML inserido no container');
                     
                     // CORREÇÃO: Garantir que a tela home fique visível
+                    // Força o DOM a ser atualizado antes de procurar o elemento
+                    containerEl.offsetHeight; // Força reflow
                     const homeScreen = document.getElementById('home-screen');
                     if (homeScreen) {
                         homeScreen.classList.add('active');
                         console.log('[renderTemplate] ✅ Classe "active" adicionada à tela home');
                     } else {
                         console.warn('[renderTemplate] ⚠️ Elemento #home-screen não encontrado');
+                        // Debug: listar todos os elementos disponíveis
+                        console.log('[renderTemplate] 🔍 Elementos disponíveis:', document.querySelectorAll('[id*="screen"]'));
+                        // Tentar novamente com timeout
+                        setTimeout(() => {
+                            const homeScreenDelayed = document.getElementById('home-screen');
+                            if (homeScreenDelayed) {
+                                homeScreenDelayed.classList.add('active');
+                                console.log('[renderTemplate] ✅ Classe "active" adicionada à tela home (com delay)');
+                            }
+                        }, 10);
                     }
                     
                     // Inicializar componentes da home
@@ -71,12 +102,22 @@ export function renderTemplate(templateName, container = 'app') {
                 containerEl.innerHTML = workoutTemplate();
                 
                 // CORREÇÃO: Garantir que a tela workout fique visível
+                // Força o DOM a ser atualizado antes de procurar o elemento
+                containerEl.offsetHeight; // Força reflow
                 const workoutScreen = document.getElementById('workout-screen');
                 if (workoutScreen) {
                     workoutScreen.classList.add('active');
                     console.log('[renderTemplate] ✅ Classe "active" adicionada à tela workout');
                 } else {
                     console.warn('[renderTemplate] ⚠️ Elemento #workout-screen não encontrado');
+                    // Tentar novamente com timeout
+                    setTimeout(() => {
+                        const workoutScreenDelayed = document.getElementById('workout-screen');
+                        if (workoutScreenDelayed) {
+                            workoutScreenDelayed.classList.add('active');
+                            console.log('[renderTemplate] ✅ Classe "active" adicionada à tela workout (com delay)');
+                        }
+                    }, 10);
                 }
                 break;
                 
@@ -388,18 +429,50 @@ export function injectTemplateStyles() {
 
 // Função para inicializar o sistema de templates
 export function initTemplates() {
-    console.log('[initTemplates] Inicializando sistema de templates...');
+    console.log('[initTemplates] 🚀 Inicializando sistema de templates...');
     
-    // Injeta os estilos dos templates
-    injectTemplateStyles();
+    // Diagnóstico
+    console.log('[initTemplates] 🔍 Diagnóstico:');
+    console.log('  - loginTemplate:', !!loginTemplate);
+    console.log('  - homeTemplate:', !!homeTemplate);
+    console.log('  - workoutTemplate:', !!workoutTemplate);
+    console.log('  - document.getElementById("app"):', !!document.getElementById('app'));
     
-    // Renderiza a tela inicial (login)
-    renderTemplate('login');
-    
-    // Configurar limpeza de componentes ao navegar
-    setupComponentCleanup();
-    
-    console.log('[initTemplates] ✅ Sistema de templates inicializado');
+    try {
+        // Injeta os estilos dos templates
+        console.log('[initTemplates] 🎨 Injetando estilos...');
+        injectTemplateStyles();
+        console.log('[initTemplates] ✅ Estilos injetados');
+        
+        // Renderiza a tela inicial (login)
+        console.log('[initTemplates] 🔑 Renderizando login inicial...');
+        renderTemplate('login');
+        console.log('[initTemplates] ✅ Login renderizado');
+        
+        // Configurar limpeza de componentes ao navegar
+        console.log('[initTemplates] 🧹 Configurando limpeza de componentes...');
+        setupComponentCleanup();
+        console.log('[initTemplates] ✅ Limpeza configurada');
+        
+        console.log('[initTemplates] 🎉 Sistema de templates inicializado com sucesso');
+        
+    } catch (error) {
+        console.error('[initTemplates] ❌ Erro ao inicializar templates:', error);
+        console.error('[initTemplates] Stack trace:', error.stack);
+        
+        // Fallback: renderizar algo básico
+        const app = document.getElementById('app');
+        if (app) {
+            app.innerHTML = `
+                <div style="padding: 20px; color: white; background: #333; min-height: 100vh;">
+                    <h1>Erro no Sistema de Templates</h1>
+                    <p><strong>Erro:</strong> ${error.message}</p>
+                    <p>O sistema não conseguiu inicializar os templates.</p>
+                    <button onclick="location.reload()" style="padding: 10px; margin-top: 10px;">Recarregar Página</button>
+                </div>
+            `;
+        }
+    }
 }
 
 // Configurar limpeza de componentes

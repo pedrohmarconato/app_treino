@@ -1,6 +1,6 @@
 // Template da tela de login
 export const loginTemplate = () => `
-    <div id="login-screen" class="screen active">
+    <div id="login-screen" class="screen">
         <div class="login-container">
             <div class="login-header">
                 <h1>Cyclo</h1>

@@ -1,5 +1,5 @@
--- Script para popular a tabela D_calendario com dados
--- Execute após criar a tabela D_calendario
+-- Script para popular a tabela d_calendario com dados
+-- Execute após criar a tabela d_calendario
 
 -- Inserir dados para o ano de 2025 (pode ajustar conforme necessário)
 WITH calendario_dados AS (
@@ -19,7 +19,7 @@ WITH calendario_dados AS (
     '1 day'::interval
   ) as date_serie
 )
-INSERT INTO D_calendario (
+INSERT INTO d_calendario (
   data_completa, 
   ano, 
   mes, 
@@ -40,10 +40,10 @@ FROM calendario_dados
 ON CONFLICT (data_completa) DO NOTHING;
 
 -- Verificar quantos registros foram inseridos
-SELECT COUNT(*) as total_registros_calendario FROM D_calendario;
+SELECT COUNT(*) as total_registros_calendario FROM d_calendario;
 
 -- Mostrar algumas amostras
-SELECT * FROM D_calendario 
+SELECT * FROM d_calendario 
 WHERE data_completa BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
 ORDER BY data_completa;
 

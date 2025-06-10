@@ -2,12 +2,12 @@
 // Versão corrigida que fecha o modal adequadamente
 
 import AppState from '../state/appState.js';
-import WeeklyPlanService, { 
-    verificarSemanaJaProgramada, 
-    obterSemanaAtivaUsuario, 
-    marcarSemanaProgramada,
-    carregarStatusSemanas 
-} from '../services/weeklyPlanningService.js';
+// Import removido para compatibilidade com browser tradicional
+// Use window.WeeklyPlanService.metodo() para acessar métodos
+// Se precisar de funções globais, atribua manualmente abaixo
+const obterSemanaAtivaUsuario = window.WeeklyPlanService.obterSemanaAtivaUsuario;
+const verificarSemanaJaProgramada = window.WeeklyPlanService.verificarSemanaJaProgramada;
+const marcarSemanaProgramada = window.WeeklyPlanService.marcarSemanaProgramada;
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 import { fetchTiposTreinoMuscular, fetchProtocoloAtivoUsuario } from '../services/userService.js';
 import { query } from '../services/supabaseService.js';
@@ -254,7 +254,17 @@ function forcarFechamentoModal() {
             console.log('[forcarFechamentoModal] Modal modal-planejamento fechado');
         }
         
-        // Método 3: Buscar por classe
+        // Método 3: Fechar seletor de treino se estiver aberto
+        const seletorPopup = document.getElementById('seletorTreinoPopup');
+        if (seletorPopup) {
+            seletorPopup.style.display = 'none';
+            seletorPopup.style.visibility = 'hidden';
+            seletorPopup.style.opacity = '0';
+            seletorPopup.style.zIndex = '';
+            console.log('[forcarFechamentoModal] Popup seletor de treino fechado');
+        }
+        
+        // Método 4: Buscar por classe
         const modals = document.querySelectorAll('.modal-overlay, .planning-page-container, .modal');
         modals.forEach((modal, index) => {
             modal.style.display = 'none';
@@ -264,11 +274,31 @@ function forcarFechamentoModal() {
             console.log(`[forcarFechamentoModal] Modal ${index + 1} por classe fechado`);
         });
         
-        // Método 4: Remover overlay do body
+        // Método 5: Remover overlay do body e restaurar scroll
         document.body.style.overflow = '';
         document.body.classList.remove('modal-open');
         
-        // Método 5: Remover elementos dinâmicos
+        // Método 6: Limpar variáveis de estado do planejamento
+        nomeDiaAtual = '';
+        
+        // Método 7: Restaurar estado de botões que podem ter ficado desabilitados
+        const botoesParaHabilitar = document.querySelectorAll(
+            '.btn-primary, .save-btn, #confirm-plan-btn, .planning-btn, .action-btn'
+        );
+        botoesParaHabilitar.forEach(btn => {
+            if (btn.hasAttribute('data-disabled-by-modal')) {
+                btn.disabled = false;
+                btn.removeAttribute('data-disabled-by-modal');
+                console.log('[forcarFechamentoModal] Botão habilitado:', btn.className);
+            }
+        });
+        
+        // Método 8: Limpar cache de validação
+        if (validarPlanejamento._cachedElements) {
+            validarPlanejamento._cachedElements = null;
+        }
+        
+        // Método 9: Remover elementos dinâmicos
         const dynamicModals = document.querySelectorAll('[id*="modal"], [id*="Modal"], [class*="modal"]');
         dynamicModals.forEach((el, index) => {
             if (el.style.position === 'fixed' || el.style.position === 'absolute') {
@@ -433,6 +463,8 @@ function validarPlanejamento() {
         // No modo edição, não precisamos do botão salvar tradicional
         if (btnSalvar) {
             btnSalvar.style.display = 'none';
+            // Mas garantir que outros botões não sejam afetados
+            btnSalvar.removeAttribute('data-disabled-by-modal');
         }
         
         return true;
@@ -714,6 +746,8 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
 
 // Fechar seletor de treino
 window.fecharSeletorTreino = function() {
+    console.log('[fecharSeletorTreino] Fechando popup de seleção...');
+    
     const popup = document.getElementById('seletorTreinoPopup');
     if (popup) {
         popup.style.display = 'none';
@@ -723,7 +757,31 @@ window.fecharSeletorTreino = function() {
         document.body.style.overflow = '';
         console.log('[fecharSeletorTreino] Popup fechado');
     }
+    
+    // Limpar estado
     nomeDiaAtual = '';
+    
+    // Restaurar botões que podem ter ficado desabilitados
+    const botoesParaHabilitar = document.querySelectorAll(
+        'button[onclick*="abrirSeletorTreino"], .day-card button, .empty-slot, .treino-assigned button'
+    );
+    botoesParaHabilitar.forEach(btn => {
+        if (btn.disabled) {
+            btn.disabled = false;
+            console.log('[fecharSeletorTreino] Botão reabilitado:', btn.textContent || btn.className);
+        }
+    });
+    
+    // Remover event listeners temporários se houver
+    const options = document.querySelectorAll('.treino-option');
+    options.forEach(option => {
+        const newOption = option.cloneNode(true);
+        if (option.parentNode) {
+            option.parentNode.replaceChild(newOption, option);
+        }
+    });
+    
+    console.log('[fecharSeletorTreino] Estado limpo e botões restaurados');
 };
 
 // Criar opção de treino
@@ -836,11 +894,12 @@ async function selecionarTreinoParaDia(treino, dia) {
         categoria: treino.categoria
     };
     
-    console.log('[selecionarTreinoParaDia] Treino adicionado:', {
-        dia,
-        treino: planejamentoAtual[dia],
-        planejamentoCompleto: planejamentoAtual
-    });
+    console.log('[selecionarTreinoParaDia] 🎯 TREINO ADICIONADO:');
+    console.log('[selecionarTreinoParaDia] Dia:', dia, typeof dia);
+    console.log('[selecionarTreinoParaDia] Treino:', planejamentoAtual[dia]);
+    console.log('[selecionarTreinoParaDia] Planejamento completo atual:', planejamentoAtual);
+    console.log('[selecionarTreinoParaDia] Object.keys(planejamentoAtual):', Object.keys(planejamentoAtual));
+    console.log('[selecionarTreinoParaDia] Total de dias planejados:', Object.keys(planejamentoAtual).length);
     
     atualizarVisualizacaoDia(dia, treino);
     fecharSeletorTreino();
@@ -950,16 +1009,33 @@ export async function salvarPlanejamentoSemanal() {
             'quinta': 4, 'sexta': 5, 'sabado': 6
         };
 
+        console.log('[salvarPlanejamentoSemanal] 🔍 DEBUG ANTES DE PROCESSAR:');
+        console.log('[salvarPlanejamentoSemanal] planejamentoAtual:', planejamentoAtual);
+        console.log('[salvarPlanejamentoSemanal] Object.keys(planejamentoAtual):', Object.keys(planejamentoAtual));
+        console.log('[salvarPlanejamentoSemanal] Object.entries(planejamentoAtual):', Object.entries(planejamentoAtual));
+
         // Montar objeto indexado para Supabase com validação de numero_treino
         const planejamentoParaSupabase = {};
         for (let dia = 0; dia < 7; dia++) {
             let treino = null;
-            // Procurar o treino correspondente ao dia
-            for (const [diaKey, t] of Object.entries(planejamentoAtual)) {
-                if (diasMap[diaKey] === dia) {
-                    treino = t;
-                    break;
+            
+            // PRIMEIRO: Tentar busca direta por índice numérico
+            if (planejamentoAtual[dia]) {
+                treino = planejamentoAtual[dia];
+                console.log(`[salvarPlanejamentoSemanal] 🎯 DIA ${dia} - Encontrado por índice direto:`, treino);
+            } else {
+                // SEGUNDO: Procurar o treino correspondente ao dia via diasMap
+                for (const [diaKey, t] of Object.entries(planejamentoAtual)) {
+                    if (diasMap[diaKey] === dia) {
+                        treino = t;
+                        console.log(`[salvarPlanejamentoSemanal] 🎯 DIA ${dia} - Encontrado via mapeamento (${diaKey}):`, treino);
+                        break;
+                    }
                 }
+            }
+            
+            if (!treino) {
+                console.log(`[salvarPlanejamentoSemanal] ⚠️ DIA ${dia} - Nenhum treino definido`);
             }
             
             // Validar numero_treino para treinos musculares
@@ -991,7 +1067,17 @@ export async function salvarPlanejamentoSemanal() {
                 };
             }
         }
+        
+        // VERIFICAÇÃO CRÍTICA: Se não há dados para salvar
+        if (Object.keys(planejamentoParaSupabase).length === 0) {
+            console.error('[salvarPlanejamentoSemanal] ❌ ERRO CRÍTICO: Nenhum dia foi planejado!');
+            console.error('[salvarPlanejamentoSemanal] planejamentoAtual estava vazio:', planejamentoAtual);
+            showNotification('❌ Erro: Nenhum treino foi configurado para salvar!', 'error');
+            return;
+        }
+        
         console.log('[salvarPlanejamentoSemanal] 🚀 OBJETO COMPLETO PARA SUPABASE:', planejamentoParaSupabase);
+        console.log('[salvarPlanejamentoSemanal] 📊 QUANTIDADE DE DIAS A SALVAR:', Object.keys(planejamentoParaSupabase).length);
         
         // Log detalhado de cada dia
         Object.entries(planejamentoParaSupabase).forEach(([dia, config]) => {
@@ -1033,11 +1119,15 @@ export async function salvarPlanejamentoSemanal() {
 
         // Atualiza estado global para disparar atualização automática da interface
         AppState.set('weekPlan', planejamentoParaSupabase);
+        AppState.set('planSaved', { timestamp: Date.now(), userId });
         
         // Forçar atualização imediata dos indicadores na home
         setTimeout(() => {
             if (window.carregarIndicadoresSemana) {
                 window.carregarIndicadoresSemana();
+            }
+            if (window.carregarDashboard) {
+                window.carregarDashboard();
             }
         }, 100);
         

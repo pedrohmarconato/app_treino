@@ -1,6 +1,7 @@
 // services/homeService.js - Serviço para carregar dados da home
 import { query } from './supabaseService.js';
 import { showNotification } from '../ui/notifications.js';
+import { obterSemanaAtivaUsuario } from './weeklyPlanningService.js';
 
 // Carregar todos os dados necessários para a home
 export async function carregarDadosHome(userId) {
@@ -9,28 +10,32 @@ export async function carregarDadosHome(userId) {
         
         // 1. Dados do usuário
         console.log('[carregarDadosHome] 1. Buscando dados do usuário...');
-        const { data: usuario } = await query('usuarios', {
+        const { data: usuarios } = await query('usuarios', {
             eq: { id: userId },
-            single: true
+            limit: 1
         });
+        const usuario = usuarios && usuarios.length > 0 ? usuarios[0] : null;
         console.log('[carregarDadosHome] ✅ Usuário:', usuario);
         
         // 2. Semana ativa do usuário
         console.log('[carregarDadosHome] 2. Buscando semana ativa...');
-        const { data: semanaAtivaData } = await query('obter_semana_ativa_usuario', {
-            rpc: { p_usuario_id: userId }
-        });
-        const semanaAtiva = semanaAtivaData && semanaAtivaData[0] ? semanaAtivaData[0] : null;
+        const semanaAtiva = await obterSemanaAtivaUsuario(userId);
         console.log('[carregarDadosHome] ✅ Semana ativa:', semanaAtiva);
         
         // 3. Planejamento da semana atual
         console.log('[carregarDadosHome] 3. Buscando planejamento da semana...');
         let planejamento = [];
         if (semanaAtiva) {
-            const { data: planejamentoData } = await query('v_planejamento_calendario_completo', {
+            // Usar query direta na tabela planejamento_semanal
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const semana = Math.ceil((((hoje - new Date(ano, 0, 1)) / 86400000) + 1) / 7);
+            
+            const { data: planejamentoData } = await query('planejamento_semanal', {
                 eq: { 
                     usuario_id: userId,
-                    semana_treino: semanaAtiva.semana_treino
+                    ano: ano,
+                    semana: semana
                 },
                 order: { column: 'dia_semana', ascending: true }
             });
@@ -39,23 +44,18 @@ export async function carregarDadosHome(userId) {
         console.log('[carregarDadosHome] ✅ Planejamento:', planejamento);
         
         // 4. Estatísticas de treinos
-        console.log('[carregarDadosHome] 4. Buscando estatísticas...');
-        let estatisticas = null;
-        try {
-            const { data: estatisticasData } = await query('v_estatisticas_usuarios', {
-                eq: { usuario_id: userId },
-                single: true
-            });
-            estatisticas = estatisticasData;
-        } catch (error) {
-            console.warn('[carregarDadosHome] Erro ao buscar estatísticas (tabela pode não existir):', error.message);
-            // Fallback: criar estatísticas básicas baseadas no planejamento
-            estatisticas = {
-                total_treinos_realizados: 0,
-                total_treinos_planejados: planejamento.length,
-                percentual_conclusao: 0
-            };
-        }
+        console.log('[carregarDadosHome] 4. Calculando estatísticas...');
+        // Calcular estatísticas baseadas no planejamento
+        const treinosConcluidos = planejamento.filter(p => p.concluido).length;
+        const treinosPlanejados = planejamento.length;
+        const percentualConclusao = treinosPlanejados > 0 ? 
+            Math.round((treinosConcluidos / treinosPlanejados) * 100) : 0;
+            
+        const estatisticas = {
+            total_treinos_realizados: treinosConcluidos,
+            total_treinos_planejados: treinosPlanejados,
+            percentual_conclusao: percentualConclusao
+        };
         console.log('[carregarDadosHome] ✅ Estatísticas:', estatisticas);
         
         // 5. Buscar treino do dia atual

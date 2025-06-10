@@ -57,6 +57,84 @@ export default function OrderWeekPageTemplate(semanaAtual) {
   `;
 }
 
+// Função utilitária para garantir tipo_atividade válido
+function mapTipoAtividade(tipo) {
+  if (!tipo) return 'treino';
+  const t = tipo.trim().toLowerCase();
+  if (t === 'cardio') return 'cardio';
+  if (t === 'folga') return 'folga';
+  return 'treino';
+}
+
+// Função para salvar a ordem dos dias na semana usando apenas dia_semana
+import { update } from '../services/supabaseService.js';
+
+export async function salvarOrdemSemana(usuarioId, ano, semana, novaOrdemArray) {
+  // novaOrdemArray: [{ dia_semana: 1, tipo, grupo, ... }, ...]
+  // 1. Verificar se já existem registros para o usuário/ano/semana
+  const { data: existentes } = await query('planejamento_semanal', {
+    eq: { usuario_id: usuarioId, ano, semana }
+  });
+
+  if (!existentes || existentes.length === 0) {
+    // 2. Não existem registros: fazer INSERT para cada dia
+    // Buscar dados complementares na d_calendario para esta semana
+    const { data: calendarioSemana } = await query('d_calendario', {
+      eq: { ano, semana_ano: semana }
+    });
+    if (!calendarioSemana || calendarioSemana.length === 0) {
+      throw new Error('Semana não encontrada no calendário.');
+    }
+    // Montar os inserts
+    const registros = novaOrdemArray.map((item, idx) => {
+      const dia_semana = idx + 1;
+      const infoDia = calendarioSemana.find(c => c.dia_semana === dia_semana);
+      // Garantir que tipo_atividade é válido
+      // Usar função utilitária para garantir valor válido
+      const tipo_atividade = mapTipoAtividade(item.tipo);
+      return {
+        usuario_id: usuarioId,
+        ano,
+        semana,
+        dia_semana,
+        tipo_atividade,
+        grupo_muscular: item.grupo || (tipo_atividade === 'cardio' ? 'Cardio' : tipo_atividade === 'folga' ? 'Folga' : null),
+        numero_treino: item.numero_treino || null,
+        concluido: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        calendario_id: infoDia ? infoDia.id : null,
+        semana_treino: infoDia ? infoDia.semana_treino : null,
+        eh_programado: true,
+        data_programacao: new Date().toISOString(),
+        usuario_que_programou: usuarioId
+      };
+    });
+    await insert('planejamento_semanal', registros);
+  } else {
+    // 3. Já existem registros: fazer UPDATE da ordem
+    for (let idx = 0; idx < novaOrdemArray.length; idx++) {
+      const item = novaOrdemArray[idx];
+      const novoDiaSemana = idx + 1; // 1-7
+      if (item.dia_semana !== novoDiaSemana) {
+        await update('planejamento_semanal',
+          { dia_semana: novoDiaSemana },
+          {
+            eq: {
+              usuario_id: usuarioId,
+              ano,
+              semana,
+              dia_semana: item.dia_semana
+            }
+          }
+        );
+      }
+    }
+  }
+}
+
+
+
 // Estilos podem ser exportados separadamente se necessário, ou mantidos em styles.css
 export const orderWeekStyles = `
   .order-week-page {

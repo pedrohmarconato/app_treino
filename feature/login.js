@@ -4,7 +4,8 @@
 import AppState from '../state/appState.js';
 import { fetchUsuarios, fetchProtocoloAtivoUsuario } from '../services/userService.js';
 import { fetchProximoTreino } from '../services/workoutService.js';
-import WeeklyPlanService from '../services/weeklyPlanningService.js';
+// Import removido para compatibilidade com browser tradicional
+// Use window.WeeklyPlanService.metodo() para acessar métodos
 import { needsWeekPlanningAsync } from './planning.js';
 import { showLoading, hideLoading, showNotification } from '../ui/notifications.js';
 import { mostrarTela, adicionarBotaoOrdemSemana } from '../ui/navigation.js';

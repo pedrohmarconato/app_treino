@@ -5,6 +5,10 @@ import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
 import { initializeProtocol } from '../integration/protocolIntegration.js';
 import { integrationService } from '../services/integrationService.js';
+// Importar funções de localStorage para disponibilizar globalmente
+import '../utils/weekPlanStorage.js';
+// Importar weeklyPlanningService para disponibilizar WeeklyPlanService globalmente
+import '../services/weeklyPlanningService.js';
 
 // Verificar dependências críticas
 function checkDependencies() {
@@ -27,31 +31,76 @@ function checkDependencies() {
 
 // Inicializar aplicação
 async function initApp() {
+    console.log('[initApp] 🚀 INICIANDO APLICAÇÃO...');
+    
     if (!checkDependencies()) {
         console.error('❌ Falha na verificação de dependências');
+        // FALLBACK: Tentar renderizar algo básico mesmo assim
+        const app = document.getElementById('app');
+        if (app) {
+            app.innerHTML = `
+                <div style="padding: 20px; color: white; background: #ff0000;">
+                    <h1>ERRO: Dependências não carregadas</h1>
+                    <p>Verifique se o Supabase está configurado corretamente.</p>
+                </div>
+            `;
+        }
         return;
     }
     
     try {
+        console.log('[initApp] ✅ Dependências verificadas');
+        
         // 1. Configurar funções globais
+        console.log('[initApp] 🔧 Configurando funções globais...');
         setupGlobalFunctions();
+        console.log('[initApp] ✅ Funções globais configuradas');
         
         // 2. Inicializar protocolo
+        console.log('[initApp] 🔄 Inicializando protocolo...');
         await initializeProtocol();
+        console.log('[initApp] ✅ Protocolo inicializado');
         
         // 3. Iniciar na tela de login
+        console.log('[initApp] 🔑 Iniciando tela de login...');
         if (window.initLogin) {
             await window.initLogin();
+            console.log('[initApp] ✅ Login inicializado');
         } else {
-            throw new Error('window.initLogin não está definido');
+            console.error('[initApp] ❌ window.initLogin não está definido');
+            // FALLBACK: Renderizar login diretamente
+            if (window.renderTemplate) {
+                console.log('[initApp] 🔄 Tentando renderTemplate login como fallback...');
+                window.renderTemplate('login');
+            } else {
+                throw new Error('Nem window.initLogin nem window.renderTemplate estão definidos');
+            }
         }
         
         // 4. Configurar debug (desenvolvimento)
+        console.log('[initApp] 🔧 Configurando sistema de debug...');
         setupDebugSystem();
+        console.log('[initApp] ✅ Debug configurado');
+        
+        console.log('[initApp] 🎉 APLICAÇÃO INICIALIZADA COM SUCESSO!');
         
     } catch (error) {
         console.error('❌ Erro crítico na inicialização:', error);
-        showNotification('Erro crítico ao iniciar aplicação', 'error');
+        console.error('Stack trace:', error.stack);
+        showNotification('Erro crítico ao iniciar aplicação: ' + error.message, 'error');
+        
+        // FALLBACK: Tentar renderizar tela de erro
+        const app = document.getElementById('app');
+        if (app) {
+            app.innerHTML = `
+                <div style="padding: 20px; color: white; background: #333;">
+                    <h1>Erro na Inicialização</h1>
+                    <p><strong>Erro:</strong> ${error.message}</p>
+                    <p>Verifique o console para mais detalhes.</p>
+                    <button onclick="location.reload()" style="padding: 10px; margin-top: 10px;">Recarregar Página</button>
+                </div>
+            `;
+        }
     }
 }
 
@@ -227,21 +276,14 @@ function setupGlobalFunctions() {
             console.log('[app.js] Treino atual no estado:', currentWorkout);
             
             if (!currentWorkout) {
-                console.log('[app.js] ❌ Nenhum treino configurado, abrindo planejamento...');
-                if (window.abrirPlanejamentoParaUsuarioAtual) {
-                    window.abrirPlanejamentoParaUsuarioAtual();
-                } else {
-                    showNotification('Configure seu planejamento primeiro', 'warning');
-                }
+                console.log('[app.js] ❌ Nenhum treino configurado.');
+                showNotification('Nenhum treino configurado para hoje. Configure seu planejamento primeiro.', 'warning');
                 return;
             }
             
             // Verificar tipo de treino
             
-            if (currentWorkout.tipo === 'cardio' || currentWorkout.tipo === 'Cardio') {
-                showNotification('Treino de cardio! 🏃‍♂️ Configure seu equipamento.', 'info');
-                return;
-            }
+
             
             console.log('[app.js] Carregando workoutExecutionManager...');
             const { workoutExecutionManager } = await import('../feature/workoutExecution.js');
@@ -427,11 +469,18 @@ function setupDebugSystem() {
 
 // Event listeners principais
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('[app.js] 📄 DOM carregado');
+    console.log('[app.js] 📄 DOM carregado, iniciando diagnóstico...');
+    
+    // Diagnóstico inicial
+    console.log('[app.js] 🔍 Diagnóstico:');
+    console.log('  - window.renderTemplate:', !!window.renderTemplate);
+    console.log('  - window.SUPABASE_CONFIG:', !!window.SUPABASE_CONFIG);
+    console.log('  - window.supabase:', !!window.supabase);
+    console.log('  - document.getElementById("app"):', !!document.getElementById('app'));
     
     // Aguardar templates carregarem
     const initTimeout = setTimeout(() => {
-        console.log('[app.js] ⏰ Iniciando após timeout...');
+        console.log('[app.js] ⏰ Iniciando após timeout de 300ms...');
         initApp();
     }, 300);
     
@@ -440,6 +489,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(initTimeout);
         console.log('[app.js] ⚡ Templates já carregados, iniciando imediatamente');
         initApp();
+    } else {
+        console.log('[app.js] ⏳ Templates não carregados ainda, aguardando timeout...');
     }
 });
 
@@ -587,6 +638,44 @@ function addGlobalStyles() {
     
     document.head.appendChild(style);
 }
+
+// === INTEGRAÇÃO: Salvar Ordem Semana ===
+import { salvarOrdemSemana } from '../templates/OrderWeekPage.js';
+
+document.addEventListener('click', async (e) => {
+    if (e.target && e.target.id === 'salvar-ordem-semana') {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            showNotification('Usuário não identificado!', 'error');
+            return;
+        }
+        // Assumindo que semana/ano atuais estão no AppState
+        const semana = AppState.get('semanaAtual');
+        const ano = AppState.get('anoAtual');
+        if (!semana || !ano) {
+            showNotification('Semana/ano atuais não encontrados!', 'error');
+            return;
+        }
+        // Coletar ordem atual dos itens do DOM
+        const ul = document.getElementById('semana-list-ul');
+        if (!ul) {
+            showNotification('Lista de dias da semana não encontrada!', 'error');
+            return;
+        }
+        const novaOrdemArray = Array.from(ul.children).map((li, idx) => {
+            // Supondo que cada li tem data-index e data-dia_semana original
+            const originalDiaSemana = parseInt(li.getAttribute('data-dia_semana')) || (idx + 1);
+            return { dia_semana: originalDiaSemana };
+        });
+        try {
+            await salvarOrdemSemana(currentUser.id, ano, semana, novaOrdemArray);
+            showNotification('Ordem dos treinos salva com sucesso!', 'success');
+        } catch (err) {
+            showNotification('Erro ao salvar ordem dos treinos', 'error');
+            console.error(err);
+        }
+    }
+});
 
 // Inicializar estilos quando o DOM carregar
 document.addEventListener('DOMContentLoaded', addGlobalStyles);

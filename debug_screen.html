@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Teste de Telas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #101010;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .screen {
+            display: none;
+            min-height: 100vh;
+            background: #181818;
+            padding: 20px;
+            border: 2px solid #333;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        .debug-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        button {
+            margin: 5px;
+            padding: 10px;
+            background: #CFFF04;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            text-align: center;
+        }
+        
+        .home-container {
+            max-width: 800px;
+            margin: 50px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-controls">
+        <button onclick="showLogin()">Login</button>
+        <button onclick="showHome()">Home</button>
+        <button onclick="clearAll()">Clear All</button>
+        <div>Status: <span id="status">-</span></div>
+    </div>
+
+    <div id="app">
+        <!-- Conteúdo será inserido aqui -->
+    </div>
+
+    <script>
+        function updateStatus(msg) {
+            document.getElementById('status').textContent = msg;
+            console.log('[DEBUG]', msg);
+        }
+
+        function clearAll() {
+            const app = document.getElementById('app');
+            app.innerHTML = '';
+            updateStatus('Cleared');
+        }
+
+        function showLogin() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div id="login-screen" class="screen">
+                    <div class="login-container">
+                        <h1>Login Screen</h1>
+                        <p>Teste da tela de login</p>
+                        <button onclick="showHome()">Ir para Home</button>
+                    </div>
+                </div>
+            `;
+            
+            // Limpar outras classes active
+            document.querySelectorAll('.screen.active').forEach(s => s.classList.remove('active'));
+            
+            // Forçar reflow
+            app.offsetHeight;
+            
+            // Adicionar classe active
+            const loginScreen = document.getElementById('login-screen');
+            if (loginScreen) {
+                loginScreen.classList.add('active');
+                updateStatus('Login mostrado');
+            } else {
+                updateStatus('ERRO: Login screen não encontrado');
+            }
+        }
+
+        function showHome() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div id="home-screen" class="screen">
+                    <div class="home-container">
+                        <h1>Home Screen</h1>
+                        <p>Teste da tela home</p>
+                        <div style="background: #333; padding: 20px; margin: 20px 0; border-radius: 5px;">
+                            <h3>Treino do Dia</h3>
+                            <p>Peito - 5 exercícios</p>
+                        </div>
+                        <button onclick="showLogin()">Voltar para Login</button>
+                    </div>
+                </div>
+            `;
+            
+            // Limpar outras classes active
+            document.querySelectorAll('.screen.active').forEach(s => s.classList.remove('active'));
+            
+            // Forçar reflow
+            app.offsetHeight;
+            
+            // Adicionar classe active
+            const homeScreen = document.getElementById('home-screen');
+            if (homeScreen) {
+                homeScreen.classList.add('active');
+                updateStatus('Home mostrado');
+            } else {
+                updateStatus('ERRO: Home screen não encontrado');
+            }
+        }
+
+        // Inicializar com login
+        window.addEventListener('DOMContentLoaded', () => {
+            updateStatus('DOM carregado');
+            showLogin();
+        });
+    </script>
+</body>
+</html>

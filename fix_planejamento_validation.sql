@@ -71,7 +71,7 @@ BEGIN
     LOOP
         -- Buscar calendário correspondente
         SELECT cal.id INTO cal_id
-        FROM D_calendario cal 
+        FROM d_calendario cal 
         WHERE cal.ano = reg.ano 
           AND cal.semana_ano = reg.semana 
           AND cal.dia_semana = reg.dia_semana

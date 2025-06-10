@@ -2,7 +2,8 @@
 // Serviço para gerenciar treinos e exercícios
 
 import { query, insert, update } from './supabaseService.js';
-import WeeklyPlanService from './weeklyPlanningService.js';
+// import removido para compatibilidade com browser tradicional
+// Utilize window.WeeklyPlanService diretamente quando necessário
 
 // Buscar próximo treino do usuário
 export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {

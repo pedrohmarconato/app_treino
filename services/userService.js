@@ -58,11 +58,11 @@ export async function fetch1RMUsuario(userId, exercicioId) {
             status: 'ativo'
         },
         order: { column: 'data_teste', ascending: false },
-        limit: 1,
-        single: true
+        limit: 1
     });
     
-    return data ? data.rm_calculado : null;
+    // Return the most recent 1RM value or null if no data exists
+    return data && data.length > 0 ? data[0].rm_calculado : null;
 }
 
 // Buscar métricas do usuário

@@ -6,8 +6,9 @@ import { showNotification } from '../ui/notifications.js';
 
 // Mapear tipos de treino para emojis
 const TREINO_EMOJIS = {
-    'Peito': '💪', 'Costas': '🔙', 'Pernas': '🦵', 'Ombro': '🎯',
-    'Ombro e Braço': '💪', 'Braço': '💪', 'Cardio': '🏃', 'folga': '😴',
+    'Peito': '💪', 'Costas': '🔙', 'Pernas': '🦵', 
+    'Ombro e Braço': '🎯', 'Ombro': '🎯', 'Braço': '🎯', 
+    'Cardio': '🏃', 'cardio': '🏃', 'folga': '😴',
     'A': '💪', 'B': '🔙', 'C': '🦵', 'D': '🎯'
 };
 
@@ -32,6 +33,7 @@ export async function carregarDashboard() {
             carregarTreinoAtual(),
             carregarMetricasUsuario(),
             carregarPlanejamentoSemanal()
+            // preCarregarExerciciosTreino() - DESABILITADO: usando implementação unificada
         ]);
 
         configurarBotaoIniciar();
@@ -50,7 +52,21 @@ export async function carregarDashboard() {
 async function carregarIndicadoresSemana() {
     try {
         const currentUser = AppState.get('currentUser');
-        const weekPlan = getWeekPlan(currentUser.id) || AppState.get('weekPlan');
+        
+        // Primeiro tenta buscar do WeeklyPlanningService (database)
+        let weekPlan = null;
+        if (window.WeeklyPlanService) {
+            try {
+                weekPlan = await window.WeeklyPlanService.getActiveWeeklyPlan(currentUser.id);
+            } catch (error) {
+                console.warn('[carregarIndicadoresSemana] Erro ao buscar do database:', error);
+            }
+        }
+        
+        // Fallback para localStorage e AppState
+        if (!weekPlan) {
+            weekPlan = getWeekPlan(currentUser.id) || AppState.get('weekPlan');
+        }
         
         const container = document.getElementById('week-indicators');
         if (!container) return;
@@ -68,6 +84,9 @@ async function carregarIndicadoresSemana() {
             
             if (diaPlan) {
                 dayType = formatarTipoDia(diaPlan);
+                // Adicionar emoji baseado no tipo
+                const emoji = TREINO_EMOJIS[dayType] || TREINO_EMOJIS[diaPlan.tipo] || '🏋️';
+                dayType = `${emoji} ${dayType}`;
             }
             
             if (isToday) dayClass += ' today';
@@ -93,7 +112,21 @@ async function carregarIndicadoresSemana() {
 async function carregarTreinoAtual() {
     try {
         const currentUser = AppState.get('currentUser');
-        const weekPlan = getWeekPlan(currentUser.id) || AppState.get('weekPlan');
+        
+        // Primeiro tenta buscar do WeeklyPlanningService (database)
+        let weekPlan = null;
+        if (window.WeeklyPlanService) {
+            try {
+                weekPlan = await window.WeeklyPlanService.getActiveWeeklyPlan(currentUser.id);
+            } catch (error) {
+                console.warn('[carregarTreinoAtual] Erro ao buscar do database:', error);
+            }
+        }
+        
+        // Fallback para localStorage e AppState
+        if (!weekPlan) {
+            weekPlan = getWeekPlan(currentUser.id) || AppState.get('weekPlan');
+        }
         const hoje = new Date().getDay();
         
         let treinoDoDia = null;
@@ -101,8 +134,10 @@ async function carregarTreinoAtual() {
         if (weekPlan && weekPlan[hoje]) {
             const planHoje = weekPlan[hoje];
             treinoDoDia = {
-                tipo: typeof planHoje === 'string' ? planHoje : planHoje.tipo,
-                nome: formatarTipoDia(planHoje)
+                tipo: typeof planHoje === 'string' ? planHoje : (planHoje.tipo || planHoje.tipo_atividade),
+                nome: formatarTipoDia(planHoje),
+                numero_treino: planHoje.numero_treino,
+                protocolo_id: planHoje.protocolo_id
             };
         }
         
@@ -136,7 +171,7 @@ function atualizarUITreinoAtual(treino) {
         updateElement(elements.progressText, '0%');
         
         if (elements.progressCircle) {
-            elements.progressCircle.style.strokeDashoffset = '251.2';
+            elements.progressCircle.style.strokeDashoffset = '226.08';
         }
         return;
     }
@@ -175,7 +210,8 @@ function atualizarUITreinoAtual(treino) {
     const progressoSemanal = Math.min((hoje / 7) * 100, 100);
     
             if (elements.progressCircle && treino.tipo !== 'folga') {
-        const offset = 251.2 - (progressoSemanal / 100) * 251.2;
+        const circumference = 226.08; // 2 * PI * radius (36)
+        const offset = circumference - (progressoSemanal / 100) * circumference;
         elements.progressCircle.style.strokeDashoffset = offset.toString();
         
         if (treino.tipo === 'cardio' || treino.tipo === 'Cardio') {
@@ -242,7 +278,21 @@ async function carregarMetricasUsuario() {
 async function carregarPlanejamentoSemanal() {
     try {
         const currentUser = AppState.get('currentUser');
-        const weekPlan = getWeekPlan(currentUser.id) || AppState.get('weekPlan');
+        
+        // Primeiro tenta buscar do WeeklyPlanningService (database)
+        let weekPlan = null;
+        if (window.WeeklyPlanService) {
+            try {
+                weekPlan = await window.WeeklyPlanService.getActiveWeeklyPlan(currentUser.id);
+            } catch (error) {
+                console.warn('[carregarPlanejamentoSemanal] Erro ao buscar do database:', error);
+            }
+        }
+        
+        // Fallback para localStorage e AppState
+        if (!weekPlan) {
+            weekPlan = getWeekPlan(currentUser.id) || AppState.get('weekPlan');
+        }
         
         const container = document.getElementById('weekly-plan-list');
         if (!container) return;
@@ -297,7 +347,7 @@ async function carregarPlanejamentoSemanal() {
 
 // Configurar botão de iniciar treino
 function configurarBotaoIniciar() {
-    const startBtn = document.getElementById('start-workout-btn');
+    const startBtn = document.getElementById('floating-start-workout-btn');
     if (!startBtn) return;
     
     const workout = AppState.get('currentWorkout');
@@ -346,6 +396,13 @@ function configurarEventListeners() {
         carregarPlanejamentoSemanal();
     });
     
+    AppState.subscribe('planSaved', () => {
+        console.log('[dashboard] Novo plano salvo, recarregando dados...');
+        setTimeout(() => {
+            carregarDashboard();
+        }, 500); // Delay para garantir que a base de dados foi atualizada
+    });
+    
     AppState.subscribe('currentUser', (newUser) => {
         if (newUser) {
             console.log('[dashboard] Usuário alterado, recarregando dashboard...');
@@ -384,13 +441,14 @@ function formatarTipoDia(diaPlan) {
     if (typeof diaPlan === 'string') {
         return diaPlan === 'folga' ? 'Folga' :
                diaPlan === 'cardio' ? 'Cardio' :
-               `Treino ${diaPlan}`;
+               diaPlan;
     }
     
-    if (diaPlan && diaPlan.tipo) {
-        return diaPlan.tipo === 'folga' ? 'Folga' :
-               diaPlan.tipo === 'Cardio' ? 'Cardio' :
-               `Treino ${diaPlan.tipo}`;
+    if (diaPlan && (diaPlan.tipo || diaPlan.tipo_atividade)) {
+        const tipo = diaPlan.tipo || diaPlan.tipo_atividade;
+        return tipo === 'folga' ? 'Folga' :
+               tipo.toLowerCase() === 'cardio' ? 'Cardio' :
+               tipo;
     }
     
     return 'Folga';
@@ -433,6 +491,161 @@ export function atualizarMetricasTempoReal(novasMetricas) {
 export function recarregarDashboard() {
     console.log('[recarregarDashboard] Forçando reload completo...');
     carregarDashboard();
+}
+
+// Função para pré-carregar exercícios do treino (em background)
+async function preCarregarExerciciosTreino() {
+    try {
+        console.log('[preCarregarExerciciosTreino] 🏋️‍♂️ INICIANDO carregamento dos exercícios do treino do dia...');
+        
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser) {
+            console.log('[preCarregarExerciciosTreino] ❌ CurrentUser não encontrado');
+            return;
+        }
+        
+        console.log('[preCarregarExerciciosTreino] 👤 Usuário encontrado:', currentUser.id, currentUser.nome);
+
+        // Usar nossa nova função para buscar exercícios do dia atual
+        console.log('[preCarregarExerciciosTreino] 🔍 Verificando WeeklyPlanService:', WeeklyPlanService);
+        console.log('[preCarregarExerciciosTreino] 🔍 Verificando se função existe:', typeof WeeklyPlanService.buscarExerciciosTreinoDia);
+        
+        if (typeof WeeklyPlanService.buscarExerciciosTreinoDia !== 'function') {
+            console.error('[preCarregarExerciciosTreino] ❌ Função buscarExerciciosTreinoDia não encontrada no WeeklyPlanService');
+            mostrarMensagemExercicios('Função de busca não disponível', 'error');
+            return;
+        }
+        
+        console.log('[preCarregarExerciciosTreino] 🚀 Chamando função...');
+        const resultado = await WeeklyPlanService.buscarExerciciosTreinoDia(currentUser.id);
+        
+        console.log('[preCarregarExerciciosTreino] 📊 Resultado da busca:', resultado);
+        
+        if (resultado.error) {
+            console.log('[preCarregarExerciciosTreino] ⚠️', resultado.error);
+            mostrarMensagemExercicios(resultado.error, 'warning');
+            return;
+        }
+        
+        if (resultado.message) {
+            console.log('[preCarregarExerciciosTreino] 📝', resultado.message);
+            mostrarMensagemExercicios(resultado.message, 'info');
+            return;
+        }
+        
+        if (resultado.data && resultado.data.length > 0) {
+            console.log('[preCarregarExerciciosTreino] ✅ Exercícios encontrados:', resultado.data.length);
+            renderizarExercicios(resultado.data, resultado.planejamento);
+            
+            // Cache para uso posterior
+            window._cachedWorkoutData = resultado;
+        } else {
+            mostrarMensagemExercicios('Nenhum exercício encontrado para hoje', 'info');
+        }
+
+    } catch (error) {
+        console.error('[preCarregarExerciciosTreino] ❌ Erro ao carregar exercícios:', error);
+        mostrarMensagemExercicios('Erro ao carregar exercícios', 'error');
+    }
+}
+
+// Renderizar lista de exercícios na interface
+function renderizarExercicios(exercicios, planejamento) {
+    const container = document.getElementById('workout-exercises-list');
+    if (!container) return;
+    
+    const tipoTreino = planejamento?.tipo_atividade || 'Treino';
+    const numeroTreino = planejamento?.numero_treino || '';
+    
+    let html = `
+        <div class="exercises-header">
+            <h4>🏋️‍♂️ ${tipoTreino} ${numeroTreino ? `- Treino ${numeroTreino}` : ''}</h4>
+            <p class="exercises-count">${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div class="exercises-grid">
+    `;
+    
+    exercicios.forEach((exercicio, index) => {
+        html += `
+            <div class="exercise-card" data-exercise-id="${exercicio.id}">
+                <div class="exercise-header">
+                    <div class="exercise-number">${index + 1}</div>
+                    <div class="exercise-info">
+                        <h5 class="exercise-name">${exercicio.nome}</h5>
+                        <p class="exercise-muscle">${exercicio.grupo_muscular}</p>
+                    </div>
+                </div>
+                
+                <div class="exercise-details">
+                    <div class="exercise-sets">
+                        <span class="label">Séries:</span>
+                        <span class="value">${exercicio.series}</span>
+                    </div>
+                    <div class="exercise-reps">
+                        <span class="label">Repetições:</span>
+                        <span class="value">${exercicio.repeticoes}</span>
+                    </div>
+                    <div class="exercise-weight">
+                        <span class="label">Peso:</span>
+                        <span class="value">${exercicio.peso_base}kg</span>
+                        <span class="range">(${exercicio.peso_min}-${exercicio.peso_max}kg)</span>
+                    </div>
+                    <div class="exercise-rest">
+                        <span class="label">Descanso:</span>
+                        <span class="value">${exercicio.tempo_descanso}s</span>
+                    </div>
+                </div>
+                
+                ${exercicio.equipamento ? `
+                    <div class="exercise-equipment">
+                        <span class="equipment-tag">${exercicio.equipamento}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <div class="exercises-footer">
+            <p class="rm-info">💡 Pesos baseados no seu 1RM atual</p>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // Atualizar contagem de exercícios no subtitle
+    const subtitleEl = document.getElementById('workout-exercises');
+    if (subtitleEl) {
+        subtitleEl.textContent = `${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''} programado${exercicios.length !== 1 ? 's' : ''}`;
+    }
+    
+    console.log('[renderizarExercicios] ✅ Exercícios renderizados na interface');
+}
+
+// Mostrar mensagem quando não há exercícios
+function mostrarMensagemExercicios(mensagem, tipo = 'info') {
+    const container = document.getElementById('workout-exercises-list');
+    if (!container) return;
+    
+    const iconMap = {
+        'info': '📝',
+        'warning': '⚠️', 
+        'error': '❌'
+    };
+    
+    container.innerHTML = `
+        <div class="no-exercises-message ${tipo}">
+            <div class="message-icon">${iconMap[tipo] || '📝'}</div>
+            <p class="message-text">${mensagem}</p>
+        </div>
+    `;
+    
+    // Atualizar subtitle
+    const subtitleEl = document.getElementById('workout-exercises');
+    if (subtitleEl) {
+        subtitleEl.textContent = mensagem;
+    }
 }
 
 // Exportar para compatibilidade global

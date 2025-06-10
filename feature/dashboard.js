@@ -1,10 +1,10 @@
 // js/features/dashboard.js - Dashboard completo com dados reais
 import AppState from '../state/appState.js';
+import { obterSemanaAtivaUsuario, carregarStatusSemanas } from '../services/weeklyPlanningService.js';
 import { fetchMetricasUsuario } from '../services/userService.js';
-import WeeklyPlanService, { 
-    carregarStatusSemanas, 
-    obterSemanaAtivaUsuario 
-} from '../services/weeklyPlanningService.js';
+// Import removido para compatibilidade com browser tradicional
+// Use window.WeeklyPlanService.metodo() para acessar métodos
+// Se precisar de funções globais, atribua manualmente abaixo
 import homeService from '../services/homeService.js';
 import { showNotification } from '../ui/notifications.js';
 
@@ -13,10 +13,11 @@ const TREINO_EMOJIS = {
     'Peito': '💪',
     'Costas': '🔙', 
     'Pernas': '🦵',
+    'Ombro e Braço': '🎯',
     'Ombro': '🎯',
-    'Ombro e Braço': '💪',
-    'Braço': '💪',
+    'Braço': '🎯',
     'Cardio': '🏃',
+    'cardio': '🏃',
     'folga': '😴',
     'A': '💪',
     'B': '🔙',
@@ -768,58 +769,59 @@ async function carregarExerciciosDoDia() {
             return;
         }
         
-        const container = document.getElementById('exercises-preview');
+        const container = document.getElementById('workout-exercises-list');
         if (!container) {
-            console.warn('[carregarExerciciosDoDia] Container não encontrado');
+            console.warn('[carregarExerciciosDoDia] Container workout-exercises-list não encontrado');
             return;
         }
 
-        // Buscar treino completo com exercícios e pesos
-        const treinoCompleto = await WeeklyPlanService.getTodaysWorkoutWithWeights(currentUser.id);
+        // Usar nossa nova implementação para buscar exercícios
+        const resultado = await WeeklyPlanService.buscarExerciciosTreinoDia(currentUser.id);
         
-        console.log('[DEBUG] Treino completo com exercícios:', treinoCompleto);
+        console.log('[carregarExerciciosDoDia] 📊 Resultado da busca:', resultado);
         
-        if (!treinoCompleto || treinoCompleto.tipo === 'folga') {
-            renderizarDiaDescanso(container);
+        if (resultado.error) {
+            console.log('[carregarExerciciosDoDia] ⚠️', resultado.error);
+            mostrarMensagemExercicios(resultado.error, 'warning', container);
             return;
         }
         
-        if (treinoCompleto && treinoCompleto.tipo === 'cardio') {
-            renderizarTreinoCardio(container);
+        if (resultado.message) {
+            console.log('[carregarExerciciosDoDia] 📝', resultado.message);
+            mostrarMensagemExercicios(resultado.message, 'info', container);
             return;
         }
         
-        // Treino de força - mostrar exercícios com grupo muscular
-        if (!treinoCompleto.exercicios || treinoCompleto.exercicios.length === 0) {
-            renderizarSemExercicios(container);
+        if (resultado.data && resultado.data.length > 0) {
+            console.log('[carregarExerciciosDoDia] ✅ Exercícios encontrados:', resultado.data.length);
+            
+            // Expandir automaticamente o card quando há exercícios
+            const expandableContent = document.getElementById('expandable-content');
+            if (expandableContent) {
+                expandableContent.style.display = 'block';
+                
+                // Atualizar ícone do toggle também
+                const toggleButton = document.getElementById('workout-toggle');
+                const expandIcon = toggleButton?.querySelector('.expand-icon');
+                if (expandIcon) {
+                    expandIcon.style.transform = 'rotate(180deg)';
+                }
+                
+                console.log('[carregarExerciciosDoDia] Card de treino expandido automaticamente');
+            }
+            
+            renderizarExercicios(resultado.data, resultado.planejamento, container);
             return;
         }
         
-        // Renderizar header com grupo muscular
-        const grupoMuscular = treinoCompleto.tipo_atividade || treinoCompleto.tipo || 'Força';
-        let html = `
-            <div class="exercises-section-header">
-                <h3 class="exercises-title">
-                    ${TREINO_EMOJIS[grupoMuscular] || '🏋️'} Treino de ${grupoMuscular}
-                </h3>
-                <span class="exercises-count">${treinoCompleto.exercicios.length} exercícios</span>
-            </div>
-            <div class="exercises-list">
-        `;
-        
-        // Renderizar cada exercício
-        treinoCompleto.exercicios.forEach((exercicio, index) => {
-            html += renderizarExercicioCard(exercicio, index);
-        });
-        
-        html += '</div>';
-        
-        container.innerHTML = html;
-        console.log('[carregarExerciciosDoDia] ✅ Exercícios carregados:', treinoCompleto.exercicios.length);
+        // Fallback: mostrar mensagem de nenhum exercício encontrado
+        mostrarMensagemExercicios('Nenhum exercício encontrado para hoje', 'info', container);
         
     } catch (error) {
         console.error('[carregarExerciciosDoDia] ❌ ERRO:', error);
-        showNotification('Erro ao carregar exercícios', 'error');
+        if (container) {
+            mostrarMensagemExercicios('Erro ao carregar exercícios', 'error', container);
+        }
     }
 }
 
@@ -1542,3 +1544,98 @@ window.navegarSemana = navegarSemana;
 
 // Função global para carregar dados dinâmicos
 window.carregarDadosDinamicosHome = carregarDadosDinamicosHome;
+
+// ===== FUNÇÕES DE RENDERIZAÇÃO DE EXERCÍCIOS =====
+
+// Renderizar lista de exercícios na interface
+function renderizarExercicios(exercicios, planejamento, container) {
+    if (!container) {
+        console.error('[renderizarExercicios] Container não fornecido');
+        return;
+    }
+    
+    const tipoTreino = planejamento?.tipo_atividade || 'Treino';
+    const numeroTreino = planejamento?.numero_treino || '';
+    
+    let html = `
+        <div class="exercises-header">
+            <h4>🏋️‍♂️ ${tipoTreino} ${numeroTreino ? `- Treino ${numeroTreino}` : ''}</h4>
+            <p class="exercises-count">${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div class="exercises-grid">
+    `;
+    
+    exercicios.forEach((exercicio, index) => {
+        html += `
+            <div class="exercise-card" data-exercise-id="${exercicio.id}">
+                <div class="exercise-header">
+                    <div class="exercise-number">${index + 1}</div>
+                    <div class="exercise-info">
+                        <h5 class="exercise-name">${exercicio.nome}</h5>
+                        <p class="exercise-muscle">${exercicio.grupo_muscular}</p>
+                    </div>
+                </div>
+                
+                <div class="exercise-details">
+                    <div class="exercise-sets">
+                        <span class="label">Séries:</span>
+                        <span class="value">${exercicio.series}</span>
+                    </div>
+                    <div class="exercise-reps">
+                        <span class="label">Repetições:</span>
+                        <span class="value">${exercicio.repeticoes}</span>
+                    </div>
+                    <div class="exercise-weight">
+                        <span class="label">Peso:</span>
+                        <span class="value">${exercicio.peso_base}kg</span>
+                        <span class="range">(${exercicio.peso_min}-${exercicio.peso_max}kg)</span>
+                    </div>
+                    <div class="exercise-rest">
+                        <span class="label">Descanso:</span>
+                        <span class="value">${exercicio.tempo_descanso}s</span>
+                    </div>
+                </div>
+                
+                ${exercicio.equipamento ? `
+                    <div class="exercise-equipment">
+                        <span class="equipment-tag">${exercicio.equipamento}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    html += `
+        </div>
+        <div class="exercises-footer">
+            <p class="rm-info">💡 Pesos baseados no seu 1RM atual</p>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    console.log('[renderizarExercicios] ✅ Exercícios renderizados:', exercicios.length);
+}
+
+// Mostrar mensagem quando não há exercícios
+function mostrarMensagemExercicios(mensagem, tipo = 'info', container) {
+    if (!container) {
+        console.error('[mostrarMensagemExercicios] Container não fornecido');
+        return;
+    }
+    
+    const iconMap = {
+        'info': '📝',
+        'warning': '⚠️', 
+        'error': '❌'
+    };
+    
+    container.innerHTML = `
+        <div class="no-exercises-message ${tipo}">
+            <div class="message-icon">${iconMap[tipo] || '📝'}</div>
+            <p class="message-text">${mensagem}</p>
+        </div>
+    `;
+    
+    console.log('[mostrarMensagemExercicios] Mensagem exibida:', mensagem);
+}

@@ -111,9 +111,8 @@ export async function inicializarPlanejamento(usuarioId) {
         }
         
         // 4. Buscar planejamento existente (Supabase primeiro, depois localStorage)
-        let planoSalvo = await getWeekPlanFromSupabase(usuarioId);
+        let planoSalvo = await getActiveWeeklyPlan(usuarioId);
         if (!planoSalvo) {
-
             planoSalvo = getWeekPlan(usuarioId);
         }
         

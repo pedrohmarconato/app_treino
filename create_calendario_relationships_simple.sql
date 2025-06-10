@@ -1,5 +1,5 @@
--- Script SQL simplificado para criar relacionamentos da tabela D_calendario
--- Execute após criar a tabela D_calendario
+-- Script SQL simplificado para criar relacionamentos da tabela d_calendario
+-- Execute após criar a tabela d_calendario
 
 -- 1. Atualizar a tabela planejamento_semanal para incluir referência ao calendário
 ALTER TABLE planejamento_semanal 
@@ -7,7 +7,7 @@ ADD COLUMN IF NOT EXISTS calendario_id BIGINT;
 
 ALTER TABLE planejamento_semanal 
 ADD CONSTRAINT IF NOT EXISTS fk_planejamento_calendario 
-    FOREIGN KEY (calendario_id) REFERENCES D_calendario(id);
+    FOREIGN KEY (calendario_id) REFERENCES d_calendario(id);
 
 -- Criar índice para otimizar joins
 CREATE INDEX IF NOT EXISTS idx_planejamento_calendario_id 
@@ -19,7 +19,7 @@ ADD COLUMN IF NOT EXISTS calendario_semana_atual_id BIGINT;
 
 ALTER TABLE usuario_plano_treino 
 ADD CONSTRAINT IF NOT EXISTS fk_usuario_plano_calendario 
-    FOREIGN KEY (calendario_semana_atual_id) REFERENCES D_calendario(id);
+    FOREIGN KEY (calendario_semana_atual_id) REFERENCES d_calendario(id);
 
 -- Criar índice
 CREATE INDEX IF NOT EXISTS idx_usuario_plano_calendario_semana 
@@ -69,12 +69,12 @@ SELECT
     cal_atual.percentual_1rm as percentual_1rm_atual
     
 FROM planejamento_semanal ps
-LEFT JOIN D_calendario cal 
+LEFT JOIN d_calendario cal 
     ON ps.calendario_id = cal.id
 LEFT JOIN usuario_plano_treino upt 
     ON ps.usuario_id = upt.usuario_id 
     AND upt.status = 'ativo'
-LEFT JOIN D_calendario cal_atual 
+LEFT JOIN d_calendario cal_atual 
     ON upt.calendario_semana_atual_id = cal_atual.id
 LEFT JOIN protocolos_treinamento pt 
     ON upt.protocolo_treinamento_id = pt.id
@@ -92,7 +92,7 @@ SELECT
     upt.usuario_id,
     upt.protocolo_treinamento_id,
     pt.nome as protocolo_nome
-FROM D_calendario cal
+FROM d_calendario cal
 JOIN usuario_plano_treino upt ON cal.id = upt.calendario_semana_atual_id
 JOIN protocolos_treinamento pt ON upt.protocolo_treinamento_id = pt.id
 WHERE cal.eh_semana_atual = TRUE 
@@ -107,7 +107,7 @@ SELECT
     cal.percentual_1rm,
     pt.nome as protocolo_nome
 FROM planejamento_semanal ps
-JOIN D_calendario cal ON ps.calendario_id = cal.id
+JOIN d_calendario cal ON ps.calendario_id = cal.id
 JOIN usuario_plano_treino upt ON ps.usuario_id = upt.usuario_id 
 JOIN protocolos_treinamento pt ON upt.protocolo_treinamento_id = pt.id
 WHERE cal.eh_semana_atual = TRUE 
@@ -125,4 +125,4 @@ COMMENT ON VIEW v_planejamento_semana_atual IS
 'View que mostra o planejamento da semana atual de treino';
 
 -- Verificar resultados
-SELECT 'D_calendario criada e configurada' as status;
+SELECT 'd_calendario criada e configurada' as status;

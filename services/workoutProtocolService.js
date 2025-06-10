@@ -23,8 +23,15 @@ export class WorkoutProtocolService {
                 throw new Error('Usuário não possui protocolo ativo');
             }
             
-            const semanaAtual = planoUsuario.semana_atual || 1;
-            console.log(`[WorkoutProtocol] Protocolo ativo: semana ${semanaAtual}`);
+            // Buscar semana atual do calendário para maior precisão
+            const hoje = new Date();
+            const { data: calendarioHoje } = await query('d_calendario', {
+                eq: { data_completa: hoje.toISOString().split('T')[0] },
+                single: true
+            });
+            
+            const semanaAtual = calendarioHoje?.semana_treino || planoUsuario.semana_atual || 1;
+            console.log(`[WorkoutProtocol] Protocolo ativo: semana ${semanaAtual} (calendário: ${calendarioHoje?.semana_treino}, plano: ${planoUsuario.semana_atual})`);
             
             // 2. Buscar planejamento semanal (qual treino fazer hoje)
             const { data: planejamentoHoje } = await this.buscarTreinoDeHoje(userId);
@@ -135,8 +142,8 @@ export class WorkoutProtocolService {
             
             console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaDb}, ano=${ano}, semana=${semana}`);
             
-            // Usar view v_planejamento_completo para JOIN otimizado
-            const { data: planejamento, error } = await query('v_planejamento_completo', {
+            // Usar tabela planejamento_semanal diretamente para evitar múltiplos registros
+            const { data: planejamento, error } = await query('planejamento_semanal', {
                 eq: {
                     usuario_id: parseInt(userId),
                     ano: ano,
@@ -337,12 +344,12 @@ export class WorkoutProtocolService {
                     status: 'ativo'
                 },
                 order: { column: 'data_teste', ascending: false },
-                limit: 1,
-                single: true
+                limit: 1
             });
             
             // Só atualizar se o novo 1RM for significativamente maior (>2.5kg)
-            if (!rmAtual || novo1RM > (rmAtual.rm_calculado + 2.5)) {
+            const rmAtualData = rmAtual && rmAtual.length > 0 ? rmAtual[0] : null;
+            if (!rmAtualData || novo1RM > (rmAtualData.rm_calculado + 2.5)) {
                 await insert('usuario_1rm', {
                     usuario_id: userId,
                     exercicio_id: exercicioId,
@@ -353,7 +360,7 @@ export class WorkoutProtocolService {
                     status: 'ativo'
                 });
                 
-                console.log(`[WorkoutProtocol] ✅ 1RM atualizado: ${novo1RM}kg (anterior: ${rmAtual?.rm_calculado || 'N/A'}kg)`);
+                console.log(`[WorkoutProtocol] ✅ 1RM atualizado: ${novo1RM}kg (anterior: ${rmAtualData?.rm_calculado || 'N/A'}kg)`);
             }
             
         } catch (error) {

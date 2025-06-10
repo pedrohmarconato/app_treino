@@ -69,5 +69,38 @@
     
     <!-- Script para toggle do workout principal -->
     <script src="./js/workoutToggle.js"></script>
+    
+    <!-- Fallback de emergência se nada funcionar -->
+    <script>
+        // Aguardar 2 segundos e verificar se algo foi renderizado
+        setTimeout(() => {
+            const app = document.getElementById('app');
+            if (!app || !app.innerHTML.trim()) {
+                console.warn('[FALLBACK] Aplicação não carregou, renderizando fallback de emergência...');
+                app.innerHTML = `
+                    <div style="padding: 20px; color: white; background: #101010; min-height: 100vh; font-family: Arial, sans-serif;">
+                        <h1 style="color: #CFFF04;">Cyclo Training - Modo Emergência</h1>
+                        <p>A aplicação não carregou corretamente.</p>
+                        <div style="background: #333; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <h3>Possíveis problemas:</h3>
+                            <ul>
+                                <li>Erro de JavaScript nos módulos</li>
+                                <li>Problema de importação de arquivos</li>
+                                <li>Configuração do Supabase</li>
+                            </ul>
+                        </div>
+                        <button onclick="location.reload()" style="padding: 12px 20px; background: #CFFF04; color: black; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                            Recarregar Página
+                        </button>
+                        <button onclick="window.open('/test_simple.html', '_blank')" style="padding: 12px 20px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-left: 10px;">
+                            Teste Simples
+                        </button>
+                    </div>
+                `;
+            } else {
+                console.log('[FALLBACK] ✅ Aplicação carregou corretamente, fallback cancelado');
+            }
+        }, 2000);
+    </script>
 </body>
 </html>

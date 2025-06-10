@@ -279,6 +279,16 @@ class QuickEditModal {
         modal.classList.remove('show');
         document.body.style.overflow = '';
 
+        // Restaurar botões que podem ter sido afetados
+        const botoesParaRestaurar = document.querySelectorAll('button[disabled]');
+        botoesParaRestaurar.forEach(btn => {
+            if (btn.hasAttribute('data-disabled-by-quick-edit')) {
+                btn.disabled = false;
+                btn.removeAttribute('data-disabled-by-quick-edit');
+                console.log('[QuickEditModal] Botão restaurado:', btn.className);
+            }
+        });
+
         // Remover após animação
         setTimeout(() => {
             if (modal.parentNode) {
@@ -288,6 +298,13 @@ class QuickEditModal {
 
         // Limpar event listener
         document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+        
+        // Limpar seleções temporárias
+        this.selectedType = null;
+        this.currentDay = null;
+        this.currentConfig = null;
+        
+        console.log('[QuickEditModal] Modal fechado e estado limpo');
     }
 
     // Manipular teclas

@@ -1,23 +1,45 @@
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #1a1a1a;
-  --bg-card: #242424;
+  /* Dark Theme Colors */
+  --bg-primary: #101010;
+  --bg-secondary: #181818;
+  --bg-card: #232323;
   --bg-card-hover: #2a2a2a;
+  
+  /* Text Colors */
   --text-primary: #ffffff;
   --text-secondary: #a8a8a8;
   --text-muted: #666666;
-  --accent-green: #a8ff00;
-  --accent-green-dark: #7cc200;
-  --accent-green-bg: rgba(168, 255, 0, 0.1);
+  
+  /* Neon Green Palette */
+  --accent-green: #CFFF04;
+  --accent-green-dark: #B3FF00;
+  --accent-green-bright: #A8FF04;
+  --accent-green-bg: rgba(207, 255, 4, 0.1);
+  --accent-green-glow: rgba(207, 255, 4, 0.3);
+  
+  /* Neon Yellow (Optional) */
+  --accent-yellow: #FFE500;
+  --accent-yellow-bg: rgba(255, 229, 0, 0.1);
+  
+  /* Border & Shadow */
   --border-color: #333333;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --border-dark: #1a1a1a;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(207, 255, 4, 0.3);
+  --shadow-glow-strong: 0 0 30px rgba(207, 255, 4, 0.5);
+  
+  /* Radius */
   --radius-sm: 8px;
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-full: 9999px;
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Transitions */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.2s ease;
+  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 * {
@@ -126,23 +148,44 @@ button {
 }
 
 .btn-primary {
-  background: var(--accent-green);
-  color: var(--bg-primary);
+  background: linear-gradient(45deg, var(--accent-green), var(--accent-green-dark));
+  color: #000000;
   padding: 16px 24px;
   border-radius: var(--radius-full);
   font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 16px rgba(168, 255, 0, 0.3);
+  box-shadow: var(--shadow-glow);
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
 }
 
 .btn-primary:hover {
-  background: var(--accent-green-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(168, 255, 0, 0.4);
+  background: linear-gradient(45deg, var(--accent-green-bright), var(--accent-green));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-strong);
+}
+
+.btn-primary:hover::before {
+  left: 100%;
 }
 
 .btn-primary:active {
@@ -152,6 +195,9 @@ button {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  box-shadow: none;
 }
 
 .btn-secondary {
@@ -160,10 +206,33 @@ button {
   padding: 12px 20px;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-secondary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--accent-green-bg) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .btn-secondary:hover {
   background: var(--bg-card-hover);
+  border-color: var(--accent-green);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:hover::before {
+  opacity: 1;
 }
 
 .btn-icon {
@@ -171,14 +240,37 @@ button {
   height: 40px;
   border-radius: var(--radius-full);
   background: var(--bg-card);
+  border: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, var(--accent-green-glow) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .btn-icon:hover {
   background: var(--bg-card-hover);
+  border-color: var(--accent-green);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-icon:hover::before {
+  opacity: 1;
 }
 
 /* Screens */
