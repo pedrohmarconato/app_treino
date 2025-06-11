@@ -235,8 +235,12 @@ async function initializeHomeComponents() {
             }
         }, 200);
         
-        // 4. Configurar animações
-        setupHomeAnimations();
+        // 4. Configurar animações modernas
+        if (window.initializeHomeAnimations) {
+            window.initializeHomeAnimations();
+        } else {
+            setupHomeAnimations(); // fallback
+        }
         
         console.log('[initializeHomeComponents] ✅ Componentes da home inicializados');
         

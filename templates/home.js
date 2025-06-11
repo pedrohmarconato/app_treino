@@ -3,25 +3,29 @@
 
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
-        <button class="back-button btn-back" onclick="logout()">
-            <svg class="back-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6"/>
-            </svg>
-        </button>
-        
+        <!-- Header Moderno -->
         <div class="home-header">
             <div class="header-content">
                 <div class="user-info">
-                    <div class="user-avatar-small">
-                        <img id="user-avatar" class="avatar-img" src="pedro.png" alt="Avatar">
-                        <div class="avatar-status"></div>
+                    <div class="user-avatar-wrapper">
+                        <div class="user-avatar-small">
+                            <img id="user-avatar" src="pedro.png" alt="Avatar">
+                            <div class="avatar-status-indicator"></div>
+                        </div>
                     </div>
                     <div class="user-greeting">
-                        <h4>Olá! Bem-vindo 👋</h4>
-                        <p id="user-name">Usuário</p>
+                        <h4>Bom dia,</h4>
+                        <p id="user-name">Atleta</p>
                     </div>
                 </div>
                 <div class="header-actions">
+                    <button class="notification-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                        <span class="notification-badge pulse"></span>
+                    </button>
                     <button class="btn-icon logout-btn" onclick="logout()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -71,48 +75,68 @@ export const homeTemplate = () => `
                     <!-- Preenchido dinamicamente -->
                 </div>
 
-                <!-- Card do Treino Atual Expansível -->
+                <!-- Card de Treino do Dia -->
+                <div class="workout-card-wrapper">
+                    <div class="workout-card">
+                        <div class="workout-card-bg"></div>
+                        <div class="workout-card-content">
+                            <div class="workout-header">
+                                <div class="workout-info">
+                                    <span class="workout-label">TREINO DE HOJE</span>
+                                    <h1 id="workout-name">Preparando seu treino</h1>
+                                    <div class="workout-meta">
+                                        <div class="meta-item">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                            </svg>
+                                            <span id="workout-exercises">Carregando exercícios...</span>
+                                        </div>
+                                        <div class="meta-item">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <polyline points="12 6 12 12 16 14"/>
+                                            </svg>
+                                            <span id="workout-duration">45-60 min</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="workout-visual">
+                                    <div class="progress-circle">
+                                        <svg class="progress-ring" width="120" height="120">
+                                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" stroke-width="8" fill="none"/>
+                                            <circle class="progress-ring-progress" cx="60" cy="60" r="54" stroke-width="8" fill="none"/>
+                                        </svg>
+                                        <div class="progress-text">
+                                            <span class="progress-value" id="progress-percentage">0</span>
+                                            <span class="progress-label">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="workout-action">
+                                <button id="start-workout-btn" class="btn-primary btn-glow" onclick="window.iniciarTreino()">
+                                    <span class="btn-text">Iniciar Treino</span>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Conteúdo Expandido do Treino -->
                 <div class="current-workout-card expandable-card" id="current-workout-card">
-                    <!-- Cabeçalho com Progress Circle -->
                     <div class="workout-header-modern">
                         <div class="workout-info-section">
                             <div class="workout-badge-container">
-                                <span class="workout-type-badge" id="workout-type">Carregando...</span>
+                                <span class="workout-type-badge" id="workout-type">Detalhes do Treino</span>
                             </div>
-                            <h3 class="workout-title" id="workout-name">Preparando seu treino</h3>
-                            <p class="workout-subtitle" id="workout-exercises">Carregando exercícios...</p>
-                        </div>
-                        
-                        <div class="workout-progress-section">
-                            <div class="progress-circle-container">
-                                <svg class="progress-circle" width="80" height="80" viewBox="0 0 80 80">
-                                    <circle 
-                                        cx="40" 
-                                        cy="40" 
-                                        r="36" 
-                                        stroke="var(--border-color)" 
-                                        stroke-width="4" 
-                                        fill="none"
-                                    />
-                                    <circle 
-                                        id="workout-progress-circle"
-                                        cx="40" 
-                                        cy="40" 
-                                        r="36" 
-                                        stroke="var(--accent-green)" 
-                                        stroke-width="4" 
-                                        fill="none"
-                                        stroke-linecap="round"
-                                        stroke-dasharray="226.08"
-                                        stroke-dashoffset="226.08"
-                                        transform="rotate(-90 40 40)"
-                                        style="filter: drop-shadow(0 0 6px var(--accent-green-glow))"
-                                    />
-                                </svg>
-                                <div class="progress-text">
-                                    <span id="workout-progress-text">0%</span>
-                                </div>
-                            </div>
+                            <h3 class="workout-title">Exercícios do Treino</h3>
+                            <p class="workout-subtitle">Expandir para ver detalhes</p>
                         </div>
                         
                         <button class="expand-toggle-modern" id="workout-toggle" onclick="toggleWorkoutCard()">
@@ -133,87 +157,175 @@ export const homeTemplate = () => `
                             </div>
                         </div>
                     </div>
-                    
-                    
+                </div> <!-- Fechamento current-workout-card -->
+            </div> <!-- Fechamento training-plan -->
+
+            <!-- Semana de Treino -->
+            <div class="week-overview">
+                <div class="section-header">
+                    <h2>Semana de Treino</h2>
+                    <span class="week-label" id="current-week">Semana 1</span>
+                </div>
+                <div class="week-indicators" id="week-indicators">
+                    <!-- Preenchido dinamicamente pelo dashboard.js -->
                 </div>
             </div>
 
-            
-            </div> <!-- Fechamento training-plan -->
-
-        </div> <!-- Fechamento home-content -->
-        
-        <!-- Floating Bottom Navigation Bar -->
-        <div class="floating-bottom-nav" id="floating-bottom-nav">
-            <div class="bottom-nav-container">
-                <button class="floating-action-btn" id="start-workout-btn" onclick="window.iniciarTreino()">
-                    <div class="fab-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <polygon points="8,5 19,12 8,19"/>
+            <!-- Métricas Rápidas -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
                         </svg>
                     </div>
-                    <span class="fab-text" id="fab-btn-text">Iniciar Treino</span>
+                    <div class="metric-content">
+                        <h3>Treinos Completos</h3>
+                        <div class="metric-value">
+                            <span id="completed-workouts">0</span>
+                            <span class="metric-trend positive">+0 esta semana</span>
+                        </div>
+                    </div>
+                    <div class="metric-progress">
+                        <div class="mini-progress-circle">
+                            <svg width="40" height="40">
+                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-bg"/>
+                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-fill" style="--progress: 0;"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Consistência</h3>
+                        <div class="metric-value">
+                            <span>0%</span>
+                            <span class="metric-trend positive">Começando!</span>
+                        </div>
+                    </div>
+                    <div class="metric-progress">
+                        <div class="mini-progress-circle">
+                            <svg width="40" height="40">
+                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-bg"/>
+                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-fill" style="--progress: 0;"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="action-chip active">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <span>Novo Treino</span>
+                </button>
+                <button class="action-chip">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <span>Progresso</span>
+                </button>
+                <button class="action-chip">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    <span>Histórico</span>
                 </button>
             </div>
-        </div>
+        </div> <!-- Fechamento home-content -->
     </div>
 `;
 
 // Estilos específicos da tela home - DESIGN SÓBRIO COM NEON SELETIVO
 export const homeStyles = `
-    /* ===== SOBER DESIGN SYSTEM ===== */
-    
-    /* Variáveis CSS para Design Sóbrio */
+    /* Variáveis de Design Moderno */
     :root {
-        --bg-primary: #0a0a0a;
-        --bg-secondary: #151515;
-        --bg-card: #1a1a1a;
-        --bg-elevated: #202020;
-        --border-color: #2a2a2a;
-        --border-light: #333333;
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --success-gradient: linear-gradient(135deg, #13f1fc 0%, #0470dc 100%);
+        --dark-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        
+        --neon-primary: #CFFF04;
+        --neon-secondary: #f093fb;
+        --neon-success: #00ff88;
+        --neon-danger: #ff0080;
+        
+        --bg-primary: #101010;
+        --bg-secondary: #181818;
+        --bg-card: #232323;
+        --bg-elevated: #2a2a2a;
+        --border-color: #333333;
+        --border-light: #444444;
         --text-primary: #ffffff;
-        --text-secondary: #888888;
+        --text-secondary: #a8a8a8;
         --text-muted: #666666;
         
-        /* Neon apenas para elementos importantes */
-        --accent-green: #00ff88;
-        --accent-green-soft: #00cc6a;
-        --accent-green-bg: rgba(0, 255, 136, 0.08);
-        --accent-green-border: rgba(0, 255, 136, 0.2);
+        --shadow-neon: 0 0 20px rgba(207, 255, 4, 0.5);
+        --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.3);
+        --shadow-hover: 0 15px 50px rgba(0, 0, 0, 0.4);
+        --shadow-glow: 0 0 20px rgba(207, 255, 4, 0.3);
+        --shadow-glow-strong: 0 0 30px rgba(207, 255, 4, 0.6);
         
-        /* Status Colors */
-        --success: #00ff88;
-        --warning: #ffaa00;
-        --error: #ff4444;
-        --info: #44aaff;
-        
-        /* Shadows mais sutis */
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
-        --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.2);
+        --accent-green: #CFFF04;
+        --accent-green-soft: #B3FF00;
+        --accent-green-bg: rgba(207, 255, 4, 0.1);
+        --accent-green-border: rgba(207, 255, 4, 0.3);
+        --accent-green-glow: rgba(207, 255, 4, 0.4);
         
         --radius-sm: 8px;
         --radius-md: 12px;
         --radius-lg: 16px;
+        --radius-full: 9999px;
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --animation-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     }
     
-    /* Home Header - Estilo Login */
+    /* Header Moderno */
     .home-header {
-        background: var(--bg-card);
+        background: var(--dark-gradient);
         padding: 24px;
-        border-bottom: 1px solid var(--border-color);
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        backdrop-filter: blur(20px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .home-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(207, 255, 4, 0.1) 0%, transparent 70%);
+        animation: pulse-bg 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse-bg {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
     }
 
     .header-content {
+        position: relative;
+        z-index: 1;
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
         max-width: 1200px;
         margin: 0 auto;
     }
@@ -224,30 +336,35 @@ export const homeStyles = `
         gap: 12px;
     }
 
-    .user-avatar-small {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        overflow: hidden;
-        border: 2px solid var(--border-light);
+    .user-avatar-wrapper {
         position: relative;
-        transition: var(--transition);
     }
 
-    .user-avatar-small:hover {
-        border-color: var(--accent-green);
-        box-shadow: var(--shadow-glow);
+    .user-avatar-small {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 2px solid var(--neon-primary);
+        box-shadow: var(--shadow-neon);
+        position: relative;
     }
 
-    .avatar-status {
+    .avatar-status-indicator {
         position: absolute;
-        bottom: 2px;
-        right: 2px;
-        width: 12px;
-        height: 12px;
-        background: var(--success);
-        border: 2px solid var(--bg-card);
+        bottom: -2px;
+        right: -2px;
+        width: 16px;
+        height: 16px;
+        background: var(--neon-success);
         border-radius: 50%;
+        border: 3px solid var(--bg-primary);
+        animation: pulse-status 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-status {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+        50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(0, 255, 136, 0); }
     }
 
     .header-actions {
@@ -265,15 +382,59 @@ export const homeStyles = `
 
     .user-greeting h4 {
         font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin-bottom: 2px;
-        font-weight: 400;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 4px;
+        letter-spacing: 0.5px;
     }
 
     .user-greeting p {
         font-size: 1.125rem;
-        font-weight: 600;
-        color: var(--text-primary);
+        font-weight: 700;
+        background: linear-gradient(135deg, #fff 0%, var(--neon-primary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .notification-btn {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .notification-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .notification-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 10px;
+        height: 10px;
+        background: var(--neon-danger);
+        border-radius: 50%;
+        border: 2px solid var(--bg-primary);
+    }
+
+    .notification-badge.pulse {
+        animation: pulse-notification 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-notification {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 128, 0.4); }
+        50% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(255, 0, 128, 0); }
     }
 
     /* Home Content - ESPAÇAMENTO OTIMIZADO */
@@ -454,72 +615,271 @@ export const homeStyles = `
         transition: var(--transition);
     }
 
-    /* Week Indicators - Estados Específicos */
+    /* Workout Card Moderno */
+    .workout-card-wrapper {
+        padding: 24px;
+        margin-top: -40px;
+        margin-bottom: 60px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .workout-card {
+        background: var(--bg-card);
+        border-radius: 24px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: var(--shadow-card);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .workout-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .workout-card-bg {
+        position: absolute;
+        inset: 0;
+        background: var(--primary-gradient);
+        opacity: 0.1;
+    }
+
+    .workout-card-bg::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, var(--neon-primary) 0%, transparent 70%);
+        opacity: 0.3;
+        animation: rotate-bg 20s linear infinite;
+    }
+
+    @keyframes rotate-bg {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .workout-card-content {
+        position: relative;
+        padding: 32px;
+        z-index: 1;
+    }
+
+    .workout-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--neon-primary);
+        display: inline-block;
+        padding: 4px 12px;
+        background: rgba(207, 255, 4, 0.1);
+        border-radius: 20px;
+        margin-bottom: 12px;
+    }
+
+    .workout-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .workout-info h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .workout-meta {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.875rem;
+    }
+
+    .meta-item svg {
+        color: var(--neon-primary);
+    }
+
+    /* Progress Circle Moderno */
+    .progress-circle {
+        position: relative;
+        width: 120px;
+        height: 120px;
+    }
+
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+
+    .progress-ring-bg {
+        stroke: rgba(255, 255, 255, 0.1);
+    }
+
+    .progress-ring-progress {
+        stroke: var(--neon-primary);
+        stroke-dasharray: 339.292;
+        stroke-dashoffset: 339.292;
+        transition: stroke-dashoffset 1s ease;
+        filter: drop-shadow(0 0 10px var(--neon-primary));
+    }
+
+    .progress-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .progress-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--neon-primary);
+        text-shadow: 0 0 20px rgba(207, 255, 4, 0.5);
+    }
+
+    .progress-label {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+        margin-top: -4px;
+    }
+
+    /* Botão Primário Neon */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--neon-primary) 0%, #0470dc 100%);
+        color: var(--bg-primary);
+        border: none;
+        padding: 16px 32px;
+        border-radius: 16px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-primary:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-primary.btn-glow {
+        box-shadow: 0 4px 20px rgba(207, 255, 4, 0.4);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(207, 255, 4, 0.6);
+    }
+
+    .btn-text {
+        position: relative;
+        z-index: 1;
+    }
+
+    .btn-primary svg {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Week Overview Moderno */
+    .week-overview {
+        padding: 0 24px 24px;
+        margin-top: 60px;
+    }
+
     .week-indicators {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 8px;
-        margin-bottom: 24px;
-        padding: 16px;
-        background: var(--bg-secondary);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-color);
+        gap: 12px;
     }
 
-    /* Estado padrão - Treino a fazer: SEM NADA */
     .day-indicator {
-        background: var(--bg-primary);
-        border-radius: var(--radius-sm);
-        padding: 14px 8px;
         text-align: center;
-        transition: all 0.2s ease;
-        border: 1px solid var(--border-color);
-        position: relative;
+        padding: 16px 8px;
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        transition: all 0.3s ease;
         cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .day-indicator::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: var(--primary-gradient);
+        opacity: 0;
+        transition: opacity 0.3s ease;
     }
 
     .day-indicator:hover {
-        background: var(--bg-card);
-        border-color: var(--border-color);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
     }
 
-    /* Hoje - Simples sem neon */
     .day-indicator.today {
-        border-color: var(--text-secondary);
-        background: var(--bg-card);
+        border: 2px solid var(--neon-primary);
+        box-shadow: inset 0 0 20px rgba(207, 255, 4, 0.2);
     }
 
-    /* Treino Concluído - Sombra Neon Verde */
-    .day-indicator.completed,
-    .day-indicator.workout-completed {
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        box-shadow: 0 0 15px rgba(0, 255, 100, 0.4);
+    .day-indicator.completed .day-status {
+        background: var(--neon-success);
+        box-shadow: 0 0 10px var(--neon-success);
     }
 
-    /* Folga - Sombra Neon Amarela Discreta */
-    .day-indicator.folga {
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        box-shadow: 0 0 10px rgba(255, 229, 0, 0.3);
+    .day-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.5);
+        position: relative;
+        z-index: 1;
     }
 
-    /* Cancelado - Sem neon */
-    .day-indicator.cancelled {
-        background: var(--bg-primary);
-        border-color: var(--text-muted);
-        opacity: 0.4;
-    }
-
-    .day-indicator.cancelled .day-type {
-        text-decoration: line-through;
-        opacity: 0.6;
-    }
-
-    /* Pendente/A fazer - Sem nada */
-    .day-indicator.pending {
-        background: var(--bg-primary);
-        border-color: var(--border-color);
+    .day-status {
+        width: 8px;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        margin: 8px auto 0;
+        position: relative;
+        z-index: 1;
+        transition: all 0.3s ease;
     }
 
 
@@ -1732,23 +2092,260 @@ export const homeStyles = `
     }
 
 
+    /* Metrics Grid Moderno */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        padding: 0 24px 24px;
+    }
+
+    .metric-card {
+        background: var(--bg-card);
+        border-radius: 20px;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: var(--primary-gradient);
+        border-radius: 20px;
+        opacity: 0;
+        z-index: -1;
+        transition: opacity 0.3s ease;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .metric-card:hover::before {
+        opacity: 0.1;
+    }
+
+    .metric-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(207, 255, 4, 0.1);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .metric-icon svg {
+        color: var(--neon-primary);
+    }
+
+    .metric-content {
+        flex: 1;
+    }
+
+    .metric-content h3 {
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 8px;
+    }
+
+    .metric-value {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .metric-value > span:first-child {
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+
+    .metric-trend {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .metric-trend.positive {
+        color: var(--neon-success);
+    }
+
+    /* Mini Progress Circles */
+    .mini-progress-circle {
+        position: relative;
+        width: 40px;
+        height: 40px;
+    }
+
+    .mini-progress-circle svg {
+        transform: rotate(-90deg);
+    }
+
+    .mini-progress-bg {
+        stroke: rgba(255, 255, 255, 0.1);
+    }
+
+    .mini-progress-fill {
+        stroke: var(--neon-primary);
+        stroke-dasharray: 100.531;
+        stroke-dashoffset: calc(100.531 - (100.531 * var(--progress) / 100));
+        transition: stroke-dashoffset 1s ease;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+        display: flex;
+        gap: 12px;
+        padding: 0 24px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .quick-actions::-webkit-scrollbar {
+        display: none;
+    }
+
+    .action-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .action-chip:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .action-chip.active {
+        background: rgba(207, 255, 4, 0.1);
+        border-color: var(--neon-primary);
+        color: var(--neon-primary);
+    }
+
+    .action-chip svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Animações de Entrada */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .workout-card-wrapper {
+        animation: fadeInUp 0.6s ease var(--animation-bounce);
+    }
+
+    .week-overview {
+        animation: fadeInUp 0.8s ease var(--animation-bounce) 0.1s both;
+    }
+
+    .metrics-grid {
+        animation: fadeInUp 1s ease var(--animation-bounce) 0.2s both;
+    }
+
+    .quick-actions {
+        animation: fadeInUp 1.2s ease var(--animation-bounce) 0.3s both;
+    }
+
+    /* Ripple Effect for Buttons */
+    .ripple-effect {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+        transform: scale(0);
+        animation: ripple-animation 0.6s ease-out;
+        pointer-events: none;
+    }
+
+    @keyframes ripple-animation {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+
+    /* Notification Styles */
+    .notification-toast {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 16px 24px;
+        box-shadow: var(--shadow-card);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 300px;
+        transform: translateX(400px);
+        animation: slide-in 0.3s ease forwards;
+        z-index: 1000;
+    }
+
+    @keyframes slide-in {
+        to {
+            transform: translateX(0);
+        }
+    }
+
+    .notification-toast.success {
+        border-left: 4px solid var(--neon-success);
+    }
+
+    .notification-toast.error {
+        border-left: 4px solid var(--neon-danger);
+    }
+
+    .notification-toast.info {
+        border-left: 4px solid var(--neon-primary);
+    }
+
     /* Responsive Design - ESPAÇAMENTO OTIMIZADO */
     @media (max-width: 768px) {
         .home-header {
-            padding: 12px 16px; /* Reduzido header padding em mobile */
+            padding: 20px 16px;
         }
         
         .home-content {
-            padding: 8px 16px 16px 16px; /* Reduzido padding-top para 8px em mobile */
-            gap: 12px; /* Reduzido gap para 12px em mobile */
+            padding: 8px 16px 16px 16px;
+            gap: 12px;
         }
         
         .training-plan {
-            padding: 12px 16px 16px 16px; /* Reduzido padding em mobile */
+            padding: 12px 16px 16px 16px;
         }
         
         .section-header {
-            margin-bottom: 12px; /* Reduzido em mobile */
+            margin-bottom: 12px;
             flex-direction: column;
             align-items: stretch;
             gap: 8px;
@@ -1788,21 +2385,47 @@ export const homeStyles = `
             padding: 1px 6px;
         }
 
+        .workout-card-wrapper {
+            padding: 20px 16px;
+            margin-top: -30px;
+        }
+
+        .workout-card-content {
+            padding: 24px;
+        }
+
+        .workout-info h1 {
+            font-size: 1.5rem;
+        }
+
+        .workout-header {
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .progress-circle {
+            margin: 0 auto;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr;
+            padding: 0 16px 20px;
+        }
+
+        .week-overview {
+            padding: 0 16px 20px;
+        }
+
         .week-indicators {
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
+            gap: 8px;
         }
 
         .day-indicator {
-            padding: 8px 4px;
+            padding: 12px 4px;
         }
 
-        .day-name {
-            font-size: 0.625rem;
-        }
-
-        .day-type {
-            font-size: 0.75rem;
+        .quick-actions {
+            padding: 0 16px;
         }
 
         .workout-header {
@@ -2127,6 +2750,100 @@ export const homeStyles = `
     }
 `;
 
+// Função para inicializar animações e efeitos
+export const initializeHomeAnimations = () => {
+    // Animar o círculo de progresso
+    setTimeout(() => {
+        const progressCircle = document.querySelector('.progress-ring-progress');
+        if (progressCircle) {
+            const progressValue = parseInt(document.getElementById('progress-percentage')?.textContent || '0');
+            const circumference = 2 * Math.PI * 54; // raio = 54
+            const offset = circumference - (progressValue / 100) * circumference;
+            progressCircle.style.strokeDasharray = circumference;
+            progressCircle.style.strokeDashoffset = offset;
+            progressCircle.style.stroke = 'var(--neon-primary)';
+            progressCircle.style.filter = 'drop-shadow(0 0 10px var(--neon-primary))';
+        }
+
+        // Animar mini círculos de progresso
+        document.querySelectorAll('.mini-progress-fill').forEach(circle => {
+            const progress = circle.style.getPropertyValue('--progress');
+            if (progress) {
+                const circumference = 2 * Math.PI * 16; // raio = 16
+                const offset = circumference - (parseInt(progress) / 100) * circumference;
+                circle.style.strokeDasharray = circumference;
+                circle.style.strokeDashoffset = offset;
+                circle.style.stroke = 'var(--neon-primary)';
+            }
+        });
+    }, 500);
+
+    // Adicionar efeito ripple aos botões
+    document.querySelectorAll('button, .action-chip').forEach(button => {
+        button.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.classList.add('ripple-effect');
+            
+            this.style.position = 'relative';
+            this.style.overflow = 'hidden';
+            this.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 600);
+        });
+    });
+
+    // Marcar dia atual
+    const today = new Date().getDay();
+    const dayIndicator = document.querySelector(`.day-indicator[data-day="${today}"]`);
+    if (dayIndicator) {
+        dayIndicator.classList.add('today');
+    }
+
+    // Atualizar saudação baseada no horário
+    const updateGreeting = () => {
+        const hour = new Date().getHours();
+        const greetingEl = document.querySelector('.user-greeting h4');
+        if (greetingEl) {
+            if (hour < 12) {
+                greetingEl.textContent = 'Bom dia,';
+            } else if (hour < 18) {
+                greetingEl.textContent = 'Boa tarde,';
+            } else {
+                greetingEl.textContent = 'Boa noite,';
+            }
+        }
+    };
+    updateGreeting();
+
+    // Sistema de notificações
+    window.showNotification = (message, type = 'info') => {
+        const notification = document.createElement('div');
+        notification.className = `notification-toast ${type}`;
+        notification.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : 
+                  type === 'error' ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' :
+                  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'}
+            </svg>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slide-in 0.3s ease reverse';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    };
+};
+
 // Função para inicializar a home com dados dinâmicos
 export async function inicializarHome() {
     try {
@@ -2135,8 +2852,11 @@ export async function inicializarHome() {
         // Aguardar um pouco para garantir que o template foi renderizado
         await new Promise(resolve => setTimeout(resolve, 100));
         
+        // Inicializar animações
+        initializeHomeAnimations();
+        
         // Chamar o homeService
-        await homeService.inicializarHome();
+        // await homeService.inicializarHome();
         
         console.log('[templates/home.js] ✅ Home inicializada com sucesso');
         
@@ -2175,3 +2895,4 @@ export function toggleWorkoutCard() {
 // Disponibilizar funções globalmente
 window.inicializarHome = inicializarHome;
 window.toggleWorkoutCard = toggleWorkoutCard;
+window.initializeHomeAnimations = initializeHomeAnimations;

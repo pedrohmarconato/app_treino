@@ -458,6 +458,12 @@ button {
 
 /* Removido .week-indicator - agora usando .week-indicators do home.js */
 
+.training-plan > .workout-card-wrapper,
+.week-indicators + .workout-card-wrapper,
+.workout-card-wrapper {
+    margin-top: 40px !important;
+}
+
 .day-pill {
   flex: 1;
   padding: 12px;
@@ -975,6 +981,18 @@ button {
   margin: 40px auto;
 }
 
+.time.workout-card-content {
+    margin-top: 40px !important; /* Espaço extra acima do card de treino do dia */
+    width: 100%;
+    max-width: 700px;
+    margin: 60px auto 0 auto;
+    position: relative;
+}
+
+.timer-svg {
+  transform: rotate(-90deg);
+}
+
 .timer-circle {
   width: 200px;
   height: 200px;
@@ -982,9 +1000,6 @@ button {
   position: relative;
 }
 
-.timer-svg {
-  transform: rotate(-90deg);
-}
 
 .timer-circle-bg {
   fill: none;

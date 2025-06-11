@@ -2,8 +2,34 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyclo Training - Sistema de Acompanhamento de Treinos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>App Treino - Sistema de Treinamento</title>
+    <meta name="description" content="Sistema completo de planejamento e execução de treinos">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#CFFF04">
+    <meta name="background-color" content="#101010">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- iOS PWA Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="App Treino">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png">
+    
+    <!-- Meta Tags para SEO -->
+    <meta name="keywords" content="treino, fitness, academia, exercicios, planejamento">
+    <meta name="author" content="App Treino">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="App Treino - Sistema de Treinamento">
+    <meta property="og:description" content="Sistema completo de planejamento e execução de treinos">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/icons/icon-512x512.png">
+    
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./config.js"></script>
     
@@ -12,6 +38,7 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="./favicon.png">
+    <link rel="shortcut icon" type="image/png" href="./favicon.png">
 </head>
 <body>
     <!-- Container principal da aplicação -->
@@ -50,6 +77,125 @@
         // Inicializa os templates quando o DOM estiver pronto
         document.addEventListener('DOMContentLoaded', () => {
             initTemplates();
+        });
+    </script>
+    
+    <!-- PWA Service Worker -->
+    <script>
+        // Registrar Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js', {
+                        scope: '/'
+                    });
+                    
+                    console.log('[PWA] ✅ Service Worker registrado:', registration.scope);
+                    
+                    // Verificar atualizações
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('[PWA] 🔄 Nova versão encontrada');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed') {
+                                if (navigator.serviceWorker.controller) {
+                                    // Nova versão disponível
+                                    console.log('[PWA] 🆕 Nova versão disponível');
+                                    if (window.showNotification) {
+                                        window.showNotification('Nova versão disponível! Recarregue a página.', 'info');
+                                    }
+                                } else {
+                                    // Primeira instalação
+                                    console.log('[PWA] ✅ App está pronto para funcionar offline');
+                                    if (window.showNotification) {
+                                        window.showNotification('App instalado! Agora funciona offline.', 'success');
+                                    }
+                                }
+                            }
+                        });
+                    });
+                    
+                    // Verificar por atualizações periodicamente
+                    setInterval(() => {
+                        registration.update();
+                    }, 60000); // Verifica a cada minuto
+                    
+                } catch (error) {
+                    console.error('[PWA] ❌ Erro ao registrar Service Worker:', error);
+                }
+            });
+            
+            // Escutar mensagens do Service Worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                console.log('[PWA] Mensagem do SW:', event.data);
+                
+                if (event.data && event.data.type === 'CACHE_UPDATED') {
+                    if (window.showNotification) {
+                        window.showNotification('Cache atualizado!', 'info');
+                    }
+                }
+            });
+        }
+        
+        // Detectar quando o app é adicionado à tela inicial
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('[PWA] 📱 Prompt de instalação disponível');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mostrar botão de instalação customizado (se existir)
+            const installButton = document.getElementById('install-app-btn');
+            if (installButton) {
+                installButton.style.display = 'block';
+                installButton.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const result = await deferredPrompt.userChoice;
+                        console.log('[PWA] Resultado da instalação:', result.outcome);
+                        deferredPrompt = null;
+                        installButton.style.display = 'none';
+                    }
+                });
+            }
+        });
+        
+        // Detectar quando o app foi instalado
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('[PWA] ✅ App foi instalado na tela inicial');
+            if (window.showNotification) {
+                window.showNotification('App instalado com sucesso! 🎉', 'success');
+            }
+        });
+        
+        // Detectar modo standalone (quando aberto como PWA)
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+            console.log('[PWA] 📱 Executando como PWA');
+            document.body.classList.add('pwa-mode');
+        }
+        
+        // Detectar mudanças de conectividade
+        window.addEventListener('online', () => {
+            console.log('[PWA] 🌐 Conectado à internet');
+            if (window.showNotification) {
+                window.showNotification('Conectado! Sincronizando dados...', 'success');
+            }
+            
+            // Trigger sync se disponível
+            if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.sync.register('workout-data-sync');
+                    registration.sync.register('planning-data-sync');
+                });
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('[PWA] 📴 Sem conexão - modo offline');
+            if (window.showNotification) {
+                window.showNotification('Sem conexão. Funcionando offline.', 'warning');
+            }
         });
     </script>
     
