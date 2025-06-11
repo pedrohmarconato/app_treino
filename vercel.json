@@ -1,12 +1,6 @@
 {
   "version": 2,
   "name": "app-treino",
-  "builds": [
-    {
-      "src": "**",
-      "use": "@vercel/static"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -68,7 +62,7 @@
   ],
   "rewrites": [
     {
-      "source": "^(?!.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf|eot|mp3|mp4|webm|ogg|avi|mov|wmv|flv|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|tar|gz|bz2|xml|txt)).*$",
+      "source": "/((?!api|_next|static|favicon|manifest|sw).*)",
       "destination": "/index.html"
     }
   ]
