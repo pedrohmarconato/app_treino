@@ -3,7 +3,10 @@ export const loginTemplate = () => `
     <div id="login-screen" class="screen">
         <div class="login-container">
             <div class="login-header">
-                <h1>Cyclo</h1>
+                <div class="logo-container">
+                    <img src="./icons/black-dumbbell.svg" alt="App Treino" class="main-logo">
+                    <h1>App Treino</h1>
+                </div>
                 <p>Bem-vindo ao seu treino</p>
             </div>
             
@@ -33,12 +36,33 @@ export const loginStyles = `
         margin-bottom: 48px;
     }
 
-    .login-header h1 {
+    .logo-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
         margin-bottom: 8px;
+    }
+
+    .main-logo {
+        width: 48px;
+        height: 48px;
+        filter: drop-shadow(0 0 12px var(--accent-green)) brightness(1.2);
+        animation: logoPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes logoPulse {
+        0%, 100% { filter: drop-shadow(0 0 12px var(--accent-green)) brightness(1.2); }
+        50% { filter: drop-shadow(0 0 20px var(--accent-green)) brightness(1.4); }
+    }
+
+    .login-header h1 {
+        margin: 0;
         background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-green) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-size: 2.5rem;
+        text-shadow: 0 0 20px rgba(207, 255, 4, 0.3);
     }
 
     .login-header p {

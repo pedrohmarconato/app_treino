@@ -18,6 +18,9 @@ export const homeTemplate = () => `
                         <p id="user-name">Atleta</p>
                     </div>
                 </div>
+                <div class="app-logo-secondary">
+                    <img src="./icons/f-logo.png" alt="App Logo" class="secondary-logo">
+                </div>
                 <div class="header-actions">
                     <button class="notification-btn">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1592,6 +1595,39 @@ export const homeStyles = `
         text-align: center;
         padding: 32px;
         color: var(--text-secondary);
+    }
+
+    /* Secondary Logo Styles */
+    .app-logo-secondary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .secondary-logo {
+        width: 28px;
+        height: 28px;
+        opacity: 0.8;
+        filter: drop-shadow(0 0 6px rgba(207, 255, 4, 0.3));
+        transition: all 0.3s ease;
+    }
+
+    .secondary-logo:hover {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px rgba(207, 255, 4, 0.6));
+        transform: scale(1.1);
+    }
+
+    @media (max-width: 768px) {
+        .app-logo-secondary {
+            order: -1;
+            margin-right: auto;
+        }
+        
+        .secondary-logo {
+            width: 24px;
+            height: 24px;
+        }
     }
 
     .no-exercises svg {
