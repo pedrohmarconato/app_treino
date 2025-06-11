@@ -41,6 +41,25 @@ export async function carregarDashboard() {
         
         console.log('[carregarDashboard] ✅ Dashboard carregado com sucesso!');
         
+        // Verificar se há inconsistência entre dados (debug)
+        const currentWorkout = AppState.get('currentWorkout');
+        if (currentWorkout) {
+            console.log('[carregarDashboard] 🔍 Estado final currentWorkout:', {
+                tipo: currentWorkout.tipo,
+                concluido: currentWorkout.concluido,
+                totalExecucoes: currentWorkout.totalExecucoes,
+                criterio: currentWorkout.criterioUtilizado
+            });
+            
+            // Se detectar inconsistência, agendar uma nova verificação
+            if (currentWorkout.totalExecucoes > 0 && !currentWorkout.concluido) {
+                console.log('[carregarDashboard] ⚠️ Detectada possível inconsistência, reagendando verificação...');
+                setTimeout(() => {
+                    forcarAtualizacaoStatus();
+                }, 2000);
+            }
+        }
+        
     } catch (error) {
         console.error('[carregarDashboard] Erro:', error);
         showNotification('Alguns dados podem não estar atualizados', 'warning');
@@ -74,24 +93,76 @@ async function carregarIndicadoresSemana() {
         const hoje = new Date().getDay();
         let html = '';
 
+        // Buscar status de conclusão para todos os dias da semana
+        const statusSemana = {};
+        if (window.WeeklyPlanService?.verificarTreinoConcluido && currentUser) {
+            // Por enquanto só verificar o dia de hoje
+            try {
+                const statusHoje = await window.WeeklyPlanService.verificarTreinoConcluido(currentUser.id);
+                statusSemana[hoje] = statusHoje;
+                console.log('[carregarIndicadoresSemana] Status de hoje:', statusHoje);
+            } catch (error) {
+                console.log(`[carregarIndicadoresSemana] Erro ao verificar status de hoje:`, error);
+            }
+        }
+
         for (let i = 0; i < 7; i++) {
             const diaPlan = weekPlan ? weekPlan[i] : null;
             const isToday = i === hoje;
-            const isCompleted = i < hoje;
+            
+            // Verificar se treino está realmente concluído
+            const statusDia = statusSemana[i];
+            let isCompleted = false;
+            if (statusDia && statusDia.concluido) {
+                isCompleted = true;
+                console.log(`[carregarIndicadoresSemana] Dia ${i} está concluído:`, statusDia);
+            }
+            
+            // TESTE TEMPORÁRIO: Forçar terça-feira (dia 2) como concluído
+            if (i === 2 && diaPlan && diaPlan.tipo !== 'folga') {
+                isCompleted = true;
+                console.log(`[carregarIndicadoresSemana] TESTE: Forçando terça-feira como concluída`);
+            }
             
             let dayType = 'Folga';
             let dayClass = 'day-indicator';
             
             if (diaPlan) {
                 dayType = formatarTipoDia(diaPlan);
-                // Adicionar emoji baseado no tipo
-                const emoji = TREINO_EMOJIS[dayType] || TREINO_EMOJIS[diaPlan.tipo] || '🏋️';
+                // Adicionar emoji baseado no tipo e status
+                let emoji = TREINO_EMOJIS[dayType] || TREINO_EMOJIS[diaPlan.tipo] || '🏋️';
+                
+                // Se concluído (usando status real), mostrar emoji de sucesso
+                if (statusDia && statusDia.concluido) {
+                    emoji = '✅';
+                    dayClass += ' workout-completed';
+                }
+                
+                // Se é folga, adicionar classe específica
+                if (diaPlan.tipo === 'folga' || dayType.toLowerCase().includes('folga')) {
+                    dayClass += ' folga';
+                }
+                
                 dayType = `${emoji} ${dayType}`;
+            } else {
+                // Dia sem planejamento - provavelmente folga
+                dayClass += ' folga';
             }
             
             if (isToday) dayClass += ' today';
             if (isCompleted) dayClass += ' completed';
             
+            // Log para debug
+            if (isCompleted || isToday) {
+                console.log(`[carregarIndicadoresSemana] Dia ${i} (${DIAS_SEMANA[i]}):`, {
+                    dayClass,
+                    isCompleted,
+                    isToday,
+                    statusDia,
+                    dayType
+                });
+            }
+
             html += `
                 <div class="${dayClass}">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
@@ -112,6 +183,16 @@ async function carregarIndicadoresSemana() {
 async function carregarTreinoAtual() {
     try {
         const currentUser = AppState.get('currentUser');
+        
+        // Verificar se treino de hoje está concluído
+        let statusConclusao = { concluido: false };
+        if (window.WeeklyPlanService?.verificarTreinoConcluido) {
+            try {
+                statusConclusao = await window.WeeklyPlanService.verificarTreinoConcluido(currentUser.id);
+            } catch (error) {
+                console.warn('[carregarTreinoAtual] Erro ao verificar conclusão:', error);
+            }
+        }
         
         // Primeiro tenta buscar do WeeklyPlanningService (database)
         let weekPlan = null;
@@ -137,6 +218,11 @@ async function carregarTreinoAtual() {
                 tipo: typeof planHoje === 'string' ? planHoje : (planHoje.tipo || planHoje.tipo_atividade),
                 nome: formatarTipoDia(planHoje),
                 numero_treino: planHoje.numero_treino,
+                concluido: statusConclusao.concluido,
+                data_conclusao: statusConclusao.data_conclusao,
+                totalExecucoes: statusConclusao.totalExecucoes,
+                exerciciosUnicos: statusConclusao.exerciciosUnicos,
+                criterioUtilizado: statusConclusao.criterioUtilizado,
                 protocolo_id: planHoje.protocolo_id
             };
         }
@@ -145,6 +231,11 @@ async function carregarTreinoAtual() {
         AppState.set('currentWorkout', treinoDoDia);
         
         console.log('[carregarTreinoAtual] ✅ Treino atual:', treinoDoDia?.nome || 'Nenhum');
+        console.log('[carregarTreinoAtual] 🔍 Status conclusão:', { 
+            concluido: treinoDoDia?.concluido, 
+            totalExecucoes: treinoDoDia?.totalExecucoes,
+            criterio: treinoDoDia?.criterioUtilizado
+        });
         
     } catch (error) {
         console.error('[carregarTreinoAtual] Erro:', error);
@@ -154,6 +245,8 @@ async function carregarTreinoAtual() {
 
 // Atualizar UI do treino atual
 function atualizarUITreinoAtual(treino) {
+    console.log('[atualizarUITreinoAtual] 🎯 Recebendo treino:', treino);
+    
     const elements = {
         type: document.getElementById('workout-type'),
         name: document.getElementById('workout-name'),
@@ -176,7 +269,14 @@ function atualizarUITreinoAtual(treino) {
         return;
     }
     
-    // Configurar baseado no tipo
+    // Verificar se treino está concluído
+    const treinoConcluido = treino.concluido;
+    console.log('[atualizarUITreinoAtual] 🔍 Treino concluído?', treinoConcluido, {
+        totalExecucoes: treino.totalExecucoes,
+        criterio: treino.criterioUtilizado
+    });
+    
+    // Configurar baseado no tipo e status de conclusão
     switch(treino.tipo) {
         case 'folga':
             updateElement(elements.type, 'Descanso');
@@ -190,32 +290,161 @@ function atualizarUITreinoAtual(treino) {
         case 'Cardio':
             updateElement(elements.type, 'Cardio');
             updateElement(elements.name, 'Treino Cardiovascular');
-            updateElement(elements.exercises, 'Exercícios aeróbicos • 30-45min');
-            updateElement(elements.btnText, 'Iniciar Cardio');
-            updateElement(elements.progressText, '🏃');
+            if (treinoConcluido) {
+                updateElement(elements.exercises, '✅ Cardio Concluído • ' + formatarDataConclusao(treino.data_conclusao));
+                updateElement(elements.btnText, '✅ Treino Concluído');
+                updateElement(elements.progressText, '🎉');
+            } else {
+                updateElement(elements.exercises, 'Exercícios aeróbicos • 30-45min');
+                updateElement(elements.btnText, 'Iniciar Cardio');
+                updateElement(elements.progressText, '🏃');
+            }
             break;
             
         default:
             const emoji = TREINO_EMOJIS[treino.tipo] || '🏋️';
             updateElement(elements.type, `Treino ${treino.tipo}`);
             updateElement(elements.name, `Treino ${treino.tipo}`);
-            updateElement(elements.exercises, `Força • ${treino.tipo} • ~45min`);
-            updateElement(elements.btnText, 'Iniciar Treino');
-            updateElement(elements.progressText, emoji);
+            if (treinoConcluido) {
+                const detalheConclusao = treino.totalExecucoes ? 
+                    `${treino.exerciciosUnicos} exercícios • ${treino.totalExecucoes} séries` : 
+                    formatarDataConclusao(treino.data_conclusao);
+                
+                updateElement(elements.exercises, `✅ ${treino.tipo} Concluído • ` + detalheConclusao);
+                updateElement(elements.btnText, '✅ Treino Concluído');
+                updateElement(elements.progressText, '🎉');
+            } else {
+                updateElement(elements.exercises, `Força • ${treino.tipo} • ~45min`);
+                updateElement(elements.btnText, 'Iniciar Treino');
+                updateElement(elements.progressText, emoji);
+            }
             break;
+    }
+    
+    // Atualizar botão de ação baseado no status
+    const startWorkoutBtn = document.getElementById('start-workout-btn');
+    if (startWorkoutBtn) {
+        if (treinoConcluido) {
+            startWorkoutBtn.classList.add('completed');
+            startWorkoutBtn.disabled = false; // Mantém habilitado para dar opções
+            startWorkoutBtn.style.opacity = '1';
+            startWorkoutBtn.style.cursor = 'pointer';
+            
+            // Criar menu de opções para treino concluído
+            startWorkoutBtn.onclick = () => {
+                mostrarOpcoesTrienoConcluido(treino);
+            };
+        } else {
+            startWorkoutBtn.classList.remove('completed');
+            startWorkoutBtn.disabled = false;
+            startWorkoutBtn.style.opacity = '1';
+            startWorkoutBtn.style.cursor = 'pointer';
+            startWorkoutBtn.onclick = window.iniciarTreino;
+        }
     }
     
     // Simular progresso semanal
     const hoje = new Date().getDay();
     const progressoSemanal = Math.min((hoje / 7) * 100, 100);
     
-            if (elements.progressCircle && treino.tipo !== 'folga') {
+    if (elements.progressCircle && treino.tipo !== 'folga') {
         const circumference = 226.08; // 2 * PI * radius (36)
         const offset = circumference - (progressoSemanal / 100) * circumference;
         elements.progressCircle.style.strokeDashoffset = offset.toString();
         
         if (treino.tipo === 'cardio' || treino.tipo === 'Cardio') {
             updateElement(elements.progressText, `${Math.round(progressoSemanal)}%`);
+        }
+    }
+}
+
+// Função helper para formatar data de conclusão
+function formatarDataConclusao(dataString) {
+    if (!dataString) return '';
+    
+    try {
+        const data = new Date(dataString);
+        const agora = new Date();
+        const diffMs = agora - data;
+        const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMinutos = Math.floor(diffMs / (1000 * 60));
+        
+        if (diffMinutos < 60) {
+            return `há ${diffMinutos}min`;
+        } else if (diffHoras < 24) {
+            return `há ${diffHoras}h`;
+        } else {
+            return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        }
+    } catch (error) {
+        return 'hoje';
+    }
+}
+
+// Mostrar opções para treino concluído
+function mostrarOpcoesTrienoConcluido(treino) {
+    const currentUser = AppState.get('currentUser');
+    if (!currentUser) return;
+    
+    const detalhes = treino.totalExecucoes ? 
+        `${treino.exerciciosUnicos} exercícios realizados\n${treino.totalExecucoes} séries executadas\nCritério: ${treino.criterioUtilizado}` :
+        'Treino marcado como concluído';
+    
+    const opcoes = [
+        '✅ Ver Resumo do Treino',
+        '🔄 Refazer Treino (resetar)',
+        '❌ Cancelar'
+    ];
+    
+    if (window.showNotification) {
+        // Usar um modal personalizado se disponível
+        const escolha = confirm(
+            `🎉 Treino ${treino.tipo} Concluído!\n\n${detalhes}\n\nDeseja refazer o treino? Isso irá resetar o status de conclusão.`
+        );
+        
+        if (escolha) {
+            refazerTreinoHoje(currentUser.id, treino);
+        }
+    } else {
+        // Fallback simples
+        if (confirm(`Treino ${treino.tipo} já concluído. Refazer?`)) {
+            refazerTreinoHoje(currentUser.id, treino);
+        }
+    }
+}
+
+// Refazer treino de hoje
+async function refazerTreinoHoje(userId, treino) {
+    try {
+        if (window.showNotification) {
+            window.showNotification('🔄 Resetando treino...', 'info');
+        }
+        
+        // Chamar função de reset
+        if (window.WeeklyPlanService?.resetarTreinoHoje) {
+            const resultado = await window.WeeklyPlanService.resetarTreinoHoje(userId, 'Refazer treino solicitado pelo usuário');
+            
+            if (resultado.sucesso) {
+                if (window.showNotification) {
+                    window.showNotification('✅ Treino resetado! Você pode iniciar novamente.', 'success');
+                }
+                
+                // Recarregar dashboard
+                setTimeout(() => {
+                    carregarDashboard();
+                }, 1000);
+                
+            } else {
+                throw new Error(resultado.erro || 'Erro desconhecido ao resetar');
+            }
+        } else {
+            throw new Error('Serviço de reset não disponível');
+        }
+        
+    } catch (error) {
+        console.error('[refazerTreinoHoje] Erro:', error);
+        if (window.showNotification) {
+            window.showNotification('❌ Erro ao resetar treino: ' + error.message, 'error');
         }
     }
 }
@@ -403,6 +632,13 @@ function configurarEventListeners() {
         }, 500); // Delay para garantir que a base de dados foi atualizada
     });
     
+    AppState.subscribe('workoutCompleted', () => {
+        console.log('[dashboard] Treino concluído, recarregando dashboard...');
+        setTimeout(() => {
+            carregarDashboard();
+        }, 1000); // Delay maior para garantir que o banco foi atualizado
+    });
+    
     AppState.subscribe('currentUser', (newUser) => {
         if (newUser) {
             console.log('[dashboard] Usuário alterado, recarregando dashboard...');
@@ -491,6 +727,28 @@ export function atualizarMetricasTempoReal(novasMetricas) {
 export function recarregarDashboard() {
     console.log('[recarregarDashboard] Forçando reload completo...');
     carregarDashboard();
+}
+
+// Função para forçar atualização de status de conclusão
+export async function forcarAtualizacaoStatus() {
+    console.log('[forcarAtualizacaoStatus] 🔄 Forçando atualização de status...');
+    
+    const currentUser = AppState.get('currentUser');
+    if (!currentUser) return;
+    
+    // Verificar status de conclusão em tempo real
+    if (window.WeeklyPlanService?.verificarTreinoConcluido) {
+        try {
+            const statusAtual = await window.WeeklyPlanService.verificarTreinoConcluido(currentUser.id);
+            console.log('[forcarAtualizacaoStatus] 📊 Status real atual:', statusAtual);
+            
+            // Forçar reload completo se necessário
+            await carregarDashboard();
+            
+        } catch (error) {
+            console.error('[forcarAtualizacaoStatus] Erro:', error);
+        }
+    }
 }
 
 // Função para pré-carregar exercícios do treino (em background)
@@ -651,3 +909,29 @@ function mostrarMensagemExercicios(mensagem, tipo = 'info') {
 // Exportar para compatibilidade global
 window.carregarDashboard = carregarDashboard;
 window.recarregarDashboard = recarregarDashboard;
+window.forcarAtualizacaoStatus = forcarAtualizacaoStatus;
+
+// Função debug para teste manual
+window.debugTreinoStatus = async () => {
+    console.log('🔍 DEBUGGING TREINO STATUS...');
+    const user = AppState.get('currentUser');
+    if (!user) {
+        console.log('❌ Usuário não encontrado');
+        return;
+    }
+    
+    console.log('👤 Usuário:', user.nome);
+    
+    if (window.WeeklyPlanService?.verificarTreinoConcluido) {
+        const status = await window.WeeklyPlanService.verificarTreinoConcluido(user.id);
+        console.log('📊 Status real do banco:', status);
+    }
+    
+    const currentWorkout = AppState.get('currentWorkout');
+    console.log('🎯 CurrentWorkout do AppState:', currentWorkout);
+    
+    console.log('🔄 Forçando atualização...');
+    await forcarAtualizacaoStatus();
+    
+    console.log('✅ Debug concluído!');
+};

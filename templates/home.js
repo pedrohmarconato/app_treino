@@ -159,20 +159,55 @@ export const homeTemplate = () => `
     </div>
 `;
 
-// Estilos específicos da tela home - DESIGN SYSTEM NEON MODERNO
+// Estilos específicos da tela home - DESIGN SÓBRIO COM NEON SELETIVO
 export const homeStyles = `
-    /* ===== MODERN NEON DESIGN SYSTEM ===== */
+    /* ===== SOBER DESIGN SYSTEM ===== */
     
-    /* Home Header - Modern Design */
+    /* Variáveis CSS para Design Sóbrio */
+    :root {
+        --bg-primary: #0a0a0a;
+        --bg-secondary: #151515;
+        --bg-card: #1a1a1a;
+        --bg-elevated: #202020;
+        --border-color: #2a2a2a;
+        --border-light: #333333;
+        --text-primary: #ffffff;
+        --text-secondary: #888888;
+        --text-muted: #666666;
+        
+        /* Neon apenas para elementos importantes */
+        --accent-green: #00ff88;
+        --accent-green-soft: #00cc6a;
+        --accent-green-bg: rgba(0, 255, 136, 0.08);
+        --accent-green-border: rgba(0, 255, 136, 0.2);
+        
+        /* Status Colors */
+        --success: #00ff88;
+        --warning: #ffaa00;
+        --error: #ff4444;
+        --info: #44aaff;
+        
+        /* Shadows mais sutis */
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+        --shadow-glow: 0 0 20px rgba(0, 255, 136, 0.2);
+        
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Home Header - Estilo Login */
     .home-header {
-        background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-        padding: 20px 24px;
+        background: var(--bg-card);
+        padding: 24px;
         border-bottom: 1px solid var(--border-color);
         position: sticky;
         top: 0;
         z-index: 100;
         backdrop-filter: blur(20px);
-        box-shadow: var(--shadow-lg);
     }
 
     .header-content {
@@ -194,34 +229,25 @@ export const homeStyles = `
         height: 56px;
         border-radius: 50%;
         overflow: hidden;
-        border: 3px solid var(--accent-green);
+        border: 2px solid var(--border-light);
         position: relative;
-        box-shadow: var(--shadow-glow);
+        transition: var(--transition);
     }
 
-    .user-avatar-small::after {
-        content: '';
-        position: absolute;
-        top: -3px;
-        left: -3px;
-        right: -3px;
-        bottom: -3px;
-        background: linear-gradient(45deg, var(--accent-green), var(--accent-green-dark));
-        border-radius: 50%;
-        z-index: -1;
-        animation: pulse-glow 2s infinite ease-in-out;
+    .user-avatar-small:hover {
+        border-color: var(--accent-green);
+        box-shadow: var(--shadow-glow);
     }
 
     .avatar-status {
         position: absolute;
         bottom: 2px;
         right: 2px;
-        width: 14px;
-        height: 14px;
-        background: var(--accent-green);
-        border: 2px solid var(--bg-primary);
+        width: 12px;
+        height: 12px;
+        background: var(--success);
+        border: 2px solid var(--bg-card);
         border-radius: 50%;
-        box-shadow: 0 0 8px var(--accent-green-glow);
     }
 
     .header-actions {
@@ -295,8 +321,8 @@ export const homeStyles = `
         display: flex;
         align-items: center;
         gap: 12px;
-        background: var(--bg-secondary);
-        border-radius: var(--radius-lg);
+        background: var(--bg-card);
+        border-radius: var(--radius-md);
         padding: 8px 16px;
         border: 1px solid var(--border-color);
     }
@@ -315,12 +341,12 @@ export const homeStyles = `
     }
 
     .week-nav:hover {
-        background: var(--accent-green) !important;
-        border-color: var(--accent-green) !important;
+        background: var(--bg-elevated) !important;
+        border-color: var(--border-light) !important;
     }
 
     .week-nav:hover svg {
-        stroke: var(--bg-primary) !important;
+        stroke: var(--accent-green) !important;
     }
 
     .week-nav svg {
@@ -428,126 +454,133 @@ export const homeStyles = `
         transition: var(--transition);
     }
 
-    /* Week Indicators - Design System Neon - ESPAÇAMENTO OTIMIZADO */
+    /* Week Indicators - Estados Específicos */
     .week-indicators {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 12px;
-        margin-bottom: 16px; /* Reduzido de 24px para 16px */
+        gap: 8px;
+        margin-bottom: 24px;
+        padding: 16px;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
     }
 
+    /* Estado padrão - Treino a fazer: SEM NADA */
     .day-indicator {
-        background: #1a1a1a;
-        border-radius: var(--radius-lg);
-        padding: 16px 12px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-sm);
+        padding: 14px 8px;
         text-align: center;
-        transition: all 0.3s ease;
-        border: 2px solid #333;
+        transition: all 0.2s ease;
+        border: 1px solid var(--border-color);
         position: relative;
-        overflow: hidden;
         cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
-    .day-indicator::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, var(--accent-green) 0%, transparent 50%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
+    .day-indicator:hover {
+        background: var(--bg-card);
+        border-color: var(--border-color);
     }
 
-    /* Estados dos Dias - Sistema Neon */
+    /* Hoje - Simples sem neon */
     .day-indicator.today {
-        border-color: #00ff00;
-        background: rgba(0, 255, 0, 0.1);
-        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        border-color: var(--text-secondary);
+        background: var(--bg-card);
     }
 
-    .day-indicator.completed {
-        background: rgba(0, 255, 0, 0.15);
-        border-color: #00ff00;
-        color: #00ff00;
-        box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+    /* Treino Concluído - Sombra Neon Verde */
+    .day-indicator.completed,
+    .day-indicator.workout-completed {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 0 15px rgba(0, 255, 100, 0.4);
     }
 
+    /* Folga - Sombra Neon Amarela Discreta */
+    .day-indicator.folga {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 0 10px rgba(255, 229, 0, 0.3);
+    }
+
+    /* Cancelado - Sem neon */
     .day-indicator.cancelled {
-        background: rgba(255, 0, 64, 0.15);
-        border-color: #ff0040;
-        color: #ff0040;
-        box-shadow: 0 0 15px rgba(255, 0, 64, 0.4);
+        background: var(--bg-primary);
+        border-color: var(--text-muted);
+        opacity: 0.4;
     }
 
     .day-indicator.cancelled .day-type {
         text-decoration: line-through;
-        opacity: 0.8;
+        opacity: 0.6;
     }
 
+    /* Pendente/A fazer - Sem nada */
     .day-indicator.pending {
-        background: #1a1a1a;
-        border-color: #333;
-        color: #999;
+        background: var(--bg-primary);
+        border-color: var(--border-color);
     }
 
-    .day-indicator:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0, 255, 0, 0.2);
-    }
 
     .day-name {
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 500;
+        color: var(--text-muted);
         margin-bottom: 6px;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        position: relative;
-        z-index: 1;
+        letter-spacing: 0.05em;
     }
 
-    .day-indicator.completed .day-name {
-        color: #00ff00;
-        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    .day-indicator.today .day-name {
+        color: var(--text-secondary);
+        font-weight: 600;
     }
 
-    .day-indicator.cancelled .day-name {
-        color: #ff0040;
-        text-shadow: 0 0 10px rgba(255, 0, 64, 0.5);
+    /* Texto para treino concluído */
+    .day-indicator.completed .day-name,
+    .day-indicator.workout-completed .day-name {
+        color: var(--text-secondary);
     }
 
-    .day-indicator.pending .day-name {
-        color: #999;
+    /* Texto para folga */
+    .day-indicator.folga .day-name {
+        color: var(--text-secondary);
     }
 
     .day-type {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 500;
-        color: #fff;
-        position: relative;
-        z-index: 1;
+        color: var(--text-secondary);
         text-align: center;
-        margin-top: 4px;
-        line-height: 1.2;
+        margin-top: 2px;
+        line-height: 1.3;
     }
 
-    .day-indicator.completed .day-type {
-        color: #00ff00;
+    .day-indicator.today .day-type {
+        color: var(--text-primary);
         font-weight: 600;
     }
 
+    /* Texto para treino concluído */
+    .day-indicator.completed .day-type,
+    .day-indicator.workout-completed .day-type {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    /* Texto para folga */
+    .day-indicator.folga .day-type {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    /* Texto para cancelado */
     .day-indicator.cancelled .day-type {
-        color: #ff0040;
-        font-weight: 600;
+        color: var(--text-muted);
+        font-weight: 400;
     }
 
-    .day-indicator.pending .day-type {
-        color: #666;
-        font-style: italic;
-    }
 
     .empty-day {
         border: 2px dashed var(--border-color);
@@ -559,28 +592,22 @@ export const homeStyles = `
         font-style: italic;
     }
 
-    /* ===== MODERN WORKOUT CARD ===== */
+    /* ===== WORKOUT CARD - Estilo Login ===== */
     .current-workout-card {
-        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+        background: var(--bg-card);
         border-radius: var(--radius-lg);
-        border: 2px solid var(--border-color);
+        border: 1px solid var(--border-color);
         position: relative;
         overflow: hidden;
         transition: var(--transition);
-        box-shadow: var(--shadow-lg);
+        box-shadow: var(--shadow-md);
         margin-bottom: 24px;
     }
 
-    .current-workout-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(circle at top right, var(--accent-green-bg) 0%, transparent 60%);
-        opacity: 0.5;
-        transition: opacity 0.3s ease;
+    .current-workout-card:hover {
+        border-color: var(--border-light);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
     }
 
     .workout-header-modern {
@@ -603,33 +630,17 @@ export const homeStyles = `
 
     .workout-type-badge {
         display: inline-block;
-        background: linear-gradient(45deg, var(--accent-green), var(--accent-green-bright));
-        color: #000000;
-        padding: 8px 16px;
-        border-radius: var(--radius-full);
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        padding: 6px 12px;
+        border-radius: var(--radius-md);
         font-size: 0.75rem;
-        font-weight: 700;
+        font-weight: 500;
         text-transform: uppercase;
-        letter-spacing: 0.1em;
-        box-shadow: var(--shadow-glow);
-        position: relative;
-        overflow: hidden;
+        letter-spacing: 0.05em;
+        border: 1px solid var(--border-color);
     }
 
-    .workout-type-badge::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transition: left 0.6s ease;
-    }
-
-    .workout-type-badge:hover::before {
-        left: 100%;
-    }
 
     .workout-title {
         font-size: 1.5rem;
@@ -763,46 +774,28 @@ export const homeStyles = `
     }
 
     .floating-action-btn {
-        background: linear-gradient(45deg, var(--accent-green), var(--accent-green-bright));
+        background: var(--accent-green);
         border: none;
-        border-radius: var(--radius-full);
+        border-radius: var(--radius-md);
         padding: 16px 32px;
         display: flex;
         align-items: center;
         gap: 12px;
         cursor: pointer;
-        transition: var(--transition-bounce);
-        box-shadow: var(--shadow-glow-strong);
+        transition: var(--transition);
+        box-shadow: var(--shadow-md);
         position: relative;
         overflow: hidden;
         min-height: 56px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        animation: fab-pulse 3s infinite ease-in-out;
+        font-weight: 600;
+        color: var(--bg-primary);
     }
 
-    .floating-action-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transition: left 0.6s ease;
-    }
 
     .floating-action-btn:hover {
-        transform: translateY(-4px) scale(1.05);
-        box-shadow: 
-            var(--shadow-glow-strong), 
-            0 8px 25px rgba(207, 255, 4, 0.4),
-            0 0 40px rgba(207, 255, 4, 0.3);
-    }
-
-    .floating-action-btn:hover::before {
-        left: 100%;
+        background: var(--accent-green-soft);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-glow);
     }
 
     .floating-action-btn:active {
@@ -813,45 +806,26 @@ export const homeStyles = `
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 50%;
+        width: 24px;
+        height: 24px;
         transition: var(--transition);
-    }
-
-    .floating-action-btn:hover .fab-icon {
-        background: rgba(0, 0, 0, 0.3);
-        transform: scale(1.1);
     }
 
     .fab-icon svg {
         width: 20px;
         height: 20px;
-        stroke: #000000;
-        fill: #000000;
+        stroke: var(--bg-primary);
+        fill: var(--bg-primary);
         transition: var(--transition);
     }
 
     .fab-text {
         font-size: 1rem;
-        color: #000000;
-        font-weight: 700;
-        position: relative;
+        color: var(--bg-primary);
+        font-weight: 600;
         z-index: 1;
     }
 
-    @keyframes fab-pulse {
-        0%, 100% { 
-            box-shadow: var(--shadow-glow-strong);
-        }
-        50% { 
-            box-shadow: 
-                var(--shadow-glow-strong), 
-                0 0 30px rgba(207, 255, 4, 0.6),
-                0 0 50px rgba(207, 255, 4, 0.3);
-        }
-    }
 
     /* Disabled state */
     .floating-action-btn:disabled {

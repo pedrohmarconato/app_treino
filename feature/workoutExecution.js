@@ -29,6 +29,26 @@ class WorkoutExecutionManager {
                 window.showNotification('Carregando treino...', 'info');
             }
 
+            // Verificar se treino já está concluído ANTES de carregar dados
+            let statusConclusao = { concluido: false };
+            if (window.WeeklyPlanService?.verificarTreinoConcluido) {
+                try {
+                    statusConclusao = await window.WeeklyPlanService.verificarTreinoConcluido(currentUser.id);
+                    console.log('[WorkoutExecution] Status de conclusão:', statusConclusao);
+                } catch (error) {
+                    console.warn('[WorkoutExecution] Erro ao verificar conclusão:', error);
+                }
+            }
+            
+            // Bloquear se treino já está concluído
+            if (statusConclusao.concluido) {
+                if (window.showNotification) {
+                    window.showNotification('⚠️ Treino já foi concluído hoje! 🎉', 'warning');
+                }
+                console.log('[WorkoutExecution] ❌ Tentativa de iniciar treino já concluído bloqueada');
+                return;
+            }
+
             // Carregar treino do protocolo
             this.currentWorkout = await WorkoutProtocolService.carregarTreinoParaExecucao(currentUser.id);
             
@@ -326,7 +346,7 @@ class WorkoutExecutionManager {
             const exerciseCard = this.criarCardExercicioCompleto(exercicio, index);
             container.appendChild(exerciseCard);
         });
-    }
+        }
     
     // NOVA FUNÇÃO: Criar card de exercício completo
     criarCardExercicioCompleto(exercicio, index) {

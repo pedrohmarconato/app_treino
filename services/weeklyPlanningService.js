@@ -1554,6 +1554,139 @@ export async function testarCorrecoesErro406(userId = null) {
     }
 }
 
+// Verificar se treino de hoje está concluído (com verificação de exercícios executados)
+export async function verificarTreinoConcluido(userId) {
+    try {
+        console.log('[verificarTreinoConcluido] 🔍 Verificando conclusão do treino de hoje para usuário:', userId);
+        
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const semana = getWeekNumber(hoje);
+        const diaSemana = hoje.getDay();
+        const dataHoje = hoje.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        // 1. Buscar planejamento de hoje no banco
+        const { data: planejamentoHoje, error } = await query('planejamento_semanal', {
+            select: 'concluido, data_conclusao, tipo_atividade',
+            eq: {
+                usuario_id: userId,
+                ano: ano,
+                semana: semana,
+                dia_semana: diaSemana
+            },
+            single: true
+        });
+        
+        if (error) {
+            console.warn('[verificarTreinoConcluido] ⚠️ Erro ao buscar planejamento:', error.message);
+            return { concluido: false, erro: error.message };
+        }
+        
+        if (!planejamentoHoje) {
+            console.log('[verificarTreinoConcluido] ⚠️ Nenhum planejamento encontrado para hoje');
+            return { concluido: false, semPlanejamento: true };
+        }
+        
+        // 2. Verificar se existem exercícios executados hoje (critério REAL)
+        const { data: execucoesHoje, error: execError } = await query('execucao_exercicio_usuario', {
+            select: 'id, exercicio_id, serie_numero, data_execucao',
+            eq: { usuario_id: userId },
+            gte: { data_execucao: `${dataHoje}T00:00:00.000Z` },
+            lt: { data_execucao: `${dataHoje}T23:59:59.999Z` }
+        });
+        
+        if (execError) {
+            console.warn('[verificarTreinoConcluido] ⚠️ Erro ao buscar execuções:', execError.message);
+        }
+        
+        const totalExecucoes = execucoesHoje?.length || 0;
+        const exerciciosUnicos = new Set(execucoesHoje?.map(e => e.exercicio_id) || []).size;
+        const temExecucoes = totalExecucoes > 0;
+        
+        console.log('[verificarTreinoConcluido] 📊 Execuções encontradas:', {
+            totalExecucoes,
+            exerciciosUnicos,
+            temExecucoes,
+            flagConcluido: planejamentoHoje.concluido
+        });
+        
+        // 3. Critério híbrido: flag OU execuções reais
+        const concluido = planejamentoHoje.concluido || temExecucoes;
+        
+        const resultado = {
+            concluido: concluido,
+            data_conclusao: planejamentoHoje.data_conclusao,
+            tipo_atividade: planejamentoHoje.tipo_atividade,
+            temPlanejamento: true,
+            // Dados extras sobre execuções
+            totalExecucoes: totalExecucoes,
+            exerciciosUnicos: exerciciosUnicos,
+            flagBanco: planejamentoHoje.concluido || false,
+            criterioUtilizado: planejamentoHoje.concluido ? 'flag_banco' : (temExecucoes ? 'execucoes_reais' : 'nenhum')
+        };
+        
+        console.log('[verificarTreinoConcluido] ✅ Status do treino de hoje:', resultado);
+        return resultado;
+        
+    } catch (error) {
+        console.error('[verificarTreinoConcluido] ❌ Erro:', error);
+        return { concluido: false, erro: error.message };
+    }
+}
+
+// Resetar treino de hoje (para casos de refazer/corrigir)
+export async function resetarTreinoHoje(userId, motivoReset = 'Reset manual') {
+    try {
+        console.log('[resetarTreinoHoje] 🔄 Resetando treino de hoje para usuário:', userId);
+        
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const semana = getWeekNumber(hoje);
+        const diaSemana = hoje.getDay();
+        const dataHoje = hoje.toISOString().split('T')[0];
+        
+        // 1. Resetar flag concluido no planejamento
+        const { data: resetPlan, error: planError } = await update('planejamento_semanal', 
+            {
+                concluido: false,
+                data_conclusao: null
+            },
+            {
+                usuario_id: userId,
+                ano: ano,
+                semana: semana,
+                dia_semana: diaSemana
+            }
+        );
+        
+        if (planError) {
+            throw new Error(`Erro ao resetar planejamento: ${planError.message}`);
+        }
+        
+        // 2. OPCIONAL: Remover execuções de hoje (comentado para preservar histórico)
+        // const { data: removeExec, error: execError } = await query('execucao_exercicio_usuario', {
+        //     delete: true,
+        //     eq: { usuario_id: userId },
+        //     gte: { data_execucao: `${dataHoje}T00:00:00.000Z` },
+        //     lt: { data_execucao: `${dataHoje}T23:59:59.999Z` }
+        // });
+        
+        console.log('[resetarTreinoHoje] ✅ Treino resetado com sucesso');
+        return { 
+            sucesso: true, 
+            mensagem: 'Treino resetado. Você pode iniciar novamente.',
+            motivoReset: motivoReset
+        };
+        
+    } catch (error) {
+        console.error('[resetarTreinoHoje] ❌ Erro ao resetar treino:', error);
+        return { 
+            sucesso: false, 
+            erro: error.message 
+        };
+    }
+}
+
 // Disponibilizar funções globalmente para debug
 if (typeof window !== 'undefined') {
     window.testarIntegracaoCalendario = testarIntegracaoCalendario;
@@ -1569,6 +1702,8 @@ if (typeof window !== 'undefined') {
     window.WeeklyPlanService.obterSemanaAtivaUsuario = obterSemanaAtivaUsuario;
     window.WeeklyPlanService.verificarSemanaJaProgramada = verificarSemanaJaProgramada;
     window.WeeklyPlanService.buscarExerciciosTreinoDia = buscarExerciciosTreinoDia;
+    window.WeeklyPlanService.verificarTreinoConcluido = verificarTreinoConcluido;
+    window.WeeklyPlanService.resetarTreinoHoje = resetarTreinoHoje;
     // Adicione aqui outras funções utilitárias exportadas que precisar acessar globalmente
 }
 // Export default do serviço

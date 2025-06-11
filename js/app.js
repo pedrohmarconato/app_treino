@@ -282,11 +282,24 @@ function setupGlobalFunctions() {
                 return;
             }
             
-            // Verificar tipo de treino
+            // Verificar se treino já está concluído
+            if (currentWorkout.concluido) {
+                console.log('[app.js] ⚠️ Treino já foi concluído hoje.');
+                showNotification('Treino já foi concluído hoje! 🎉', 'info');
+                return;
+            }
             
-
+            // Verificar se é dia de folga ou cardio
+            if (currentWorkout.tipo === 'folga') {
+                showNotification('Hoje é dia de descanso! 😴 Aproveite para se recuperar.', 'info');
+                return;
+            }
             
-            console.log('[app.js] Carregando workoutExecutionManager...');
+            if (currentWorkout.tipo === 'cardio' || currentWorkout.tipo === 'Cardio') {
+                showNotification('Treino de cardio configurado! 🏃‍♂️ Configure seu equipamento.', 'info');
+                return;
+            }
+            console.log('[app.js] ✅ Treino válido, carregando workoutExecutionManager...');
             const { workoutExecutionManager } = await import('../feature/workoutExecution.js');
             console.log('[TESTE] Import de workoutExecutionManager realizado:', !!workoutExecutionManager);
 console.log('[app.js] Chamando workoutExecutionManager.iniciarTreino');
