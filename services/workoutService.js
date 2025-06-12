@@ -43,7 +43,7 @@ export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
     let queryOptions = {
         select: '*, exercicios(*)',
         eq: { protocolo_id: protocoloId },
-        order: { column: 'numero_treino', ascending: true },
+        order: { column: 'tipo_atividade', ascending: true },
         limit: 1
     };
     
@@ -63,8 +63,7 @@ export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
     const { data: primeiroTreino } = await query('protocolo_treinos', {
         ...queryOptions,
         eq: { 
-            protocolo_id: protocoloId,
-            numero_treino: 1
+            protocolo_id: protocoloId
         }
     });
     
@@ -72,13 +71,12 @@ export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
 }
 
 // Buscar exercícios de um treino
-export async function fetchExerciciosTreino(numeroTreino, protocoloId) {
+export async function fetchExerciciosTreino(grupoMuscular, protocoloId) {
     const { data } = await query('protocolo_treinos', {
         select: `
             id,
             protocolo_id,
             exercicio_id,
-            numero_treino,
             semana_referencia,
             dia_semana,
             percentual_1rm_base,
@@ -89,7 +87,7 @@ export async function fetchExerciciosTreino(numeroTreino, protocoloId) {
             tempo_descanso,
             ordem_exercicio,
             observacoes,
-            exercicios (
+            exercicios!inner (
                 id,
                 nome,
                 grupo_muscular,
@@ -98,7 +96,7 @@ export async function fetchExerciciosTreino(numeroTreino, protocoloId) {
             )
         `,
         eq: {
-            numero_treino: numeroTreino,
+            'exercicios.grupo_muscular': grupoMuscular,
             protocolo_id: protocoloId
         },
         order: { column: 'ordem_exercicio', ascending: true }

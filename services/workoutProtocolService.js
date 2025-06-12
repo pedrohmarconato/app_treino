@@ -23,15 +23,25 @@ export class WorkoutProtocolService {
                 throw new Error('Usuário não possui protocolo ativo');
             }
             
-            // Buscar semana atual do calendário para maior precisão
+            // CORREÇÃO: Usar sempre a semana do plano do usuário, não do calendário
+            // O calendário pode estar em uma semana diferente da progressão do usuário
             const hoje = new Date();
             const { data: calendarioHoje } = await query('d_calendario', {
                 eq: { data_completa: hoje.toISOString().split('T')[0] },
                 single: true
             });
             
-            const semanaAtual = calendarioHoje?.semana_treino || planoUsuario.semana_atual || 1;
-            console.log(`[WorkoutProtocol] Protocolo ativo: semana ${semanaAtual} (calendário: ${calendarioHoje?.semana_treino}, plano: ${planoUsuario.semana_atual})`);
+            const semanaAtual = planoUsuario.semana_atual || 1;
+            
+            console.log(`[WorkoutProtocol] 📊 DIAGNÓSTICO COMPLETO DE SEMANAS (CORRIGIDO):`, {
+                hoje: hoje.toISOString().split('T')[0],
+                calendarioHoje: calendarioHoje,
+                semanaCalendario: calendarioHoje?.semana_treino,
+                semanaPlano: planoUsuario.semana_atual,
+                semanaFinal: semanaAtual,
+                observacao: 'USANDO_SEMANA_DO_PLANO_NAO_CALENDARIO',
+                planoUsuario: planoUsuario
+            });
             
             // 2. Buscar planejamento semanal (qual treino fazer hoje)
             const { data: planejamentoHoje } = await this.buscarTreinoDeHoje(userId);
@@ -54,33 +64,20 @@ export class WorkoutProtocolService {
                 };
             }
             
-            // 3. Usar numero_treino do planejamento (que já foi validado com o protocolo)
-            let numeroTreino = planejamentoHoje.numero_treino;
-            
-            // Se não houver numero_treino no planejamento, calcular baseado no protocolo
-            if (!numeroTreino && planejamentoHoje.tipo_atividade === 'treino') {
-                // Buscar treinos disponíveis no protocolo do usuário
-                const { data: protocoloTreinos } = await query('protocolo_treinos', {
-                    eq: { protocolo_id: planoUsuario.protocolo_treinamento_id },
-                    select: 'numero_treino',
-                    order: { column: 'numero_treino', ascending: true }
-                });
-                
-                if (protocoloTreinos && protocoloTreinos.length > 0) {
-                    const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
-                    // Usar primeiro treino disponível
-                    numeroTreino = treinosDisponiveis[0];
-                } else {
-                    numeroTreino = 1; // Fallback
-                }
-            }
-            
-            // Usar protocolo_id do planejamento (garantindo consistência)
+            // 3. Usar protocolo_id do planejamento (garantindo consistência)
             const protocoloId = planejamentoHoje.protocolo_treinamento_id || planoUsuario.protocolo_treinamento_id;
+            
+            console.log('[WorkoutProtocolService] 🔍 Parâmetros para buscar exercícios:', {
+                userId,
+                tipoAtividade: planejamentoHoje.tipo_atividade,
+                protocoloId,
+                semanaAtual,
+                planejamentoHoje
+            });
             
             const exerciciosComPesos = await WeightCalculatorService.calcularPesosTreino(
                 userId,
-                numeroTreino,
+                planejamentoHoje.tipo_atividade,
                 protocoloId,
                 semanaAtual
             );
@@ -105,8 +102,8 @@ export class WorkoutProtocolService {
             
             const treinoCompleto = {
                 tipo: 'treino',
-                nome: `Treino ${planejamentoHoje.tipo || 'Força'}`,
-                numero_treino: numeroTreino,
+                nome: `Treino ${planejamentoHoje.tipo_atividade || 'Força'}`,
+                tipo_atividade: planejamentoHoje.tipo_atividade,
                 semana_atual: semanaAtual,
                 protocolo_id: planoUsuario.protocolo_treinamento_id,
                 exercicios: exerciciosCompletos,
@@ -164,7 +161,6 @@ export class WorkoutProtocolService {
                 return { 
                     data: {
                         tipo_atividade: 'folga',
-                        numero_treino: null,
                         concluido: false
                     } 
                 };
@@ -283,7 +279,6 @@ export class WorkoutProtocolService {
             console.log('[WorkoutProtocol] Finalizando treino:', dadosTreino);
             
             const {
-                numero_treino,
                 exercicios_realizados,
                 tempo_total,
                 observacoes

@@ -37,7 +37,6 @@ SELECT
     ps.semana,
     ps.dia_semana,
     ps.tipo_atividade,
-    ps.numero_treino,
     ps.concluido,
     ps.data_conclusao,
     ps.created_at,

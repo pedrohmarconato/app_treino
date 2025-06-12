@@ -11,7 +11,7 @@ export class WeightCalculatorService {
     /**
      * Calcular pesos para um exercício específico na semana atual
      */
-    static async calcularPesosExercicio(userId, exercicioId, semanaAtual, numeroTreino, protocoloId) {
+    static async calcularPesosExercicio(userId, exercicioId, semanaAtual, grupoMuscular, protocoloId) {
         try {
             console.log(`[WeightCalculator] Calculando pesos: user=${userId}, exercicio=${exercicioId}, semana=${semanaAtual}`);
             
@@ -28,26 +28,26 @@ export class WeightCalculatorService {
                 };
             }
             
-            // 2. Buscar configuração do protocolo para esta semana
+            // 2. Buscar configuração do protocolo para esta semana usando JOIN
             // Validar parâmetros antes da consulta
-            if (!exercicioId || !semanaAtual || !numeroTreino || !protocoloId) {
-                console.warn(`[WeightCalculator] Parâmetros inválidos:`, { exercicioId, semanaAtual, numeroTreino, protocoloId });
+            if (!exercicioId || !semanaAtual || !grupoMuscular || !protocoloId) {
+                console.warn(`[WeightCalculator] Parâmetros inválidos:`, { exercicioId, semanaAtual, grupoMuscular, protocoloId });
                 return this.calcularComPercentuaisPadrao(rm1, semanaAtual || 1);
             }
             
             const { data: protocoloTreino, error } = await query('protocolo_treinos', {
-                select: '*',
+                select: '*, exercicios!inner(grupo_muscular)',
                 eq: {
                     exercicio_id: parseInt(exercicioId),
                     semana_referencia: parseInt(semanaAtual),
-                    numero_treino: parseInt(numeroTreino),
+                    'exercicios.grupo_muscular': grupoMuscular,
                     protocolo_id: parseInt(protocoloId)
                 },
                 single: true
             });
             
             if (error || !protocoloTreino) {
-                console.warn(`[WeightCalculator] Protocolo não encontrado:`, { exercicioId, semanaAtual, numeroTreino, protocoloId });
+                console.warn(`[WeightCalculator] Protocolo não encontrado:`, { exercicioId, semanaAtual, grupoMuscular, protocoloId });
                 // Fallback com percentuais padrão
                 return this.calcularComPercentuaisPadrao(rm1, semanaAtual);
             }
@@ -79,19 +79,19 @@ export class WeightCalculatorService {
     /**
      * Calcular pesos para todos os exercícios de um treino
      */
-    static async calcularPesosTreino(userId, numeroTreino, protocoloId, semanaAtual) {
+    static async calcularPesosTreino(userId, tipoAtividade, protocoloId, semanaAtual) {
         try {
             // 1. Validar parâmetros
-            if (!numeroTreino || !protocoloId || !semanaAtual) {
-                console.warn(`[WeightCalculator] Parâmetros inválidos para buscar treino:`, { numeroTreino, protocoloId, semanaAtual });
+            if (!tipoAtividade || !protocoloId || !semanaAtual) {
+                console.warn(`[WeightCalculator] Parâmetros inválidos para buscar treino:`, { tipoAtividade, protocoloId, semanaAtual });
                 return [];
             }
             
-            // 1. Buscar exercícios do treino para a semana
+            // 1. Buscar exercícios do treino para a semana usando JOIN
             const { data: exerciciosTreino, error } = await query('protocolo_treinos', {
                 select: `
                     *,
-                    exercicios (
+                    exercicios!inner (
                         id,
                         nome,
                         grupo_muscular,
@@ -99,7 +99,7 @@ export class WeightCalculatorService {
                     )
                 `,
                 eq: {
-                    numero_treino: parseInt(numeroTreino),
+                    'exercicios.grupo_muscular': tipoAtividade,
                     protocolo_id: parseInt(protocoloId),
                     semana_referencia: parseInt(semanaAtual)
                 },
@@ -108,7 +108,81 @@ export class WeightCalculatorService {
             
             if (error || !exerciciosTreino) {
                 console.error(`[WeightCalculator] Erro ao buscar exercícios do treino:`, error);
-                return [];
+                
+                // Debug detalhado - buscar todos os protocolos disponíveis
+                const { data: allProtocolos } = await query('protocolo_treinos', {
+                    select: 'protocolo_id, semana_referencia, exercicio_id, exercicios(grupo_muscular)',
+                    limit: 10
+                });
+                console.log('[WeightCalculator] 🔍 Protocolos disponíveis (amostra):', allProtocolos);
+                
+                // Debug - buscar para este protocolo específico
+                const { data: protocoloEspecifico } = await query('protocolo_treinos', {
+                    select: 'semana_referencia, exercicio_id, exercicios(grupo_muscular)',
+                    eq: { protocolo_id: parseInt(protocoloId) },
+                    limit: 10
+                });
+                console.log(`[WeightCalculator] 🔍 Exercícios disponíveis para protocolo ${protocoloId}:`, protocoloEspecifico);
+                
+                // Debug mais específico - buscar por grupo muscular
+                const { data: treinoEspecifico } = await query('protocolo_treinos', {
+                    select: 'semana_referencia, protocolo_id, exercicio_id, exercicios!inner(grupo_muscular)',
+                    eq: { 'exercicios.grupo_muscular': tipoAtividade },
+                    limit: 5
+                });
+                console.log(`[WeightCalculator] 🔍 Treinos disponíveis para grupo muscular ${tipoAtividade}:`, treinoEspecifico);
+                
+                // Debug - buscar todas as semanas disponíveis
+                const { data: semanasDisponiveis } = await query('protocolo_treinos', {
+                    select: 'semana_referencia, exercicios!inner(grupo_muscular)',
+                    eq: { protocolo_id: parseInt(protocoloId), 'exercicios.grupo_muscular': tipoAtividade },
+                    distinct: true
+                });
+                console.log(`[WeightCalculator] 🔍 Semanas disponíveis para protocolo ${protocoloId}, grupo ${tipoAtividade}:`, semanasDisponiveis?.map(s => s.semana_referencia));
+                
+                // INVESTIGAÇÃO COMPLETA DA BASE DE DADOS
+                console.log('🔍 ===== INVESTIGAÇÃO COMPLETA DA BASE DE DADOS =====');
+                
+                // 1. Verificar estrutura geral da tabela
+                const { data: estruturaGeral } = await query('protocolo_treinos', {
+                    select: 'protocolo_id, semana_referencia, exercicio_id, exercicios(grupo_muscular)',
+                    limit: 20
+                });
+                console.log('📋 Estrutura geral da tabela protocolo_treinos:', estruturaGeral);
+                
+                // 2. Todos os protocolos existentes
+                const { data: todosProtocolos } = await query('protocolo_treinos', {
+                    select: 'protocolo_id',
+                    distinct: true
+                });
+                console.log('🗂️ Todos os protocolo_id existentes:', todosProtocolos?.map(p => p.protocolo_id));
+                
+                // 3. Todos os grupos musculares disponíveis
+                const { data: todosGrupos } = await query('exercicios', {
+                    select: 'grupo_muscular',
+                    distinct: true
+                });
+                console.log(`🏋️ Todos os grupos musculares disponíveis:`, todosGrupos?.map(g => g.grupo_muscular));
+                
+                // 4. Todas as semanas para protocolo e grupo muscular
+                const { data: todasSemanas } = await query('protocolo_treinos', {
+                    select: 'semana_referencia, exercicios!inner(grupo_muscular)',
+                    eq: { protocolo_id: parseInt(protocoloId), 'exercicios.grupo_muscular': tipoAtividade },
+                    distinct: true
+                });
+                console.log(`📅 Todas as semanas para protocolo ${protocoloId}, grupo ${tipoAtividade}:`, todasSemanas?.map(s => s.semana_referencia));
+                
+                // 5. Verificar se existe combinação mais próxima
+                const { data: combinacaoProxima } = await query('protocolo_treinos', {
+                    select: 'protocolo_id, semana_referencia, exercicio_id, exercicios!inner(grupo_muscular)',
+                    eq: { protocolo_id: parseInt(protocoloId), 'exercicios.grupo_muscular': tipoAtividade },
+                    limit: 5
+                });
+                console.log(`🎯 Exercícios para protocolo ${protocoloId}, grupo ${tipoAtividade} (TODAS as semanas):`, combinacaoProxima);
+                
+                console.log('🔍 ===== FIM DA INVESTIGAÇÃO =====');
+                
+                throw new Error(`Nenhum exercício encontrado para: grupo_muscular=${tipoAtividade}, protocolo_id=${protocoloId}, semana=${semanaAtual}`);
             }
             
             // 2. Calcular pesos para cada exercício
@@ -118,7 +192,7 @@ export class WeightCalculatorService {
                         userId,
                         protocoloTreino.exercicio_id,
                         semanaAtual,
-                        numeroTreino,
+                        protocoloTreino.exercicios.grupo_muscular,
                         protocoloId
                     );
                     
@@ -263,12 +337,19 @@ export async function carregarPesosSugeridos(userId, protocoloTreinoId) {
         
         const semanaAtual = planoUsuario?.semana_atual || 1;
         
+        // Buscar grupo muscular do exercício
+        const { data: exercicio } = await query('exercicios', {
+            select: 'grupo_muscular',
+            eq: { id: protocoloTreino.exercicio_id },
+            single: true
+        });
+
         // Calcular pesos dinamicamente
         const pesos = await WeightCalculatorService.calcularPesosExercicio(
             userId,
             protocoloTreino.exercicio_id,
             semanaAtual,
-            protocoloTreino.numero_treino,
+            exercicio?.grupo_muscular || 'Peito',
             protocoloTreino.protocolo_id
         );
         

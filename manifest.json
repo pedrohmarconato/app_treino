@@ -1,7 +1,7 @@
 {
-  "name": "App Treino - Sistema de Treinamento",
-  "short_name": "App Treino",
-  "description": "Sistema completo de planejamento e execução de treinos",
+  "name": "FF Força - Sistema de Treinamento",
+  "short_name": "FF Força",
+  "description": "Sistema completo de planejamento e execução de treinos - FF Força",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#101010",

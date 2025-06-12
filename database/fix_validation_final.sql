@@ -33,21 +33,8 @@ BEGIN
         RAISE EXCEPTION 'tipo_atividade inválido: %', NEW.tipo_atividade;
     END IF;
     
-    -- Se for treino ou grupo muscular específico, validar se numero_treino existe
-    IF LOWER(NEW.tipo_atividade) = 'treino' 
-       OR NEW.tipo_atividade IN ('Peito', 'Costas', 'Pernas', 'Ombro', 'Braço', 'Bíceps', 'Tríceps', 'Superior', 'Inferior', 'Ombro e Braço') THEN
-        IF NEW.numero_treino IS NULL THEN
-            RAISE EXCEPTION 'numero_treino obrigatório para treinos';
-        END IF;
-        
-        -- Verificar se numero_treino existe (validação manual)
-        IF NOT EXISTS (SELECT 1 FROM protocolo_treinos WHERE numero_treino = NEW.numero_treino) THEN
-            RAISE EXCEPTION 'numero_treino % não existe em protocolo_treinos', NEW.numero_treino;
-        END IF;
-    ELSE
-        -- Folga/cardio não devem ter numero_treino
-        NEW.numero_treino = NULL;
-    END IF;
+    -- Validação simplificada: apenas verificar se tipo_atividade é válido
+    -- (numero_treino foi removido da estrutura)
     
     RETURN NEW;
 END;
@@ -57,8 +44,8 @@ $$ LANGUAGE plpgsql;
 -- STEP 4: Test the fix with a muscle group
 -- ========================================
 -- This should now work without errors:
-INSERT INTO planejamento_semanal (usuario_id, ano, semana, dia_semana, tipo_atividade, numero_treino, concluido)
-VALUES (1, 2025, 1, 1, 'Peito', 1, false);
+INSERT INTO planejamento_semanal (usuario_id, ano, semana, dia_semana, tipo_atividade, concluido)
+VALUES (1, 2025, 1, 1, 'Peito', false);
 
 -- Verify the insert worked
 SELECT * FROM planejamento_semanal WHERE tipo_atividade = 'Peito' ORDER BY id DESC LIMIT 1;

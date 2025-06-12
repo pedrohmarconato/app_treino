@@ -62,8 +62,8 @@ import { fetchExerciciosTreino, carregarPesosSugeridos } from './workoutService.
 // ==================== ESTRUTURA UNIFICADA ====================
 // Formato padrão para toda a aplicação (0-6 = Dom-Sáb)
 // {
-//   0: { tipo: 'peito', categoria: 'treino', numero_treino: 1 },  // Domingo
-//   1: { tipo: 'cardio', categoria: 'cardio', numero_treino: null }, // Segunda
+//   0: { tipo: 'peito', categoria: 'treino' },  // Domingo
+//   1: { tipo: 'cardio', categoria: 'cardio' }, // Segunda
 //   ...
 // }
 
@@ -97,7 +97,7 @@ class WeeklyPlanService {
 
     // ==================== OPERAÇÕES PRINCIPAIS ====================
     
-    // Salvar plano completo com validação de numero_treino
+    // Salvar plano completo
     static async savePlan(userId, plan) {
         const { ano, semana } = this.getCurrentWeek();
         
@@ -131,35 +131,12 @@ class WeeklyPlanService {
                     categoria: config.categoria,
                     config_completa: config
                 });
-                let numeroTreino = null;
-                
-                // Se for treino, validar numero_treino com protocolo do usuário
-                if (config.categoria === 'treino' || config.categoria === 'muscular') {
-                    // Buscar numero_treino válido do protocolo ativo
-                    const { data: protocoloTreinos } = await query('protocolo_treinos', {
-                        eq: { protocolo_id: protocoloAtivo.protocolo_treinamento_id },
-                        select: 'numero_treino',
-                        order: { column: 'numero_treino', ascending: true }
-                    });
-                    
-                    if (protocoloTreinos && protocoloTreinos.length > 0) {
-                        // Mapear tipo de treino para numero_treino baseado no protocolo
-                        const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
-                        
-                        // Usar primeiro treino disponível ou calcular baseado no dia
-                        const diaIndex = parseInt(dia);
-                        const treinoIndex = diaIndex % treinosDisponiveis.length;
-                        numeroTreino = treinosDisponiveis[treinoIndex] || treinosDisponiveis[0];
-                    }
-                }
-                
                 const registro = {
                     usuario_id: userId,
                     ano,
                     semana,
                     dia_semana: this.dayToDb(parseInt(dia)),
                     tipo_atividade: mapTipoAtividade(config.tipo || config.categoria),
-                    numero_treino: numeroTreino,
                     concluido: false
                 };
                 
@@ -258,7 +235,6 @@ class WeeklyPlanService {
                     tipo: tipoAtividade,
                     tipo_atividade: tipoAtividade, // Garantir ambos os campos
                     categoria: tipoAtividade,
-                    numero_treino: dia.numero_treino,
                     concluido: Boolean(dia.concluido),
                     protocolo_id: dia.protocolo_treinamento_id || 1 // Fallback para protocolo padrão
                 };
@@ -379,8 +355,7 @@ class WeeklyPlanService {
         try {
             const { error } = await update('planejamento_semanal', 
                 {
-                    tipo_atividade: config.categoria,
-                    numero_treino: config.numero_treino || null
+                    tipo_atividade: config.categoria
                 },
                 {
                     eq: {
@@ -548,14 +523,14 @@ class WeeklyPlanService {
             // Para treinos de força, buscar exercícios
             const protocoloId = planoDoDia.protocolo_treinamento_id || 1; // Fallback para protocolo padrão
             
-            if (planoDoDia.numero_treino && protocoloId) {
+            if (protocoloId) {
                 console.log('[getTodaysWorkout] 🏋️ Buscando exercícios:', { 
-                    numero_treino: planoDoDia.numero_treino, 
+                    tipo_atividade: tipoAtividade, 
                     protocolo_id: protocoloId 
                 });
                 
                 const exercicios = await fetchExerciciosTreino(
-                    planoDoDia.numero_treino,
+                    tipoAtividade, // Este já é o grupo muscular do planejamento
                     protocoloId
                 );
                 
@@ -564,7 +539,6 @@ class WeeklyPlanService {
                     tipo_atividade: tipoAtividade,
                     nome: `Treino ${tipoAtividade}`,
                     grupo_muscular: tipoAtividade,
-                    numero_treino: planoDoDia.numero_treino,
                     exercicios: exercicios || []
                 };
             }
@@ -575,7 +549,6 @@ class WeeklyPlanService {
                 tipo_atividade: tipoAtividade,
                 nome: `Treino ${tipoAtividade}`,
                 grupo_muscular: tipoAtividade,
-                numero_treino: planoDoDia.numero_treino,
                 exercicios: []
             };
             
@@ -1076,10 +1049,18 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         // 3. Buscar exercícios do protocolo usando semana de referência do calendário
         const { data: protocoloTreinos, error: protocoloError } = await supabase
             .from('protocolo_treinos')
-            .select('*')
+            .select(`
+                *,
+                exercicios!inner (
+                    id,
+                    nome,
+                    grupo_muscular,
+                    equipamento
+                )
+            `)
             .eq('protocolo_id', usuarioPlano.protocolo_treinamento_id)
             .eq('semana_referencia', semanaReferencia)
-            .eq('numero_treino', planejamento.numero_treino)
+            .eq('exercicios.grupo_muscular', planejamento.tipo_atividade)
             .order('ordem_exercicio', { ascending: true });
             
         if (protocoloError || !protocoloTreinos?.length) {
@@ -1140,7 +1121,6 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
             data: exerciciosFormatados,
             planejamento: {
                 tipo_atividade: planejamento.tipo_atividade,
-                numero_treino: planejamento.numero_treino,
                 semana_treino: planejamento.semana_treino
             }
         };
@@ -1587,7 +1567,33 @@ export async function verificarTreinoConcluido(userId) {
             return { concluido: false, semPlanejamento: true };
         }
         
-        // 2. Verificar se existem exercícios executados hoje (critério REAL)
+        // 2. NOVA LÓGICA SIMPLIFICADA: Verificar apenas execuções de hoje
+        // Primeiro buscar dados do calendário de hoje
+        const { data: calendarioHoje, error: calError } = await query('d_calendario', {
+            select: 'id, eh_semana_atual, data_completa',
+            eq: { data_completa: dataHoje },
+            single: true
+        });
+        
+        if (calError) {
+            console.warn('[verificarTreinoConcluido] ⚠️ Erro ao buscar calendário:', calError.message);
+        }
+        
+        console.log('[verificarTreinoConcluido] 📅 Calendário de hoje:', {
+            calendarioHoje,
+            dataHoje,
+            ehSemanaAtual: calendarioHoje?.eh_semana_atual
+        });
+        
+        // CORREÇÃO: Verificar conclusão baseado apenas em execuções, não em semana_atual
+        // A lógica anterior estava incorreta - deve verificar execuções independente da semana_atual
+        console.log('[verificarTreinoConcluido] 📅 Dados do calendário:', {
+            calendarioHoje,
+            ehSemanaAtual: calendarioHoje?.eh_semana_atual,
+            observacao: 'Verificando execuções independente de eh_semana_atual'
+        });
+        
+        // Buscar execuções apenas de hoje
         const { data: execucoesHoje, error: execError } = await query('execucao_exercicio_usuario', {
             select: 'id, exercicio_id, serie_numero, data_execucao',
             eq: { usuario_id: userId },
@@ -1599,30 +1605,48 @@ export async function verificarTreinoConcluido(userId) {
             console.warn('[verificarTreinoConcluido] ⚠️ Erro ao buscar execuções:', execError.message);
         }
         
-        const totalExecucoes = execucoesHoje?.length || 0;
-        const exerciciosUnicos = new Set(execucoesHoje?.map(e => e.exercicio_id) || []).size;
-        const temExecucoes = totalExecucoes > 0;
+        // Filtrar execuções de hoje manualmente para ter certeza
+        const execucoesRealmenteHoje = execucoesHoje?.filter(exec => {
+            const dataExec = new Date(exec.data_execucao).toISOString().split('T')[0];
+            return dataExec === dataHoje;
+        }) || [];
         
-        console.log('[verificarTreinoConcluido] 📊 Execuções encontradas:', {
-            totalExecucoes,
-            exerciciosUnicos,
-            temExecucoes,
-            flagConcluido: planejamentoHoje.concluido
+        const totalExecucoesHoje = execucoesRealmenteHoje.length;
+        const exerciciosUnicosHoje = new Set(execucoesRealmenteHoje.map(e => e.exercicio_id)).size;
+        const temExecucoesHoje = totalExecucoesHoje > 0;
+        
+        console.log('[verificarTreinoConcluido] 📊 ANÁLISE DETALHADA DE EXECUÇÕES:', {
+            totalTodasExecucoes: execucoesHoje?.length || 0,
+            totalExecucoesHoje: totalExecucoesHoje,
+            exerciciosUnicosHoje: exerciciosUnicosHoje,
+            temExecucoesHoje: temExecucoesHoje,
+            dataConsultada: dataHoje,
+            primeiraExecucao: execucoesHoje?.[0]?.data_execucao,
+            primeiraExecucaoHoje: execucoesRealmenteHoje?.[0]?.data_execucao,
+            ehSemanaAtual: calendarioHoje?.eh_semana_atual
         });
         
-        // 3. Critério híbrido: flag OU execuções reais
-        const concluido = planejamentoHoje.concluido || temExecucoes;
+        // 3. CRITÉRIO FINAL CORRIGIDO: Apenas execuções realmente de hoje (removendo dependência de eh_semana_atual)
+        const concluido = temExecucoesHoje;
+        
+        console.log('[verificarTreinoConcluido] 🚨 DECISÃO FINAL:', {
+            temExecucoesHoje,
+            ehSemanaAtual: calendarioHoje?.eh_semana_atual,
+            resultadoFinal: concluido,
+            logica: 'CORRIGIDA_apenas_execucoes_hoje'
+        });
         
         const resultado = {
             concluido: concluido,
             data_conclusao: planejamentoHoje.data_conclusao,
             tipo_atividade: planejamentoHoje.tipo_atividade,
             temPlanejamento: true,
-            // Dados extras sobre execuções
-            totalExecucoes: totalExecucoes,
-            exerciciosUnicos: exerciciosUnicos,
-            flagBanco: planejamentoHoje.concluido || false,
-            criterioUtilizado: planejamentoHoje.concluido ? 'flag_banco' : (temExecucoes ? 'execucoes_reais' : 'nenhum')
+            // Dados da nova lógica baseada em execuções reais
+            totalExecucoesHoje: totalExecucoesHoje,
+            exerciciosUnicosHoje: exerciciosUnicosHoje,
+            ehSemanaAtual: calendarioHoje?.eh_semana_atual,
+            flagBancoAntigo: planejamentoHoje.concluido || false,
+            criterioUtilizado: 'execucoes_hoje_E_semana_atual'
         };
         
         console.log('[verificarTreinoConcluido] ✅ Status do treino de hoje:', resultado);

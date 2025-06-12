@@ -4,8 +4,9 @@ export const loginTemplate = () => `
         <div class="login-container">
             <div class="login-header">
                 <div class="logo-container">
-                    <img src="./icons/black-dumbbell.svg" alt="App Treino" class="main-logo">
-                    <h1>App Treino</h1>
+                    <div class="brand-logos">
+    <img src="./icons/logo.png" alt="Logo" class="brand-logo main-logo">
+</div>
                 </div>
                 <p>Bem-vindo ao seu treino</p>
             </div>
@@ -44,11 +45,37 @@ export const loginStyles = `
         margin-bottom: 8px;
     }
 
-    .main-logo {
-        width: 48px;
-        height: 48px;
-        filter: drop-shadow(0 0 12px var(--accent-green)) brightness(1.2);
+    .brand-logos {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+    }
+
+    .brand-logo {
+        height: 56px;
+        width: auto;
+        filter: drop-shadow(0 0 15px var(--accent-green)) brightness(1.2);
         animation: logoPulse 2s ease-in-out infinite;
+        transition: all 0.3s ease;
+    }
+    .main-logo {
+        height: 120px;
+        width: auto;
+        max-width: 90vw;
+    }
+
+    .brand-logo:hover {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 25px var(--accent-green)) brightness(1.4);
+    }
+
+    .ff-logo {
+        animation-delay: 0s;
+    }
+
+    .forca-logo {
+        animation-delay: 0.5s;
     }
 
     @keyframes logoPulse {
@@ -63,6 +90,8 @@ export const loginStyles = `
         -webkit-text-fill-color: transparent;
         font-size: 2.5rem;
         text-shadow: 0 0 20px rgba(207, 255, 4, 0.3);
+        font-weight: 900;
+        letter-spacing: 2px;
     }
 
     .login-header p {

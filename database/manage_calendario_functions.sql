@@ -59,7 +59,6 @@ SELECT
     ps.id,
     ps.usuario_id,
     ps.tipo_atividade,
-    ps.numero_treino,
     cal.data_completa,
     cal.semana_treino,
     cal.percentual_1rm,

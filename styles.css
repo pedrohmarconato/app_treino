@@ -2700,6 +2700,65 @@ button:focus-visible {
     }
 }
 
+/* ========== BRAND LOGOS - FF FORÇA ========== */
+
+/* Brand logos no header da home */
+.brand-logos-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.secondary-logo {
+    height: 28px;
+    width: auto;
+    filter: drop-shadow(0 0 8px var(--accent-primary)) brightness(1.1);
+    transition: all 0.3s ease;
+}
+
+.secondary-logo:hover {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 15px var(--accent-primary)) brightness(1.3);
+}
+
+.ff-mini {
+    animation: float 3s ease-in-out infinite;
+}
+
+.forca-mini {
+    animation: float 3s ease-in-out infinite;
+    animation-delay: 1.5s;
+}
+
+/* Brand logos no workout header */
+.workout-brand-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.workout-logo-mini {
+    height: 24px;
+    width: auto;
+    filter: drop-shadow(0 0 6px var(--neon-primary)) brightness(1.1);
+    transition: all 0.3s ease;
+}
+
+.workout-logo-mini:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 12px var(--neon-primary)) brightness(1.2);
+}
+
+/* Animação de flutuação para os logos */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
 /* ========== Estilos Adicionais para Dashboard Aprimorado ========== */
 
 /* Estilo para emoji nos indicadores do dia */

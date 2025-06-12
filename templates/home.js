@@ -19,7 +19,9 @@ export const homeTemplate = () => `
                     </div>
                 </div>
                 <div class="app-logo-secondary">
-                    <img src="./icons/f-logo.png" alt="App Logo" class="secondary-logo">
+                    <div class="brand-logos-mini">
+    <img src="./icons/logo.png" alt="Logo" class="secondary-logo main-logo" style="height: 90px; width: auto; max-width: 80vw;">
+</div>
                 </div>
                 <div class="header-actions">
                     <button class="notification-btn">

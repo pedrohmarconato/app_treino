@@ -34,7 +34,7 @@ protocolo_treinos
 id: bigserial (PK)
 protocolo_id: bigint (FK -> protocolos_treinamento.id)
 exercicio_id: bigint (FK -> exercicios.id)
-numero_treino: integer
+tipo_atividade: text
 semana_referencia: integer
 dia_semana: integer
 percentual_1rm_base: numeric(5,2) (default 0)
@@ -74,7 +74,6 @@ ano: integer
 semana: integer
 dia_semana: integer
 tipo_atividade: text
-numero_treino: integer
 concluido: boolean (default false)
 data_conclusao: timestamp with time zone
 observacoes: text
