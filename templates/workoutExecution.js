@@ -66,9 +66,20 @@ export const workoutTemplate = () => `
                 </div>
             </div>
 
-            <!-- Container de Exercícios -->
-            <div id="exercises-container" class="exercises-container">
-                <!-- Exercícios serão renderizados aqui -->
+            <!-- Container de Exercícios (Resumido) -->
+            <div id="exercises-summary" class="ex-summary-compact">
+                <span class="ex-summary-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                </span>
+                <span class="ex-summary-muscle" id="summary-muscle-group">Grupo Muscular</span>
+                <span class="ex-summary-count" id="summary-exercise-count">0 ex</span>
+                <button id="expand-exercises" class="ex-summary-expand" onclick="window.toggleExercises()" title="Expandir">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
+            <!-- Container de Exercícios Expandido (inicialmente oculto) -->
+            <div id="exercises-expanded" class="exercises-container" style="display: none;">
+                <!-- Exercícios completos serão renderizados aqui -->
             </div>
         </div>
 
