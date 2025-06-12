@@ -452,18 +452,34 @@ export const exerciseItemTemplate = (exercise, index, total) => `
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 5v14m-7-7h14"/>
             </svg>
-            Adicionar Série
-        </button>
-    </div>
 `;
 
-// Template para uma série individual
 export const seriesItemTemplate = (exerciseId, seriesNumber) => `
-    <div class="series-row" id="series-${exerciseId}-${seriesNumber}">
-        <span class="series-number">${seriesNumber}</span>
-        <div class="series-input-group">
-            <div class="input-wrapper">
-                <button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, -2.5)">-</button>
+<div class="series-row" id="series-${exerciseId}-${seriesNumber}">
+<span class="series-number">${seriesNumber}</span>
+<div class="series-input-group">
+<div class="input-wrapper">
+<button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, -2.5)">-</button>
+<input type="number" class="series-input" id="peso-${exerciseId}-${seriesNumber}" 
+value="0" step="2.5" min="0">
+<button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, 2.5)">+</button>
+</div>
+</div>
+<div class="series-input-group">
+<div class="input-wrapper">
+<button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, -1)">-</button>
+<input type="number" class="series-input" id="reps-${exerciseId}-${seriesNumber}" 
+value="0" step="1" min="0">
+<button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, 1)">+</button>
+</div>
+</div>
+<button class="btn-confirm-series" id="confirm-${exerciseId}-${seriesNumber}" 
+onclick="confirmarSerie(${exerciseId}, ${seriesNumber})">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<path d="M20 6L9 17l-5-5"/>
+</svg>
+</button>
+</div>
                 <input type="number" class="series-input" id="peso-${exerciseId}-${seriesNumber}" 
                        value="0" step="2.5" min="0">
                 <button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, 2.5)">+</button>

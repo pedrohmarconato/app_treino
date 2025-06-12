@@ -145,6 +145,11 @@ async function cacheFirst(request) {
   } catch (error) {
     console.error('[SW] Erro cache-first:', error);
     
+    // Se for um recurso de imagem/ícone ausente, retorna uma resposta vazia
+    if (request.url.includes('favicon') || request.url.includes('icon-')) {
+      return new Response('', { status: 404, statusText: 'Not Found' });
+    }
+    
     // Fallback para página offline se disponível
     if (request.destination === 'document') {
       const fallback = await caches.match('/');

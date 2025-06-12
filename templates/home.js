@@ -128,6 +128,14 @@ export const homeTemplate = () => `
                                         <polygon points="5 3 19 12 5 21 5 3"/>
                                     </svg>
                                 </button>
+                                <!-- Botão Ver Todos e painel expandido -->
+                                <button id="expand-exercises" class="btn-secondary" style="margin-top:12px;" onclick="window.toggleExercises()">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 12h18m-9-9v18"/>
+                                    </svg>
+                                    <span>Ver todos</span>
+                                </button>
+                                <div id="exercises-expanded" style="display:none;"></div>
                             </div>
                         </div>
                     </div>

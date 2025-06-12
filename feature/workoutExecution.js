@@ -1952,6 +1952,66 @@ class WorkoutExecutionManager {
         }));
     }
     
+    // CONFIGURAR EVENTOS DE INTERAÇÃO: Configura eventos de clique, mudança, etc.
+    configurarEventosInteracao() {
+        console.log('[ExecucaoTreino] ⚙️ Configurando eventos de interação...');
+        
+        try {
+            // Configurar eventos de botões de finalizar treino
+            const finishButtons = document.querySelectorAll('[id*="finish"], [class*="finish"], [data-action="finish"]');
+            finishButtons.forEach(btn => {
+                btn.addEventListener('click', () => this.finalizarTreino());
+            });
+            
+            // Configurar eventos de inputs de peso/reps
+            const inputs = document.querySelectorAll('input[type="number"], input[data-series]');
+            inputs.forEach(input => {
+                input.addEventListener('change', (e) => this.salvarProgresso(e));
+                input.addEventListener('blur', (e) => this.salvarProgresso(e));
+            });
+            
+            console.log('[ExecucaoTreino] ✅ Eventos configurados com sucesso');
+            
+        } catch (error) {
+            console.error('[ExecucaoTreino] ❌ Erro ao configurar eventos:', error);
+        }
+    }
+    
+    // ATIVAR MODO EMERGÊNCIA: Fallback quando algo falha na renderização
+    ativarModoEmergencia() {
+        console.warn('[ExecucaoTreino] 🚨 Ativando modo emergência...');
+        
+        try {
+            // Tentar encontrar qualquer container disponível
+            const containers = [
+                document.getElementById('workout-content'),
+                document.querySelector('.workout-container'),
+                document.querySelector('#app .active'),
+                document.querySelector('#app')
+            ];
+            
+            const container = containers.find(c => c !== null);
+            
+            if (container) {
+                container.innerHTML = `
+                    <div class="emergency-mode">
+                        <h3>⚠️ Modo Emergência Ativo</h3>
+                        <p>Houve um problema na renderização do treino.</p>
+                        <button onclick="location.reload()" class="btn-emergency">🔄 Recarregar Página</button>
+                        <button onclick="window.renderTemplate('home')" class="btn-emergency">🏠 Voltar ao Início</button>
+                    </div>
+                `;
+                
+                console.log('[ExecucaoTreino] 🚨 Modo emergência ativado no container:', container.id || container.className);
+            } else {
+                console.error('[ExecucaoTreino] ❌ Nenhum container disponível para modo emergência');
+            }
+            
+        } catch (error) {
+            console.error('[ExecucaoTreino] ❌ Erro no modo emergência:', error);
+        }
+    }
+
     // Função de debug específica para exercícios
     debugExercicios() {
         console.log('[WorkoutExecution] 🔍 DEBUG: Verificando exercícios...');

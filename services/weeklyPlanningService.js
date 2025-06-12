@@ -1567,73 +1567,16 @@ export async function verificarTreinoConcluido(userId) {
             return { concluido: false, semPlanejamento: true };
         }
         
-        // 2. NOVA LÓGICA SIMPLIFICADA: Verificar apenas execuções de hoje
-        // Primeiro buscar dados do calendário de hoje
-        const { data: calendarioHoje, error: calError } = await query('d_calendario', {
-            select: 'id, eh_semana_atual, data_completa',
-            eq: { data_completa: dataHoje },
-            single: true
-        });
+        // 2. VERIFICAR O STATUS NO PLANEJAMENTO_SEMANAL
+        // O campo 'concluido' na tabela planejamento_semanal é a fonte da verdade
+        const concluido = Boolean(planejamentoHoje.concluido);
         
-        if (calError) {
-            console.warn('[verificarTreinoConcluido] ⚠️ Erro ao buscar calendário:', calError.message);
-        }
-        
-        console.log('[verificarTreinoConcluido] 📅 Calendário de hoje:', {
-            calendarioHoje,
-            dataHoje,
-            ehSemanaAtual: calendarioHoje?.eh_semana_atual
-        });
-        
-        // CORREÇÃO: Verificar conclusão baseado apenas em execuções, não em semana_atual
-        // A lógica anterior estava incorreta - deve verificar execuções independente da semana_atual
-        console.log('[verificarTreinoConcluido] 📅 Dados do calendário:', {
-            calendarioHoje,
-            ehSemanaAtual: calendarioHoje?.eh_semana_atual,
-            observacao: 'Verificando execuções independente de eh_semana_atual'
-        });
-        
-        // Buscar execuções apenas de hoje
-        const { data: execucoesHoje, error: execError } = await query('execucao_exercicio_usuario', {
-            select: 'id, exercicio_id, serie_numero, data_execucao',
-            eq: { usuario_id: userId },
-            gte: { data_execucao: `${dataHoje}T00:00:00.000Z` },
-            lt: { data_execucao: `${dataHoje}T23:59:59.999Z` }
-        });
-        
-        if (execError) {
-            console.warn('[verificarTreinoConcluido] ⚠️ Erro ao buscar execuções:', execError.message);
-        }
-        
-        // Filtrar execuções de hoje manualmente para ter certeza
-        const execucoesRealmenteHoje = execucoesHoje?.filter(exec => {
-            const dataExec = new Date(exec.data_execucao).toISOString().split('T')[0];
-            return dataExec === dataHoje;
-        }) || [];
-        
-        const totalExecucoesHoje = execucoesRealmenteHoje.length;
-        const exerciciosUnicosHoje = new Set(execucoesRealmenteHoje.map(e => e.exercicio_id)).size;
-        const temExecucoesHoje = totalExecucoesHoje > 0;
-        
-        console.log('[verificarTreinoConcluido] 📊 ANÁLISE DETALHADA DE EXECUÇÕES:', {
-            totalTodasExecucoes: execucoesHoje?.length || 0,
-            totalExecucoesHoje: totalExecucoesHoje,
-            exerciciosUnicosHoje: exerciciosUnicosHoje,
-            temExecucoesHoje: temExecucoesHoje,
-            dataConsultada: dataHoje,
-            primeiraExecucao: execucoesHoje?.[0]?.data_execucao,
-            primeiraExecucaoHoje: execucoesRealmenteHoje?.[0]?.data_execucao,
-            ehSemanaAtual: calendarioHoje?.eh_semana_atual
-        });
-        
-        // 3. CRITÉRIO FINAL CORRIGIDO: Apenas execuções realmente de hoje (removendo dependência de eh_semana_atual)
-        const concluido = temExecucoesHoje;
-        
-        console.log('[verificarTreinoConcluido] 🚨 DECISÃO FINAL:', {
-            temExecucoesHoje,
-            ehSemanaAtual: calendarioHoje?.eh_semana_atual,
-            resultadoFinal: concluido,
-            logica: 'CORRIGIDA_apenas_execucoes_hoje'
+        console.log('[verificarTreinoConcluido] 📊 ANÁLISE DO PLANEJAMENTO:', {
+            planejamento: planejamentoHoje,
+            concluido: concluido,
+            data_conclusao: planejamentoHoje.data_conclusao,
+            tipo_atividade: planejamentoHoje.tipo_atividade,
+            logica: 'BASEADA_NO_PLANEJAMENTO_SEMANAL'
         });
         
         const resultado = {
@@ -1641,12 +1584,7 @@ export async function verificarTreinoConcluido(userId) {
             data_conclusao: planejamentoHoje.data_conclusao,
             tipo_atividade: planejamentoHoje.tipo_atividade,
             temPlanejamento: true,
-            // Dados da nova lógica baseada em execuções reais
-            totalExecucoesHoje: totalExecucoesHoje,
-            exerciciosUnicosHoje: exerciciosUnicosHoje,
-            ehSemanaAtual: calendarioHoje?.eh_semana_atual,
-            flagBancoAntigo: planejamentoHoje.concluido || false,
-            criterioUtilizado: 'execucoes_hoje_E_semana_atual'
+            criterioUtilizado: 'planejamento_semanal_concluido'
         };
         
         console.log('[verificarTreinoConcluido] ✅ Status do treino de hoje:', resultado);
