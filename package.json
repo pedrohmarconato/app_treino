@@ -51,7 +51,7 @@
     "type-check": "tsc --noEmit",
     "minify:css": "cleancss -o dist/styles.min.css styles.css",
     "minify:js": "terser js/app.js -o dist/app.min.js",
-    "analyze": "npm run build && bundlesize",
+    "analyze": "npm run build && bundlemon",
     "lighthouse": "lighthouse-ci autorun",
     "security:audit": "npm audit --audit-level moderate",
     "security:fix": "npm audit fix",
@@ -66,7 +66,7 @@
     "@types/jest": "^29.5.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "bundlesize": "^0.18.1",
+    "bundlemon": "^2.1.0",
     "clean-css-cli": "^5.6.0",
     "cypress": "^13.0.0",
     "eslint": "^8.45.0",
@@ -96,16 +96,19 @@
     "not dead",
     "not ie 11"
   ],
-  "bundlesize": [
-    {
-      "path": "./dist/*.js",
-      "maxSize": "100 kB"
-    },
-    {
-      "path": "./dist/*.css",
-      "maxSize": "50 kB"
-    }
-  ],
+  "bundlemon": {
+    "baseDir": "./dist",
+    "files": [
+      {
+        "path": "*.js",
+        "maxSize": "100kb"
+      },
+      {
+        "path": "*.css",
+        "maxSize": "50kb"
+      }
+    ]
+  },
   "jest": {
     "testEnvironment": "jsdom",
     "setupFilesAfterEnv": [
