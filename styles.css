@@ -2875,20 +2875,23 @@ button:focus-visible {
 
 /* Estado: Concluído - Sombra Neon Verde */
 .day-indicator.completed,
-.day-indicator.workout-completed {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 0 15px rgba(0, 255, 100, 0.4);
+.day-indicator.workout-completed,
+.day-indicator.today.completed {
+    background: var(--bg-primary) !important;
+    border: 1px solid rgba(0, 255, 100, 0.6) !important;
+    box-shadow: 0 0 15px rgba(0, 255, 100, 0.4) !important;
 }
 
 .day-indicator.completed .day-name,
-.day-indicator.workout-completed .day-name {
-    color: var(--text-secondary);
+.day-indicator.workout-completed .day-name,
+.day-indicator.today.completed .day-name {
+    color: var(--text-secondary) !important;
 }
 
 .day-indicator.completed .day-type,
-.day-indicator.workout-completed .day-type {
-    color: var(--text-primary);
+.day-indicator.workout-completed .day-type,
+.day-indicator.today.completed .day-type {
+    color: var(--text-primary) !important;
     font-weight: 500;
 }
 
@@ -2979,8 +2982,10 @@ button:focus-visible {
     transform: translateY(-1px);
 }
 
-.day-indicator.completed:hover {
-    box-shadow: 0 0 20px rgba(0, 255, 100, 0.6);
+.day-indicator.completed:hover,
+.day-indicator.today.completed:hover {
+    box-shadow: 0 0 20px rgba(0, 255, 100, 0.6) !important;
+    transform: translateY(-1px);
 }
 
 /* Responsividade Mobile */
@@ -4206,4 +4211,61 @@ button:focus-visible {
         gap: 12px;
     }
 }
+
+/* Sistema de Ícones SVG */
+.app-icon {
+    width: 40px;
+    height: 40px;
+    stroke: var(--accent-green);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: var(--transition);
+}
+
+.app-icon.filled {
+    fill: var(--accent-green);
+    stroke: none;
+}
+
+.app-icon.partial-fill {
+    fill: var(--accent-green-bg);
+    stroke: var(--accent-green);
+}
+
+/* Tamanhos */
+.app-icon.icon-small { width: 24px; height: 24px; }
+.app-icon.icon-large { width: 60px; height: 60px; }
+
+/* Animações */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.icon-pulse { animation: pulse 2s ease-in-out infinite; }
+.icon-rotate { animation: rotate 20s linear infinite; }
+.icon-bounce { animation: bounce 1.5s ease-in-out infinite; }
+
+/* Estados */
+.icon-active {
+    filter: drop-shadow(0 0 20px var(--accent-green));
+}
+
+/* Cores de Status */
+.icon-success { stroke: var(--accent-green); }
+.icon-warning { stroke: #ff9800; }
+.icon-error { stroke: #f44336; }
+.icon-info { stroke: #2196f3; }
 }

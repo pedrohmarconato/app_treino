@@ -2,29 +2,31 @@
 import AppState from '../state/appState.js';
 import { obterSemanaAtivaUsuario, carregarStatusSemanas } from '../services/weeklyPlanningService.js';
 import { fetchMetricasUsuario } from '../services/userService.js';
+import { getWorkoutIcon, getActionIcon, workoutTypeMap } from '../utils/icons.js';
+import WeeklyPlanService from '../services/weeklyPlanningService.js';
 // Import removido para compatibilidade com browser tradicional
 // Use window.WeeklyPlanService.metodo() para acessar métodos
 // Se precisar de funções globais, atribua manualmente abaixo
 import homeService from '../services/homeService.js';
 import { showNotification } from '../ui/notifications.js';
-import { supabase } from '../services/supabaseService.js';
+import { supabase, query } from '../services/supabaseService.js';
 import TreinoExecutadoService from '../services/treinoExecutadoService.js';
 
-// Mapear tipos de treino para emojis
-const TREINO_EMOJIS = {
-    'Peito': '💪',
-    'Costas': '🔙', 
-    'Pernas': '🦵',
-    'Ombro e Braço': '🎯',
-    'Ombro': '🎯',
-    'Braço': '🎯',
-    'Cardio': '🏃',
-    'cardio': '🏃',
-    'folga': '😴',
-    'A': '💪',
-    'B': '🔙',
-    'C': '🦵',
-    'D': '🎯'
+// Mapear tipos de treino para ícones
+const TREINO_ICONS = {
+    'Peito': 'peito',
+    'Costas': 'costas', 
+    'Pernas': 'pernas',
+    'Ombro e Braço': 'ombros',
+    'Ombro': 'ombros',
+    'Braço': 'bracos',
+    'Cardio': 'cardio',
+    'cardio': 'cardio',
+    'folga': 'descanso',
+    'A': 'peito',
+    'B': 'costas',
+    'C': 'pernas',
+    'D': 'ombros'
 };
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -275,25 +277,26 @@ async function carregarIndicadoresSemana() {
             // Verificar se há execuções de exercícios para este dia como backup
             let isCompleted = diaPlan?.concluido || false;
             
-            // Se não está marcado como concluído no planejamento, verificar na nova estrutura
+            // Se não está marcado como concluído no planejamento, verificar usando a mesma lógica do workoutExecution
             if (!isCompleted) {
-                isCompleted = await verificarTreinoExecutado(currentUser.id, i);
+                isCompleted = await verificarTreinoConcluido(currentUser.id, i);
             }
             
             // DEBUG: Log de cada dia
-            console.log(`[DEBUG] Dia ${i} (${DIAS_SEMANA[i]}):`, {
+            console.log(`[DEBUG] Dia ${i} (${DIAS_SEMANA[i]}) - CONCLUÍDO: ${isCompleted}:`, {
                 plano: diaPlan,
                 tipo_atividade: diaPlan?.tipo_atividade,
                 tipo: diaPlan?.tipo,
                 concluido_planejamento: diaPlan?.concluido,
                 concluido_final: isCompleted,
-                protocolo_treino_id: diaPlan?.protocolo_treino_id
+                protocolo_treino_id: diaPlan?.protocolo_treino_id,
+                classe_css: `day-indicator${isToday ? ' today' : ''}${isCompleted ? ' completed' : ''}`
             });
             
             // Determinar tipo e classe do dia
             let dayType = 'Configure';
             let dayClass = 'day-indicator';
-            let emoji = '';
+            let icon = '';
             
             if (diaPlan) {
                 // CORREÇÃO ROBUSTA: Múltiplos fallbacks para garantir dados válidos
@@ -322,24 +325,24 @@ async function carregarIndicadoresSemana() {
                     case 'descanso':
                         dayType = 'Folga';
                         dayClass += ' rest-day';
-                        emoji = '😴';
+                        icon = getWorkoutIcon('descanso', 'small');
                         break;
                     case 'cardio':
                     case 'cardiovascular':
                         dayType = 'Cardio';
                         dayClass += ' cardio-day';
-                        emoji = '🏃';
+                        icon = getWorkoutIcon('cardio', 'small');
                         break;
                     default:
                         if (tipoTreino && tipoTreino !== 'folga') {
                             // Mostrar o grupo muscular específico
                             dayType = tipoTreino;
                             dayClass += ' workout-day';
-                            emoji = TREINO_EMOJIS[tipoTreino] || '🏋️';
+                            icon = getWorkoutIcon(TREINO_ICONS[tipoTreino] || 'peito', 'small');
                         } else {
                             // Fallback seguro
                             dayType = 'Configure';
-                            emoji = '⚙️';
+                            icon = getActionIcon('settings');
                         }
                         break;
                 }
@@ -350,24 +353,43 @@ async function carregarIndicadoresSemana() {
             if (isCompleted) dayClass += ' completed';
             
             // Adicionar check para dias concluídos
-            const completedCheck = isCompleted ? '<span class="completed-check">✓</span>' : '';
+            const completedCheck = '';
             
             html += `
                 <div class="${dayClass}" data-day="${i}" data-completed="${isCompleted}" onclick="handleDayClick(${i}, ${isCompleted})">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
                     <div class="day-type">
-                        ${emoji ? `<span class="day-emoji">${emoji}</span>` : ''}
-                        ${dayType}${completedCheck}
+                        ${icon ? `<span class="day-icon">
+                            <style>
+                                .day-icon {
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    width: 36px;
+                                    height: 36px;
+                                    margin: 0 auto 4px auto;
+                                    font-size: 2rem;
+                                }
+                                .day-indicator .day-icon svg {
+                                    width: 2.2em;
+                                    height: 2.2em;
+                                    display: block;
+                                    margin: 0 auto;
+                                }
+                            </style>
+                            ${icon}
+                        </span>` : ''}
+                        ${dayType}
                     </div>
                 </div>
             `;
         }
         
         container.innerHTML = html;
-        console.log('[carregarIndicadoresSemana] ✅ Indicadores carregados com sucesso');
+        console.log('[carregarIndicadoresSemana] ✓ Indicadores carregados com sucesso');
         
     } catch (error) {
-        console.error('[carregarIndicadoresSemana] ❌ ERRO:', error);
+        console.error('[carregarIndicadoresSemana] ✗ ERRO:', error);
         showNotification('Erro ao carregar planejamento da semana', 'error');
     }
 }
@@ -500,13 +522,13 @@ function atualizarUITreinoAtualCompleto(treino) {
             updateElement(workoutNameEl, 'Treino Cardiovascular');
             updateElement(workoutExercisesEl, 'Exercícios aeróbicos • 30-45min');
             updateElement(btnTextEl, 'Iniciar Cardio');
-            updateElement(progressTextEl, '🏃');
+            updateElement(progressTextEl, getWorkoutIcon('cardio', 'small'));
             break;
             
         default:
             // Treino de força com informações detalhadas
             const grupoMuscular = treino.grupo_muscular;
-            const emoji = TREINO_EMOJIS[grupoMuscular] || '🏋️';
+            const icon = getWorkoutIcon(TREINO_ICONS[grupoMuscular] || 'peito', 'small');
             
             updateElement(workoutTypeEl, `Treino ${grupoMuscular}`);
             updateElement(workoutNameEl, treino.nome);
@@ -514,7 +536,7 @@ function atualizarUITreinoAtualCompleto(treino) {
                 `${treino.total_exercicios} exercícios • ${treino.duracao_estimada}min • ${grupoMuscular}`
             );
             updateElement(btnTextEl, 'Iniciar Treino');
-            updateElement(progressTextEl, emoji);
+            updateElement(progressTextEl, icon);
             break;
     }
     
@@ -570,18 +592,18 @@ function atualizarUITreinoAtual(treino) {
             updateElement(workoutNameEl, 'Treino Cardiovascular');
             updateElement(workoutExercisesEl, 'Exercícios aeróbicos • 30-45min');
             updateElement(btnTextEl, 'Iniciar Cardio');
-            updateElement(progressTextEl, '🏃');
+            updateElement(progressTextEl, getWorkoutIcon('cardio', 'small'));
             break;
             
         default:
             // Treino de força
             const grupoMuscular = treino.tipo;
-            const emoji = TREINO_EMOJIS[grupoMuscular] || '🏋️';
+            const icon = getWorkoutIcon(TREINO_ICONS[grupoMuscular] || 'peito', 'small');
             updateElement(workoutTypeEl, `Treino ${grupoMuscular}`);
             updateElement(workoutNameEl, `Treino ${grupoMuscular}`);
             updateElement(workoutExercisesEl, `Força • ${grupoMuscular} • ~45min`);
             updateElement(btnTextEl, 'Iniciar Treino');
-            updateElement(progressTextEl, emoji);
+            updateElement(progressTextEl, icon);
             break;
     }
     
@@ -1167,7 +1189,7 @@ function atualizarAtividadeRecente(execucoesRecentes) {
             
             html += `
                 <div class="activity-item">
-                    <div class="activity-icon">🏋️</div>
+                    <div class="activity-icon">${getActionIcon('weight')}</div>
                     <div class="activity-content">
                         <div class="activity-description">
                             ${execucao.peso_utilizado}kg × ${execucao.repeticoes} reps
@@ -1175,7 +1197,7 @@ function atualizarAtividadeRecente(execucoesRecentes) {
                         <div class="activity-time">${tempoRelativo}</div>
                     </div>
                     <div class="activity-success ${execucao.falhou ? 'failed' : 'success'}">
-                        ${execucao.falhou ? '⚠️' : '✅'}
+                        ${execucao.falhou ? getActionIcon('warning') : getActionIcon('checkFilled')}
                     </div>
                 </div>
             `;
@@ -1556,55 +1578,54 @@ window.navegarSemana = navegarSemana;
 // Função global para carregar dados dinâmicos
 window.carregarDadosDinamicosHome = carregarDadosDinamicosHome;
 
-// Verificar se treino foi executado (nova estrutura)
-async function verificarTreinoExecutado(userId, dayIndex) {
+// Verificar se treino foi concluído usando a mesma lógica do workoutExecution
+async function verificarTreinoConcluido(userId, dayIndex) {
     try {
+        console.log(`[verificarTreinoConcluido] 🔍 Verificando conclusão do dia ${dayIndex} (${DIAS_SEMANA[dayIndex]}) para usuário:`, userId);
+        
         const hoje = new Date();
-        const dataAlvo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (hoje.getDay() - dayIndex));
-        const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
+        const ano = hoje.getFullYear();
+        const semana = WeeklyPlanService.getWeekNumber(hoje);
         
-        // DESATIVADO: Verificação na nova tabela treino_executado (tabela inexistente)
-        // const sessaoResult = await TreinoExecutadoService.buscarSessaoPorData(userId, dataAlvoStr);
-        // if (sessaoResult.success && sessaoResult.data.length > 0) {
-        //     const treinoConcluido = sessaoResult.data.some(sessao => sessao.concluido);
-        //     console.log(`[verificarTreinoExecutado] Dia ${dayIndex} - ${dataAlvoStr}:`, {
-        //         sessoes_encontradas: sessaoResult.data.length,
-        //         treino_concluido: treinoConcluido,
-        //         fonte: 'treino_executado'
-        //     });
-        //     return treinoConcluido;
-        // }
-        
-        // Fallback: verificar sistema antigo
-        const { data: execucoesAntigas } = await supabase
-            .from('execucao_exercicio_usuario')
-            .select('id')
-            .eq('usuario_id', userId)
-            .gte('data_execucao', dataAlvoStr)
-            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-
-        
-        const hasOldExecutions = execucoesAntigas && execucoesAntigas.length > 0;
-        
-        console.log(`[verificarTreinoExecutado] Dia ${dayIndex} - ${dataAlvoStr}:`, {
-            execucoes_antigas: execucoesAntigas?.length || 0,
-            treino_concluido: hasOldExecutions,
-            fonte: 'sistema_antigo'
+        // Buscar planejamento específico do dia no banco usando a mesma lógica do workoutExecution
+        const { data: planejamentoArray, error } = await query('planejamento_semanal', {
+            select: 'concluido, data_conclusao, tipo_atividade',
+            eq: {
+                usuario_id: userId,
+                ano: ano,
+                semana: semana,
+                dia_semana: dayIndex
+            }
         });
         
-        // Se há execuções antigas, tentar sincronizar
-        if (hasOldExecutions) {
-            try {
-                await sincronizarConclusaoTreino(userId, dayIndex);
-            } catch (syncError) {
-                console.warn('[verificarTreinoExecutado] Erro ao sincronizar:', syncError);
-            }
+        const planejamentoDia = planejamentoArray && planejamentoArray.length > 0 ? planejamentoArray[0] : null;
+        
+        if (error) {
+            console.warn(`[verificarTreinoConcluido] ⚠️ Erro ao buscar planejamento do dia ${dayIndex}:`, error.message);
+            return false;
         }
         
-        return hasOldExecutions;
+        if (!planejamentoDia) {
+            console.log(`[verificarTreinoConcluido] ⚠️ Nenhum planejamento encontrado para o dia ${dayIndex} (${DIAS_SEMANA[dayIndex]})`);
+            return false;
+        }
+        
+        // VERIFICAR O STATUS NO PLANEJAMENTO_SEMANAL usando a mesma lógica
+        // O campo 'concluido' na tabela planejamento_semanal é a fonte da verdade
+        const concluido = Boolean(planejamentoDia.concluido);
+        
+        console.log(`[verificarTreinoConcluido] 📊 ANÁLISE DO DIA ${dayIndex} (${DIAS_SEMANA[dayIndex]}):`, {
+            planejamento: planejamentoDia,
+            concluido: concluido,
+            data_conclusao: planejamentoDia.data_conclusao,
+            tipo_atividade: planejamentoDia.tipo_atividade,
+            logica: 'BASEADA_NO_PLANEJAMENTO_SEMANAL'
+        });
+        
+        return concluido;
         
     } catch (error) {
-        console.error('[verificarTreinoExecutado] Erro:', error);
+        console.error(`[verificarTreinoConcluido] ❌ Erro no dia ${dayIndex}:`, error);
         return false;
     }
 }
@@ -2097,7 +2118,7 @@ function renderizarExercicios(exercicios, planejamento, container) {
     
     let html = `
         <div class="exercises-header">
-            <h4>🏋️‍♂️ ${tipoTreino} ${numeroTreino ? `- Treino ${numeroTreino}` : ''}</h4>
+            <h4>${getActionIcon('weight')} ${tipoTreino} ${numeroTreino ? `- Treino ${numeroTreino}` : ''}</h4>
             <p class="exercises-count">${exercicios.length} exercício${exercicios.length !== 1 ? 's' : ''}</p>
         </div>
         <div class="exercises-grid">

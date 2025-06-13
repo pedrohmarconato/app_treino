@@ -2,6 +2,7 @@
 // Versão corrigida que fecha o modal adequadamente
 
 import AppState from '../state/appState.js';
+import { getWorkoutIcon, getIconForWorkoutType } from '../utils/icons.js';
 // Import removido para compatibilidade com browser tradicional
 // Use window.WeeklyPlanService.metodo() para acessar métodos
 // Se precisar de funções globais, atribua manualmente abaixo
@@ -27,15 +28,15 @@ let jaProgramadaAtual = false; // Status de programação
 let validationTimeout = null;
 const VALIDATION_DEBOUNCE_MS = 150;
 
-// Mapear emojis para os tipos de treino
-const treinoEmojis = {
-    'Costas': '🔙',
-    'Peito': '💪',
-    'Pernas': '🦵',
-    'Ombro e Braço': '💪',
-    'Cardio': '🏃',
-    'Ombro': '🎯',
-    'Braço': '💪'
+// Mapear ícones para os tipos de treino
+const treinoIcons = {
+    'Costas': 'costas',
+    'Peito': 'peito',
+    'Pernas': 'pernas',
+    'Ombro e Braço': 'ombros',
+    'Cardio': 'cardio',
+    'Ombro': 'ombros',
+    'Braço': 'bracos'
 };
 
 // Inicializar planejamento
@@ -626,7 +627,7 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
     // Adicionar opção de cardio
     const cardioOption = criarOpcaoTreino({
         id: 'cardio',
-        emoji: '🏃',
+        icon: getWorkoutIcon('cardio'),
         nome: 'Cardio',
         descricao: 'Exercícios cardiovasculares',
         tipo: 'Cardio',
@@ -682,7 +683,7 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
         if (treino.categoria === 'muscular') {
             const option = criarOpcaoTreino({
                 id: treino.id,
-                emoji: treinoEmojis[treino.tipo] || '🏋️',
+                icon: getWorkoutIcon(treinoIcons[treino.tipo] || 'peito'),
                 nome: treino.tipo,
                 descricao: `Treino ${treino.tipo}`,
                 tipo: treino.tipo,
@@ -809,7 +810,7 @@ function criarOpcaoTreino(treino, diaDestino) {
     }
     
     option.innerHTML = `
-        <span class="option-emoji">${treino.emoji}</span>
+        <span class="option-icon">${treino.icon}</span>
         <div class="option-info">
             <div class="option-name">${treino.nome}</div>
             <div class="option-description">${treino.descricao}</div>
@@ -924,7 +925,7 @@ function atualizarVisualizacaoDia(dia, treino) {
     
     // Optimized template rendering with single template
     const treinoData = {
-        emoji: treinoEmojis[treino.tipo] || '🏋️',
+        icon: getWorkoutIcon(treinoIcons[treino.tipo] || 'peito'),
         nome: treino.nome,
         tipo: treino.categoria === 'cardio' ? 'Cardiovascular' : 'Muscular'
     };
@@ -932,7 +933,7 @@ function atualizarVisualizacaoDia(dia, treino) {
     // Single template with conditional data
     dayContent.innerHTML = `
         <div class="treino-assigned ${statusClass}">
-            <span class="treino-emoji">${treinoData.emoji}</span>
+            <span class="treino-icon">${treinoData.icon}</span>
             <div class="treino-info">
                 <div class="treino-name">${treinoData.nome}</div>
                 <div class="treino-type">${treinoData.tipo}</div>

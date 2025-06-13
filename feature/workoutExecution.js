@@ -4,6 +4,7 @@ import AppState from '../state/appState.js';
 import { showNotification } from '../ui/notifications.js';
 import { workoutTemplate, exerciseCardTemplate } from '../templates/workoutExecution.js';
 import TreinoCacheService from '../services/treinoCacheService.js';
+import { getActionIcon, getAchievementIcon, getWorkoutIcon } from '../utils/icons.js';
 
 class WorkoutExecutionManager {
     constructor() {
@@ -60,12 +61,12 @@ class WorkoutExecutionManager {
             
             // Verificar casos especiais
             if (this.currentWorkout.tipo === 'folga') {
-                showNotification('Hoje é dia de descanso! 😴', 'info');
+                showNotification(`Hoje é dia de descanso! ${getWorkoutIcon('descanso', 'small')}`, 'info');
                 return;
             }
             
             if (this.currentWorkout.tipo === 'cardio') {
-                showNotification('Treino de cardio! 🏃‍♂️ Configure seu equipamento.', 'info');
+                showNotification(`Treino de cardio! ${getWorkoutIcon('cardio', 'small')} Configure seu equipamento.`, 'info');
                 return;
             }
 
@@ -815,15 +816,15 @@ class WorkoutExecutionManager {
                     ${nomeExercicio}
                 </h3>
                 <div class="exercise-details" style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.875rem; color: var(--text-secondary, #ccc);">
-                    <span>🔄 ${numSeries} séries</span>
-                    <span>🎯 ${repeticoesAlvo} reps</span>
-                    <span>⏱️ ${tempoDescanso}s descanso</span>
-                    ${pesoSugerido ? `<span>💪 ${pesoSugerido}kg sugerido</span>` : ''}
+                    <span>${getActionIcon('repeat')} ${numSeries} séries</span>
+                    <span>${getAchievementIcon('target')} ${repeticoesAlvo} reps</span>
+                    <span>${getActionIcon('timer')} ${tempoDescanso}s descanso</span>
+                    ${pesoSugerido ? `<span>${getActionIcon('weight')} ${pesoSugerido}kg sugerido</span>` : ''}
                 </div>
                 ${grupoMuscular || equipamento ? `
                     <div class="exercise-meta" style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 0.75rem; color: var(--text-secondary, #999);">
-                        ${grupoMuscular ? `<span>🎯 ${grupoMuscular}</span>` : ''}
-                        ${equipamento ? `<span>🏋️ ${equipamento}</span>` : ''}
+                        ${grupoMuscular ? `<span>${getAchievementIcon('target')} ${grupoMuscular}</span>` : ''}
+                        ${equipamento ? `<span>${getActionIcon('weight')} ${equipamento}</span>` : ''}
                     </div>
                 ` : ''}
             </div>
@@ -1133,7 +1134,7 @@ class WorkoutExecutionManager {
         const timerHTML = `
             <div id="rest-timer-dynamic" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 999;">
                 <div style="background: var(--bg-secondary, #2a2a2a); padding: 40px; border-radius: 16px; text-align: center; max-width: 300px;">
-                    <h3 style="color: var(--text-primary, #fff); margin-bottom: 20px;">⏱️ Descanso</h3>
+                    <h3 style="color: var(--text-primary, #fff); margin-bottom: 20px;">${getActionIcon('timer')} Descanso</h3>
                     <div style="font-size: 3rem; color: var(--accent-green, #a8ff00); font-weight: bold; margin-bottom: 20px;">
                         <span id="rest-time-dynamic">${segundos}</span>s
                     </div>
@@ -1629,7 +1630,7 @@ class WorkoutExecutionManager {
             
             ${restTime ? `
                 <div class="rest-info" style="margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.875rem; color: #ccc;">
-                    ⏱️ Descanso: ${restTime}s entre séries
+                    ${getActionIcon('timer')} Descanso: ${restTime}s entre séries
                 </div>
             ` : ''}
         `;

@@ -1,5 +1,6 @@
 // templates/home.js - Template da tela home COMPLETO
 // import homeService from '../services/homeService.js'; // Temporariamente comentado para debug
+import { getWorkoutIcon, getActionIcon, getNavigationIcon, getAchievementIcon } from '../utils/icons.js';
 
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
@@ -25,10 +26,7 @@ export const homeTemplate = () => `
                 </div>
                 <div class="header-actions">
                     <button class="notification-btn">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                        </svg>
+                        ${getNavigationIcon('notification')}
                         <span class="notification-badge pulse"></span>
                     </button>
                     <button class="btn-icon logout-btn" onclick="logout()">
@@ -51,25 +49,18 @@ export const homeTemplate = () => `
                     <div class="header-actions">
                         <div class="week-selector" id="week-selector">
                             <button class="btn-icon week-nav" id="week-prev" onclick="window.navegarSemana(-1)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M15 18l-6-6 6-6"/>
-                                </svg>
+                                ${getNavigationIcon('back')}
                             </button>
                             <div class="current-week-info" id="current-week-info">
                                 <span class="week-number" id="week-number">Semana 1</span>
                                 <span class="week-status" id="week-status">Ativa</span>
                             </div>
                             <button class="btn-icon week-nav" id="week-next" onclick="window.navegarSemana(1)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M9 18l6-6-6-6"/>
-                                </svg>
+                                ${getNavigationIcon('forward')}
                             </button>
                         </div>
                         <button class="btn-secondary btn-edit" onclick="window.abrirPlanejamentoParaUsuarioAtual()">
-                            <svg class="edit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="m18.5 2.5 1 1-10 10-4 1 1-4 10-10z"/>
-                            </svg>
+                            ${getActionIcon('edit')}
                             <span class="btn-text">Editar</span>
                         </button>
                     </div>
@@ -91,19 +82,11 @@ export const homeTemplate = () => `
                                     <h1 id="workout-name">Preparando seu treino</h1>
                                     <div class="workout-meta">
                                         <div class="meta-item">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                                <line x1="3" y1="10" x2="21" y2="10"/>
-                                            </svg>
+                                            ${getNavigationIcon('calendar')}
                                             <span id="workout-exercises">Carregando exercícios...</span>
                                         </div>
                                         <div class="meta-item">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <circle cx="12" cy="12" r="10"/>
-                                                <polyline points="12 6 12 12 16 14"/>
-                                            </svg>
+                                            ${getActionIcon('timer')}
                                             <span id="workout-duration">45-60 min</span>
                                         </div>
                                     </div>
@@ -113,9 +96,7 @@ export const homeTemplate = () => `
                             <div class="workout-action">
                                 <button id="start-workout-btn" class="btn-primary btn-glow" onclick="window.iniciarTreino()">
                                     <span class="btn-text">Iniciar Treino</span>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polygon points="5 3 19 12 5 21 5 3"/>
-                                    </svg>
+                                    ${getActionIcon('play', 'active')}
                                 </button>
                             </div>
                             
@@ -2868,10 +2849,10 @@ export async function inicializarHome() {
         // Chamar o homeService
         // await homeService.inicializarHome();
         
-        console.log('[templates/home.js] ✅ Home inicializada com sucesso');
+        console.log('[templates/home.js] ✓ Home inicializada com sucesso');
         
     } catch (error) {
-        console.error('[templates/home.js] ❌ Erro ao inicializar home:', error);
+        console.error('[templates/home.js] ✗ Erro ao inicializar home:', error);
     }
 }
 
