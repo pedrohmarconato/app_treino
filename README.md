@@ -1,66 +1,49 @@
-# Aplicação de Treinamento
+# App Treino
 
-Uma aplicação web moderna para gerenciamento de protocolos de treinamento, com foco em progressão de carga e acompanhamento de desempenho.
+App Treino é uma aplicação web progressiva (PWA) para gerenciamento de treinos de musculação. O sistema utiliza **Supabase** como backend e foi desenvolvido em JavaScript vanilla com HTML e CSS. O objetivo é oferecer um fluxo completo de planejamento, execução e acompanhamento de treinos com cálculo inteligente de peso baseado em 1RM.
 
 ## Funcionalidades
+- Autenticação via Supabase com seleção visual de usuário
+- Dashboard com métricas em tempo real e cronograma semanal
+- Planejamento semanal por grupos musculares
+- Execução de treinos com sugestão automática de peso e timer de descanso
+- Finalização com avaliação obrigatória (qualidade, dificuldade, energia)
+- Calculadora de peso baseada em 1RM com progressão de 70% a 95%
+- Interface dark theme com acentos neon e suporte offline (PWA)
 
-### Tela Inicial
-- Seleção de usuário (Pedro/Japa) com avatars
-- Métricas completas: treinos concluídos, progresso percentual, semana atual
-- Cronograma: próximo treino, último treino realizado
-- Botão de início de treino com design atrativo
-
-### Tela de Treinamento
-- Grupo muscular destacado no header
-- Exercício atual com observações técnicas
-- Séries fixas (não editáveis)
-- Campos de peso/repetições com sugestões baseadas no 1RM
-- Botão para finalizar série + temporizador automático
-
-### Funcionalidades Extras
-- **Sistema Inteligente**: Sugestões de peso baseadas na performance anterior
-- **Temporizador**: Contagem regressiva visual durante o descanso
-- **Acompanhamento**: Barra de progresso do treino e histórico de séries
-- **Interface**: Design moderno com gradientes e efeitos visuais
-
-## Como Executar
-
-1. Clone este repositório para sua máquina local
-2. Abra o arquivo `index.html` em seu navegador
-
-```bash
-# No Windows, você pode usar o comando:
-start index.html
-
-# No macOS:
-open index.html
-
-# No Linux:
-xdg-open index.html
+## Estrutura do projeto
+```text
+~/app_treino/
+├── components/          # Componentes reutilizáveis
+├── config.js            # Configurações Supabase
+├── feature/             # Lógica principal (planning, workoutExecution, dashboard, login)
+├── services/            # Camada de dados (supabase, workout, planning, weight calculator)
+├── templates/           # UI modularizada (home.js, workout.js, login.js)
+├── state/               # Gerenciamento global (AppState)
+├── styles.css           # Sistema de design unificado
+├── database/            # Scripts SQL e migrações
+└── docs/                # Documentação
 ```
 
-## ⚠️ Problemas comuns em produção (Vercel/Netlify)
+Trechos retirados de `DOCUMENTACAO_COMPLETA.md` detalham as funções já implementadas, como sugestão de peso e modal de avaliação obrigatória.
 
-- **404 Not Found em arquivos estáticos:**
-  - Sempre use caminhos relativos (./styles.css, ./app.js, ./js/templates/index.js, ./favicon.png) no HTML.
-- **Erro de módulos ES:**
-  - Scripts que usam import/export devem ser carregados com `<script type="module">`.
-- **Variáveis do Supabase:**
-  - No ambiente de produção, use variáveis de ambiente do Vercel/Netlify para SUPABASE_URL e SUPABASE_ANON_KEY.
-  - Gere o arquivo `config.js` dinamicamente no build/deploy, nunca versionando chaves sensíveis.
-- **Exemplo de configuração no Vercel:**
-  - Adicione SUPABASE_URL e SUPABASE_ANON_KEY em Settings > Environment Variables.
-  - Use um script de build para gerar `config.js` automaticamente a partir dessas variáveis.
+## Requisitos
+- Conta no [Supabase](https://supabase.com/) para criar as tabelas descritas em `database/` e aplicar as migrações
+- Definir `window.SUPABASE_CONFIG` no arquivo `config.js` com a `url` e `key` do projeto
+- Servidor local para testes (ex.: extensão *Live Server* do VSCode ou `python -m http.server`)
 
-Se tiver dúvidas, consulte a documentação da plataforma ou peça ajuda aqui!
+## Executando localmente
+1. Clone o repositório e configure `config.js` com suas credenciais Supabase.
+2. Inicie um servidor local na raiz do projeto para servir `index.html` (necessário para o Service Worker funcionar).
+3. Abra o navegador em `http://localhost:PORT` e faça login para acessar o dashboard.
 
-## Tecnologias Utilizadas
+O projeto possui arquivos de configuração para deploy em Vercel (`vercel.json`). Após configurar o repositório remoto, basta realizar o push para produção ou executar `vercel --prod`.
 
-- HTML5, CSS3 e JavaScript (ES6+)
-- Supabase para backend e banco de dados
-- Chart.js para visualizações (se implementado)
+## Banco de dados
+O schema utiliza as seguintes tabelas principais:
+- `usuarios`, `exercicios`, `protocolo_treinos`, `planejamento_semanal`, `execucao_exercicio_usuario`, `treino_executado` e `d_calendario`.
 
-## Conexão com o Banco de Dados
+Algumas migrações presentes na pasta `database/` devem ser executadas antes do uso, como `migrate_remove_numero_treino.sql` e `add_resposta_avaliacao_to_planejamento.sql`.
 
-A aplicação já está configurada para se conectar ao Supabase utilizando as credenciais fornecidas no arquivo `.env`.
-Não é necessário realizar nenhuma configuração adicional.
+## Licença
+Este projeto é disponibilizado sem garantia e pode ser modificado livremente.

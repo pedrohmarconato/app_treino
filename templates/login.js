@@ -1,32 +1,35 @@
 // Template da tela de login
 export const loginTemplate = () => `
-    <div id="login-screen" class="screen active">
+    <div id="login-screen" class="screen">
         <div class="login-container">
             <div class="login-header">
-                <h1>💪 Cyclo Training</h1>
-                <p>Sistema de Acompanhamento de Treinos</p>
+                <div class="logo-container">
+                    <div class="brand-logos">
+    <img src="./icons/logo.png" alt="Logo" class="brand-logo main-logo">
+</div>
+                </div>
+                <p>Bem-vindo ao seu treino</p>
             </div>
             
-            <div class="user-selection">
-                <h2>Selecione seu Perfil</h2>
-                <div id="users-grid" class="users-grid">
-                    <!-- Usuários serão carregados dinamicamente -->
-                </div>
+            <!-- Container para usuários com estrutura correta -->
+            <div class="users-grid" id="users-grid">
+                <!-- Placeholder temporário -->
+                <div class="loading-users">Carregando usuários...</div>
             </div>
         </div>
     </div>
 `;
 
-// Estilos específicos da tela de login
+// ADICIONAR estilos específicos para garantir que apareçam
 export const loginStyles = `
     .login-container {
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 40px 20px;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
+        align-items: center;
         justify-content: center;
+        padding: 24px;
+        background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
     }
 
     .login-header {
@@ -34,13 +37,61 @@ export const loginStyles = `
         margin-bottom: 48px;
     }
 
-    .login-header h1 {
-        font-size: 2.5rem;
+    .logo-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
         margin-bottom: 8px;
-        background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-green-dark) 100%);
+    }
+
+    .brand-logos {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+    }
+
+    .brand-logo {
+        height: 56px;
+        width: auto;
+        filter: drop-shadow(0 0 15px var(--accent-green)) brightness(1.2);
+        animation: logoPulse 2s ease-in-out infinite;
+        transition: all 0.3s ease;
+    }
+    .main-logo {
+        height: 120px;
+        width: auto;
+        max-width: 90vw;
+    }
+
+    .brand-logo:hover {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 25px var(--accent-green)) brightness(1.4);
+    }
+
+    .ff-logo {
+        animation-delay: 0s;
+    }
+
+    .forca-logo {
+        animation-delay: 0.5s;
+    }
+
+    @keyframes logoPulse {
+        0%, 100% { filter: drop-shadow(0 0 12px var(--accent-green)) brightness(1.2); }
+        50% { filter: drop-shadow(0 0 20px var(--accent-green)) brightness(1.4); }
+    }
+
+    .login-header h1 {
+        margin: 0;
+        background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-green) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        background-clip: text;
+        font-size: 2.5rem;
+        text-shadow: 0 0 20px rgba(207, 255, 4, 0.3);
+        font-weight: 900;
+        letter-spacing: 2px;
     }
 
     .login-header p {
@@ -48,30 +99,31 @@ export const loginStyles = `
         font-size: 1.125rem;
     }
 
-    .user-selection h2 {
-        text-align: center;
+    .users-grid {
+        display: flex;
+        gap: 24px;
         margin-bottom: 32px;
-        font-size: 1.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
-    .users-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 24px;
-        max-width: 500px;
-        margin: 0 auto;
+    .loading-users {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        padding: 20px;
     }
 
     .user-card {
         background: var(--bg-card);
         border-radius: var(--radius-lg);
-        padding: 32px;
-        text-align: center;
+        padding: 32px 24px;
         cursor: pointer;
-        transition: all 0.3s ease;
-        border: 2px solid var(--border-color);
+        transition: var(--transition);
+        text-align: center;
+        border: 2px solid transparent;
         position: relative;
         overflow: hidden;
+        min-width: 200px;
     }
 
     .user-card::before {
@@ -81,7 +133,7 @@ export const loginStyles = `
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-green-dark) 100%);
+        background: radial-gradient(circle at center, var(--accent-green-bg) 0%, transparent 70%);
         opacity: 0;
         transition: opacity 0.3s ease;
     }
@@ -93,7 +145,7 @@ export const loginStyles = `
     }
 
     .user-card:hover::before {
-        opacity: 0.1;
+        opacity: 1;
     }
 
     .user-avatar {

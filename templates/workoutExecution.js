@@ -1,3 +1,4 @@
+// Template para o novo layout de execução de treino
 export const workoutTemplate = () => `
     <div id="workout-screen" class="workout-screen">
         <!-- Header Flutuante -->
@@ -14,10 +15,13 @@ export const workoutTemplate = () => `
                 </svg>
                 <span id="workout-timer-display">00:00</span>
             </div>
-            <div class="workout-brand-mini">
-                <img src="./icons/ff.png" alt="FF" class="workout-logo-mini">
-                <img src="./icons/forca.png" alt="Força" class="workout-logo-mini">
-            </div>
+            <button class="menu-button-float">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
         </div>
 
         <!-- Progress Bar -->
@@ -62,9 +66,20 @@ export const workoutTemplate = () => `
                 </div>
             </div>
 
-            <!-- Container de Exercícios -->
-            <div id="exercises-container" class="exercises-container">
-                <!-- Exercícios serão renderizados aqui -->
+            <!-- Container de Exercícios (Resumido) -->
+            <div id="exercises-summary" class="ex-summary-compact">
+                <span class="ex-summary-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+                </span>
+                <span class="ex-summary-muscle" id="summary-muscle-group">Grupo Muscular</span>
+                <span class="ex-summary-count" id="summary-exercise-count">0 ex</span>
+                <button id="expand-exercises" class="ex-summary-expand" onclick="window.toggleExercises()" title="Expandir">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
+            <!-- Container de Exercícios Expandido (inicialmente oculto) -->
+            <div id="exercises-expanded" class="exercises-container" style="display: none;">
+                <!-- Exercícios completos serão renderizados aqui -->
             </div>
         </div>
 
@@ -165,14 +180,27 @@ export const workoutTemplate = () => `
     </div>
 `;
 
-// Template para cada exercício
-export const exerciseCardTemplate = (exercise, index, total) => `
+// Template para cada exercício (CORRIGIDO para múltiplas estruturas de dados)
+export const exerciseCardTemplate = (exercise, index, total) => {
+    // Extrair nome do exercício de diferentes estruturas possíveis
+    const exerciseName = exercise.exercicio_nome || 
+                        exercise.nome || 
+                        exercise.exercicios?.nome || 
+                        `Exercício ${index + 1}`;
+    
+    // Extrair grupo muscular
+    const muscleGroup = exercise.exercicio_grupo || 
+                       exercise.grupo_muscular || 
+                       exercise.exercicios?.grupo_muscular || 
+                       '';
+    
+    return `
     <div class="exercise-card" data-exercise-index="${index}">
         <div class="exercise-card-header">
             <div class="exercise-number">${index + 1}</div>
             <div class="exercise-info">
-                <h3 class="exercise-name">${exercise.nome || 'Exercício'}</h3>
-                <p class="exercise-muscle">${exercise.grupo_muscular || ''}</p>
+                <h3 class="exercise-name">${exerciseName}</h3>
+                <p class="exercise-muscle">${muscleGroup}</p>
             </div>
             <button class="exercise-info-btn">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -197,7 +225,7 @@ export const exerciseCardTemplate = (exercise, index, total) => `
         ` : ''}
 
         <div class="series-container" id="series-container-${index}">
-            ${generateSeriesHTML(exercise)}
+            ${generateSeriesHTML(exercise, index)}
         </div>
 
         ${exercise.tempo_descanso ? `
@@ -210,14 +238,28 @@ export const exerciseCardTemplate = (exercise, index, total) => `
         </div>
         ` : ''}
     </div>
-`;
+`};
 
-// Template para cada série
-function generateSeriesHTML(exercise) {
+// Template para cada série (CORRIGIDO para múltiplas estruturas)
+function generateSeriesHTML(exercise, exerciseIndex) {
     const series = [];
-    for (let i = 0; i < (exercise.series || 4); i++) {
+    const numSeries = exercise.series || 4;
+    
+    // Extrair peso sugerido de diferentes estruturas
+    const pesoSugerido = exercise.pesos_sugeridos?.peso_base || 
+                        exercise.peso_sugerido || 
+                        exercise.peso_base || 
+                        0;
+    
+    // Extrair repetições sugeridas
+    const repsSugeridas = exercise.repeticoes_alvo || 
+                         exercise.repeticoes || 
+                         exercise.pesos_sugeridos?.repeticoes_alvo || 
+                         12;
+    
+    for (let i = 0; i < numSeries; i++) {
         series.push(`
-            <div class="series-item" data-series-index="${i}">
+            <div class="series-item" data-series-index="${i}" data-exercise-index="${exerciseIndex}">
                 <div class="series-number">${i + 1}</div>
                 <div class="series-inputs">
                     <div class="input-group">
@@ -225,9 +267,11 @@ function generateSeriesHTML(exercise) {
                         <div class="input-wrapper">
                             <input type="number" 
                                    class="series-weight neon-input" 
-                                   placeholder="${exercise.peso_sugerido || '0'}"
+                                   placeholder="${pesoSugerido}"
                                    step="0.5" 
-                                   min="0">
+                                   min="0"
+                                   data-exercise="${exerciseIndex}"
+                                   data-series="${i}">
                             <span class="input-unit">kg</span>
                         </div>
                     </div>
@@ -236,14 +280,16 @@ function generateSeriesHTML(exercise) {
                         <div class="input-wrapper">
                             <input type="number" 
                                    class="series-reps neon-input" 
-                                   placeholder="${exercise.repeticoes || '12'}"
+                                   placeholder="${repsSugeridas}"
                                    min="1" 
-                                   max="100">
+                                   max="100"
+                                   data-exercise="${exerciseIndex}"
+                                   data-series="${i}">
                             <span class="input-unit">x</span>
                         </div>
                     </div>
                 </div>
-                <button class="series-confirm-btn" onclick="workoutExecutionManager.confirmarSerie(${i})">
+                <button class="series-confirm-btn" onclick="workoutExecutionManager.confirmarSerie(${exerciseIndex}, ${i})">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"/>
                     </svg>
@@ -253,253 +299,3 @@ function generateSeriesHTML(exercise) {
     }
     return series.join('');
 }
-
-// Estilos específicos do novo layout (mantendo identidade visual do app)
-export const workoutStyles = `
-    body, .dark-bg {
-        background: linear-gradient(135deg, #181818 0%, #232323 100%) !important;
-        color: #fff;
-        font-family: 'Urbanist', 'Inter', Arial, sans-serif;
-    }
-    .workout-container {
-        max-width: 430px;
-        margin: 0 auto;
-        padding: 28px 0 0 0;
-        border-radius: 20px;
-        box-shadow: 0 10px 32px rgba(0,0,0,0.15);
-    }
-    .progress-bar {
-        width: 90%;
-        margin: 0 auto 24px auto;
-        background: #232323;
-        height: 8px;
-        border-radius: 5px;
-        overflow: hidden;
-    }
-    .progress-fill {
-        background: linear-gradient(90deg, #00ff57, #00d26a);
-        height: 100%;
-        border-radius: 5px;
-        transition: width 0.4s;
-    }
-    .exercise-card {
-        background: #181818;
-        border-radius: 16px;
-        padding: 32px 24px 24px 24px;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.18);
-        text-align: center;
-        margin-bottom: 32px;
-    }
-    .badge {
-        background: #00ff57;
-        color: #181818;
-        border-radius: 999px;
-        padding: 6px 18px;
-        font-weight: bold;
-        text-transform: uppercase;
-        font-size: 0.9rem;
-        margin-bottom: 14px;
-        display: inline-block;
-    }
-    .exercise-name {
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 8px 0 18px 0;
-        color: #fff;
-    }
-    .series-indicator {
-        margin-bottom: 18px;
-    }
-    .series-dot {
-        width: 16px; height: 16px; border-radius: 50%; background: #333; display: inline-block; margin: 0 4px;
-    }
-    .series-dot.done { background: #00ff57; }
-    .series-dot.active { border: 2px solid #00ff57; }
-    .series-label {
-        display: block;
-        margin-top: 8px;
-        color: #aaa;
-        font-size: 1rem;
-        font-weight: 500;
-    }
-    .details {
-        display: flex;
-        justify-content: center;
-        gap: 18px;
-        margin-bottom: 12px;
-        font-size: 1.1rem;
-    }
-    .notes {
-        background: #232323;
-        color: #b5ffb1;
-        padding: 10px;
-        border-radius: 8px;
-        margin: 10px 0 18px 0;
-        font-style: italic;
-        font-size: 1rem;
-    }
-    .finish-set-btn, .next-exercise-btn {
-        background: #00ff57;
-        color: #181818;
-        border: none;
-        border-radius: 999px;
-        padding: 16px 38px;
-        font-size: 1.2rem;
-        font-weight: bold;
-        margin-top: 18px;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-    .finish-set-btn:hover, .next-exercise-btn:hover {
-        background: #00e04b;
-    }
-    .rest-timer-overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(24,24,24,0.95);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-    }
-    .rest-timer-card {
-        background: #232323;
-        border-radius: 18px;
-        padding: 36px 32px;
-        box-shadow: 0 6px 32px rgba(0,0,0,0.20);
-        text-align: center;
-    }
-    .rest-timer-circle {
-        margin: 0 auto 18px auto;
-        width: 120px; height: 120px;
-        position: relative;
-    }
-    .timer-bg {
-        fill: none;
-        stroke: #333;
-        stroke-width: 12;
-    }
-    .timer-progress {
-        fill: none;
-        stroke: #00ff57;
-        stroke-width: 12;
-        stroke-linecap: round;
-        stroke-dasharray: 339.29;
-        stroke-dashoffset: 0;
-        transition: stroke-dashoffset 0.5s;
-    }
-    .rest-timer-display {
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.1rem;
-        font-weight: 700;
-        color: #00ff57;
-    }
-    .skip-rest-btn {
-        margin-top: 18px;
-        background: transparent;
-        color: #00ff57;
-        border: 2px solid #00ff57;
-        border-radius: 999px;
-        padding: 10px 30px;
-        font-size: 1rem;
-        font-weight: bold;
-        cursor: pointer;
-        transition: background 0.2s, color 0.2s;
-    }
-    .skip-rest-btn:hover {
-        background: #00ff57;
-        color: #181818;
-    }
-    @media (max-width: 600px) {
-        .workout-container {
-            padding: 12px 0 0 0;
-        }
-        .exercise-card {
-            padding: 18px 6px 16px 6px;
-        }
-    }
-`;
-
-export const exerciseItemTemplate = (exercise, index, total) => `
-    <div class="exercise-card" data-exercise-id="${exercise.id}">
-        <div class="exercise-header">
-            <div class="exercise-info">
-                <h3>${exercise.exercicio_nome}</h3>
-                <p>${exercise.exercicio_grupo} • ${exercise.exercicio_equipamento}</p>
-            </div>
-            <div class="exercise-counter">
-                ${index + 1}/${total}
-            </div>
-        </div>
-
-        <div class="series-container">
-            <div class="series-header">
-                <span>Série</span>
-                <span>Peso (kg)</span>
-                <span>Repetições</span>
-                <span></span>
-            </div>
-            <div id="series-list-${exercise.id}" class="series-list">
-                <!-- Séries serão adicionadas dinamicamente -->
-            </div>
-        </div>
-
-        <button class="btn-add-series" onclick="adicionarSerie(${exercise.id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14m-7-7h14"/>
-            </svg>
-`;
-
-export const seriesItemTemplate = (exerciseId, seriesNumber) => `
-<div class="series-row" id="series-${exerciseId}-${seriesNumber}">
-<span class="series-number">${seriesNumber}</span>
-<div class="series-input-group">
-<div class="input-wrapper">
-<button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, -2.5)">-</button>
-<input type="number" class="series-input" id="peso-${exerciseId}-${seriesNumber}" 
-value="0" step="2.5" min="0">
-<button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, 2.5)">+</button>
-</div>
-</div>
-<div class="series-input-group">
-<div class="input-wrapper">
-<button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, -1)">-</button>
-<input type="number" class="series-input" id="reps-${exerciseId}-${seriesNumber}" 
-value="0" step="1" min="0">
-<button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, 1)">+</button>
-</div>
-</div>
-<button class="btn-confirm-series" id="confirm-${exerciseId}-${seriesNumber}" 
-onclick="confirmarSerie(${exerciseId}, ${seriesNumber})">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<path d="M20 6L9 17l-5-5"/>
-</svg>
-</button>
-</div>
-                <input type="number" class="series-input" id="peso-${exerciseId}-${seriesNumber}" 
-                       value="0" step="2.5" min="0">
-                <button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, 2.5)">+</button>
-            </div>
-        </div>
-        <div class="series-input-group">
-            <div class="input-wrapper">
-                <button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, -1)">-</button>
-                <input type="number" class="series-input" id="reps-${exerciseId}-${seriesNumber}" 
-                       value="0" step="1" min="0">
-                <button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, 1)">+</button>
-            </div>
-        </div>
-        <button class="btn-confirm-series" id="confirm-${exerciseId}-${seriesNumber}" 
-                onclick="confirmarSerie(${exerciseId}, ${seriesNumber})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 6L9 17l-5-5"/>
-            </svg>
-        </button>
-    </div>
-`;
-
-// Additional workout styles merged into main workoutStyles above
