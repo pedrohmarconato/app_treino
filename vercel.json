@@ -1,7 +1,6 @@
 {
   "version": 2,
   "name": "app-treino",
-  "public": false,
   "headers": [
     {
       "source": "/sw.js",
