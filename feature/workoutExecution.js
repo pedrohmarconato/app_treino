@@ -3,6 +3,7 @@ import WorkoutProtocolService from '../services/workoutProtocolService.js';
 import AppState from '../state/appState.js';
 import { showNotification } from '../ui/notifications.js';
 import { workoutTemplate, exerciseCardTemplate } from '../templates/workoutExecution.js';
+import TreinoCacheService from '../services/treinoCacheService.js';
 
 class WorkoutExecutionManager {
     constructor() {
@@ -1779,8 +1780,35 @@ class WorkoutExecutionManager {
         this.atualizarProgressBar();
     }
 
-    // NOVA FUNÇÃO: Mostrar conclusão do treino
-    mostrarConclusaoTreinoSegura() {
+    // NOVA FUNÇÃO: Mostrar conclusão do treino com avaliação
+    async mostrarConclusaoTreinoSegura() {
+        try {
+            // Obter dados para avaliação
+            const dadosAvaliacao = await TreinoCacheService.obterDadosParaAvaliacao();
+            
+            if (dadosAvaliacao.success && dadosAvaliacao.data) {
+                // Importar e mostrar modal de avaliação
+                const { AvaliacaoTreinoComponent } = await import('../components/avaliacaoTreino.js');
+                AvaliacaoTreinoComponent.mostrarModalAvaliacao(dadosAvaliacao.data);
+            } else {
+                // Fallback para tela básica se houver erro
+                this.mostrarConclusaoBasica();
+            }
+            
+            // Registrar conclusão
+            this.registrarTreinoConcluido();
+            
+            console.log('[WorkoutExecution] 🎉 Treino concluído - modal de avaliação exibido');
+            
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro ao mostrar avaliação:', error);
+            // Fallback para tela básica
+            this.mostrarConclusaoBasica();
+        }
+    }
+    
+    // Fallback: Tela básica de conclusão
+    mostrarConclusaoBasica() {
         const tempoTotal = this.calcularTempoTotal();
         const totalExercicios = this.currentWorkout.exercicios.length;
         
@@ -1821,11 +1849,6 @@ class WorkoutExecutionManager {
         `;
         
         document.body.appendChild(overlay);
-        
-        // Registrar conclusão
-        this.registrarTreinoConcluido();
-        
-        console.log('[WorkoutExecution] 🎉 Treino concluído com sucesso!');
     }
 
     // NOVA FUNÇÃO: Criar interface de emergência

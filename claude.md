@@ -6,13 +6,14 @@
 
 ---
 
-## 🎯 Status Atual do Projeto (v5.6b)
+## 🎯 Status Atual do Projeto (v5.7)
 
 ### **Sistema Completo e Funcional** ✅
 - **Autenticação**: Login com seleção de usuários (Pedro/Japa)
 - **Dashboard**: Métricas reais, progresso visual, cronograma semanal
 - **Planejamento**: Sistema de protocolos por grupos musculares
 - **Execução**: Treinos com sugestões inteligentes de peso (1RM)
+- **Finalização**: Modal de avaliação obrigatória + feedback do usuário
 - **PWA**: Aplicativo instalável com funcionamento offline
 
 ### **Arquitetura Estável**
@@ -32,26 +33,42 @@
 
 ---
 
-## 🔥 Últimas Correções Implementadas (v5.6b)
+## 🔥 Últimas Correções Implementadas (v5.7)
 
-### **Workout Execution Rendering Fixes**
-**Problema**: Template integration conflicts impediam exibição de exercícios
-**Solução**: 
+### **Sistema de Finalização de Treino Refatorado** ✅
+**Problema**: Auto-finalização complexa + falta de avaliação do usuário
+**Solução**:
 ```javascript
-// Sistema de renderização unificado com múltiplos fallbacks
-renderizarComSeguranca() {
-    // 1. Template oficial
-    // 2. Container detection (4 estratégias)
-    // 3. Emergency fallback system
-    // 4. Debug tools integrados
+// Removida lógica de auto-finalização (critérios de tempo/séries)
+// Implementado modal de avaliação obrigatória
+mostrarConclusaoTreinoSegura() {
+    // 1. Modal de avaliação com escala Likert
+    // 2. Finalização manual com feedback do usuário
+    // 3. Dados salvos em planejamento_semanal.resposta_avaliacao
 }
 ```
 
-### **Debug Tools Disponíveis**
+### **Nova Estrutura de Avaliação**
 ```javascript
-window.debugWorkoutTemplate()    // Verificar template
-window.debugWorkoutExercicios()  // Inspecionar dados
-window.forceRenderWorkout()      // Re-renderizar
+// Avaliação obrigatória: qualidade (0-5)
+// Opcionais: dificuldade (1-10), energia (1-10), observações
+resposta_avaliacao: {
+    qualidade: 4,           // Obrigatório
+    dificuldade_percebida: 7,  // Opcional
+    energia_nivel: 8,       // Opcional  
+    observacoes_finais: "Treino excelente"
+}
+```
+
+### **Database Schema Atualizado**
+```sql
+-- Nova coluna JSONB para respostas de avaliação
+ALTER TABLE planejamento_semanal 
+ADD COLUMN resposta_avaliacao JSONB;
+
+-- Índice GIN para consultas eficientes
+CREATE INDEX idx_planejamento_resposta_avaliacao 
+ON planejamento_semanal USING GIN (resposta_avaliacao);
 ```
 
 ---
@@ -83,8 +100,9 @@ Semana 12: 95kg (95%)
 - `usuarios` - Perfis de usuário
 - `exercicios` - Catálogo com grupos musculares
 - `protocolo_treinos` - Protocolos por usuário
-- `planejamento_semanal` - Planning semanal
+- `planejamento_semanal` - Planning semanal + **resposta_avaliacao** (JSONB)
 - `execucao_exercicio_usuario` - Histórico execuções
+- `treino_executado` - Sessões de treino finalizadas
 - `d_calendario` - Controle semanal
 
 ### **Joins Críticos**
@@ -239,11 +257,14 @@ forceRenderWorkout()      // Re-renderizar
 ## 📁 Arquivos Principais
 
 ### **Core Logic**
-- `feature/workoutExecution.js` - Execução de treinos
+- `feature/workoutExecution.js` - Execução de treinos + modal avaliação
 - `feature/planning.js` - Planejamento semanal
 - `feature/dashboard.js` - Dashboard/métricas
 - `services/weeklyPlanningService.js` - Planning backend
 - `services/weightCalculatorService.js` - Cálculos 1RM
+- `services/treinoFinalizacaoService.js` - Finalização manual
+- `services/treinoExecutadoService.js` - Gestão de sessões
+- `components/avaliacaoTreino.js` - Modal de avaliação
 
 ### **Templates**
 - `templates/home.js` - Dashboard UI
@@ -258,6 +279,22 @@ forceRenderWorkout()      // Re-renderizar
 
 ---
 
-**Status**: ✅ **SISTEMA COMPLETO** - Pronto para produção após migração SQL
+## 📋 Migrations Pendentes
 
-*Última atualização: v5.6b (Janeiro 2025)*
+### **Crítica**: Migração da estrutura de avaliação
+```bash
+# Executar no Supabase:
+/migrations/add_resposta_avaliacao_to_planejamento.sql
+```
+
+### **Opcional**: Migração de tipos de atividade  
+```bash
+# Se ainda apresentar erro de numero_treino:
+/database/migrate_remove_numero_treino.sql
+```
+
+---
+
+**Status**: ✅ **SISTEMA COMPLETO** - v5.7 com avaliação obrigatória implementada
+
+*Última atualização: v5.7 (Dezembro 2025)*

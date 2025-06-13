@@ -108,18 +108,7 @@ export const homeTemplate = () => `
                                         </div>
                                     </div>
                                 </div>
-                                <div class="workout-visual">
-                                    <div class="progress-circle">
-                                        <svg class="progress-ring" width="120" height="120">
-                                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" stroke-width="8" fill="none"/>
-                                            <circle class="progress-ring-progress" cx="60" cy="60" r="54" stroke-width="8" fill="none"/>
-                                        </svg>
-                                        <div class="progress-text">
-                                            <span class="progress-value" id="progress-percentage">0</span>
-                                            <span class="progress-label">%</span>
-                                        </div>
-                                    </div>
-                                </div>
+
                             </div>
                             <div class="workout-action">
                                 <button id="start-workout-btn" class="btn-primary btn-glow" onclick="window.iniciarTreino()">
@@ -128,14 +117,46 @@ export const homeTemplate = () => `
                                         <polygon points="5 3 19 12 5 21 5 3"/>
                                     </svg>
                                 </button>
-                                <!-- Botão Ver Todos e painel expandido -->
-                                <button id="expand-exercises" class="btn-secondary" style="margin-top:12px;" onclick="window.toggleExercises()">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M3 12h18m-9-9v18"/>
-                                    </svg>
-                                    <span>Ver todos</span>
-                                </button>
-                                <div id="exercises-expanded" style="display:none;"></div>
+                            </div>
+                            
+                            <!-- Seção de Preparação -->
+                            <div class="workout-preparation">
+                                <div class="preparation-tips">
+                                    <div class="tip-item">
+                                        <div class="tip-icon">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                                            </svg>
+                                        </div>
+                                        <span class="tip-text">Aquecimento <strong>5-10min</strong></span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <div class="tip-icon">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                                <polyline points="14 2 14 8 20 8"/>
+                                            </svg>
+                                        </div>
+                                        <span class="tip-text">Registre <strong>cada série</strong></span>
+                                    </div>
+                                    <div class="tip-item">
+                                        <div class="tip-icon">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                            </svg>
+                                        </div>
+                                        <span class="tip-text">Foco na <strong>forma</strong></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="workout-preview" id="workout-preview">
+                                    <div class="preview-header">
+                                        <span class="preview-label">Grupos Musculares</span>
+                                    </div>
+                                    <div class="muscle-groups" id="muscle-groups">
+                                        <div class="muscle-chip">Carregando...</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -184,55 +205,7 @@ export const homeTemplate = () => `
                 </div>
             </div>
 
-            <!-- Métricas Rápidas -->
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
-                        </svg>
-                    </div>
-                    <div class="metric-content">
-                        <h3>Treinos Completos</h3>
-                        <div class="metric-value">
-                            <span id="completed-workouts">0</span>
-                            <span class="metric-trend positive">+0 esta semana</span>
-                        </div>
-                    </div>
-                    <div class="metric-progress">
-                        <div class="mini-progress-circle">
-                            <svg width="40" height="40">
-                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-bg"/>
-                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-fill" style="--progress: 0;"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="metric-card">
-                    <div class="metric-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                        </svg>
-                    </div>
-                    <div class="metric-content">
-                        <h3>Consistência</h3>
-                        <div class="metric-value">
-                            <span>0%</span>
-                            <span class="metric-trend positive">Começando!</span>
-                        </div>
-                    </div>
-                    <div class="metric-progress">
-                        <div class="mini-progress-circle">
-                            <svg width="40" height="40">
-                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-bg"/>
-                                <circle cx="20" cy="20" r="16" stroke-width="4" fill="none" class="mini-progress-fill" style="--progress: 0;"/>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Quick Actions -->
             <div class="quick-actions">
@@ -2685,15 +2658,6 @@ export const homeStyles = `
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
         margin-bottom: 12px;
-    }
-    
-    .exercise-sets,
-    .exercise-reps,
-    .exercise-weight,
-    .exercise-rest {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
     }
     
     .exercise-details .label {

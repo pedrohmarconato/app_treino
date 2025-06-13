@@ -7,6 +7,8 @@ import { fetchMetricasUsuario } from '../services/userService.js';
 // Se precisar de funções globais, atribua manualmente abaixo
 import homeService from '../services/homeService.js';
 import { showNotification } from '../ui/notifications.js';
+import { supabase } from '../services/supabaseService.js';
+import TreinoExecutadoService from '../services/treinoExecutadoService.js';
 
 // Mapear tipos de treino para emojis
 const TREINO_EMOJIS = {
@@ -269,14 +271,23 @@ async function carregarIndicadoresSemana() {
         for (let i = 0; i < 7; i++) {
             const diaPlan = weekPlan[i];
             const isToday = i === diaAtual;
-            const isCompleted = diaPlan?.concluido || false;
+            
+            // Verificar se há execuções de exercícios para este dia como backup
+            let isCompleted = diaPlan?.concluido || false;
+            
+            // Se não está marcado como concluído no planejamento, verificar na nova estrutura
+            if (!isCompleted) {
+                isCompleted = await verificarTreinoExecutado(currentUser.id, i);
+            }
             
             // DEBUG: Log de cada dia
             console.log(`[DEBUG] Dia ${i} (${DIAS_SEMANA[i]}):`, {
                 plano: diaPlan,
                 tipo_atividade: diaPlan?.tipo_atividade,
                 tipo: diaPlan?.tipo,
-                concluido: diaPlan?.concluido
+                concluido_planejamento: diaPlan?.concluido,
+                concluido_final: isCompleted,
+                protocolo_treino_id: diaPlan?.protocolo_treino_id
             });
             
             // Determinar tipo e classe do dia
@@ -342,7 +353,7 @@ async function carregarIndicadoresSemana() {
             const completedCheck = isCompleted ? '<span class="completed-check">✓</span>' : '';
             
             html += `
-                <div class="${dayClass}">
+                <div class="${dayClass}" data-day="${i}" data-completed="${isCompleted}" onclick="handleDayClick(${i}, ${isCompleted})">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
                     <div class="day-type">
                         ${emoji ? `<span class="day-emoji">${emoji}</span>` : ''}
@@ -1545,6 +1556,533 @@ window.navegarSemana = navegarSemana;
 // Função global para carregar dados dinâmicos
 window.carregarDadosDinamicosHome = carregarDadosDinamicosHome;
 
+// Verificar se treino foi executado (nova estrutura)
+async function verificarTreinoExecutado(userId, dayIndex) {
+    try {
+        const hoje = new Date();
+        const dataAlvo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (hoje.getDay() - dayIndex));
+        const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
+        
+        // DESATIVADO: Verificação na nova tabela treino_executado (tabela inexistente)
+        // const sessaoResult = await TreinoExecutadoService.buscarSessaoPorData(userId, dataAlvoStr);
+        // if (sessaoResult.success && sessaoResult.data.length > 0) {
+        //     const treinoConcluido = sessaoResult.data.some(sessao => sessao.concluido);
+        //     console.log(`[verificarTreinoExecutado] Dia ${dayIndex} - ${dataAlvoStr}:`, {
+        //         sessoes_encontradas: sessaoResult.data.length,
+        //         treino_concluido: treinoConcluido,
+        //         fonte: 'treino_executado'
+        //     });
+        //     return treinoConcluido;
+        // }
+        
+        // Fallback: verificar sistema antigo
+        const { data: execucoesAntigas } = await supabase
+            .from('execucao_exercicio_usuario')
+            .select('id')
+            .eq('usuario_id', userId)
+            .gte('data_execucao', dataAlvoStr)
+            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+
+        
+        const hasOldExecutions = execucoesAntigas && execucoesAntigas.length > 0;
+        
+        console.log(`[verificarTreinoExecutado] Dia ${dayIndex} - ${dataAlvoStr}:`, {
+            execucoes_antigas: execucoesAntigas?.length || 0,
+            treino_concluido: hasOldExecutions,
+            fonte: 'sistema_antigo'
+        });
+        
+        // Se há execuções antigas, tentar sincronizar
+        if (hasOldExecutions) {
+            try {
+                await sincronizarConclusaoTreino(userId, dayIndex);
+            } catch (syncError) {
+                console.warn('[verificarTreinoExecutado] Erro ao sincronizar:', syncError);
+            }
+        }
+        
+        return hasOldExecutions;
+        
+    } catch (error) {
+        console.error('[verificarTreinoExecutado] Erro:', error);
+        return false;
+    }
+}
+
+// Sincronizar status de conclusão quando há execuções mas planejamento não está marcado
+async function sincronizarConclusaoTreino(userId, dayIndex) {
+    try {
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const semana = WeeklyPlanService.getWeekNumber(hoje);
+        
+        await supabase
+            .from('planejamento_semanal')
+            .update({ 
+                concluido: true, 
+                data_conclusao: new Date().toISOString() 
+            })
+            .eq('usuario_id', userId)
+            .eq('ano', ano)
+            .eq('semana', semana)
+            .eq('dia_semana', dayIndex);
+        
+        console.log(`[sincronizarConclusaoTreino] Treino do dia ${dayIndex} marcado como concluído`);
+        
+    } catch (error) {
+        console.error('[sincronizarConclusaoTreino] Erro:', error);
+        throw error;
+    }
+}
+
+// ===== HISTÓRICO DE TREINOS =====
+
+// Handler para clique nos dias da semana
+window.handleDayClick = async function(dayIndex, isCompleted) {
+    console.log(`[handleDayClick] Clicou no dia ${dayIndex}, concluído: ${isCompleted}`);
+    
+    const currentUser = AppState.get('currentUser');
+    if (!currentUser?.id) {
+        showNotification('Usuário não encontrado', 'error');
+        return;
+    }
+    
+    // Sempre tentar buscar histórico, mesmo se não marcado como concluído
+    // pois pode haver execuções que não foram sincronizadas
+    
+    try {
+        showNotification('Carregando histórico do treino...', 'info');
+        
+        // Buscar dados do treino histórico
+        const historico = await buscarHistoricoTreino(currentUser.id, dayIndex);
+        
+        if (historico) {
+            mostrarModalHistorico(historico, dayIndex);
+        } else {
+            // Se não há histórico, mostrar informações de debug
+            const debugInfo = await debugTreinoInfo(currentUser.id, dayIndex);
+            showNotification(`Nenhum dado encontrado. ${debugInfo}`, 'warning');
+        }
+    } catch (error) {
+        console.error('[handleDayClick] Erro:', error);
+        showNotification('Erro ao carregar histórico do treino', 'error');
+    }
+};
+
+// Buscar histórico de treino específico (nova versão com treino_executado)
+async function buscarHistoricoTreino(userId, dayIndex) {
+    try {
+        const hoje = new Date();
+        const dataAlvo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (hoje.getDay() - dayIndex));
+        const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
+        
+        console.log(`[buscarHistoricoTreino] Buscando treino para dia ${dayIndex} (${dataAlvoStr})`);
+        
+        // DESATIVADO: Busca na nova tabela treino_executado (tabela inexistente)
+        // const sessaoResult = await TreinoExecutadoService.buscarSessaoPorData(userId, dataAlvoStr);
+        // if (sessaoResult.success && sessaoResult.data.length > 0) {
+        //     const sessao = sessaoResult.data[0]; // Primeira sessão do dia
+        //     console.log('[buscarHistoricoTreino] ✅ Sessão encontrada na nova estrutura:', sessao);
+        //     return {
+        //         sessao,
+        //         execucoes: sessao.execucao_exercicio_usuario || [],
+        //         exerciciosSugeridos: [], // TODO: buscar do protocolo se necessário
+        //         dayIndex,
+        //         data_treino: dataAlvo,
+        //         fonte: 'treino_executado'
+        //     };
+        // }
+        
+        // Fallback: buscar no sistema antigo e tentar migrar
+        console.log('[buscarHistoricoTreino] Não encontrado na nova estrutura, tentando sistema antigo...');
+        
+        const { data: execucoesAntigas } = await supabase
+            .from('execucao_exercicio_usuario')
+            .select(`
+                *,
+                exercicios (
+                    nome,
+                    grupo_muscular,
+                    tipo_atividade
+                )
+            `)
+            .eq('usuario_id', userId)
+            .gte('data_execucao', dataAlvoStr)
+            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+ // Apenas não migradas
+        
+        if (execucoesAntigas && execucoesAntigas.length > 0) {
+            console.log('[buscarHistoricoTreino] ⚠️ Execuções encontradas no sistema antigo, iniciando migração...');
+            
+            // Tentar migrar automaticamente
+            const migracaoResult = await TreinoExecutadoService.migrarExecucoesExistentes(
+                userId, 
+                dataAlvoStr, 
+                dataAlvoStr
+            );
+            
+            if (migracaoResult.success) {
+                // Buscar novamente após migração
+                const sessaoMigradaResult = await TreinoExecutladoService.buscarSessaoPorData(userId, dataAlvoStr);
+                
+                if (sessaoMigradaResult.success && sessaoMigradaResult.data.length > 0) {
+                    const sessao = sessaoMigradaResult.data[0];
+                    
+                    console.log('[buscarHistoricoTreino] ✅ Migração concluída, sessão criada:', sessao);
+                    
+                    return {
+                        sessao,
+                        execucoes: sessao.execucao_exercicio_usuario || [],
+                        exerciciosSugeridos: [],
+                        dayIndex,
+                        data_treino: dataAlvo,
+                        fonte: 'migrado'
+                    };
+                }
+            }
+            
+            // Se migração falhou, usar dados antigos
+            console.log('[buscarHistoricoTreino] ⚠️ Migração falhou, usando dados do sistema antigo');
+            
+            return {
+                execucoes: execucoesAntigas,
+                exerciciosSugeridos: [],
+                dayIndex,
+                data_treino: dataAlvo,
+                fonte: 'sistema_antigo'
+            };
+        }
+        
+        console.log('[buscarHistoricoTreino] ❌ Nenhum treino encontrado para este dia');
+        return null;
+        
+    } catch (error) {
+        console.error('[buscarHistoricoTreino] Erro:', error);
+        throw error;
+    }
+}
+
+// Mostrar modal com histórico do treino
+function mostrarModalHistorico(historico, dayIndex) {
+    const dayName = DIAS_SEMANA[dayIndex];
+    const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
+    
+    // Calcular estatísticas
+    const stats = calcularEstatisticasTreino(historico);
+    
+    // Criar HTML do modal
+    const modalHTML = `
+        <div id="modal-historico" class="modal-overlay" onclick="fecharModalHistorico(event)">
+            <div class="modal-content workout-history-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <div class="workout-history-header">
+                        <div class="history-title-section">
+                            <h2>Histórico do Treino</h2>
+                            <div class="history-subtitle">
+                                <span class="day-name">${dayName}</span>
+                                <span class="separator">•</span>
+                                <span class="date">${dataFormatada}</span>
+                            </div>
+                        </div>
+                        <button class="btn-close" onclick="fecharModalHistorico()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- Estatísticas Gerais -->
+                    <div class="stats-overview">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">${stats.totalPeso}kg</div>
+                                <div class="stat-label">Total Levantado</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">${stats.totalExercicios}</div>
+                                <div class="stat-label">Exercícios</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value">${stats.duracaoEstimada}min</div>
+                                <div class="stat-label">Duração</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card performance-stat">
+                            <div class="stat-icon ${stats.performance.class}">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${stats.performance.icon}
+                                </svg>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value ${stats.performance.class}">${stats.performance.percentual}%</div>
+                                <div class="stat-label">Performance</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Exercícios -->
+                    <div class="exercises-history">
+                        <h3>Exercícios Realizados</h3>
+                        <div class="exercises-list">
+                            ${renderizarExerciciosHistorico(historico)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Adicionar modal ao DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Mostrar modal com animação
+    setTimeout(() => {
+        const modal = document.getElementById('modal-historico');
+        if (modal) {
+            modal.classList.add('show');
+        }
+    }, 10);
+}
+
+// Calcular estatísticas do treino
+function calcularEstatisticasTreino(historico) {
+    const { execucoes, exerciciosSugeridos } = historico;
+    
+    // Total de peso levantado
+    const totalPeso = execucoes.reduce((total, exec) => {
+        return total + ((exec.peso_utilizado || 0) * (exec.repeticoes || 0));
+    }, 0);
+    
+    // Número de exercícios únicos
+    const exerciciosUnicos = new Set(execucoes.map(e => e.exercicio_id));
+    const totalExercicios = exerciciosUnicos.size;
+    
+    // Duração estimada (aproximação: 3-4 min por série)
+    const totalSeries = execucoes.length;
+    const duracaoEstimada = Math.round(totalSeries * 3.5);
+    
+    // Performance vs sugerido
+    let performance = { percentual: 100, class: 'good', icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' };
+    
+    if (exerciciosSugeridos.length > 0) {
+        const pesoSugerido = exerciciosSugeridos.reduce((total, sug) => {
+            return total + ((sug.peso_sugerido || 0) * (sug.repeticoes_sugeridas || 0) * (sug.series || 1));
+        }, 0);
+        
+        if (pesoSugerido > 0) {
+            const percentual = Math.round((totalPeso / pesoSugerido) * 100);
+            performance.percentual = percentual;
+            
+            if (percentual >= 100) {
+                performance.class = 'excellent';
+                performance.icon = '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>';
+            } else if (percentual >= 85) {
+                performance.class = 'good';
+                performance.icon = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+            } else if (percentual >= 70) {
+                performance.class = 'average';
+                performance.icon = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+            } else {
+                performance.class = 'below';
+                performance.icon = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+            }
+        }
+    }
+    
+    return {
+        totalPeso: totalPeso.toLocaleString('pt-BR'),
+        totalExercicios,
+        duracaoEstimada,
+        performance
+    };
+}
+
+// Renderizar exercícios do histórico
+function renderizarExerciciosHistorico(historico) {
+    const { execucoes, exerciciosSugeridos } = historico;
+    
+    // Agrupar execuções por exercício
+    const exerciciosAgrupados = {};
+    
+    execucoes.forEach(exec => {
+        const exercicioId = exec.exercicio_id;
+        if (!exerciciosAgrupados[exercicioId]) {
+            exerciciosAgrupados[exercicioId] = {
+                nome: exec.exercicios?.nome || 'Exercício',
+                grupo_muscular: exec.exercicios?.grupo_muscular || 'Geral',
+                series: [],
+                sugerido: exerciciosSugeridos.find(s => s.exercicio_id === exercicioId)
+            };
+        }
+        
+        exerciciosAgrupados[exercicioId].series.push({
+            serie: exec.serie_numero || exerciciosAgrupados[exercicioId].series.length + 1,
+            peso: exec.peso_utilizado || 0,
+            reps: exec.repeticoes || 0,
+            falhou: exec.falhou || false
+        });
+    });
+    
+    // Renderizar HTML
+    return Object.values(exerciciosAgrupados).map(exercicio => {
+        const totalPesoExercicio = exercicio.series.reduce((total, serie) => 
+            total + (serie.peso * serie.reps), 0
+        );
+        
+        const seriesHTML = exercicio.series.map(serie => {
+            const statusClass = serie.falhou ? 'failed' : 'completed';
+            const statusIcon = serie.falhou ? '❌' : '✅';
+            
+            return `
+                <div class="serie-item ${statusClass}">
+                    <span class="serie-numero">${serie.serie}ª</span>
+                    <span class="serie-peso">${serie.peso}kg</span>
+                    <span class="serie-reps">${serie.reps} reps</span>
+                    <span class="serie-status">${statusIcon}</span>
+                </div>
+            `;
+        }).join('');
+        
+        const sugeridoInfo = exercicio.sugerido ? `
+            <div class="exercise-suggested">
+                Sugerido: ${exercicio.sugerido.peso_sugerido || 0}kg × ${exercicio.sugerido.repeticoes_sugeridas || 0} × ${exercicio.sugerido.series || 1}
+            </div>
+        ` : '';
+        
+        return `
+            <div class="exercise-history-item">
+                <div class="exercise-header">
+                    <div class="exercise-info">
+                        <h4 class="exercise-name">${exercicio.nome}</h4>
+                        <span class="exercise-muscle">${exercicio.grupo_muscular}</span>
+                    </div>
+                    <div class="exercise-total">
+                        <span class="total-weight">${totalPesoExercicio.toLocaleString('pt-BR')}kg</span>
+                    </div>
+                </div>
+                ${sugeridoInfo}
+                <div class="series-list">
+                    ${seriesHTML}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Fechar modal de histórico
+window.fecharModalHistorico = function(event) {
+    if (event && event.target !== event.currentTarget) return;
+    
+    const modal = document.getElementById('modal-historico');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+};
+
+// Função para debug de informações do treino
+async function debugTreinoInfo(userId, dayIndex) {
+    try {
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const semana = WeeklyPlanService.getWeekNumber(hoje);
+        const dataAlvo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (hoje.getDay() - dayIndex));
+        const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
+        
+        // Buscar planejamento
+        const { data: planejamento } = await supabase
+            .from('planejamento_semanal')
+            .select('*')
+            .eq('usuario_id', userId)
+            .eq('ano', ano)
+            .eq('semana', semana)
+            .eq('dia_semana', dayIndex)
+            .single();
+        
+        // Buscar execuções (todas do dia, independente do protocolo)
+        const { data: execucoes } = await supabase
+            .from('execucao_exercicio_usuario')
+            .select('id, data_execucao, protocolo_treino_id, exercicio_id, peso_utilizado, repeticoes')
+            .eq('usuario_id', userId)
+            .gte('data_execucao', dataAlvoStr)
+            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+            
+        // Buscar também execuções de protocolos ativos
+        const { data: execucoesAtivas } = await supabase
+            .from('execucao_exercicio_usuario')
+            .select('id, data_execucao, protocolo_treino_id, exercicio_id')
+            .eq('usuario_id', userId)
+            .gte('data_execucao', dataAlvoStr)
+            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        
+        const protocolosEncontrados = [...new Set(execucoes?.map(e => e.protocolo_treino_id) || [])];
+        
+        const info = [
+            `Dia: ${dayIndex} (${dataAlvoStr})`,
+            `Planejamento: ${planejamento ? 'Existe' : 'Não existe'}`,
+            `Concluído: ${planejamento?.concluido || false}`,
+            `Protocolo ID: ${planejamento?.protocolo_treino_id || 'N/A'}`,
+            `Execuções: ${execucoes?.length || 0}`,
+            `Protocolos das execuções: [${protocolosEncontrados.join(', ')}]`,
+            `Semana: ${semana}, Ano: ${ano}`
+        ].join(' | ');
+        
+        console.log(`[debugTreinoInfo] ${info}`, { 
+            planejamento, 
+            execucoes,
+            planejamento_completo: planejamento,
+            protocolo_treino_id_detalhes: {
+                valor: planejamento?.protocolo_treino_id,
+                tipo: typeof planejamento?.protocolo_treino_id,
+                eh_null: planejamento?.protocolo_treino_id === null,
+                eh_undefined: planejamento?.protocolo_treino_id === undefined
+            },
+            query_params: {
+                userId,
+                ano,
+                semana,
+                dia_semana: dayIndex,
+                data_busca: dataAlvoStr
+            }
+        });
+        
+        return info;
+        
+    } catch (error) {
+        console.error('[debugTreinoInfo] Erro:', error);
+        return `Erro no debug: ${error.message}`;
+    }
+}
+
 // ===== FUNÇÕES DE RENDERIZAÇÃO DE EXERCÍCIOS =====
 
 // Renderizar lista de exercícios na interface
@@ -1615,6 +2153,56 @@ function renderizarExercicios(exercicios, planejamento, container) {
     container.innerHTML = html;
     
     console.log('[renderizarExercicios] ✅ Exercícios renderizados:', exercicios.length);
+    
+    // Atualizar grupos musculares na seção de preparação
+    atualizarGruposMusculares(exercicios);
+}
+
+// Atualizar grupos musculares na seção de preparação
+function atualizarGruposMusculares(exercicios) {
+    const container = document.getElementById('muscle-groups');
+    if (!container) {
+        console.log('[atualizarGruposMusculares] Container muscle-groups não encontrado');
+        return;
+    }
+    
+    if (!exercicios || exercicios.length === 0) {
+        container.innerHTML = '<div class="muscle-chip">Configure treino</div>';
+        console.log('[atualizarGruposMusculares] Nenhum exercício encontrado');
+        return;
+    }
+    
+    // Extrair grupos musculares únicos dos exercícios
+    const gruposSet = new Set();
+    
+    exercicios.forEach(exercicio => {
+        // Tentar diferentes campos que podem conter o grupo muscular
+        const grupo = exercicio.grupo_muscular || 
+                     exercicio.exercicio_grupo || 
+                     exercicio.tipo_atividade ||
+                     exercicio.categoria;
+        
+        if (grupo && grupo.trim() !== '' && grupo !== 'folga' && grupo !== 'cardio') {
+            gruposSet.add(grupo.toLowerCase().trim());
+        }
+    });
+    
+    const gruposMusculares = Array.from(gruposSet);
+    
+    if (gruposMusculares.length === 0) {
+        container.innerHTML = '<div class="muscle-chip">Treino personalizado</div>';
+        console.log('[atualizarGruposMusculares] Nenhum grupo muscular identificado');
+        return;
+    }
+    
+    // Criar HTML para os chips dos grupos musculares
+    const html = gruposMusculares.map(grupo => 
+        `<div class="muscle-chip">${grupo}</div>`
+    ).join('');
+    
+    container.innerHTML = html;
+    
+    console.log('[atualizarGruposMusculares] ✅ Grupos musculares atualizados:', gruposMusculares);
 }
 
 // Mostrar mensagem quando não há exercícios

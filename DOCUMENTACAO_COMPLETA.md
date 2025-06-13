@@ -57,8 +57,17 @@
 - ✅ **Timer de Descanso**: Contagem regressiva visual entre séries
 - ✅ **Tracking Completo**: Acompanhamento de peso, reps e tempo
 - ✅ **Salvamento Automático**: Todas as séries salvas no banco de dados
+- ✅ **Modal de Avaliação**: Finalização obrigatória com feedback de qualidade
 
-### **5. Calculadora de Peso Inteligente**
+### **5. Sistema de Finalização e Avaliação**
+- ✅ **Modal de Avaliação Obrigatória**: Aparece ao completar todos os exercícios
+- ✅ **Escala Likert**: Qualidade do treino (0-5, obrigatório)
+- ✅ **Avaliações Opcionais**: Dificuldade percebida (1-10), energia (1-10)
+- ✅ **Campo de Observações**: Até 500 caracteres para feedback detalhado
+- ✅ **Armazenamento JSONB**: Dados salvos em `planejamento_semanal.resposta_avaliacao`
+- ✅ **Finalização Inteligente**: Sem critérios automáticos, apenas feedback manual
+
+### **6. Calculadora de Peso Inteligente**
 - ✅ **Fórmulas Científicas**: Cálculo preciso de 1RM baseado em Brzycki/Epley
 - ✅ **Progressão Linear**: Aumento gradual baseado na semana de treino
 - ✅ **Personalização**: Diferentes percentuais por exercício
@@ -109,8 +118,9 @@
 usuarios
 exercicios                 -- Catálogo de exercícios
 protocolo_treinos         -- Protocolos por usuário
-planejamento_semanal      -- Planejamento semanal
+planejamento_semanal      -- Planejamento semanal + resposta_avaliacao (JSONB)
 execucao_exercicio_usuario -- Histórico de execuções
+treino_executado          -- Sessões de treino finalizadas
 d_calendario              -- Calendário e controle semanal
 ```
 
@@ -120,10 +130,19 @@ d_calendario              -- Calendário e controle semanal
 - `protocolo_treinos` → `exercicios` (N:N)
 - `execucao_exercicio_usuario` → `d_calendario` (N:1)
 
-### **⚠️ Migração Crítica Pendente**
+### **⚠️ Migrações Pendentes**
+
+#### **Crítica: Sistema de Avaliação**
 ```sql
--- IMPORTANTE: Executar no Supabase antes de usar
-database/migrate_remove_numero_treino.sql
+-- IMPORTANTE: Executar no Supabase para habilitar avaliações
+migrations/add_resposta_avaliacao_to_planejamento.sql
+```
+**Motivo**: Nova coluna JSONB para armazenar feedback do usuário na finalização
+
+#### **Opcional: Estrutura de Atividades**
+```sql
+-- Se ainda apresentar erro de numero_treino
+database/migrate_remove_numero_treino.sql  
 ```
 **Motivo**: Refatoração de `numero_treino` para `tipo_atividade` com JOIN em `exercicios.grupo_muscular`
 
@@ -309,6 +328,7 @@ window.forceRenderWorkout()      // Forçar re-renderização
 - Dashboard com dados reais e métricas em tempo real
 - Planejamento semanal com validação automática
 - Execução de treinos com sugestões inteligentes de peso
+- **Sistema de finalização com avaliação obrigatória** 🆕
 - Calculadora de peso baseada em 1RM com progressão científica
 - Sistema de design moderno unificado (dark theme + neon green)
 - Template system robusto com múltiplos fallbacks
@@ -342,6 +362,6 @@ O **App Treino** é uma aplicação completa e profissional para gerenciamento d
 
 ---
 
-*Documentação unificada - Versão 2.0*  
-*Última atualização: Janeiro 2025 (v5.6b)*  
-*Inclui correções de template integration e debug tools*
+*Documentação unificada - Versão 2.1 (Sistema de Avaliação implementado)*  
+*Última atualização: Dezembro 2025 (v5.7)*  
+*Inclui sistema de finalização com modal de avaliação obrigatória*
