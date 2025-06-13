@@ -112,6 +112,8 @@ export class TreinoExecutadoService {
                                 equipamento
                             )
                         `)
+                        .eq('usuario_id', userId)
+                        .eq('data_execucao', sessao.data_treino)
 
                     
                     if (!errorExec) {
@@ -160,6 +162,8 @@ export class TreinoExecutadoService {
                                 tipo_atividade
                             )
                         `)
+                        .eq('usuario_id', userId)
+                        .eq('data_execucao', data)
 
                     
                     if (!errorExec) {
@@ -194,6 +198,7 @@ export class TreinoExecutadoService {
                 .eq('usuario_id', userId)
                 .gte('data_execucao', dataInicio)
                 .lte('data_execucao', dataFim)
+                .order('data_execucao', { ascending: false })
 
                 
             if (!execucoes || execucoes.length === 0) {
@@ -240,10 +245,14 @@ export class TreinoExecutadoService {
                     // Associar execuções à sessão
                     const execucaoIds = grupo.execucoes.map(e => e.id);
                     
-                    await supabase
+                    const { error: updateError } = await supabase
                         .from('execucao_exercicio_usuario')
-
+                        .update({ sessao_treino_id: sessaoResult.data.id })
                         .in('id', execucaoIds);
+                        
+                    if (updateError) {
+                        console.error('Erro ao associar execuções:', updateError);
+                    }
                         
                     migradas += grupo.execucoes.length;
                     

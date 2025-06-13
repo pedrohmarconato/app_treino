@@ -4268,4 +4268,83 @@ button:focus-visible {
 .icon-warning { stroke: #ff9800; }
 .icon-error { stroke: #f44336; }
 .icon-info { stroke: #2196f3; }
+
+/* ========== SELETOR DE GRUPOS MUSCULARES ========== */
+.grupos-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.grupo-btn {
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: left;
+    color: var(--text-primary);
+}
+
+.grupo-btn:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+}
+
+.grupo-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.grupo-nome {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+}
+
+.grupo-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.grupo-stats span {
+    background: var(--bg-secondary);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.selector-message {
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+/* Responsividade para seletor */
+@media (max-width: 768px) {
+    .grupos-selector {
+        gap: 10px;
+    }
+    
+    .grupo-btn {
+        padding: 14px 16px;
+    }
+    
+    .grupo-stats {
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .grupo-stats span {
+        font-size: 0.8rem;
+    }
+}
 }
