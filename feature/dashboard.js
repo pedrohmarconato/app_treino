@@ -1678,17 +1678,61 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
         const historico = await buscarHistoricoTreino(currentUser.id, dayIndex);
         
         if (historico) {
-            mostrarModalHistorico(historico, dayIndex);
+            // Verificar se há múltiplos grupos musculares
+            if (historico.multiplos_grupos) {
+                mostrarSeletorGrupoMuscular(historico, dayIndex);
+            } else {
+                mostrarModalHistorico(historico, dayIndex);
+            }
         } else {
             // Se não há histórico, mostrar informações de debug
             const debugInfo = await debugTreinoInfo(currentUser.id, dayIndex);
-            showNotification(`Nenhum dado encontrado. ${debugInfo}`, 'warning');
+            console.log('[handleDayClick] Debug info:', debugInfo);
+            showNotification(`Nenhum treino encontrado para este dia. ${debugInfo.data ? debugInfo.data.substring(0, 100) + '...' : 'Verificando dados...'}`, 'warning');
         }
     } catch (error) {
         console.error('[handleDayClick] Erro:', error);
         showNotification('Erro ao carregar histórico do treino', 'error');
     }
 };
+
+// Buscar grupo muscular planejado para um dia específico
+async function buscarGrupoMuscularPlanejado(userId, dataAlvo) {
+    try {
+        const ano = dataAlvo.getFullYear();
+        const semana = getWeekNumber(dataAlvo);
+        const diaSemana = dataAlvo.getDay();
+        
+        const { data: planejamento, error } = await supabase
+            .from('planejamento_semanal')
+            .select('tipo_atividade')
+            .eq('usuario_id', userId)
+            .eq('ano', ano)
+            .eq('semana', semana)
+            .eq('dia_semana', diaSemana)
+            .single();
+            
+        if (error || !planejamento) {
+            console.log('[buscarGrupoMuscularPlanejado] Nenhum planejamento encontrado para este dia');
+            return null;
+        }
+        
+        return planejamento.tipo_atividade;
+        
+    } catch (error) {
+        console.error('[buscarGrupoMuscularPlanejado] Erro:', error);
+        return null;
+    }
+}
+
+// Função auxiliar para obter número da semana
+function getWeekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
 
 // Buscar histórico de treino específico (nova versão com treino_executado)
 async function buscarHistoricoTreino(userId, dayIndex) {
@@ -1714,64 +1758,139 @@ async function buscarHistoricoTreino(userId, dayIndex) {
         //     };
         // }
         
-        // Fallback: buscar no sistema antigo e tentar migrar
-        console.log('[buscarHistoricoTreino] Não encontrado na nova estrutura, tentando sistema antigo...');
+        // Primeiro, buscar qual grupo muscular foi planejado para este dia
+        const grupoMuscularPlanejado = await buscarGrupoMuscularPlanejado(userId, dataAlvo);
+        console.log('[buscarHistoricoTreino] Grupo muscular planejado:', grupoMuscularPlanejado);
         
-        const { data: execucoesAntigas } = await supabase
-            .from('execucao_exercicio_usuario')
-            .select(`
-                *,
-                exercicios (
-                    nome,
-                    grupo_muscular,
-                    tipo_atividade
-                )
-            `)
-            .eq('usuario_id', userId)
-            .gte('data_execucao', dataAlvoStr)
-            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0])
- // Apenas não migradas
+        // Buscar usando a view otimizada
+        console.log('[buscarHistoricoTreino] Buscando dados na view otimizada...');
         
-        if (execucoesAntigas && execucoesAntigas.length > 0) {
-            console.log('[buscarHistoricoTreino] ⚠️ Execuções encontradas no sistema antigo, iniciando migração...');
+        const { TreinoViewService } = await import('../services/treinoViewService.js');
+        
+        // Primeiro tenta com o grupo planejado, depois sem filtro se não encontrar
+        let resultadoView = await TreinoViewService.buscarTreinoPorData(userId, dataAlvoStr, grupoMuscularPlanejado);
+        console.log('[buscarHistoricoTreino] Resultado da busca com grupo específico:', {
+            success: resultadoView.success,
+            hasData: !!resultadoView.data,
+            grupoUsado: grupoMuscularPlanejado
+        });
+        
+        // Se não encontrou com grupo específico E há grupo planejado, tenta sem filtro
+        if ((!resultadoView.success || !resultadoView.data) && grupoMuscularPlanejado) {
+            console.log('[buscarHistoricoTreino] Não encontrado com grupo específico, tentando busca geral...');
+            resultadoView = await TreinoViewService.buscarTreinoPorData(userId, dataAlvoStr, null);
+            console.log('[buscarHistoricoTreino] Resultado da busca geral:', {
+                success: resultadoView.success,
+                hasData: !!resultadoView.data
+            });
+        }
+        
+        // Se ainda não encontrou e não havia grupo planejado, tenta busca geral
+        if ((!resultadoView.success || !resultadoView.data) && !grupoMuscularPlanejado) {
+            console.log('[buscarHistoricoTreino] Tentando busca geral sem grupo planejado...');
+            resultadoView = await TreinoViewService.buscarTreinoPorData(userId, dataAlvoStr, null);
+            console.log('[buscarHistoricoTreino] Resultado final da busca geral:', {
+                success: resultadoView.success,
+                hasData: !!resultadoView.data
+            });
+        }
+        
+        if (resultadoView.success && resultadoView.data) {
+            console.log('[buscarHistoricoTreino] ✅ Dados encontrados na view:', resultadoView.data);
             
-            // Tentar migrar automaticamente
-            const migracaoResult = await TreinoExecutadoService.migrarExecucoesExistentes(
-                userId, 
-                dataAlvoStr, 
-                dataAlvoStr
-            );
-            
-            if (migracaoResult.success) {
-                // Buscar novamente após migração
-                const sessaoMigradaResult = await TreinoExecutladoService.buscarSessaoPorData(userId, dataAlvoStr);
-                
-                if (sessaoMigradaResult.success && sessaoMigradaResult.data.length > 0) {
-                    const sessao = sessaoMigradaResult.data[0];
-                    
-                    console.log('[buscarHistoricoTreino] ✅ Migração concluída, sessão criada:', sessao);
-                    
-                    return {
-                        sessao,
-                        execucoes: sessao.execucao_exercicio_usuario || [],
-                        exerciciosSugeridos: [],
-                        dayIndex,
-                        data_treino: dataAlvo,
-                        fonte: 'migrado'
-                    };
-                }
+            // Verificar se há múltiplos grupos musculares
+            if (resultadoView.data.multiplos_grupos) {
+                console.log('[buscarHistoricoTreino] ⚠️ Múltiplos grupos encontrados, mostrando seletor');
+                return {
+                    multiplos_grupos: true,
+                    grupos_disponiveis: resultadoView.data.grupos,
+                    data_treino: dataAlvo,
+                    dayIndex,
+                    fonte: 'view_otimizada_multiplos'
+                };
             }
             
-            // Se migração falhou, usar dados antigos
-            console.log('[buscarHistoricoTreino] ⚠️ Migração falhou, usando dados do sistema antigo');
-            
             return {
-                execucoes: execucoesAntigas,
+                sessao: {
+                    data_treino: resultadoView.data.data_treino,
+                    grupo_muscular: resultadoView.data.grupo_muscular,
+                    metricas: resultadoView.data.metricas,
+                    protocolo_treino_id: resultadoView.data.planejamento.protocolo_id
+                },
+                execucoes: resultadoView.data.exercicios.flatMap(ex => 
+                    ex.series.map(serie => ({
+                        exercicio_id: ex.exercicio_id,
+                        exercicios: {
+                            nome: ex.nome,
+                            grupo_muscular: ex.grupo_muscular,
+                            tipo_atividade: ex.grupo_muscular
+                        },
+                        serie_numero: serie.serie_numero,
+                        peso_utilizado: serie.peso,
+                        repeticoes: serie.repeticoes,
+                        falhou: serie.falhou,
+                        volume_serie: serie.volume,
+                        rm_estimado: serie.rm_estimado,
+                        intensidade_percentual: serie.intensidade
+                    }))
+                ),
                 exerciciosSugeridos: [],
                 dayIndex,
                 data_treino: dataAlvo,
-                fonte: 'sistema_antigo'
+                fonte: 'view_otimizada',
+                metricas_avancadas: resultadoView.data.metricas,
+                grupo_planejado: grupoMuscularPlanejado
             };
+        }
+        
+        // Fallback: tentar busca direta mais simples se view falhou
+        console.log('[buscarHistoricoTreino] View não retornou dados, tentando busca direta...');
+        
+        try {
+            const { data: execucoesDiretas, error: errorDireto } = await supabase
+                .from('execucao_exercicio_usuario')
+                .select('id, usuario_id, exercicio_id, data_execucao, peso_utilizado, repeticoes, serie_numero, falhou')
+                .eq('usuario_id', userId)
+                .gte('data_execucao', dataAlvoStr + 'T00:00:00')
+                .lt('data_execucao', dataAlvoStr + 'T23:59:59');
+            
+            if (errorDireto) {
+                console.error('[buscarHistoricoTreino] Erro na busca direta:', errorDireto);
+            } else if (execucoesDiretas && execucoesDiretas.length > 0) {
+                console.log('[buscarHistoricoTreino] ✅ Encontradas execuções diretas:', execucoesDiretas.length);
+                
+                // Buscar detalhes dos exercícios separadamente
+                const exercicioIds = [...new Set(execucoesDiretas.map(e => e.exercicio_id))];
+                const { data: exerciciosDetalhes } = await supabase
+                    .from('exercicios')
+                    .select('id, nome, grupo_muscular')
+                    .in('id', exercicioIds);
+                
+                // Mapear exercícios
+                const exerciciosMap = {};
+                (exerciciosDetalhes || []).forEach(ex => {
+                    exerciciosMap[ex.id] = ex;
+                });
+                
+                // Combinar dados
+                const execucoesCompletas = execucoesDiretas.map(exec => ({
+                    ...exec,
+                    exercicios: exerciciosMap[exec.exercicio_id] || {
+                        nome: 'Exercício desconhecido',
+                        grupo_muscular: 'Geral'
+                    }
+                }));
+                
+                return {
+                    execucoes: execucoesCompletas,
+                    exerciciosSugeridos: [],
+                    dayIndex,
+                    data_treino: dataAlvo,
+                    fonte: 'busca_direta'
+                };
+            }
+        } catch (errorFallback) {
+            console.error('[buscarHistoricoTreino] Erro no fallback:', errorFallback);
         }
         
         console.log('[buscarHistoricoTreino] ❌ Nenhum treino encontrado para este dia');
@@ -1781,6 +1900,110 @@ async function buscarHistoricoTreino(userId, dayIndex) {
         console.error('[buscarHistoricoTreino] Erro:', error);
         throw error;
     }
+}
+
+// Mostrar seletor quando há múltiplos grupos musculares no mesmo dia
+function mostrarSeletorGrupoMuscular(historico, dayIndex) {
+    const dayName = DIAS_SEMANA[dayIndex];
+    const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
+    
+    const modalHTML = `
+        <div id="modal-seletor-grupo" class="modal-overlay" onclick="fecharModalSeletorGrupo(event)">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>Múltiplos Treinos - ${dayName}</h3>
+                    <span class="modal-date">${dataFormatada}</span>
+                    <button class="modal-close" onclick="fecharModalSeletorGrupo()">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <p class="selector-message">
+                        Foram encontrados treinos de múltiplos grupos musculares neste dia. 
+                        Selecione qual grupo você deseja visualizar:
+                    </p>
+                    
+                    <div class="grupos-selector">
+                        ${historico.grupos_disponiveis.map(grupo => `
+                            <button class="grupo-btn" onclick="selecionarGrupoMuscular('${grupo.grupo_muscular}', ${dayIndex})">
+                                <div class="grupo-info">
+                                    <span class="grupo-nome">${grupo.grupo_muscular}</span>
+                                    <div class="grupo-stats">
+                                        <span>${grupo.total_execucoes} séries</span>
+                                        <span>${grupo.exercicios.length} exercícios</span>
+                                        <span>${Math.round(grupo.metricas.volume_total)}kg volume</span>
+                                    </div>
+                                </div>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// Selecionar grupo muscular específico
+async function selecionarGrupoMuscular(grupoMuscular, dayIndex) {
+    try {
+        fecharModalSeletorGrupo();
+        showNotification(`Carregando treino de ${grupoMuscular}...`, 'info');
+        
+        // Buscar apenas o grupo selecionado
+        const historico = await buscarHistoricoTreino(currentUser.id, dayIndex);
+        
+        // Buscar especificamente esse grupo
+        const { TreinoViewService } = await import('../services/treinoViewService.js');
+        const hoje = new Date();
+        const dataAlvo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (hoje.getDay() - dayIndex));
+        const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
+        
+        const resultadoEspecifico = await TreinoViewService.buscarTreinoPorData(currentUser.id, dataAlvoStr, grupoMuscular);
+        
+        if (resultadoEspecifico.success && resultadoEspecifico.data) {
+            const historicoEspecifico = {
+                sessao: {
+                    data_treino: resultadoEspecifico.data.data_treino,
+                    grupo_muscular: resultadoEspecifico.data.grupo_muscular,
+                    metricas: resultadoEspecifico.data.metricas
+                },
+                execucoes: resultadoEspecifico.data.exercicios.flatMap(ex => 
+                    ex.series.map(serie => ({
+                        exercicio_id: ex.exercicio_id,
+                        exercicios: {
+                            nome: ex.nome,
+                            grupo_muscular: ex.grupo_muscular,
+                            tipo_atividade: ex.grupo_muscular
+                        },
+                        serie_numero: serie.serie_numero,
+                        peso_utilizado: serie.peso,
+                        repeticoes: serie.repeticoes,
+                        falhou: serie.falhou,
+                        volume_serie: serie.volume
+                    }))
+                ),
+                dayIndex,
+                data_treino: dataAlvo,
+                fonte: 'view_grupo_especifico'
+            };
+            
+            mostrarModalHistorico(historicoEspecifico, dayIndex);
+        } else {
+            showNotification('Erro ao carregar treino específico', 'error');
+        }
+        
+    } catch (error) {
+        console.error('[selecionarGrupoMuscular] Erro:', error);
+        showNotification('Erro ao carregar treino específico', 'error');
+    }
+}
+
+// Fechar modal do seletor
+function fecharModalSeletorGrupo(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('modal-seletor-grupo');
+    if (modal) modal.remove();
 }
 
 // Mostrar modal com histórico do treino

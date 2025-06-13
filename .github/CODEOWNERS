@@ -1,0 +1,28 @@
+# Code Owners para App Treino
+# Define quem deve revisar mudanças em diferentes partes do código
+
+# Global owners - revisão padrão para tudo
+* @pedrohmarconato
+
+# Core application files
+/feature/ @pedrohmarconato
+/services/ @pedrohmarconato
+/templates/ @pedrohmarconato
+
+# Styles and UI
+/styles/ @pedrohmarconato
+/utils/icons.js @pedrohmarconato
+
+# Configuration and build
+package.json @pedrohmarconato
+/.github/ @pedrohmarconato
+/docs/ @pedrohmarconato
+
+# Security-sensitive files
+.env* @pedrohmarconato
+/services/supabaseService.js @pedrohmarconato
+
+# Documentation
+README.md @pedrohmarconato
+CONTRIBUTING.md @pedrohmarconato
+CODE_OF_CONDUCT.md @pedrohmarconato
