@@ -2168,7 +2168,7 @@ function calcularEstatisticasTreino(historico) {
     };
 }
 
-// Renderizar exercícios do histórico
+// Renderizar exercícios do histórico com resumo avançado
 function renderizarExerciciosHistorico(historico) {
     const { execucoes, exerciciosSugeridos } = historico;
     
@@ -2181,8 +2181,10 @@ function renderizarExerciciosHistorico(historico) {
             exerciciosAgrupados[exercicioId] = {
                 nome: exec.exercicios?.nome || 'Exercício',
                 grupo_muscular: exec.exercicios?.grupo_muscular || 'Geral',
+                equipamento: exec.exercicios?.equipamento || '',
                 series: [],
-                sugerido: exerciciosSugeridos.find(s => s.exercicio_id === exercicioId)
+                sugerido: exerciciosSugeridos.find(s => s.exercicio_id === exercicioId),
+                execucaoData: exec.data_execucao
             };
         }
         
@@ -2190,16 +2192,40 @@ function renderizarExerciciosHistorico(historico) {
             serie: exec.serie_numero || exerciciosAgrupados[exercicioId].series.length + 1,
             peso: exec.peso_utilizado || 0,
             reps: exec.repeticoes || 0,
-            falhou: exec.falhou || false
+            falhou: exec.falhou || false,
+            timestamp: new Date(exec.data_execucao || Date.now())
         });
     });
     
-    // Renderizar HTML
+    // Renderizar HTML com resumo avançado
     return Object.values(exerciciosAgrupados).map(exercicio => {
+        // Calcular métricas do exercício
         const totalPesoExercicio = exercicio.series.reduce((total, serie) => 
             total + (serie.peso * serie.reps), 0
         );
         
+        const pesoMedio = exercicio.series.length > 0 ? 
+            exercicio.series.reduce((total, serie) => total + serie.peso, 0) / exercicio.series.length : 0;
+            
+        const seriesCompletadas = exercicio.series.filter(s => !s.falhou).length;
+        const totalSeries = exercicio.series.length;
+        
+        // Calcular variação vs sugerido
+        let variacaoPercent = 0;
+        const pesoSugerido = exercicio.sugerido?.peso_sugerido || exercicio.sugerido?.peso_base || 0;
+        if (pesoSugerido > 0 && pesoMedio > 0) {
+            variacaoPercent = ((pesoMedio - pesoSugerido) / pesoSugerido) * 100;
+        }
+        
+        // Calcular tempo estimado do exercício
+        const tempoDescanso = exercicio.sugerido?.tempo_descanso || 60;
+        const tempoExecucao = totalSeries * 45; // 45s por série
+        const tempoDescansoTotal = Math.max(0, totalSeries - 1) * tempoDescanso;
+        const tempoTotal = tempoExecucao + tempoDescansoTotal;
+        const tempoMinutos = Math.floor(tempoTotal / 60);
+        const tempoSegundos = tempoTotal % 60;
+        
+        // HTML das séries (colapsível)
         const seriesHTML = exercicio.series.map(serie => {
             const statusClass = serie.falhou ? 'failed' : 'completed';
             const statusIcon = serie.falhou ? '❌' : '✅';
@@ -2209,36 +2235,133 @@ function renderizarExerciciosHistorico(historico) {
                     <span class="serie-numero">${serie.serie}ª</span>
                     <span class="serie-peso">${serie.peso}kg</span>
                     <span class="serie-reps">${serie.reps} reps</span>
+                    <span class="serie-volume">${(serie.peso * serie.reps).toFixed(1)}kg</span>
                     <span class="serie-status">${statusIcon}</span>
                 </div>
             `;
         }).join('');
         
-        const sugeridoInfo = exercicio.sugerido ? `
-            <div class="exercise-suggested">
-                Sugerido: ${exercicio.sugerido.peso_sugerido || 0}kg × ${exercicio.sugerido.repeticoes_sugeridas || 0} × ${exercicio.sugerido.series || 1}
-            </div>
-        ` : '';
+        const exercicioId = `exercise-${Math.random().toString(36).substr(2, 9)}`;
         
         return `
             <div class="exercise-history-item">
                 <div class="exercise-header">
                     <div class="exercise-info">
                         <h4 class="exercise-name">${exercicio.nome}</h4>
-                        <span class="exercise-muscle">${exercicio.grupo_muscular}</span>
+                        <span class="exercise-muscle">${exercicio.grupo_muscular}${exercicio.equipamento ? ` • ${exercicio.equipamento}` : ''}</span>
                     </div>
-                    <div class="exercise-total">
-                        <span class="total-weight">${totalPesoExercicio.toLocaleString('pt-BR')}kg</span>
+                    <div class="exercise-status completed">
+                        <span>Concluído</span>
                     </div>
                 </div>
-                ${sugeridoInfo}
-                <div class="series-list">
-                    ${seriesHTML}
+                
+                <!-- Resumo das Métricas -->
+                <div class="exercise-summary-metrics">
+                    <div class="metric-card-small">
+                        <div class="metric-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 12l2 2 4-4"/>
+                                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                                <path d="M3 12h6m6 0h6"/>
+                            </svg>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-value">${totalPesoExercicio.toFixed(1)} kg</span>
+                            <span class="metric-label">Carga Total</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card-small">
+                        <div class="metric-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-value">${tempoMinutos}:${tempoSegundos.toString().padStart(2, '0')}</span>
+                            <span class="metric-label">Tempo Total</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card-small">
+                        <div class="metric-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                            </svg>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-value" style="color: ${variacaoPercent >= 0 ? 'var(--accent-green, #00ff57)' : 'var(--accent-red, #ff4444)'}">${variacaoPercent >= 0 ? '+' : ''}${variacaoPercent.toFixed(1)}%</span>
+                            <span class="metric-label">vs Sugerido</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card-small">
+                        <div class="metric-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="12" y1="8" x2="12" y2="16"/>
+                                <line x1="8" y1="12" x2="16" y2="12"/>
+                            </svg>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-value">${seriesCompletadas}/${totalSeries}</span>
+                            <span class="metric-label">Séries</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detalhes das Séries (Colapsível) -->
+                <div class="series-details-history">
+                    <button class="series-toggle-history" onclick="toggleSeriesHistory('${exercicioId}')">
+                        <span>Ver Detalhes das Séries</span>
+                        <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                    
+                    <div class="series-list-history collapsed" id="series-${exercicioId}">
+                        <div class="series-list-header">
+                            <span>Série</span>
+                            <span>Peso</span>
+                            <span>Reps</span>
+                            <span>Volume</span>
+                            <span>Status</span>
+                        </div>
+                        ${seriesHTML}
+                        ${pesoSugerido > 0 ? `
+                            <div class="exercise-suggested-compact">
+                                <span class="suggested-label">Sugerido:</span>
+                                <span class="suggested-value">${pesoSugerido}kg × ${exercicio.sugerido?.repeticoes_sugeridas || exercicio.sugerido?.repeticoes_alvo || '?'} reps</span>
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
 }
+
+// Função para toggle das séries históricas
+window.toggleSeriesHistory = function(exercicioId) {
+    const toggle = document.querySelector(`[onclick="toggleSeriesHistory('${exercicioId}')"]`);
+    const seriesList = document.getElementById(`series-${exercicioId}`);
+    
+    if (seriesList && toggle) {
+        const isCollapsed = seriesList.classList.contains('collapsed');
+        
+        if (isCollapsed) {
+            seriesList.classList.remove('collapsed');
+            toggle.classList.add('expanded');
+            toggle.querySelector('span').textContent = 'Ocultar Detalhes das Séries';
+        } else {
+            seriesList.classList.add('collapsed');
+            toggle.classList.remove('expanded');
+            toggle.querySelector('span').textContent = 'Ver Detalhes das Séries';
+        }
+    }
+};
 
 // Fechar modal de histórico
 window.fecharModalHistorico = function(event) {

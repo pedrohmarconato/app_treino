@@ -4347,4 +4347,251 @@ button:focus-visible {
         font-size: 0.8rem;
     }
 }
+
+/* ===== ESTILOS PARA RESUMO DE EXERCÍCIOS HISTÓRICOS ===== */
+
+/* Métricas de resumo dos exercícios */
+.exercise-summary-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin: 16px 0;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.metric-card-small {
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.metric-card-small:hover {
+    border-color: var(--accent-green);
+    background: var(--accent-green-bg, rgba(0, 255, 87, 0.1));
+}
+
+.metric-card-small .metric-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--accent-green-bg, rgba(0, 255, 87, 0.1));
+    border-radius: var(--radius-sm);
+    color: var(--accent-green, #00ff57);
+    flex-shrink: 0;
+}
+
+.metric-card-small .metric-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.metric-card-small .metric-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.metric-card-small .metric-value {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.metric-card-small .metric-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Status do exercício */
+.exercise-status {
+    padding: 4px 8px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.exercise-status.completed {
+    background: var(--accent-green, #00ff57);
+    color: var(--bg-primary);
+}
+
+/* Detalhes das séries colapsáveis */
+.series-details-history {
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.series-toggle-history {
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.series-toggle-history:hover {
+    background: var(--bg-secondary);
+}
+
+.series-toggle-history .toggle-icon {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+}
+
+.series-toggle-history.expanded .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.series-list-history.collapsed {
+    display: none;
+}
+
+.series-list-history {
+    padding: 0 16px 16px 16px;
+}
+
+.series-list-header {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 1fr 60px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 8px;
+}
+
+.series-list-history .serie-item {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 1fr 60px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 0.8rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.series-list-history .serie-item:last-child {
+    border-bottom: none;
+}
+
+.series-list-history .serie-item.completed {
+    background: var(--accent-green-bg, rgba(0, 255, 87, 0.1));
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    margin: 2px 0;
+}
+
+.series-list-history .serie-item.failed {
+    background: rgba(255, 68, 68, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    margin: 2px 0;
+}
+
+.exercise-suggested-compact {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    margin-top: 8px;
+    font-size: 0.8rem;
+}
+
+.suggested-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.suggested-value {
+    color: var(--accent-green, #00ff57);
+    font-weight: 600;
+}
+
+/* Responsividade para métricas de exercícios históricos */
+@media (max-width: 768px) {
+    .exercise-summary-metrics {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        padding: 8px;
+    }
+    
+    .metric-card-small {
+        padding: 8px;
+        gap: 6px;
+    }
+    
+    .metric-card-small .metric-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .metric-card-small .metric-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .metric-card-small .metric-value {
+        font-size: 0.75rem;
+    }
+    
+    .metric-card-small .metric-label {
+        font-size: 0.65rem;
+    }
+    
+    .series-list-header {
+        grid-template-columns: 30px 1fr 1fr 1fr 40px;
+        gap: 4px;
+        font-size: 0.7rem;
+    }
+    
+    .series-list-history .serie-item {
+        grid-template-columns: 30px 1fr 1fr 1fr 40px;
+        gap: 4px;
+        font-size: 0.75rem;
+    }
+    
+    .series-toggle-history {
+        padding: 10px 12px;
+        font-size: 0.75rem;
+    }
+}
 }
