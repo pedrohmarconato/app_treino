@@ -614,28 +614,71 @@ class WorkoutExecutionManager {
         try {
             const currentUser = AppState.get('currentUser');
             if (!currentUser || !this.currentWorkout) {
+                console.error('[WorkoutExecution] ❌ Dados insuficientes para registrar conclusão');
                 return;
             }
 
-            const conclusaoData = {
-                usuario_id: currentUser.id,
-                protocolo_id: this.currentWorkout.protocolo_id,
-                tipo_atividade: this.currentWorkout.tipo_atividade,
-                tempo_total: this.calcularTempoTotal(),
-                exercicios_realizados: this.exerciciosExecutados.length,
+            console.log('[WorkoutExecution] 🎯 Registrando conclusão do treino...');
+
+            // Método 1: Tentar usar WeeklyPlanningService
+            if (window.WeeklyPlanService?.marcarTreinoConcluido) {
+                console.log('[WorkoutExecution] Usando WeeklyPlanningService...');
+                await window.WeeklyPlanService.marcarTreinoConcluido(currentUser.id);
+                console.log('[WorkoutExecution] ✅ Conclusão registrada via WeeklyPlanningService');
+                return;
+            }
+
+            // Método 2: Fallback direto para Supabase
+            console.log('[WorkoutExecution] WeeklyPlanningService não disponível, usando Supabase direto...');
+            
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const semana = this.calcularSemana(hoje);
+            const diaSemana = hoje.getDay() === 0 ? 7 : hoje.getDay(); // Domingo = 7
+            
+            const { supabase } = window;
+            if (!supabase) {
+                throw new Error('Supabase não disponível');
+            }
+
+            const updateData = {
+                concluido: true,
                 data_conclusao: new Date().toISOString()
             };
 
-            // Usar WeeklyPlanningService para marcar como concluído
-            if (window.WeeklyPlanService?.marcarTreinoConcluido) {
-                await window.WeeklyPlanService.marcarTreinoConcluido(currentUser.id);
+            console.log('[WorkoutExecution] Atualizando planejamento_semanal:', {
+                usuario_id: currentUser.id,
+                ano,
+                semana,
+                dia_semana: diaSemana,
+                ...updateData
+            });
+
+            const { error } = await supabase
+                .from('planejamento_semanal')
+                .update(updateData)
+                .eq('usuario_id', currentUser.id)
+                .eq('ano', ano)
+                .eq('semana', semana)
+                .eq('dia_semana', diaSemana);
+
+            if (error) {
+                throw error;
             }
 
-            console.log('[WorkoutExecution] ✅ Treino marcado como concluído');
+            console.log('[WorkoutExecution] ✅ Treino marcado como concluído via Supabase direto');
             
         } catch (error) {
-            console.error('[WorkoutExecution] ❌ Erro ao registrar conclusão:', error);
+            console.error('[WorkoutExecution] ❌ ERRO CRÍTICO ao registrar conclusão:', error);
+            throw error; // Re-throw para que o chamador saiba que falhou
         }
+    }
+
+    // Calcular número da semana do ano
+    calcularSemana(data) {
+        const firstDayOfYear = new Date(data.getFullYear(), 0, 1);
+        const pastDaysOfYear = (data - firstDayOfYear) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
     }
 
     // Parar cronômetro
@@ -1784,26 +1827,40 @@ class WorkoutExecutionManager {
     // NOVA FUNÇÃO: Mostrar conclusão do treino com avaliação
     async mostrarConclusaoTreinoSegura() {
         try {
-            // Obter dados para avaliação
-            const dadosAvaliacao = await TreinoCacheService.obterDadosParaAvaliacao();
+            console.log('[WorkoutExecution] 🎯 Iniciando conclusão do treino...');
             
-            if (dadosAvaliacao.success && dadosAvaliacao.data) {
-                // Importar e mostrar modal de avaliação
-                const { AvaliacaoTreinoComponent } = await import('../components/avaliacaoTreino.js');
-                AvaliacaoTreinoComponent.mostrarModalAvaliacao(dadosAvaliacao.data);
-            } else {
-                // Fallback para tela básica se houver erro
+            // PRIMEIRO: Registrar conclusão no banco (CRÍTICO!)
+            await this.registrarTreinoConcluido();
+            console.log('[WorkoutExecution] ✅ Treino registrado como concluído');
+            
+            // SEGUNDO: Tentar mostrar avaliação
+            try {
+                const dadosAvaliacao = TreinoCacheService.obterDadosParaAvaliacao();
+                
+                if (dadosAvaliacao.success && dadosAvaliacao.data) {
+                    // Importar e mostrar modal de avaliação
+                    const { AvaliacaoTreinoComponent } = await import('../components/avaliacaoTreino.js');
+                    AvaliacaoTreinoComponent.mostrarModalAvaliacao(dadosAvaliacao.data);
+                    console.log('[WorkoutExecution] 🎉 Modal de avaliação exibido');
+                } else {
+                    throw new Error('Dados de avaliação não disponíveis');
+                }
+            } catch (avaliacaoError) {
+                console.error('[WorkoutExecution] Erro na avaliação, usando tela básica:', avaliacaoError);
+                // Fallback para tela básica se a avaliação falhar
                 this.mostrarConclusaoBasica();
             }
             
-            // Registrar conclusão
-            this.registrarTreinoConcluido();
-            
-            console.log('[WorkoutExecution] 🎉 Treino concluído - modal de avaliação exibido');
-            
         } catch (error) {
-            console.error('[WorkoutExecution] Erro ao mostrar avaliação:', error);
-            // Fallback para tela básica
+            console.error('[WorkoutExecution] ❌ Erro crítico na conclusão:', error);
+            // Tentar registrar conclusão mesmo com erro
+            try {
+                await this.registrarTreinoConcluido();
+                console.log('[WorkoutExecution] ✅ Treino registrado (fallback)');
+            } catch (registroError) {
+                console.error('[WorkoutExecution] ❌ ERRO CRÍTICO: Não foi possível registrar conclusão:', registroError);
+            }
+            // Mostrar tela básica
             this.mostrarConclusaoBasica();
         }
     }
