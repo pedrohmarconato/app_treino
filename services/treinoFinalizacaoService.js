@@ -106,18 +106,22 @@ export class TreinoFinalizacaoService {
                 .single();
             
             // Verificar na nova estrutura
+            // Comentado: tabela treino_executado foi removida
             // let query = supabase
             //     .from('treino_executado') // DESATIVADO: tabela inexistente
-                .select('id, concluido, data_fim, grupo_muscular')
-                .eq('usuario_id', userId)
-                .eq('data_treino', data)
-                .eq('concluido', true);
-                
-            if (grupoMuscular) {
-                query = query.eq('grupo_muscular', grupoMuscular);
-            }
+            //     .select('id, concluido, data_fim, grupo_muscular')
+            //     .eq('usuario_id', userId)
+            //     .eq('data_treino', data)
+            //     .eq('concluido', true);
+            //     
+            // if (grupoMuscular) {
+            //     query = query.eq('grupo_muscular', grupoMuscular);
+            // }
+            // 
+            // const { data: sessoes } = await query;
             
-            const { data: sessoes } = await query;
+            // Temporariamente sem sessões até nova implementação
+            const sessoes = null;
             
             const finalizadoPlanejamento = planejamento?.concluido || false;
             const finalizadoSessao = sessoes && sessoes.length > 0;

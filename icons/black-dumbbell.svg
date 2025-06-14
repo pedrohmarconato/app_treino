@@ -1,0 +1,14 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#000000">
+    <!-- Left weight -->
+    <rect x="2" y="10" width="6" height="12" rx="1"/>
+    <!-- Left handle connection -->
+    <rect x="8" y="14" width="3" height="4"/>
+    <!-- Center bar -->
+    <rect x="11" y="15" width="10" height="2"/>
+    <!-- Right handle connection -->
+    <rect x="21" y="14" width="3" height="4"/>
+    <!-- Right weight -->
+    <rect x="24" y="10" width="6" height="12" rx="1"/>
+  </g>
+</svg>
