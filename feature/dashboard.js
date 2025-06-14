@@ -10,7 +10,6 @@ import WeeklyPlanService from '../services/weeklyPlanningService.js';
 import homeService from '../services/homeService.js';
 import { showNotification } from '../ui/notifications.js';
 import { supabase, query } from '../services/supabaseService.js';
-import TreinoExecutadoService from '../services/treinoExecutadoService.js';
 
 // Mapear tipos de treino para ícones
 const TREINO_ICONS = {

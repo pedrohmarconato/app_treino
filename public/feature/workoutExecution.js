@@ -75,22 +75,10 @@ class WorkoutExecutionManager {
                 throw new Error('Nenhum exercício encontrado no treino');
             }
 
-            // Avaliar disposição antes de iniciar
-            const disposicao = await this.avaliarDisposicao();
-            if (disposicao === null) {
-                // Usuário cancelou a avaliação
-                console.log('[WorkoutExecution] Avaliação de disposição cancelada');
-                return;
-            }
-
             // Configurar estado inicial
             this.startTime = Date.now();
             this.exerciciosExecutados = [];
             this.currentExerciseIndex = 0;
-            this.avaliacaoDisposicao = disposicao;
-            
-            // Salvar disposição no planejamento_semanal
-            await this.salvarDisposicaoInicial(currentUser.id, disposicao);
             
             // Salvar no estado global
             AppState.set('currentWorkout', this.currentWorkout);
@@ -1818,131 +1806,6 @@ class WorkoutExecutionManager {
             // Fallback para tela básica
             this.mostrarConclusaoBasica();
         }
-    }
-
-    /**
-     * Avalia a disposição do usuário antes de iniciar o treino
-     * @returns {Promise<Object|null>} Dados da avaliação ou null se cancelado
-     */
-    async avaliarDisposicao() {
-        try {
-            // Carregar componente de avaliação de disposição dinamicamente
-            await this.carregarComponenteDisposicao();
-
-            // Criar promise para aguardar resultado
-            return new Promise((resolve) => {
-                const treinoInfo = {
-                    grupoMuscular: this.currentWorkout?.grupo_muscular || 'treino',
-                    exercicios: this.currentWorkout?.exercicios?.length || 0
-                };
-
-                // Mostrar modal de avaliação
-                window.avaliacaoDisposicao.mostrar((resultado) => {
-                    if (resultado) {
-                        console.log('[WorkoutExecution] Disposição avaliada:', resultado.disposicao);
-                        resolve(resultado);
-                    } else {
-                        console.log('[WorkoutExecution] Avaliação de disposição cancelada');
-                        resolve(null);
-                    }
-                }, treinoInfo);
-            });
-
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao avaliar disposição:', error);
-            // Se houver erro, continuar sem avaliação
-            return { disposicao: 3, timestamp: new Date().toISOString() };
-        }
-    }
-
-    /**
-     * Carrega o componente de avaliação de disposição
-     */
-    async carregarComponenteDisposicao() {
-        if (window.avaliacaoDisposicao) {
-            return; // Já carregado
-        }
-
-        try {
-            // Carregar script do componente
-            const script = document.createElement('script');
-            script.src = '../components/avaliacaoDisposicao.js';
-            script.type = 'text/javascript';
-            
-            // Aguardar carregamento
-            await new Promise((resolve, reject) => {
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-
-            console.log('[WorkoutExecution] Componente de avaliação de disposição carregado');
-
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao carregar componente de disposição:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Salva a avaliação de disposição inicial no planejamento_semanal
-     * @param {string} userId - ID do usuário
-     * @param {Object} disposicao - Dados da avaliação de disposição
-     */
-    async salvarDisposicaoInicial(userId, disposicao) {
-        try {
-            const hoje = new Date();
-            const ano = hoje.getFullYear();
-            const semana = this.calcularSemana(hoje);
-            const diaSemana = hoje.getDay();
-
-            console.log('[WorkoutExecution] Salvando disposição inicial:', {
-                usuario_id: userId,
-                ano,
-                semana,
-                dia_semana: diaSemana,
-                disposicao: disposicao.disposicao
-            });
-
-            // Importar supabase
-            const { supabase } = window;
-            if (!supabase) {
-                console.warn('[WorkoutExecution] Supabase não disponível para salvar disposição');
-                return;
-            }
-
-            // Atualizar ou inserir no planejamento_semanal
-            const { error } = await supabase
-                .from('planejamento_semanal')
-                .update({
-                    avaliacao_disposicao: disposicao.disposicao,
-                    data_avaliacao_disposicao: disposicao.timestamp
-                })
-                .eq('usuario_id', userId)
-                .eq('ano', ano)
-                .eq('semana', semana)
-                .eq('dia_semana', diaSemana);
-
-            if (error) {
-                console.error('[WorkoutExecution] Erro ao salvar disposição:', error);
-            } else {
-                console.log('[WorkoutExecution] ✅ Disposição salva com sucesso');
-            }
-
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao salvar disposição inicial:', error);
-        }
-    }
-
-    /**
-     * Calcula o número da semana do ano
-     * @param {Date} data - Data para calcular a semana
-     * @returns {number} Número da semana
-     */
-    calcularSemana(data) {
-        const firstDayOfYear = new Date(data.getFullYear(), 0, 1);
-        const pastDaysOfYear = (data - firstDayOfYear) / 86400000;
-        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
     }
     
     // Fallback: Tela básica de conclusão

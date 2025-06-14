@@ -2019,6 +2019,13 @@ function mostrarModalHistorico(historico, dayIndex) {
         <div id="modal-historico" class="modal-overlay" onclick="fecharModalHistorico(event)">
             <div class="modal-content workout-history-modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
+                    <button class="btn-close" onclick="fecharModalHistorico()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="m15 9-6 6"/>
+                            <path d="m9 9 6 6"/>
+                        </svg>
+                    </button>
                     <div class="workout-history-header">
                         <div class="history-title-section">
                             <h2>Histórico do Treino</h2>
@@ -2028,13 +2035,6 @@ function mostrarModalHistorico(historico, dayIndex) {
                                 <span class="date">${dataFormatada}</span>
                             </div>
                         </div>
-                        <button class="btn-close" onclick="fecharModalHistorico()">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="m15 9-6 6"/>
-                                <path d="m9 9 6 6"/>
-                            </svg>
-                        </button>
                     </div>
                 </div>
                 
@@ -2090,25 +2090,6 @@ function mostrarModalHistorico(historico, dayIndex) {
                                 <div class="stat-label">Performance</div>
                             </div>
                         </div>
-                        
-                        <div class="stat-card weight-comparison">
-                            <div class="stat-icon ${stats.variacao.tipo}">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    ${stats.variacao.tipo === 'acima' ? '<path d="M7 14l5-5 5 5"/><path d="M12 19V9"/>' : 
-                                      stats.variacao.tipo === 'abaixo' ? '<path d="M17 10l-5 5-5-5"/><path d="M12 5v10"/>' : 
-                                      '<path d="M5 12h14"/><path d="M12 5v14"/>'}
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value ${stats.variacao.tipo}">
-                                    ${stats.pesoSugerido}kg / ${stats.totalPeso}kg
-                                </div>
-                                <div class="stat-label">Sugerido / Executado</div>
-                                <div class="stat-variation ${stats.variacao.tipo}">
-                                    ${stats.variacao.tipo === 'acima' ? '+' : stats.variacao.tipo === 'abaixo' ? '' : ''}${Math.abs(stats.variacao.percentual).toFixed(1)}%
-                                </div>
-                            </div>
-                        </div>
                     </div>
                     
                     <!-- Lista de Exercícios -->
@@ -2126,25 +2107,9 @@ function mostrarModalHistorico(historico, dayIndex) {
     // Adicionar modal ao DOM
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    // Configurar event listeners
-    const modal = document.getElementById('modal-historico');
-    if (modal) {
-        // Event listener para tecla ESC (usando event delegation global)
-        if (!window.modalEscapeHandler) {
-            window.modalEscapeHandler = function(e) {
-                if (e.key === 'Escape') {
-                    const openModal = document.getElementById('modal-historico');
-                    if (openModal) {
-                        fecharModalHistorico();
-                    }
-                }
-            };
-            document.addEventListener('keydown', window.modalEscapeHandler);
-        }
-    }
-    
     // Mostrar modal com animação
     setTimeout(() => {
+        const modal = document.getElementById('modal-historico');
         if (modal) {
             modal.classList.add('show');
         }
@@ -2171,23 +2136,14 @@ function calcularEstatisticasTreino(historico) {
     // Performance vs sugerido
     let performance = { percentual: 100, class: 'good', icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' };
     
-    // Calcular peso sugerido total
-    let pesoSugerido = 0;
-    let variacao = { valor: 0, percentual: 0, tipo: 'igual' };
-    
     if (exerciciosSugeridos.length > 0) {
-        pesoSugerido = exerciciosSugeridos.reduce((total, sug) => {
+        const pesoSugerido = exerciciosSugeridos.reduce((total, sug) => {
             return total + ((sug.peso_sugerido || 0) * (sug.repeticoes_sugeridas || 0) * (sug.series || 1));
         }, 0);
         
         if (pesoSugerido > 0) {
             const percentual = Math.round((totalPeso / pesoSugerido) * 100);
             performance.percentual = percentual;
-            
-            // Calcular variação
-            variacao.valor = totalPeso - pesoSugerido;
-            variacao.percentual = percentual - 100;
-            variacao.tipo = variacao.valor > 0 ? 'acima' : variacao.valor < 0 ? 'abaixo' : 'igual';
             
             if (percentual >= 100) {
                 performance.class = 'excellent';
@@ -2209,9 +2165,7 @@ function calcularEstatisticasTreino(historico) {
         totalPeso: totalPeso.toLocaleString('pt-BR'),
         totalExercicios,
         duracaoEstimada,
-        performance,
-        pesoSugerido: pesoSugerido.toLocaleString('pt-BR'),
-        variacao
+        performance
     };
 }
 
