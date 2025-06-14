@@ -2019,6 +2019,13 @@ function mostrarModalHistorico(historico, dayIndex) {
         <div id="modal-historico" class="modal-overlay" onclick="fecharModalHistorico(event)">
             <div class="modal-content workout-history-modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
+                    <button class="btn-close" onclick="fecharModalHistorico()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="m15 9-6 6"/>
+                            <path d="m9 9 6 6"/>
+                        </svg>
+                    </button>
                     <div class="workout-history-header">
                         <div class="history-title-section">
                             <h2>Histórico do Treino</h2>
@@ -2028,12 +2035,6 @@ function mostrarModalHistorico(historico, dayIndex) {
                                 <span class="date">${dataFormatada}</span>
                             </div>
                         </div>
-                        <button class="btn-close" onclick="fecharModalHistorico()">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                        </button>
                     </div>
                 </div>
                 
@@ -2365,14 +2366,26 @@ window.toggleSeriesHistory = function(exercicioId) {
 
 // Fechar modal de histórico
 window.fecharModalHistorico = function(event) {
+    // Se o evento foi passado e não é o elemento correto, não fazer nada
     if (event && event.target !== event.currentTarget) return;
     
     const modal = document.getElementById('modal-historico');
     if (modal) {
+        console.log('Fechando modal de histórico...');
+        
+        // Adicionar classe para animação de saída
+        modal.classList.add('closing');
         modal.classList.remove('show');
+        
+        // Remover do DOM após animação
         setTimeout(() => {
-            modal.remove();
+            if (modal && modal.parentNode) {
+                modal.remove();
+                console.log('Modal removido do DOM');
+            }
         }, 300);
+    } else {
+        console.log('Modal não encontrado para fechar');
     }
 };
 
