@@ -247,39 +247,11 @@ export class TreinoCacheService {
             
             console.log('[TreinoCacheService] Iniciando commit para banco de dados...');
             
-            // 1. Criar sessão na tabela treino_executado
-            // BLOCO DESATIVADO: Criação de sessão na tabela treino_executado (tabela inexistente)
-            /*
-            const { data: sessaoDb, error: sessaoError } = await supabase
-                .from('treino_executado') // DESATIVADO: tabela inexistente
-                .insert({
-                    usuario_id: sessao.usuario_id,
-                    data_treino: sessao.data_treino,
-                    grupo_muscular: sessao.grupo_muscular,
-                    tipo_atividade: sessao.tipo_atividade,
-                    protocolo_treino_id: sessao.protocolo_treino_id,
-                    concluido: true,
-                    data_inicio: sessao.data_inicio,
-                    data_fim: sessao.data_fim,
-                    avaliacao_qualidade: sessao.avaliacao?.qualidade,
-                    dificuldade_percebida: sessao.avaliacao?.dificuldade_percebida,
-                    energia_nivel: sessao.avaliacao?.energia_nivel,
-                    observacoes: sessao.avaliacao?.observacoes_finais
-                })
-                .select()
-                .single();
-            */
-            return { success: false, error: 'Operação desativada: tabela treino_executado não existe.' };
-
-            
-            // if (sessaoError) throw sessaoError; // DESATIVADO
-            
-            // 2. Inserir execuções individuais
+            // 1. Inserir execuções individuais diretamente
             const execucoesParaBanco = sessao.execucoes.map(exec => ({
                 usuario_id: sessao.usuario_id,
                 protocolo_treino_id: sessao.protocolo_treino_id,
                 exercicio_id: exec.exercicio_id,
-                // treino_executado_id: sessaoDb.id, // DESATIVADO: tabela inexistente
                 data_execucao: exec.timestamp,
                 peso_utilizado: exec.peso_utilizado,
                 repeticoes: exec.repeticoes,

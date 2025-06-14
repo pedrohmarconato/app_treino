@@ -105,26 +105,13 @@ export class TreinoFinalizacaoService {
                 .eq('dia_semana', diaSemana)
                 .single();
             
-            // Verificar na nova estrutura
-            // let query = supabase
-            //     .from('treino_executado') // DESATIVADO: tabela inexistente
-                .select('id, concluido, data_fim, grupo_muscular')
-                .eq('usuario_id', userId)
-                .eq('data_treino', data)
-                .eq('concluido', true);
-                
-            if (grupoMuscular) {
-                query = query.eq('grupo_muscular', grupoMuscular);
-            }
-            
-            const { data: sessoes } = await query;
-            
+            // Verificar conclusão através do planejamento_semanal
             const finalizadoPlanejamento = planejamento?.concluido || false;
-            const finalizadoSessao = sessoes && sessoes.length > 0;
+            const finalizadoSessao = planejamento?.concluido || false;
             
             return {
                 finalizado: finalizadoPlanejamento || finalizadoSessao,
-                data_conclusao: planejamento?.data_conclusao || sessoes?.[0]?.data_fim,
+                data_conclusao: planejamento?.data_conclusao,
                 fonte: finalizadoPlanejamento ? 'planejamento' : (finalizadoSessao ? 'sessao' : 'nenhuma')
             };
             

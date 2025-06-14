@@ -4594,4 +4594,240 @@ button:focus-visible {
         font-size: 0.75rem;
     }
 }
+
+/* ==========================================
+   Avaliação de Disposição Pré-Treino
+========================================== */
+
+.disposicao-modal {
+    z-index: 10000;
+}
+
+.disposicao-content {
+    max-width: 500px;
+    width: 90%;
+    background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+    border: 1px solid #333;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.disposicao-header {
+    text-align: center;
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid #333;
+}
+
+.disposicao-header h2 {
+    color: #CFFF04;
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.disposicao-subtitle {
+    color: #b0b0b0;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.disposicao-body {
+    padding: 24px;
+}
+
+.disposicao-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(207, 255, 4, 0.1);
+    border: 1px solid rgba(207, 255, 4, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.disposicao-info .info-icon {
+    color: #CFFF04;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.disposicao-info p {
+    margin: 0;
+    color: #e0e0e0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.escala-disposicao {
+    margin-bottom: 8px;
+}
+
+.escala-disposicao .escala-label {
+    display: block;
+    color: #e0e0e0;
+    font-weight: 500;
+    margin-bottom: 16px;
+    font-size: 1rem;
+}
+
+.disposicao-escala {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.disposicao-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    background: #2a2a2a;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 80px;
+    justify-content: center;
+    text-align: center;
+}
+
+.disposicao-option:hover {
+    background: #333;
+    border-color: #555;
+    transform: translateY(-2px);
+}
+
+.disposicao-option.selected {
+    background: rgba(207, 255, 4, 0.15);
+    border-color: #CFFF04;
+    box-shadow: 0 0 0 2px rgba(207, 255, 4, 0.3);
+}
+
+.disposicao-option .emoji {
+    font-size: 1.8rem;
+    margin-bottom: 6px;
+    line-height: 1;
+}
+
+.disposicao-option .label {
+    font-size: 0.7rem;
+    color: #b0b0b0;
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+
+.disposicao-option .valor {
+    font-size: 0.8rem;
+    color: #CFFF04;
+    font-weight: 600;
+}
+
+.disposicao-option.selected .label {
+    color: #e0e0e0;
+}
+
+.disposicao-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px 24px;
+    border-top: 1px solid #333;
+}
+
+.disposicao-footer .btn {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.disposicao-footer .btn-secondary {
+    background: #333;
+    color: #e0e0e0;
+}
+
+.disposicao-footer .btn-secondary:hover {
+    background: #444;
+}
+
+.disposicao-footer .btn-primary {
+    background: #666;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.disposicao-footer .btn-primary.enabled {
+    background: #CFFF04;
+    color: #000;
+    cursor: pointer;
+}
+
+.disposicao-footer .btn-primary.enabled:hover {
+    background: #e6ff4d;
+    transform: translateY(-1px);
+}
+
+.erro-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(220, 53, 69, 0.15);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: #ff6b7a;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 16px 24px 0;
+    font-size: 0.85rem;
+}
+
+.erro-message svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+/* Responsividade para disposição */
+@media (max-width: 600px) {
+    .disposicao-content {
+        width: 95%;
+        max-width: none;
+        margin: 20px auto;
+    }
+    
+    .disposicao-escala {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    
+    .disposicao-option {
+        padding: 16px 12px;
+        min-height: 90px;
+    }
+    
+    .disposicao-option .emoji {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+    
+    .disposicao-option .label {
+        font-size: 0.75rem;
+    }
+    
+    .disposicao-footer {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .disposicao-footer .btn {
+        width: 100%;
+    }
+}
 }
