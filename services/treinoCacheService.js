@@ -298,7 +298,8 @@ export class TreinoCacheService {
             const hoje = new Date();
             const ano = hoje.getFullYear();
             const semana = this.calcularSemana(hoje);
-            const diaSemana = hoje.getDay();
+            const { dayToDb } = await import('./weeklyPlanningService.js');
+            const diaSemana = dayToDb(hoje.getDay());
             
             const { error: planejamentoError } = await supabase
                 .from('planejamento_semanal')

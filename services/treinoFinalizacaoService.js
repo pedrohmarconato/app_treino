@@ -1,6 +1,7 @@
 // Serviço para gerenciar finalização manual de treinos
 import { supabase } from './supabaseService.js';
 import TreinoExecutladoService from './treinoExecutadoService.js';
+import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 
 export class TreinoFinalizacaoService {
     
@@ -17,7 +18,7 @@ export class TreinoFinalizacaoService {
             console.log(`[TreinoFinalizacaoService] Iniciando finalização manual para usuário ${userId}`);
             
             const hoje = new Date();
-            const dataHoje = hoje.toISOString().split('T')[0];
+            const dataHoje = toSaoPauloDateString(hoje);
             
             // Verificar se já existe treino finalizado hoje
             const jaFinalizado = await this.verificarTreinoJaFinalizado(userId, dataHoje, grupo_muscular);
@@ -68,7 +69,7 @@ export class TreinoFinalizacaoService {
                 execucoes_finalizadas: dadosTreino.execucoes.length,
                 grupo_muscular: dadosTreino.grupo_muscular,
                 tipo_finalizacao: 'manual',
-                data_finalizacao: hoje.toISOString(),
+                data_finalizacao: toSaoPauloISOString(hoje),
                 planejamento_atualizado: planejamentoResult.success,
                 avaliacao_salva: !!avaliacao
             };
@@ -93,7 +94,8 @@ export class TreinoFinalizacaoService {
             const hoje = new Date();
             const ano = hoje.getFullYear();
             const semana = this.calcularSemana(hoje);
-            const diaSemana = hoje.getDay();
+            const { dayToDb } = await import('./weeklyPlanningService.js');
+            const diaSemana = dayToDb(hoje.getDay());
             
             // Verificar no planejamento_semanal
             const { data: planejamento } = await supabase
@@ -138,9 +140,9 @@ export class TreinoFinalizacaoService {
     static async coletarDadosFinalizacao(userId, protocoloTreinoId, grupoMuscular) {
         try {
             const hoje = new Date();
-            const dataHoje = hoje.toISOString().split('T')[0];
+            const dataHoje = toSaoPauloDateString(hoje);
             const hojeInicio = `${dataHoje}T00:00:00`;
-            const hojeAtual = hoje.toISOString();
+            const hojeAtual = toSaoPauloISOString(hoje);
             
             // Buscar execuções do dia
             let query = supabase
@@ -221,7 +223,7 @@ export class TreinoFinalizacaoService {
         try {
             return await TreinoExecutladoService.criarSessaoTreino({
                 usuario_id: userId,
-                data_treino: new Date().toISOString().split('T')[0],
+                data_treino: toSaoPauloDateString(new Date()),
                 grupo_muscular: dadosTreino.grupo_muscular,
                 tipo_atividade: dadosTreino.tipo_atividade,
                 protocolo_treino_id: dadosTreino.protocolo_treino_id,
@@ -243,11 +245,12 @@ export class TreinoFinalizacaoService {
         try {
             const ano = dataFinalizacao.getFullYear();
             const semana = this.calcularSemana(dataFinalizacao);
-            const diaSemana = dataFinalizacao.getDay();
+            const { dayToDb } = await import('./weeklyPlanningService.js');
+            const diaSemana = dayToDb(dataFinalizacao.getDay());
             
             const updateData = {
                 concluido: true,
-                data_conclusao: dataFinalizacao.toISOString(),
+                data_conclusao: toSaoPauloISOString(dataFinalizacao),
                 protocolo_treino_id: dadosTreino.protocolo_treino_id
             };
             
@@ -310,7 +313,7 @@ export class TreinoFinalizacaoService {
     static async obterStatusFinalizacao(userId) {
         try {
             const hoje = new Date();
-            const dataHoje = hoje.toISOString().split('T')[0];
+            const dataHoje = toSaoPauloDateString(hoje);
             
             // Verificar se já finalizado
             const jaFinalizado = await this.verificarTreinoJaFinalizado(userId, dataHoje);

@@ -1594,7 +1594,7 @@ async function verificarTreinoConcluido(userId, dayIndex) {
                 usuario_id: userId,
                 ano: ano,
                 semana: semana,
-                dia_semana: dayIndex
+                dia_semana: WeeklyPlanService.dayToDb(dayIndex)
             }
         });
         
@@ -1646,7 +1646,7 @@ async function sincronizarConclusaoTreino(userId, dayIndex) {
             .eq('usuario_id', userId)
             .eq('ano', ano)
             .eq('semana', semana)
-            .eq('dia_semana', dayIndex);
+            .eq('dia_semana', WeeklyPlanService.dayToDb(dayIndex));
         
         console.log(`[sincronizarConclusaoTreino] Treino do dia ${dayIndex} marcado como concluído`);
         
@@ -1701,7 +1701,7 @@ async function buscarGrupoMuscularPlanejado(userId, dataAlvo) {
     try {
         const ano = dataAlvo.getFullYear();
         const semana = getWeekNumber(dataAlvo);
-        const diaSemana = dataAlvo.getDay();
+        const diaSemana = WeeklyPlanService.dayToDb(dataAlvo.getDay());
         
         const { data: planejamento, error } = await supabase
             .from('planejamento_semanal')
@@ -2392,7 +2392,7 @@ async function debugTreinoInfo(userId, dayIndex) {
             .eq('usuario_id', userId)
             .eq('ano', ano)
             .eq('semana', semana)
-            .eq('dia_semana', dayIndex)
+            .eq('dia_semana', WeeklyPlanService.dayToDb(dayIndex))
             .single();
         
         // Buscar execuções (todas do dia, independente do protocolo)
@@ -2437,7 +2437,7 @@ async function debugTreinoInfo(userId, dayIndex) {
                 userId,
                 ano,
                 semana,
-                dia_semana: dayIndex,
+                dia_semana: WeeklyPlanService.dayToDb(dayIndex),
                 data_busca: dataAlvoStr
             }
         });

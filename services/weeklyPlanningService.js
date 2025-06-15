@@ -4,6 +4,7 @@
 // Updated: Fixed import issue by using supabase directly instead of remove function
 
 import { query, insert, update, supabase } from './supabaseService.js';
+import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 
 // Verifica se a semana já está programada para o usuário e semana_treino
 function verificarSemanaJaProgramada(userId, semanaTreino) {
@@ -389,7 +390,7 @@ class WeeklyPlanService {
             const { error } = await update('planejamento_semanal',
                 { 
                     concluido: true,
-                    data_conclusao: new Date().toISOString()
+                    data_conclusao: nowInSaoPaulo()
                 },
                 {
                     eq: {
@@ -478,9 +479,10 @@ class WeeklyPlanService {
         }
         
         const hoje = new Date().getDay(); // 0 = domingo, 1 = segunda, etc.
+        const diaDb = this.dayToDb(hoje); // Converter para formato do banco
         const { ano, semana } = this.getCurrentWeek();
         
-        console.log('[getTodaysWorkout] 🔍 Buscando treino do dia:', { userId, hoje, ano, semana });
+        console.log('[getTodaysWorkout] 🔍 Buscando treino do dia:', { userId, hoje: diaDb, ano, semana });
         
         try {
             // 1. Buscar dados do planejamento_semanal diretamente
@@ -490,7 +492,7 @@ class WeeklyPlanService {
                 .eq('usuario_id', userId)
                 .eq('ano', ano)
                 .eq('semana', semana)
-                .eq('dia_semana', this.dayToDb(hoje))
+                .eq('dia_semana', diaDb)
                 .single();
             
             // Dados já no formato esperado com .single()
@@ -982,9 +984,9 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         
         // Se não informado, usar dia atual
         const hoje = diaAtual || new Date();
-        const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda, ..., 6=sábado
+        const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay()); // Converter para formato DB
         
-        console.log('[buscarExerciciosTreinoDia] 📅 Dia da semana:', diaSemana);
+        console.log('[buscarExerciciosTreinoDia] 📅 Dia da semana (DB):', diaSemana);
         
         // 1. Buscar planejamento do dia atual da semana atual
         const ano = hoje.getFullYear();
@@ -1028,7 +1030,7 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
             supabase
                 .from('d_calendario')
                 .select('semana_treino')
-                .eq('data_completa', hoje.toISOString().split('T')[0])
+                .eq('data_completa', toSaoPauloDateString(hoje))
                 .single()
         ]);
         
@@ -1141,7 +1143,7 @@ export async function marcarSemanaProgramada(userId, semanaTreino, usuarioQuePro
             .from('planejamento_semanal')
             .update({
                 eh_programado: true,
-                data_programacao: new Date().toISOString(),
+                data_programacao: nowInSaoPaulo(),
                 usuario_que_programou: usuarioQueProgramou
             })
             .eq('usuario_id', userId)
@@ -1306,7 +1308,7 @@ export async function testarIntegracaoCalendario(userId = null) {
             calendarioPopulado: statusCalendario.populado,
             temSemanaAtiva: statusCalendario.temSemanaAtiva,
             testeUsuario: !!userId,
-            timestamp: new Date().toISOString()
+            timestamp: nowInSaoPaulo()
         };
         
         console.log('🎉 [testarIntegracaoCalendario] TESTE CONCLUÍDO:', resultado);
@@ -1349,7 +1351,7 @@ export async function diagnosticoCompletoSistema(userId = null) {
     
     try {
         const diagnostico = {
-            timestamp: new Date().toISOString(),
+            timestamp: nowInSaoPaulo(),
             usuario: null,
             calendario: null,
             planejamento: null,
@@ -1427,7 +1429,7 @@ export async function testarCorrecoesErro406(userId = null) {
     
     try {
         const testes = {
-            timestamp: new Date().toISOString(),
+            timestamp: nowInSaoPaulo(),
             usuario: userId,
             resultados: {}
         };
@@ -1542,8 +1544,8 @@ export async function verificarTreinoConcluido(userId) {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const semana = getWeekNumber(hoje);
-        const diaSemana = hoje.getDay();
-        const dataHoje = hoje.toISOString().split('T')[0]; // YYYY-MM-DD
+        const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
+        const dataHoje = toSaoPauloDateString(hoje); // YYYY-MM-DD
         
         // 1. Buscar planejamento de hoje no banco
         const { data: planejamentoHoje, error } = await query('planejamento_semanal', {
@@ -1604,8 +1606,8 @@ export async function resetarTreinoHoje(userId, motivoReset = 'Reset manual') {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const semana = getWeekNumber(hoje);
-        const diaSemana = hoje.getDay();
-        const dataHoje = hoje.toISOString().split('T')[0];
+        const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
+        const dataHoje = toSaoPauloDateString(hoje);
         
         // 1. Resetar flag concluido no planejamento
         const { data: resetPlan, error: planError } = await update('planejamento_semanal', 

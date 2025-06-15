@@ -61,7 +61,8 @@ export async function carregarDadosHome(userId) {
         // 5. Buscar treino do dia atual
         console.log('[carregarDadosHome] 5. Buscando treino de hoje...');
         const hoje = new Date().getDay(); // 0 = domingo, 1 = segunda, etc.
-        const diaSemanaBanco = hoje === 0 ? 7 : hoje; // Converter para formato do banco (1-7)
+        const { dayToDb } = await import('./weeklyPlanningService.js');
+        const diaSemanaBanco = dayToDb(hoje); // Converter para formato do banco (1-7)
         
         const treinoHoje = planejamento.find(p => p.dia_semana === diaSemanaBanco);
         console.log('[carregarDadosHome] ✅ Treino de hoje:', treinoHoje);
