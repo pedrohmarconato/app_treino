@@ -227,7 +227,9 @@ function generateSeriesHTML(exercise) {
                                    class="series-weight neon-input" 
                                    placeholder="${exercise.peso_sugerido || '0'}"
                                    step="0.5" 
-                                   min="0">
+                                   min="0"
+                                   inputmode="decimal"
+                                   pattern="[0-9]*">
                             <span class="input-unit">kg</span>
                         </div>
                     </div>
@@ -237,6 +239,8 @@ function generateSeriesHTML(exercise) {
                             <input type="number" 
                                    class="series-reps neon-input" 
                                    placeholder="${exercise.repeticoes || '12'}"
+                                   inputmode="numeric"
+                                   pattern="[0-9]*"
                                    min="1" 
                                    max="100">
                             <span class="input-unit">x</span>
@@ -461,7 +465,7 @@ export const seriesItemTemplate = (exerciseId, seriesNumber) => `
 <div class="input-wrapper">
 <button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, -2.5)">-</button>
 <input type="number" class="series-input" id="peso-${exerciseId}-${seriesNumber}" 
-value="0" step="2.5" min="0">
+value="0" step="2.5" min="0" inputmode="decimal" pattern="[0-9]*">
 <button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, 2.5)">+</button>
 </div>
 </div>
@@ -469,7 +473,7 @@ value="0" step="2.5" min="0">
 <div class="input-wrapper">
 <button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, -1)">-</button>
 <input type="number" class="series-input" id="reps-${exerciseId}-${seriesNumber}" 
-value="0" step="1" min="0">
+value="0" step="1" min="0" inputmode="numeric" pattern="[0-9]*">
 <button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, 1)">+</button>
 </div>
 </div>
@@ -481,7 +485,7 @@ onclick="confirmarSerie(${exerciseId}, ${seriesNumber})">
 </button>
 </div>
                 <input type="number" class="series-input" id="peso-${exerciseId}-${seriesNumber}" 
-                       value="0" step="2.5" min="0">
+                       value="0" step="2.5" min="0" inputmode="decimal" pattern="[0-9]*">
                 <button class="input-btn" onclick="ajustarPeso(${exerciseId}, ${seriesNumber}, 2.5)">+</button>
             </div>
         </div>
@@ -489,7 +493,7 @@ onclick="confirmarSerie(${exerciseId}, ${seriesNumber})">
             <div class="input-wrapper">
                 <button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, -1)">-</button>
                 <input type="number" class="series-input" id="reps-${exerciseId}-${seriesNumber}" 
-                       value="0" step="1" min="0">
+                       value="0" step="1" min="0" inputmode="numeric" pattern="[0-9]*">
                 <button class="input-btn" onclick="ajustarReps(${exerciseId}, ${seriesNumber}, 1)">+</button>
             </div>
         </div>

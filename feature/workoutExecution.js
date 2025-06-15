@@ -1655,6 +1655,8 @@ class WorkoutExecutionManager {
                                    placeholder="${suggestedWeight || 'Peso'}"
                                    step="0.5" 
                                    min="0"
+                                   inputmode="decimal"
+                                   pattern="[0-9]*"
                                    style="width: 100%; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; text-align: center;">
                         </div>
                         <span style="color: #ccc; display: flex; align-items: center;">×</span>
@@ -1663,6 +1665,8 @@ class WorkoutExecutionManager {
                                    class="series-reps neon-input" 
                                    placeholder="${repsTarget}"
                                    min="1"
+                                   inputmode="numeric"
+                                   pattern="[0-9]*"
                                    style="width: 100%; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; text-align: center;">
                         </div>
                     </div>
@@ -1907,9 +1911,9 @@ class WorkoutExecutionManager {
                         ${Array.from({length: series}, (_, i) => `
                             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; padding: 12px; background: #1a1a1a; border-radius: 8px;">
                                 <span style="width: 24px; text-align: center; color: #ccc;">${i + 1}</span>
-                                <input type="number" placeholder="Peso" style="flex: 1; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
+                                <input type="number" placeholder="Peso" inputmode="decimal" pattern="[0-9]*" step="0.5" min="0" style="flex: 1; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
                                 <span style="color: #ccc;">×</span>
-                                <input type="number" placeholder="Reps" style="flex: 1; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
+                                <input type="number" placeholder="Reps" inputmode="numeric" pattern="[0-9]*" min="1" style="flex: 1; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
                                 <button onclick="workoutExecutionManager.confirmarSerieEmergencia(${index}, ${i})" 
                                         style="background: #13f1fc; color: #000; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">✓</button>
                             </div>

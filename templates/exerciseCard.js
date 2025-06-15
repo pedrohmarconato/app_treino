@@ -156,6 +156,8 @@ function generateSeriesItem(exercicioId, serieNumero, pesoSugerido = 0, repsAlvo
                            step="0.5" 
                            min="0" 
                            max="500"
+                           inputmode="decimal"
+                           pattern="[0-9]*"
                            placeholder="0">
                     <button class="input-btn" onclick="ajustarValor('peso-${exercicioId}-${serieNumero}', 2.5)">+</button>
                 </div>
@@ -171,7 +173,9 @@ function generateSeriesItem(exercicioId, serieNumero, pesoSugerido = 0, repsAlvo
                            id="reps-${exercicioId}-${serieNumero}" 
                            value="${repsAlvo}"
                            step="1" 
-                           min="0" 
+                           min="0"
+                           inputmode="numeric"
+                           pattern="[0-9]*" 
                            max="50"
                            placeholder="0">
                     <button class="input-btn" onclick="ajustarValor('reps-${exercicioId}-${serieNumero}', 1)">+</button>

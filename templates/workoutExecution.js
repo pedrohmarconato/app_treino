@@ -270,6 +270,8 @@ function generateSeriesHTML(exercise, exerciseIndex) {
                                    placeholder="${pesoSugerido}"
                                    step="0.5" 
                                    min="0"
+                                   inputmode="decimal"
+                                   pattern="[0-9]*"
                                    data-exercise="${exerciseIndex}"
                                    data-series="${i}">
                             <span class="input-unit">kg</span>
@@ -281,7 +283,9 @@ function generateSeriesHTML(exercise, exerciseIndex) {
                             <input type="number" 
                                    class="series-reps neon-input" 
                                    placeholder="${repsSugeridas}"
-                                   min="1" 
+                                   min="1"
+                                   inputmode="numeric"
+                                   pattern="[0-9]*" 
                                    max="100"
                                    data-exercise="${exerciseIndex}"
                                    data-series="${i}">
