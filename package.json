@@ -51,7 +51,7 @@
     "type-check": "tsc --noEmit",
     "minify:css": "cleancss -o dist/styles.min.css styles.css",
     "minify:js": "terser js/app.js -o dist/app.min.js",
-    "analyze": "npm run build && bundlesize",
+    
     
     "security:audit": "npm audit --audit-level moderate",
     "security:fix": "npm audit fix",
@@ -66,7 +66,7 @@
     "@types/jest": "^29.5.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "bundlesize": "^0.18.1",
+    
     "clean-css-cli": "^5.6.0",
     "cypress": "^13.0.0",
     "eslint": "^8.45.0",
