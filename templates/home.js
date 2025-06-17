@@ -94,7 +94,7 @@ export const homeTemplate = () => `
 
                             </div>
                             <div class="workout-action">
-                                <button id="start-workout-btn" class="btn-primary btn-glow" onclick="window.iniciarTreino()">
+                                <button id="start-workout-btn" class="btn-primary btn-glow">
                                     <span class="btn-text">Iniciar Treino</span>
                                     ${getActionIcon('play', 'active')}
                                 </button>

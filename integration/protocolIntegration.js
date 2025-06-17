@@ -353,6 +353,9 @@ export class ProtocolIntegration {
     static setupGlobalFunctions() {
         // Função principal para iniciar treino
         window.iniciarTreino = async function() {
+            console.log('[ProtocolIntegration] 🚀 window.iniciarTreino chamada - modal deve aparecer!');
+            console.log('[ProtocolIntegration] 📊 workoutExecutionManager:', workoutExecutionManager);
+            console.log('[ProtocolIntegration] 🎯 Chamando workoutExecutionManager.iniciarTreino()...');
             await workoutExecutionManager.iniciarTreino();
         };
         

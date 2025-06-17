@@ -103,6 +103,15 @@ export class AvaliacaoTreinoComponent {
                     <!-- Avaliações Opcionais -->
                     <div class="avaliacoes-opcionais">
                         <div class="avaliacao-item">
+                            <label>Nível de cansaço ao terminar (opcional):</label>
+                            <div class="escala-mini" id="escala-cansaco">
+                                <span class="escala-label">Muito Descansado</span>
+                                ${this.criarEscalaMini(1, 5, 'nivelcansaco_fim')}
+                                <span class="escala-label">Exausto</span>
+                            </div>
+                        </div>
+                        
+                        <div class="avaliacao-item">
                             <label>Dificuldade percebida (opcional):</label>
                             <div class="escala-mini" id="escala-dificuldade">
                                 <span class="escala-label">Muito Fácil</span>
@@ -201,6 +210,7 @@ export class AvaliacaoTreinoComponent {
             qualidade: null,
             dificuldade: null,
             energia: null,
+            nivelcansaco_fim: null,
             observacoes: ''
         };
         
@@ -321,6 +331,7 @@ export class AvaliacaoTreinoComponent {
                 qualidade: avaliacaoEstado.qualidade,
                 dificuldade_percebida: avaliacaoEstado.dificuldade,
                 energia_nivel: avaliacaoEstado.energia,
+                nivelcansaco_fim: avaliacaoEstado.nivelcansaco_fim,
                 observacoes_finais: avaliacaoEstado.observacoes || null
             };
             

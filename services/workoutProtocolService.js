@@ -45,7 +45,7 @@ export class WorkoutProtocolService {
             });
             
             // 2. Buscar planejamento semanal (qual treino fazer hoje)
-            const { data: planejamentoHoje } = await this.buscarTreinoDeHoje(userId);
+            const { data: planejamentoHoje } = await this.buscarTreinoDeHoje(userId, semanaAtual);
             
             if (!planejamentoHoje || planejamentoHoje.tipo === 'folga') {
                 return {
@@ -124,7 +124,7 @@ export class WorkoutProtocolService {
     /**
      * Buscar qual treino fazer hoje usando JOIN com protocolo do usuário
      */
-    static async buscarTreinoDeHoje(userId) {
+    static async buscarTreinoDeHoje(userId, semanaProtocolo = null) {
         try {
             // Validar userId
             if (!userId) {
@@ -136,9 +136,10 @@ export class WorkoutProtocolService {
             const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
             const diaDb = WeeklyPlanService.dayToDb(diaSemana); // Converter para formato DB
             const ano = hoje.getFullYear();
-            const semana = this.getWeekNumber(hoje);
+            // CORREÇÃO: Usar semana do protocolo se fornecida, senão usar semana do calendário
+            const semana = semanaProtocolo || this.getWeekNumber(hoje);
             
-            console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaDb}, ano=${ano}, semana=${semana}`);
+            console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaDb}, ano=${ano}, semana=${semana} (protocolo: ${semanaProtocolo ? 'sim' : 'não'})`);
             
             // Usar tabela planejamento_semanal diretamente para evitar múltiplos registros
             const { data: planejamento, error } = await query('planejamento_semanal', {

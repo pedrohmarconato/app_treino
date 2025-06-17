@@ -6,6 +6,7 @@ import { workoutTemplate, exerciseCardTemplate } from '../templates/workoutExecu
 import TreinoCacheService from '../services/treinoCacheService.js';
 import { getActionIcon, getAchievementIcon, getWorkoutIcon } from '../utils/icons.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
+import DisposicaoInicioModal from '../components/disposicaoInicioModal.js';
 
 class WorkoutExecutionManager {
     constructor() {
@@ -16,6 +17,7 @@ class WorkoutExecutionManager {
         this.restTimerInterval = null;
         this.currentRestTime = 0;
         this.currentExerciseIndex = 0;
+        this.disposicaoInicio = null;
     }
 
     // Iniciar treino
@@ -27,6 +29,8 @@ class WorkoutExecutionManager {
             if (!currentUser) {
                 throw new Error('Usuário não encontrado');
             }
+            
+            console.log('[WorkoutExecution] 👤 Usuário atual:', currentUser.nome, `(ID: ${currentUser.id})`);
 
             // Mostrar loading
             if (window.showNotification) {
@@ -53,14 +57,16 @@ class WorkoutExecutionManager {
                 return;
             }
 
-            // Carregar treino do protocolo
+            // Carregar treino do protocolo ANTES da disposição para verificar se há treino
+            console.log('[WorkoutExecution] 📊 Carregando treino do protocolo...');
             this.currentWorkout = await WorkoutProtocolService.carregarTreinoParaExecucao(currentUser.id);
+            console.log('[WorkoutExecution] 📊 Treino carregado:', this.currentWorkout);
             
             if (!this.currentWorkout) {
-                throw new Error('Nenhum treino encontrado para hoje');
+                throw new Error('Nenhum treino encontrado para hoje. Configure seu planejamento semanal primeiro.');
             }
-            
-            // Verificar casos especiais
+
+            // Verificar casos especiais ANTES da disposição (não faz sentido perguntar disposição para folga)
             if (this.currentWorkout.tipo === 'folga') {
                 showNotification(`Hoje é dia de descanso! ${getWorkoutIcon('descanso', 'small')}`, 'info');
                 return;
@@ -71,9 +77,9 @@ class WorkoutExecutionManager {
                 return;
             }
 
-            // Verificar se há exercícios
+            // Verificar se há exercícios ANTES da disposição
             if (!this.currentWorkout.exercicios || this.currentWorkout.exercicios.length === 0) {
-                throw new Error('Nenhum exercício encontrado no treino');
+                throw new Error('Nenhum exercício encontrado no treino para hoje');
             }
 
             // Configurar estado inicial
@@ -86,16 +92,48 @@ class WorkoutExecutionManager {
             
             console.log(`[WorkoutExecution] ✅ Treino carregado: ${this.currentWorkout.exercicios.length} exercícios`);
             
-            // Navegar para tela de workout
+            // Navegar para tela de workout ANTES de solicitar disposição
             await this.navegarParaTelaWorkout();
             
-            // Renderizar treino após navegação bem-sucedida
-            setTimeout(() => {
-                this.renderizarComSeguranca();
-                this.iniciarCronometro();
-            }, 500);
+            // Aguardar um pouco para a tela estar totalmente carregada
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            console.log(`[WorkoutExecution] ✅ Treino iniciado com sucesso!`);
+            // Solicitar disposição inicial APÓS estar na tela de workout
+            try {
+                console.log('[WorkoutExecution] 🚀 INICIANDO SOLICITAÇÃO DE DISPOSIÇÃO...');
+                console.log('[WorkoutExecution] 📋 DisposicaoInicioModal disponível:', !!DisposicaoInicioModal);
+                console.log('[WorkoutExecution] 📋 Método solicitar disponível:', !!DisposicaoInicioModal.solicitar);
+                
+                console.log('[WorkoutExecution] ⏳ Chamando DisposicaoInicioModal.solicitar()...');
+                const valorDisposicao = await DisposicaoInicioModal.solicitar();
+                console.log('[WorkoutExecution] 🎯 RETORNO DO MODAL:', valorDisposicao);
+                
+                if (valorDisposicao) {
+                    this.disposicaoInicio = valorDisposicao;
+                    await DisposicaoInicioModal.salvarValor(currentUser.id, valorDisposicao);
+                    console.log(`[WorkoutExecution] ✅ Disposição inicial registrada: ${valorDisposicao}/5`);
+                } else {
+                    console.log('[WorkoutExecution] ⚠️ Modal retornou null ou foi cancelado');
+                }
+                
+                // Renderizar treino APENAS após disposição ser coletada
+                console.log('[WorkoutExecution] 🎬 Iniciando renderização do treino...');
+                setTimeout(() => {
+                    this.renderizarComSeguranca();
+                    this.iniciarCronometro();
+                }, 100);
+                
+            } catch (dispErr) {
+                console.error('[WorkoutExecution] ❌ ERRO ao solicitar disposição:', dispErr);
+                console.error('[WorkoutExecution] ❌ Stack trace:', dispErr.stack);
+                
+                // Mesmo com erro no modal, renderizar treino
+                console.log('[WorkoutExecution] 🎬 Renderizando treino apesar do erro no modal...');
+                setTimeout(() => {
+                    this.renderizarComSeguranca();
+                    this.iniciarCronometro();
+                }, 100);
+            }
             
         } catch (error) {
             console.error('[WorkoutExecution] ❌ Erro ao iniciar treino:', error);
@@ -882,7 +920,7 @@ class WorkoutExecutionManager {
                         <button 
                             class="confirmar-serie" 
                             onclick="workoutExecutionManager.confirmarSerie(${exercicio.exercicio_id}, ${i})"
-                            style="padding: 8px 16px; background: var(--bg-secondary, #2a2a2a); color: var(--text-secondary, #ccc); border: 2px solid var(--border-color, #444); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s ease;"
+                            style="padding: 8px 16px; background: var(--bg-secondary, #2a2a2a); color: var(--text-secondary, #ccc); border: 2px solid var(--border-color, #444); border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s ease;"
                         >
                             ✓
                         </button>
@@ -1119,10 +1157,16 @@ class WorkoutExecutionManager {
             }
         }, 1000);
         
-        // Botão para pular descanso
+        // Botão para pular
         const skipButton = document.getElementById('skip-rest');
         if (skipButton) {
             skipButton.onclick = () => this.pararDescanso();
+        }
+        
+        // Atualizar texto motivacional
+        const motivationEl = document.getElementById('motivation-text');
+        if (motivationEl && window.getRandomMotivation) {
+            motivationEl.textContent = window.getRandomMotivation();
         }
     }
 
@@ -1134,9 +1178,9 @@ class WorkoutExecutionManager {
         if (!workoutScreen) return;
         
         // Remover timer anterior se existir
-        const timerAnterior = document.getElementById('rest-timer-dynamic');
-        if (timerAnterior) {
-            timerAnterior.remove();
+        const existingOverlay = document.getElementById('rest-timer-dynamic');
+        if (existingOverlay) {
+            existingOverlay.remove();
         }
         
         const timerHTML = `
@@ -1169,6 +1213,18 @@ class WorkoutExecutionManager {
                 this.pararDescanso();
             }
         }, 1000);
+        
+        // Configurar botão de pular
+        const skipBtn = document.getElementById('skip-rest');
+        if (skipBtn) {
+            skipBtn.onclick = () => this.pararDescanso();
+        }
+        
+        // Atualizar texto motivacional
+        const motivationEl = document.getElementById('motivation-text');
+        if (motivationEl && window.getRandomMotivation) {
+            motivationEl.textContent = window.getRandomMotivation();
+        }
     }
 
     // Parar descanso
@@ -1236,7 +1292,7 @@ class WorkoutExecutionManager {
             // 4. Atualizar progresso
             this.atualizarProgresso();
             
-            // 5. Inicializar cronômetro
+            // 5. Iniciar cronômetro
             this.iniciarCronometro();
             
             console.log('[WorkoutExecution] ✅ Renderização completa');
@@ -1316,17 +1372,19 @@ class WorkoutExecutionManager {
         
         overlay.innerHTML = `
             <div style="max-width: 600px; margin: 0 auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--bg-secondary, #2a2a2a); padding: 16px; border-radius: 12px;">
-                    <button onclick="workoutExecutionManager.voltarParaHome()" style="background: var(--accent-green, #a8ff00); color: var(--bg-primary, #000); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">← Voltar</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #2a2a2a; padding: 16px; border-radius: 12px;">
+                    <button onclick="workoutExecutionManager.voltarParaHome()" style="background: #13f1fc; color: #000; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">← Voltar</button>
                     <div style="text-align: center; color: white;">
                         <h2 style="margin: 0;">${workout.nome || 'Treino em Execução'}</h2>
                         <p style="margin: 4px 0 0 0; color: #ccc;">Interface de Emergência</p>
                     </div>
                     <div id="workout-timer-display" style="background: #333; padding: 8px 12px; border-radius: 6px; color: white;">00:00</div>
                 </div>
+                
                 <div style="background: #333; height: 4px; border-radius: 2px; margin-bottom: 20px;">
-                    <div id="workout-progress" style="height: 100%; background: var(--accent-green, #a8ff00); width: 0%; border-radius: 2px; transition: width 0.3s;"></div>
+                    <div id="workout-progress" style="height: 100%; background: #13f1fc; width: 0%; border-radius: 2px; transition: width 0.3s;"></div>
                 </div>
+                
                 <div id="container-exercicios-emergency"></div>
             </div>
         `;
@@ -1339,7 +1397,7 @@ class WorkoutExecutionManager {
             this.renderizarExerciciosNoContainer(container);
         }
         
-        // Inicializar cronômetro
+        // Iniciar cronômetro
         this.iniciarCronometro();
         
         console.log('[WorkoutExecution] 🆘 Container de emergência criado e renderizado');
@@ -1541,15 +1599,15 @@ class WorkoutExecutionManager {
         for (const seletor of seletoresClasse) {
             container = document.querySelector(seletor);
             if (container) {
-                console.log(`[ExecucaoTreino] ✅ Container por classe encontrado: ${seletor}`);
+                console.log(`[ExecucaoTreino] ✅ Container encontrado por classe: ${seletor}`);
                 return container;
             }
         }
         
-        // Estratégia 4: Criar container dentro da tela de treino
+        // Estratégia 4: Criar dentro da tela de treino
         const telaTreino = document.querySelector('#workout-screen');
         if (telaTreino) {
-            console.log('[ExecucaoTreino] 🔨 Criando container dinâmico dentro da tela...');
+            console.log('[ExecucaoTreino] 🔨 Criando container dentro da tela...');
             container = document.createElement('div');
             container.id = 'exercises-container-dinamico';
             container.className = 'exercises-container';
@@ -1560,6 +1618,7 @@ class WorkoutExecutionManager {
                 min-height: 400px;
             `;
             telaTreino.appendChild(container);
+            console.log('[ExecucaoTreino] ✅ Container dinâmico criado');
             return container;
         }
         
@@ -1665,7 +1724,7 @@ class WorkoutExecutionManager {
                                    min="0"
                                    inputmode="decimal"
                                    pattern="[0-9]*"
-                                   style="width: 100%; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; text-align: center;">
+                                   style="width: 100%; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
                         </div>
                         <span style="color: #ccc; display: flex; align-items: center;">×</span>
                         <div class="input-group" style="flex: 1;">
@@ -1675,7 +1734,7 @@ class WorkoutExecutionManager {
                                    min="1"
                                    inputmode="numeric"
                                    pattern="[0-9]*"
-                                   style="width: 100%; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; text-align: center;">
+                                   style="width: 100%; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
                         </div>
                     </div>
                     <button class="series-confirm-btn" 
@@ -1776,7 +1835,7 @@ class WorkoutExecutionManager {
         if (seriesCompletas >= totalSeries) {
             // Exercício completo
             exerciseCard.style.border = '2px solid #00ff88';
-            exerciseCard.style.background = 'rgba(0, 255, 136, 0.05)';
+            exerciseCard.style.background = 'linear-gradient(135deg, var(--bg-secondary, #2a2a2a), rgba(0, 255, 136, 0.1))';
             
             // Adicionar aos executados
             if (!this.exerciciosExecutados.includes(exerciseIndex)) {
@@ -1881,9 +1940,7 @@ class WorkoutExecutionManager {
                 <div style="max-width: 600px; margin: 0 auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #2a2a2a; padding: 16px; border-radius: 12px;">
                         <button onclick="workoutExecutionManager.voltarParaHome()" 
-                                style="background: #13f1fc; color: #000; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                            ← Voltar
-                        </button>
+                                style="background: #13f1fc; color: #000; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">← Voltar</button>
                         <div style="text-align: center;">
                             <h2 style="margin: 0;">${this.currentWorkout?.nome || 'Treino em Execução'}</h2>
                             <p style="margin: 4px 0 0 0; color: #ccc;">Interface de Emergência</p>
