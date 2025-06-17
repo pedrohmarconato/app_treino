@@ -52,7 +52,7 @@
     "minify:css": "cleancss -o dist/styles.min.css styles.css",
     "minify:js": "terser js/app.js -o dist/app.min.js",
     "analyze": "npm run build && bundlesize",
-    "lighthouse": "lhci autorun",
+    
     "security:audit": "npm audit --audit-level moderate",
     "security:fix": "npm audit fix",
     "deps:check": "ncu",
@@ -76,7 +76,7 @@
     "husky": "^8.0.3",
     "jest": "^29.6.0",
     "jest-environment-jsdom": "^29.6.0",
-    "@lhci/cli": "^0.12.2",
+    
     "live-server": "^1.2.2",
     "npm-check-updates": "^16.10.0",
     "prettier": "^3.0.0",
