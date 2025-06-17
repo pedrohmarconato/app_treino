@@ -186,7 +186,7 @@ export async function fetchHistoricoTreinos(userId, limit = 10) {
         select: `
             *,
             exercicios (nome, grupo_muscular),
-            protocolo_treinos (numero_treino, dia_semana)
+            protocolo_treinos (semana_referencia, dia_semana)
         `,
         eq: { usuario_id: userId },
         order: { column: 'data_execucao', ascending: false },

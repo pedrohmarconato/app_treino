@@ -1,7 +1,7 @@
 // services/homeService.js - Serviço para carregar dados da home
 import { query } from './supabaseService.js';
 import { showNotification } from '../ui/notifications.js';
-import { obterSemanaAtivaUsuario } from './weeklyPlanningService.js';
+import WeeklyPlanService, { obterSemanaAtivaUsuario } from './weeklyPlanningService.js';
 
 // Carregar todos os dados necessários para a home
 export async function carregarDadosHome(userId) {
@@ -22,14 +22,15 @@ export async function carregarDadosHome(userId) {
         const semanaAtiva = await obterSemanaAtivaUsuario(userId);
         console.log('[carregarDadosHome] ✅ Semana ativa:', semanaAtiva);
         
-        // 3. Planejamento da semana atual
+        // 3. Planejamento da semana atual - CORRIGIDO PARA USAR SEMANA DO PROTOCOLO
         console.log('[carregarDadosHome] 3. Buscando planejamento da semana...');
         let planejamento = [];
         if (semanaAtiva) {
-            // Usar query direta na tabela planejamento_semanal
-            const hoje = new Date();
-            const ano = hoje.getFullYear();
-            const semana = Math.ceil((((hoje - new Date(ano, 0, 1)) / 86400000) + 1) / 7);
+            // MUDANÇA: Usar semana do protocolo em vez da semana do calendário
+            const ano = new Date().getFullYear();
+            const semana = semanaAtiva.semana_treino; // Usar semana do protocolo
+            
+            console.log('[carregarDadosHome] 🔄 NOVA LÓGICA: Buscando planejamento para semana do protocolo:', { ano, semana });
             
             const { data: planejamentoData } = await query('planejamento_semanal', {
                 eq: { 
@@ -61,8 +62,7 @@ export async function carregarDadosHome(userId) {
         // 5. Buscar treino do dia atual
         console.log('[carregarDadosHome] 5. Buscando treino de hoje...');
         const hoje = new Date().getDay(); // 0 = domingo, 1 = segunda, etc.
-        const { dayToDb } = await import('./weeklyPlanningService.js');
-        const diaSemanaBanco = dayToDb(hoje); // Converter para formato do banco (1-7)
+        const diaSemanaBanco = WeeklyPlanService.dayToDb(hoje); // Converter para formato do banco (1-7)
         
         const treinoHoje = planejamento.find(p => p.dia_semana === diaSemanaBanco);
         console.log('[carregarDadosHome] ✅ Treino de hoje:', treinoHoje);

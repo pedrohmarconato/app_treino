@@ -57,72 +57,8 @@ let dadosGlobaisCache = {
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
-// Função para limpar cache e forçar recarregamento
-function limparCacheGlobal() {
-    console.log('[limparCacheGlobal] 🧹 Limpando cache global...');
-    dadosGlobaisCache = {
-        dados: null,
-        timestamp: 0,
-        usuario_id: null,
-        semanaAtual: null,
-        semanaExibida: null
-    };
-}
-
-// Disponibilizar globalmente para debug
-window.limparCacheGlobal = limparCacheGlobal;
-
-// Função para garantir que o card expandível sempre existe (fallback)
-function garantirCardExpandivelExiste() {
-    console.log('[garantirCardExpandivelExiste] 🔧 Garantindo estrutura do card expandível...');
-    
-    // Verificar se os elementos necessários existem
-    const elementos = {
-        card: document.getElementById('current-workout-card'),
-        content: document.getElementById('expandable-content'),
-        toggle: document.getElementById('workout-toggle'),
-        exercisesList: document.getElementById('workout-exercises-list')
-    };
-    
-    console.log('[garantirCardExpandivelExiste] Elementos encontrados:', elementos);
-    
-    // Se todos existem, não precisa fazer nada
-    if (elementos.card && elementos.content && elementos.toggle && elementos.exercisesList) {
-        console.log('[garantirCardExpandivelExiste] ✅ Todos os elementos já existem');
-        
-        // Garantir que o conteúdo da lista seja adequado quando não há treino
-        if (elementos.exercisesList) {
-            elementos.exercisesList.innerHTML = `
-                <div class="no-exercises-message info">
-                    <div class="message-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="16" x2="12" y2="12"/>
-                            <line x1="12" y1="8" x2="12.01" y2="8"/>
-                        </svg>
-                    </div>
-                    <p class="message-text">Nenhum treino configurado para hoje. Configure seu planejamento semanal.</p>
-                </div>
-            `;
-        }
-        return;
-    }
-    
-    // Se faltam elementos, algo está muito errado - vamos reportar
-    console.error('[garantirCardExpandivelExiste] ❌ Elementos obrigatórios não encontrados no template!');
-    console.error('[garantirCardExpandivelExiste] Esta é a estrutura esperada:');
-    console.error('- #current-workout-card (card)');
-    console.error('- #expandable-content (content)'); 
-    console.error('- #workout-toggle (toggle)');
-    console.error('- #workout-exercises-list (exercisesList)');
-    
-    // Listar todos os IDs disponíveis para debug
-    const todosOsIds = Array.from(document.querySelectorAll('[id]')).map(el => el.id);
-    console.error('[garantirCardExpandivelExiste] IDs disponíveis na página:', todosOsIds);
-}
-
 // Carregar TODOS os dados necessários de uma vez
-async function carregarDadosCompletos(semanaTarget = null) {
+async function carregarDadosCompletos() {
     try {
         const currentUser = AppState.get('currentUser');
         if (!currentUser || !currentUser.id) {
@@ -141,32 +77,19 @@ async function carregarDadosCompletos(semanaTarget = null) {
             return dadosGlobaisCache.dados;
         }
 
-        // MUDANÇA: Primeiro buscar semana do protocolo do usuário
+        // Calcular ano e semana atual
         const hoje = new Date();
         const anoAtual = hoje.getFullYear();
-        const semanaAtual = WeeklyPlanService.getWeekNumber(hoje); // semana civil como fallback
-        
-        // Buscar semana ativa do protocolo do usuário PRIMEIRO
-        const semanaAtiva = await obterSemanaAtivaUsuario(currentUser.id);
-        const semanaProtocolo = semanaAtiva?.semana_treino || semanaAtual;
-        
-        console.log('[carregarDadosCompletos] 🔄 NOVA LÓGICA: Semana civil:', semanaAtual, '| Semana protocolo:', semanaProtocolo);
-        
-        // Determinar range de semanas a carregar baseado na SEMANA DO PROTOCOLO
-        const semanareferencia = semanaTarget || semanaProtocolo;
-        const semanaMin = Math.max(1, semanareferencia - 5);
-        const semanaMax = Math.min(53, semanareferencia + 5);
+        const semanaAtual = WeeklyPlanService.getWeekNumber(hoje);
 
-        console.log(`[carregarDadosCompletos] Carregando semanas ${semanaMin} a ${semanaMax} (target PROTOCOLO: ${semanareferencia})`);
-
-        // Fazer UMA consulta para buscar dados de múltiplas semanas (range expandido)
+        // Fazer UMA consulta para buscar dados de múltiplas semanas
         const { data: planejamentos, error } = await supabase
             .from('planejamento_semanal')
             .select('*')
             .eq('usuario_id', currentUser.id)
             .eq('ano', anoAtual)
-            .gte('semana', semanaMin)
-            .lte('semana', semanaMax)
+            .gte('semana', Math.max(1, semanaAtual - 2))
+            .lte('semana', semanaAtual + 2)
             .order('semana', { ascending: true })
             .order('dia_semana', { ascending: true });
 
@@ -182,8 +105,8 @@ async function carregarDadosCompletos(semanaTarget = null) {
                 if (!dadosPorSemana[p.semana]) {
                     dadosPorSemana[p.semana] = {};
                 }
-                // Converter dia_semana (1-7) para índice JS (0-6) usando WeeklyPlanService
-                const diaJS = WeeklyPlanService.dbToDay(p.dia_semana);
+                // Converter dia_semana (1-7) para índice JS (0-6)
+                const diaJS = p.dia_semana === 7 ? 0 : p.dia_semana;
                 dadosPorSemana[p.semana][diaJS] = {
                     tipo: p.tipo_atividade,
                     tipo_atividade: p.tipo_atividade,
@@ -194,11 +117,13 @@ async function carregarDadosCompletos(semanaTarget = null) {
             });
         }
 
-        // MUDANÇA: semanaAtiva já foi buscada acima, usar semanaProtocolo como fonte de verdade
+        // Buscar semana ativa do usuário
+        const semanaAtiva = await obterSemanaAtivaUsuario(currentUser.id);
+
         const dados = {
             planejamentos: dadosPorSemana,
-            semanaAtual: semanaAtual, // semana civil para referência
-            semanaAtiva: semanaProtocolo, // semana do protocolo como fonte de verdade
+            semanaAtual: semanaAtual,
+            semanaAtiva: semanaAtiva?.semana_treino || semanaAtual,
             anoAtual: anoAtual,
             usuario_id: currentUser.id
         };
@@ -208,8 +133,8 @@ async function carregarDadosCompletos(semanaTarget = null) {
             dados: dados,
             timestamp: agora,
             usuario_id: currentUser.id,
-            semanaAtual: semanaAtual, // semana civil
-            semanaExibida: semanaProtocolo // semana do protocolo como fonte de verdade
+            semanaAtual: semanaAtual,
+            semanaExibida: semanaAtiva?.semana_treino || semanaAtual
         };
 
         console.log('[carregarDadosCompletos] ✅ Dados carregados:', dados);
@@ -237,20 +162,9 @@ function navegarSemana(direcao) {
         const semanaAtual = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados.semanaAtual;
         const novaSemana = semanaAtual + direcao;
         
-        // Verificar limites de semana válidos (1-53)
-        if (novaSemana < 1 || novaSemana > 53) {
-            showNotification('Semana inválida', 'warning');
-            return;
-        }
-        
-        // Se não temos dados para esta semana, recarregar cache expandido
+        // Verificar se temos dados para esta semana no cache
         if (!dadosGlobaisCache.dados.planejamentos[novaSemana]) {
-            console.log(`[navegarSemana] Semana ${novaSemana} não está no cache, expandindo...`);
-            carregarDadosCompletos(novaSemana).then(() => {
-                renderizarIndicadoresDoCache(novaSemana);
-                atualizarSeletorSemanas();
-            });
-            dadosGlobaisCache.semanaExibida = novaSemana;
+            showNotification('Semana não disponível no cache', 'warning');
             return;
         }
 
@@ -328,10 +242,16 @@ function renderizarIndicadoresDoCache(semana) {
             if (isCompleted) dayClass += ' completed';
             
             html += `
-                <div class="${dayClass}" onclick="handleDayClick(${i}, ${isCompleted})">
+                <div class="${dayClass}">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
                     <div class="day-content">
-                        ${icon ? `<span class="day-icon" style="display: inline-block; width: 24px; height: 24px; margin: 0 auto;">
+                        ${icon ? `<span class="day-icon" style="
+                                    display: inline-block;
+                                    width: 24px;
+                                    height: 24px;
+                                    margin: 0 auto;
+                                }
+                            </style>
                             ${icon}
                         </span>` : ''}
                         ${dayType}
@@ -490,8 +410,7 @@ function voltarParaSemanaAtual() {
             return;
         }
 
-        const semanaAUsar = dadosGlobaisCache.dados.semanaAtiva || dadosGlobaisCache.dados.semanaAtual;
-        console.log('[carregarTreinoAtualDoCache] 🎯 Usando semana:', semanaAUsar);
+        const semanaAtual = dadosGlobaisCache.dados.semanaAtual;
         console.log(`[voltarParaSemanaAtual] ⚡ Voltando para semana atual: ${semanaAtual}`);
 
         // Atualizar semana exibida
@@ -511,7 +430,7 @@ function voltarParaSemanaAtual() {
 }
 
 // Exportar função para debug  
-export { navegarSemana, limparCachesDashboard, voltarParaSemanaAtual, renderizarIndicadoresDoCache, carregarDadosCompletos, carregarDashboard as recarregarDashboard };
+export { navegarSemana, limparCachesDashboard, voltarParaSemanaAtual, renderizarIndicadoresDoCache, carregarDadosCompletos };
 
 // Disponibilizar funções globalmente para debug
 window.navegarSemana = navegarSemana;
@@ -679,9 +598,6 @@ window.recarregarDadosDashboard = async function() {
 export async function carregarDashboard() {
     console.log('[carregarDashboard] 🚀 INICIANDO carregamento com cache global...');
     
-    // MUDANÇA: Limpar cache para usar nova lógica de semana do protocolo
-    limparCacheGlobal();
-    
     try {
         const currentUser = AppState.get('currentUser');
         if (!currentUser || !currentUser.id) {
@@ -718,32 +634,17 @@ export async function carregarDashboard() {
         configurarEventListeners();
         configurarNavegacaoSemanas();
         
-        // 5. CARREGAR DADOS USANDO NOVO CONTROLLER CENTRALIZADO
+        // 5. CARREGAR DADOS SECUNDÁRIOS EM BACKGROUND
         setTimeout(async () => {
             try {
-                console.log('[carregarDashboard] 🎮 Usando novo controller centralizado...');
-                
-                // Importar e usar o novo controller
-                const { atualizarTodoTreinoUI } = await import('../controllers/workoutController.js');
-                await atualizarTodoTreinoUI(currentUser.id);
-                
-                // Carregar outros dados se necessário
-                await Promise.all([
-                    carregarEstatisticasAvancadas(),
-                    carregarDadosDinamicosHome()
-                ]);
-                
-                console.log('[carregarDashboard] ✅ Controller centralizado executado com sucesso');
-            } catch (error) {
-                console.warn('[carregarDashboard] Erro em carregamentos secundários:', error);
-                
-                // Fallback para sistema antigo se houver erro
-                console.log('[carregarDashboard] 🔄 Usando fallback...');
                 await Promise.all([
                     carregarMetricasUsuario(),
                     carregarExerciciosDoDia(),
-                    carregarTreinoAtualDoCache()
+                    carregarEstatisticasAvancadas(),
+                    carregarDadosDinamicosHome()
                 ]);
+            } catch (error) {
+                console.warn('[carregarDashboard] Erro em carregamentos secundários:', error);
             }
         }, 100);
         
@@ -765,23 +666,15 @@ async function carregarTreinoAtualDoCache() {
 
         const hoje = new Date();
         const diaAtual = hoje.getDay();
-        const semanaProtocolo = dadosGlobaisCache.dados.semanaAtiva; // agora é sempre a semana do protocolo
-        console.log("[carregarTreinoAtualDoCache] 🔄 NOVA LÓGICA: Usando semana do protocolo:", semanaProtocolo);
+        const semanaAtual = dadosGlobaisCache.dados.semanaAtual;
         
-        // Buscar treino de hoje no cache usando semana do protocolo
-        const planejamentoSemana = dadosGlobaisCache.dados.planejamentos[semanaProtocolo];
+        // Buscar treino de hoje no cache
+        const planejamentoSemana = dadosGlobaisCache.dados.planejamentos[semanaAtual];
         const treinoHoje = planejamentoSemana?.[diaAtual];
-        
-        console.log("[carregarTreinoAtualDoCache] Planejamento da semana:", planejamentoSemana);
-        console.log("[carregarTreinoAtualDoCache] Treino de hoje (dia", diaAtual + "):", treinoHoje);
         
         if (!treinoHoje) {
             console.warn('[carregarTreinoAtualDoCache] Nenhum treino encontrado para hoje');
             atualizarUITreinoAtual(null);
-            AppState.set('currentWorkout', null);
-            
-            // MUDANÇA: Garantir que o card expandível sempre existe, mesmo sem treino
-            garantirCardExpandivelExiste();
             return;
         }
 
@@ -793,19 +686,14 @@ async function carregarTreinoAtualDoCache() {
             concluido: treinoHoje.concluido
         };
 
-        // Atualizar UI e AppState
+        // Atualizar UI
         atualizarUITreinoAtual(treinoFormatado);
-        AppState.set('currentWorkout', treinoFormatado);
-        
-        // MUDANÇA: Garantir que o card expandível sempre existe, mesmo com treino
-        garantirCardExpandivelExiste();
         
         console.log('[carregarTreinoAtualDoCache] ✅ Treino atual carregado do cache:', treinoFormatado.nome);
         
     } catch (error) {
         console.error('[carregarTreinoAtualDoCache] ❌ Erro:', error);
         atualizarUITreinoAtual(null);
-        AppState.set('currentWorkout', null);
     }
 }
 
@@ -825,7 +713,6 @@ async function carregarIndicadoresSemana(ano = null, semana = null) {
     } else {
         console.warn('[carregarIndicadoresSemana] Não foi possível determinar semana para exibir');
     }
-}
 
 // VERSÃO SIMPLIFICADA - USA APENAS O CACHE GLOBAL  
 async function carregarTreinoAtual() {
@@ -1240,14 +1127,11 @@ async function carregarExerciciosDoDia() {
 
 // Função para renderizar card de exercício individual
 function renderizarExercicioCard(exercicio, index) {
-    // CORRIGIDO: Suporte para nova estrutura de dados
     const pesos = exercicio.pesos_sugeridos;
     const percentuais = pesos?.percentuais || { base: 70, min: 65, max: 75 };
-    
-    // Usar dados diretos do exercício se não houver pesos_sugeridos
-    const pesoBase = exercicio.peso_base || pesos?.peso_base || 0;
-    const pesoMin = exercicio.peso_min || pesos?.peso_minimo || 0;
-    const pesoMax = exercicio.peso_max || pesos?.peso_maximo || 0;
+    const pesoBase = pesos?.peso_base || 0;
+    const pesoMin = pesos?.peso_minimo || 0;
+    const pesoMax = pesos?.peso_maximo || 0;
     
     return `
         <div class="exercise-preview-card ${index === 0 ? 'first-exercise' : ''}">
@@ -1255,10 +1139,10 @@ function renderizarExercicioCard(exercicio, index) {
                 <div>
                     <div class="exercise-name">
                         <span class="exercise-number">${index + 1}.</span>
-                        ${exercicio.nome || exercicio.exercicio_nome}
+                        ${exercicio.exercicio_nome}
                     </div>
                     <div class="exercise-group">
-                        ${exercicio.grupo_muscular || exercicio.exercicio_grupo} • ${exercicio.equipamento || exercicio.exercicio_equipamento}
+                        ${exercicio.exercicio_grupo} • ${exercicio.exercicio_equipamento}
                     </div>
                 </div>
                 <div class="exercise-rm-info">
@@ -1289,7 +1173,7 @@ function renderizarExercicioCard(exercicio, index) {
                 </div>
                 <div class="exercise-detail">
                     <div class="exercise-detail-label">Repetições</div>
-                    <div class="exercise-detail-value">${exercicio.repeticoes || exercicio.repeticoes_alvo || 10}</div>
+                    <div class="exercise-detail-value">${exercicio.repeticoes_alvo || 10}</div>
                 </div>
                 <div class="exercise-detail">
                     <div class="exercise-detail-label">Descanso</div>
@@ -1298,7 +1182,7 @@ function renderizarExercicioCard(exercicio, index) {
                 <div class="exercise-detail">
                     <div class="exercise-detail-label">Volume</div>
                     <div class="exercise-detail-value">
-                        ${Math.round(pesoBase * (exercicio.series || 3) * (exercicio.repeticoes || exercicio.repeticoes_alvo || 10))}kg
+                        ${Math.round(pesoBase * (exercicio.series || 3) * (exercicio.repeticoes_alvo || 10))}kg
                     </div>
                 </div>
             </div>
@@ -1950,7 +1834,7 @@ window.testFetchWorkouts = async function() {
 
 // Exportar para compatibilidade
 window.carregarDashboard = carregarDashboard;
-window.recarregarDashboard = carregarDashboard;
+window.recarregarDashboard = recarregarDashboard;
 window.carregarIndicadoresSemana = carregarIndicadoresSemana;
 window.limparEventListeners = limparEventListeners;
 window.fetchWorkouts = fetchWorkouts;
@@ -1975,28 +1859,14 @@ async function verificarTreinoConcluido(userId, dayIndex, ano = null, semana = n
         
         console.log(`[verificarTreinoConcluido] 📅 Verificando para semana ${semana}/${ano}`);
         
-        // Validar parâmetros antes da query
-        const validatedUserId = parseInt(userId);
-        const validatedAno = parseInt(ano);
-        const validatedSemana = parseInt(semana);
-        const validatedDiaSemana = WeeklyPlanService.dayToDb(dayIndex);
-        
-        console.log('[verificarTreinoConcluido] Parâmetros validados:', {
-            userId: validatedUserId,
-            ano: validatedAno,
-            semana: validatedSemana,
-            dia_semana: validatedDiaSemana,
-            dayIndex: dayIndex
-        });
-        
         // Buscar planejamento específico do dia no banco usando a mesma lógica do workoutExecution
         const { data: planejamentoArray, error } = await query('planejamento_semanal', {
             select: 'concluido, data_conclusao, tipo_atividade',
             eq: {
-                usuario_id: validatedUserId,
-                ano: validatedAno,
-                semana: validatedSemana,
-                dia_semana: validatedDiaSemana
+                usuario_id: userId,
+                ano: ano,
+                semana: semana,
+                dia_semana: WeeklyPlanService.dayToDb(dayIndex)
             }
         });
         
@@ -2080,13 +1950,10 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
         const historico = await buscarHistoricoTreino(currentUser.id, dayIndex);
         
         if (historico) {
-            console.log('[handleDayClick] ✅ Histórico encontrado:', historico);
             // Verificar se há múltiplos grupos musculares
             if (historico.multiplos_grupos) {
-                console.log('[handleDayClick] 🎯 Mostrando seletor de grupo muscular');
                 mostrarSeletorGrupoMuscular(historico, dayIndex);
             } else {
-                console.log('[handleDayClick] 🎯 Mostrando modal de histórico');
                 mostrarModalHistorico(historico, dayIndex);
             }
         } else {
@@ -2105,7 +1972,7 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
 async function buscarGrupoMuscularPlanejado(userId, dataAlvo) {
     try {
         const ano = dataAlvo.getFullYear();
-        const semana = WeeklyPlanService.getWeekNumber(dataAlvo);
+        const semana = getWeekNumber(dataAlvo);
         const diaSemana = WeeklyPlanService.dayToDb(dataAlvo.getDay());
         
         const { data: planejamento, error } = await supabase
@@ -2142,19 +2009,8 @@ function getWeekNumber(date) {
 // Buscar histórico de treino específico (nova versão com treino_executado)
 async function buscarHistoricoTreino(userId, dayIndex) {
     try {
-        // Usar a semana que está sendo exibida, não a semana atual
-        const semanaExibida = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados?.semanaAtual;
-        const anoAtual = new Date().getFullYear();
-        
-        // Calcular data da semana sendo visualizada
         const hoje = new Date();
-        const semanaAtual = WeeklyPlanService.getWeekNumber(hoje);
-        const diferencaSemanas = semanaExibida - semanaAtual;
-        
-        const dataBase = new Date(hoje.getTime() + (diferencaSemanas * 7 * 24 * 60 * 60 * 1000));
-        // Calcular corretamente a data alvo baseada no dia da semana
-        const diasParaAjustar = dayIndex - dataBase.getDay();
-        const dataAlvo = new Date(dataBase.getTime() + (diasParaAjustar * 24 * 60 * 60 * 1000));
+        const dataAlvo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (hoje.getDay() - dayIndex));
         const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
         
         console.log(`[buscarHistoricoTreino] Buscando treino para dia ${dayIndex} (${dataAlvoStr})`);
@@ -2309,39 +2165,6 @@ async function buscarHistoricoTreino(userId, dayIndex) {
             console.error('[buscarHistoricoTreino] Erro no fallback:', errorFallback);
         }
         
-        // Se não há execuções, verificar se há planejamento para mostrar
-        const grupoMuscularPlanejadoFinal = await buscarGrupoMuscularPlanejado(userId, dataAlvo);
-        
-        if (grupoMuscularPlanejadoFinal) {
-            console.log('[buscarHistoricoTreino] 📋 Buscando exercícios sugeridos para planejamento');
-            
-            // Buscar exercícios sugeridos do protocolo para este dia
-            let exerciciosSugeridosProtocolo = [];
-            try {
-                const exerciciosResult = await WeeklyPlanService.buscarExerciciosTreinoDia(userId, dataAlvo);
-                if (exerciciosResult?.success && exerciciosResult?.data) {
-                    exerciciosSugeridosProtocolo = exerciciosResult.data;
-                    console.log('[buscarHistoricoTreino] ✅ Exercícios sugeridos encontrados:', exerciciosSugeridosProtocolo.length);
-                }
-            } catch (errorExercicios) {
-                console.warn('[buscarHistoricoTreino] ⚠️ Erro ao buscar exercícios sugeridos:', errorExercicios);
-            }
-            
-            console.log('[buscarHistoricoTreino] 📋 Retornando dados do planejamento sem execuções');
-            return {
-                planejamento: {
-                    tipo_atividade: grupoMuscularPlanejadoFinal,
-                    data: dataAlvoStr
-                },
-                execucoes: [],
-                exerciciosSugeridos: exerciciosSugeridosProtocolo,
-                dayIndex,
-                data_treino: dataAlvo,
-                fonte: 'planejamento_apenas',
-                semExecucoes: true
-            };
-        }
-        
         console.log('[buscarHistoricoTreino] ❌ Nenhum treino encontrado para este dia');
         return null;
         
@@ -2457,42 +2280,20 @@ function fecharModalSeletorGrupo(event) {
 
 // Mostrar modal com histórico do treino
 function mostrarModalHistorico(historico, dayIndex) {
-    console.log('[mostrarModalHistorico] 🚀 Iniciando função com:', { historico, dayIndex });
     const dayName = DIAS_SEMANA[dayIndex];
     const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
-    console.log('[mostrarModalHistorico] 📅 Data formatada:', dataFormatada);
-    
-    // Verificar se é apenas planejamento (sem execuções)
-    const somenteplanejamento = historico.semExecucoes || (historico.execucoes && historico.execucoes.length === 0);
-    console.log('[mostrarModalHistorico] 📊 Somente planejamento:', somenteplanejamento);
     
     // Calcular estatísticas
-    const stats = somenteplanejamento ? null : calcularEstatisticasTreino(historico);
-    console.log('[mostrarModalHistorico] 📈 Stats:', stats);
+    const stats = calcularEstatisticasTreino(historico);
     
     // Criar HTML do modal
     const modalHTML = `
-        <div id="modal-historico" class="modal-overlay" onclick="fecharModalHistorico(event)" style="
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            background: rgba(0, 0, 0, 0.8) !important;
-            display: flex !important;
-            align-items: flex-start !important;
-            justify-content: center !important;
-            z-index: 10000 !important;
-            backdrop-filter: blur(4px) !important;
-            padding: 20px !important;
-            box-sizing: border-box !important;
-            overflow-y: auto !important;
-        ">
+        <div id="modal-historico" class="modal-overlay" onclick="fecharModalHistorico(event)">
             <div class="modal-content workout-history-modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
                     <div class="workout-history-header">
                         <div class="history-title-section">
-                            <h2>${somenteplanejamento ? 'Treino Planejado' : 'Histórico do Treino'}</h2>
+                            <h2>Histórico do Treino</h2>
                             <div class="history-subtitle">
                                 <span class="day-name">${dayName}</span>
                                 <span class="separator">•</span>
@@ -2509,127 +2310,6 @@ function mostrarModalHistorico(historico, dayIndex) {
                 </div>
                 
                 <div class="modal-body">
-                    ${somenteplanejamento ? `
-                    <!-- Informações do Planejamento -->
-                    <div class="planning-info">
-                        <div class="planning-card" style="
-                            background: #2a2a2a;
-                            border-radius: 8px;
-                            padding: 20px;
-                            margin-bottom: 20px;
-                            border-left: 4px solid #a8ff00;
-                        ">
-                            <div class="planning-header" style="
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                                margin-bottom: 16px;
-                            ">
-                                <h3 style="margin: 0; color: #a8ff00;">Treino Planejado</h3>
-                                <span class="planning-status" style="
-                                    background: #ff6b35;
-                                    color: white;
-                                    padding: 4px 12px;
-                                    border-radius: 20px;
-                                    font-size: 0.85rem;
-                                    font-weight: 500;
-                                ">Não Executado</span>
-                            </div>
-                            <div class="planning-details" style="
-                                display: grid;
-                                gap: 12px;
-                            ">
-                                <div class="detail-item" style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                ">
-                                    <span class="detail-label" style="color: #ccc; font-weight: 500;">Grupo Muscular:</span>
-                                    <span class="detail-value" style="color: #a8ff00; font-weight: 600;">${historico.planejamento.tipo_atividade}</span>
-                                </div>
-                                <div class="detail-item" style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                ">
-                                    <span class="detail-label" style="color: #ccc; font-weight: 500;">Status:</span>
-                                    <span class="detail-value" style="color: #ff6b35; font-weight: 600;">Aguardando Execução</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        ${historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0 ? `
-                        <!-- Exercícios Sugeridos -->
-                        <div class="suggested-exercises" style="
-                            background: #2a2a2a;
-                            border-radius: 8px;
-                            padding: 20px;
-                            border-left: 4px solid #4A90E2;
-                        ">
-                            <h3 style="margin: 0 0 16px 0; color: #4A90E2;">Exercícios Sugeridos</h3>
-                            <div class="exercises-list">
-                                ${historico.exerciciosSugeridos.map(ex => `
-                                    <div class="exercise-item" style="
-                                        background: #333;
-                                        border-radius: 6px;
-                                        padding: 16px;
-                                        margin-bottom: 12px;
-                                        border: 1px solid #444;
-                                    ">
-                                        <div class="exercise-header" style="
-                                            display: flex;
-                                            justify-content: space-between;
-                                            align-items: flex-start;
-                                            margin-bottom: 8px;
-                                        ">
-                                            <h4 style="margin: 0; color: #fff; font-size: 1rem;">${ex.nome}</h4>
-                                            <span style="
-                                                background: #4A90E2;
-                                                color: white;
-                                                padding: 2px 8px;
-                                                border-radius: 12px;
-                                                font-size: 0.75rem;
-                                                font-weight: 500;
-                                            ">${ex.equipamento || 'Livre'}</span>
-                                        </div>
-                                        <div class="exercise-details" style="
-                                            display: grid;
-                                            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-                                            gap: 12px;
-                                            margin-top: 12px;
-                                        ">
-                                            ${ex.series ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${ex.series}</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Séries</div>
-                                                </div>
-                                            ` : ''}
-                                            ${ex.repeticoes ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${ex.repeticoes}</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Repetições</div>
-                                                </div>
-                                            ` : ''}
-                                            ${ex.peso_calculado ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${Math.round(ex.peso_calculado)}kg</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Peso Sugerido</div>
-                                                </div>
-                                            ` : ''}
-                                            ${ex.descanso_sugerido ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${ex.descanso_sugerido}s</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Descanso</div>
-                                                </div>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        ` : ''}
-                    </div>
-                    ` : `
                     <!-- Estatísticas Gerais -->
                     <div class="stats-overview">
                         <div class="stat-card">
@@ -2690,121 +2370,26 @@ function mostrarModalHistorico(historico, dayIndex) {
                             ${renderizarExerciciosHistorico(historico)}
                         </div>
                     </div>
-                    `}
                 </div>
             </div>
         </div>
     `;
     
-    // Verificar se já existe um modal e removê-lo
-    const modalExistente = document.getElementById('modal-historico');
-    if (modalExistente) {
-        console.log('[mostrarModalHistorico] 🗑️ Removendo modal existente');
-        modalExistente.remove();
-    }
-    
     // Adicionar modal ao DOM
-    console.log('[mostrarModalHistorico] 📝 HTML do modal criado, adicionando ao DOM');
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    console.log('[mostrarModalHistorico] ✅ Modal adicionado ao DOM');
-    // Garantir que o botão de fechar funcione mesmo se o atributo inline estiver bloqueado
-    const btnClose = document.querySelector('#modal-historico .btn-close');
-    if (btnClose) {
-        btnClose.addEventListener('click', (e) => {
-            e.stopPropagation();
-            window.fecharModalHistorico();
-        }, { once: true });
-    }
-    // Se for apenas planejamento, criar contêiner para exibir exercícios planejados
-    if (somenteplanejamento) {
-        const modal = document.getElementById('modal-historico');
-        const body = modal?.querySelector('.modal-body');
-        if (body) {
-            // Evitar duplicação
-            let container = document.getElementById('modal-workout-exercises-list');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'modal-workout-exercises-list';
-                container.className = 'workout-exercises-list';
-                container.innerHTML = `
-                    <div class="loading-exercises">
-                        <div class="loading-spinner"></div>
-                        <p>Carregando exercícios...</p>
-                    </div>`;
-                body.appendChild(container);
-            }
-
-            // Carregar exercícios do planejamento para este dia
-            (async () => {
-                try {
-                    const currentUser = AppState.get('currentUser');
-                    if (!currentUser?.id) return;
-                    const resultado = await WeeklyPlanService.buscarExerciciosTreinoDia(currentUser.id, historico.data_treino);
-                    if (resultado?.data && resultado.data.length) {
-                        window.displayExercisesFromProtocol(resultado.data, resultado.planejamento, 'modal-workout-exercises-list');
-                    } else {
-                        container.innerHTML = '<p class="no-exercises-message">Nenhum exercício configurado para este dia.</p>';
-                    }
-                } catch (err) {
-                    console.error('[mostrarModalHistorico] Erro ao carregar exercícios planejados:', err);
-                    const container = document.getElementById('modal-workout-exercises-list');
-                    if (container) container.innerHTML = '<p class="no-exercises-message">Erro ao carregar exercícios.</p>';
-                }
-            })();
-        }
-    }
-    
-    // Verificar elementos que podem estar sobrepondo
-    const allModals = document.querySelectorAll('[class*="modal"], [id*="modal"]');
-    console.log('[mostrarModalHistorico] 🔍 Todos os modais no DOM:', allModals.length, Array.from(allModals).map(m => m.id || m.className));
     
     // Mostrar modal com animação
     setTimeout(() => {
-        console.log('[mostrarModalHistorico] ⏰ Timeout executado, procurando modal');
         const modal = document.getElementById('modal-historico');
         if (modal) {
-            console.log('[mostrarModalHistorico] 🎯 Modal encontrado, mostrando');
-            console.log('[mostrarModalHistorico] 📏 Modal atual:', modal.style.display, modal.classList.toString());
-            console.log('[mostrarModalHistorico] 🔍 Estilos calculados:', window.getComputedStyle(modal).display, window.getComputedStyle(modal).visibility, window.getComputedStyle(modal).opacity);
-            console.log('[mostrarModalHistorico] 📐 Posição modal:', modal.getBoundingClientRect());
-            console.log('[mostrarModalHistorico] 📏 Viewport:', window.innerWidth, window.innerHeight);
-            console.log('[mostrarModalHistorico] 📄 Body scroll:', document.body.scrollTop, document.documentElement.scrollTop);
             modal.classList.add('show');
-            modal.style.display = 'flex'; // Garantir que está visível
-            modal.style.opacity = '1'; // Garantir opacidade
-            modal.style.visibility = 'visible'; // Garantir visibilidade
-            modal.style.zIndex = '10000'; // Garantir que está na frente
-            
-            // Garantir que o modal está na posição correta independente do scroll
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100vw';
-            modal.style.height = '100vh';
-            
-            // Desabilitar scroll do body enquanto modal está aberto
-            document.body.style.overflow = 'hidden';
-            
-            console.log('[mostrarModalHistorico] ✨ Modal deve estar visível agora');
-        } else {
-            console.error('[mostrarModalHistorico] ❌ Modal não encontrado no DOM!');
         }
     }, 10);
 }
 
 // Calcular estatísticas do treino
 function calcularEstatisticasTreino(historico) {
-    const { execucoes = [], exerciciosSugeridos = [] } = historico;
-    
-    // Verificar se há execuções para calcular
-    if (!execucoes || execucoes.length === 0) {
-        return {
-            totalPeso: 0,
-            totalExercicios: 0,
-            duracaoEstimada: 0,
-            performance: { percentual: 0, class: 'poor', icon: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' }
-        };
-    }
+    const { execucoes, exerciciosSugeridos } = historico;
     
     // Total de peso levantado
     const totalPeso = execucoes.reduce((total, exec) => {
@@ -2857,12 +2442,7 @@ function calcularEstatisticasTreino(historico) {
 
 // Renderizar exercícios do histórico com resumo avançado
 function renderizarExerciciosHistorico(historico) {
-    const { execucoes = [], exerciciosSugeridos = [] } = historico;
-    
-    // Se não há execuções, retornar mensagem vazia
-    if (!execucoes || execucoes.length === 0) {
-        return '<div class="no-exercises">Nenhum exercício executado</div>';
-    }
+    const { execucoes, exerciciosSugeridos } = historico;
     
     // Agrupar execuções por exercício
     const exerciciosAgrupados = {};
@@ -3062,8 +2642,6 @@ window.fecharModalHistorico = function(event) {
     const modal = document.getElementById('modal-historico');
     if (modal) {
         modal.classList.remove('show');
-        // Restaurar scroll do body
-        document.body.style.overflow = '';
         setTimeout(() => {
             modal.remove();
         }, 300);
@@ -3073,47 +2651,21 @@ window.fecharModalHistorico = function(event) {
 // Função para debug de informações do treino
 async function debugTreinoInfo(userId, dayIndex) {
     try {
-        // Usar a semana que está sendo exibida, não a semana atual
-        const semanaExibida = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados?.semanaAtual;
         const hoje = new Date();
         const ano = hoje.getFullYear();
-        const semana = semanaExibida; // Usar semana exibida
-        const semanaAtual = WeeklyPlanService.getWeekNumber(hoje);
-        const diferencaSemanas = semanaExibida - semanaAtual;
-        
-        // Calcular data corretamente
-        const dataBase = new Date(hoje.getTime() + (diferencaSemanas * 7 * 24 * 60 * 60 * 1000));
-        const diasParaAjustar = dayIndex - dataBase.getDay();
-        const dataAlvo = new Date(dataBase.getTime() + (diasParaAjustar * 24 * 60 * 60 * 1000));
+        const semana = WeeklyPlanService.getWeekNumber(hoje);
+        const dataAlvo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (hoje.getDay() - dayIndex));
         const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
         
-        // Validar parâmetros antes da query
-        const validatedUserId = parseInt(userId);
-        const validatedAno = parseInt(ano);
-        const validatedSemana = parseInt(semana);
-        const validatedDiaSemana = WeeklyPlanService.dayToDb(dayIndex);
-        
-        console.log('[debugTreinoInfo] Parâmetros da query:', {
-            userId: validatedUserId,
-            ano: validatedAno,
-            semana: validatedSemana,
-            dia_semana: validatedDiaSemana,
-            dayIndex: dayIndex
-        });
-        
         // Buscar planejamento
-        const { data: planejamento, error: planError } = await supabase
+        const { data: planejamento } = await supabase
             .from('planejamento_semanal')
             .select('*')
-            .eq('usuario_id', validatedUserId)
-            .eq('ano', validatedAno)
-            .eq('semana', validatedSemana)
-            .eq('dia_semana', validatedDiaSemana)
+            .eq('usuario_id', userId)
+            .eq('ano', ano)
+            .eq('semana', semana)
+            .eq('dia_semana', WeeklyPlanService.dayToDb(dayIndex))
             .single();
-            
-        if (planError) {
-            console.error('[debugTreinoInfo] Erro na query planejamento:', planError);
-        }
         
         // Buscar execuções (todas do dia, independente do protocolo)
         const { data: execucoes } = await supabase
@@ -3314,7 +2866,3 @@ function mostrarMensagemExercicios(mensagem, tipo = 'info', container) {
     
     console.log('[mostrarMensagemExercicios] Mensagem exibida:', mensagem);
 }
-
-// Usando handleDayClick existente para mostrar modal de histórico do treino
-
-// Modal de histórico já existe no arquivo - todas as funções estão implementadas ✅

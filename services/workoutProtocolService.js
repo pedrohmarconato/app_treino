@@ -1,6 +1,7 @@
 // services/workoutProtocolService.js - Protocolo completo funcionando
 import { query, insert, update } from './supabaseService.js';
 import { WeightCalculatorService } from './weightCalculatorService.js';
+import WeeklyPlanService from './weeklyPlanningService.js';
 import AppState from '../state/appState.js';
 
 export class WorkoutProtocolService {
@@ -133,7 +134,7 @@ export class WorkoutProtocolService {
             
             const hoje = new Date();
             const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
-            const diaDb = diaSemana === 0 ? 7 : diaSemana; // Converter para formato DB
+            const diaDb = WeeklyPlanService.dayToDb(diaSemana); // Converter para formato DB
             const ano = hoje.getFullYear();
             const semana = this.getWeekNumber(hoje);
             
@@ -392,7 +393,7 @@ export class WorkoutProtocolService {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const semana = this.getWeekNumber(hoje);
-        const diaSemana = hoje.getDay() === 0 ? 7 : hoje.getDay(); // Converter para formato DB
+        const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay()); // Converter para formato DB
         
         await update('planejamento_semanal', 
             { 

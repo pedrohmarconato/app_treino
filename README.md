@@ -247,6 +247,16 @@ Todas as mudanças notáveis são documentadas no [CHANGELOG.md](CHANGELOG.md).
 - Modo coach/personal trainer
 - Marketplace de treinos
 
+## 📚 Documentação
+
+Para documentação técnica completa do projeto, consulte a pasta `docs/`:
+
+- [📖 **Documentação Completa**](./docs/DOCUMENTACAO_COMPLETA.md) - Visão geral e arquitetura
+- [🏗️ **Arquitetura do Sistema**](./docs/ARCHITECTURE.md) - Estrutura técnica detalhada  
+- [🔒 **Implementação de Senhas**](./docs/IMPLEMENTACAO_SISTEMA_SENHAS.md) - Plano de autenticação
+- [🧠 **Claude Memory**](./docs/CLAUDE_MEMORY.md) - Histórico de desenvolvimento
+- [🔍 **Debug Queries**](./docs/DEBUG_QUERIES.md) - Queries SQL para debug
+
 ## 🔒 Segurança
 
 Para reportar vulnerabilidades de segurança, por favor consulte nossa [política de segurança](SECURITY.md).

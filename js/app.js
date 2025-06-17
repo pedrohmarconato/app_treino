@@ -1,6 +1,7 @@
 // js/app.js - App principal LIMPO e OTIMIZADO
 import AppState from '../state/appState.js';
-import { inicializarPlanejamento, fecharModalPlanejamento, salvarPlanejamentoSemanal } from '../feature/planning.js';
+// Importar apenas o que é necessário, resto será acessado via window
+import '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
 import { initializeProtocol } from '../integration/protocolIntegration.js';
@@ -51,7 +52,11 @@ async function initApp() {
     try {
         console.log('[initApp] ✅ Dependências verificadas');
         
-        // 1. Configurar funções globais
+        // 1. Aguardar módulos carregarem
+        console.log('[initApp] ⏳ Aguardando módulos carregarem...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // 2. Configurar funções globais
         console.log('[initApp] 🔧 Configurando funções globais...');
         setupGlobalFunctions();
         console.log('[initApp] ✅ Funções globais configuradas');
@@ -154,15 +159,21 @@ function setupGlobalFunctions() {
     // === PLANEJAMENTO ===
     window.salvarPlanejamento = async () => {
         try {
-            await salvarPlanejamentoSemanal();
+            await window.salvarPlanejamentoSemanal();
         } catch (error) {
             console.error('[app.js] Erro ao salvar planejamento:', error);
             showNotification('Erro ao salvar planejamento', 'error');
         }
     };
     
-    window.inicializarPlanejamento = inicializarPlanejamento;
-    window.fecharModalPlanejamento = fecharModalPlanejamento;
+    // As funções já estão disponíveis via window no planning.js
+    // Apenas verificar se estão carregadas
+    if (!window.inicializarPlanejamento) {
+        console.warn('[app.js] inicializarPlanejamento ainda não carregada');
+    }
+    if (!window.fecharModalPlanejamento) {
+        console.warn('[app.js] fecharModalPlanejamento ainda não carregada');
+    }
     
     // Função de debug para testar indicadores da semana
     window.testarIndicadoresSemana = async () => {

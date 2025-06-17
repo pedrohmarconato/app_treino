@@ -498,7 +498,7 @@ export class ProtocolIntegration {
                     userId, 
                     exercicio.exercicio_id, 
                     treino.semana_atual,
-                    treino.numero_treino,
+                    treino.semana_referencia,
                     treino.protocolo_id
                 );
                 console.log('✅ Teste 2 - Calcular pesos:', pesos);

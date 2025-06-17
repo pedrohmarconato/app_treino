@@ -2,13 +2,12 @@
 // Utilitários auxiliares para gerenciamento de planos semanais
 // NOTA: A funcionalidade principal foi movida para services/weeklyPlanningService.js
 
-// Calcular número da semana ISO 8601
+// Calcular número da semana do ano (domingo = 0, sábado = 6)
 export function getWeekNumber(date) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    // Semana começa no domingo (0)
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 }
 
 // Obter chave da semana atual para localStorage

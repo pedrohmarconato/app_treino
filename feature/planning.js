@@ -8,9 +8,9 @@ import { getWorkoutIcon, getIconForWorkoutType } from '../utils/icons.js';
 // Se precisar de funções globais, atribua manualmente abaixo
 const obterSemanaAtivaUsuario = window.WeeklyPlanService.obterSemanaAtivaUsuario;
 const verificarSemanaJaProgramada = window.WeeklyPlanService.verificarSemanaJaProgramada;
-const marcarSemanaProgramada = window.WeeklyPlanService.marcarSemanaProgramada;
 import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 import { fetchTiposTreinoMuscular, fetchProtocoloAtivoUsuario } from '../services/userService.js';
+import { marcarSemanaProgramada } from '../services/weeklyPlanningService.js';
 import { query } from '../services/supabaseService.js';
 import { showNotification } from '../ui/notifications.js';
 
@@ -19,6 +19,7 @@ let planejamentoAtual = {};
 let treinosDisponiveis = [];
 let usuarioIdAtual = null;
 let nomeDiaAtual = '';
+const nomesDiasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 let diasEditaveis = []; // Controla quais dias podem ser editados
 let modoEdicao = false; // Indica se está em modo de edição
 let semanaAtivaAtual = null; // Dados da semana ativa
@@ -40,7 +41,7 @@ const treinoIcons = {
 };
 
 // Inicializar planejamento
-export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false) {
+async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false) {
     console.log('[inicializarPlanejamento] Iniciando para usuário:', usuarioId);
     
     // Aguardar DOM estar pronto
@@ -79,7 +80,7 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         console.log('[inicializarPlanejamento] Semana ativa:', semanaAtiva);
         
         // 2. Verificar se semana já foi programada
-        const jaProgramada = await verificarSemanaJaProgramada(userId, semanaAtiva.semana_treino);
+        const jaProgramada = await verificarSemanaJaProgramada(usuarioId, semanaAtiva.semana_treino);
         console.log('[inicializarPlanejamento] Semana já programada:', jaProgramada);
         
         // Guardar dados para uso posterior
@@ -151,10 +152,7 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
                       document.getElementById('modal-planejamento');
         
         if (modal) {
-            modal.style.display = 'flex';
-            modal.style.visibility = 'visible';
-            modal.style.opacity = '1';
-            modal.classList.remove('hidden');
+            popup.classList.add('visible');
             document.body.style.overflow = 'hidden';
             console.log('[inicializarPlanejamento] Modal exibido');
         }
@@ -169,10 +167,8 @@ export async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false
         setTimeout(() => {
             const modal = document.getElementById('modalPlanejamento');
             if (modal) {
-                modal.style.display = 'flex';
-                modal.style.visibility = 'visible';
-                modal.style.opacity = '1';
-                modal.classList.remove('hidden');
+                modal.classList.add('visible');
+                document.body.style.overflow = 'hidden';
                 console.log('[inicializarPlanejamento] Modal forçado a ficar visível');
             } else {
                 console.error('[inicializarPlanejamento] Modal não encontrado para forçar exibição');
@@ -238,6 +234,7 @@ function forcarFechamentoModal() {
         // Método 1: modalPlanejamento (ID principal)
         const modal1 = document.getElementById('modalPlanejamento');
         if (modal1) {
+            modal1.classList.remove('visible');
             modal1.style.display = 'none';
             modal1.style.visibility = 'hidden';
             modal1.style.opacity = '0';
@@ -248,6 +245,7 @@ function forcarFechamentoModal() {
         // Método 2: modal-planejamento (ID alternativo)
         const modal2 = document.getElementById('modal-planejamento');
         if (modal2) {
+            modal2.classList.remove('visible');
             modal2.style.display = 'none';
             modal2.style.visibility = 'hidden';
             modal2.style.opacity = '0';
@@ -258,6 +256,7 @@ function forcarFechamentoModal() {
         // Método 3: Fechar seletor de treino se estiver aberto
         const seletorPopup = document.getElementById('seletorTreinoPopup');
         if (seletorPopup) {
+            seletorPopup.classList.remove('visible');
             seletorPopup.style.display = 'none';
             seletorPopup.style.visibility = 'hidden';
             seletorPopup.style.opacity = '0';
@@ -268,6 +267,7 @@ function forcarFechamentoModal() {
         // Método 4: Buscar por classe
         const modals = document.querySelectorAll('.modal-overlay, .planning-page-container, .modal');
         modals.forEach((modal, index) => {
+            modal.classList.remove('visible');
             modal.style.display = 'none';
             modal.style.visibility = 'hidden';
             modal.style.opacity = '0';
@@ -284,11 +284,13 @@ function forcarFechamentoModal() {
         
         // Método 7: Restaurar estado de botões que podem ter ficado desabilitados
         const botoesParaHabilitar = document.querySelectorAll(
-            '.btn-primary, .save-btn, #confirm-plan-btn, .planning-btn, .action-btn'
+            '.btn-primary, .save-btn, #confirm-plan-btn, .planning-btn, .action-btn, button[onclick*="abrirSeletorTreino"], .day-card button, .empty-slot, .btn-outline-primary'
         );
         botoesParaHabilitar.forEach(btn => {
-            if (btn.hasAttribute('data-disabled-by-modal')) {
+            if (btn.hasAttribute('data-disabled-by-modal') || btn.disabled) {
                 btn.disabled = false;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
                 btn.removeAttribute('data-disabled-by-modal');
                 console.log('[forcarFechamentoModal] Botão habilitado:', btn.className);
             }
@@ -297,6 +299,11 @@ function forcarFechamentoModal() {
         // Método 8: Limpar cache de validação
         if (validarPlanejamento._cachedElements) {
             validarPlanejamento._cachedElements = null;
+        }
+        
+        // Limpar outros caches que podem estar causando problemas
+        if (window.abrirSeletorTreino._cached) {
+            window.abrirSeletorTreino._cached = null;
         }
         
         // Método 9: Remover elementos dinâmicos
@@ -432,15 +439,23 @@ function adicionarIndicadorModoEdicao() {
 
 // Validar planejamento - OTIMIZADO
 function validarPlanejamento() {
-    // Cache DOM elements to avoid repeated queries
-    if (!validarPlanejamento._cachedElements) {
-        validarPlanejamento._cachedElements = {
-            btnSalvar: document.querySelector('.save-btn') || document.getElementById('confirm-plan-btn'),
-            validationMessageElement: document.getElementById('validationMessage')
-        };
-    }
+    // Buscar elementos DOM sempre (não usar cache devido a problemas de estado)
+    const btnSalvar = document.querySelector('.save-btn') || 
+                     document.getElementById('confirm-plan-btn') || 
+                     document.querySelector('#confirm-plan-btn') ||
+                     document.querySelector('[data-action="save-plan"]') ||
+                     document.querySelector('button[onclick*="salvar"]');
     
-    const { btnSalvar, validationMessageElement } = validarPlanejamento._cachedElements;
+    const validationMessageElement = document.getElementById('validationMessage') ||
+                                   document.querySelector('.validation-message') ||
+                                   document.querySelector('#validation-message');
+    
+    console.log('[validarPlanejamento] Elementos encontrados:', {
+        btnSalvar: !!btnSalvar,
+        btnSalvarId: btnSalvar?.id,
+        btnSalvarClass: btnSalvar?.className,
+        validationMessageElement: !!validationMessageElement
+    });
     
     let diasPreenchidos = 0;
     let isValid = true;
@@ -482,10 +497,13 @@ function validarPlanejamento() {
         }
     });
 
-    // Validação 1: Todos os 7 dias devem estar preenchidos
-    if (diasPreenchidos < 7) {
-        messages.push(`❌ Preencha todos os 7 dias da semana (faltam ${7 - diasPreenchidos}).`);
+    // Validação 1: Pelo menos 1 dia deve estar preenchido, recomendado 7 dias
+    if (diasPreenchidos === 0) {
+        messages.push(`❌ Adicione pelo menos um treino na semana.`);
         isValid = false;
+    } else if (diasPreenchidos < 7) {
+        messages.push(`⚠️ Recomendado preencher todos os 7 dias (faltam ${7 - diasPreenchidos}). Você pode salvar assim mesmo.`);
+        // Não invalidar o plano, apenas avisar
     }
 
     // Validação 2: Não repetir grupos musculares (apenas aviso)
@@ -509,8 +527,12 @@ function validarPlanejamento() {
     if (validationMessageElement) {
         validationMessageElement.classList.remove('success', 'error', 'info');
         
-        if (isValid && diasPreenchidos === 7) {
-            validationMessageElement.textContent = '✅ Planejamento válido! Pronto para salvar.';
+        if (isValid) {
+            if (diasPreenchidos === 7) {
+                validationMessageElement.textContent = '✅ Planejamento completo! Pronto para salvar.';
+            } else {
+                validationMessageElement.textContent = `✅ Planejamento válido! ${diasPreenchidos} dia(s) configurado(s). Pronto para salvar.`;
+            }
             validationMessageElement.classList.add('success');
             validationMessageElement.style.display = 'block';
         } else if (messages.length > 0) {
@@ -523,7 +545,7 @@ function validarPlanejamento() {
     }
 
     if (btnSalvar) {
-        const shouldDisable = !isValid || diasPreenchidos < 7;
+        const shouldDisable = !isValid; // Remover exigência de 7 dias
         btnSalvar.disabled = shouldDisable;
         btnSalvar.style.display = 'flex';
         
@@ -536,6 +558,18 @@ function validarPlanejamento() {
     } else {
         console.warn('[validarPlanejamento] Botão salvar não encontrado!');
     }
+
+    // CORREÇÃO: Garantir que botões de seleção de treino permaneçam habilitados
+    const botoesSelecao = document.querySelectorAll(
+        'button[onclick*="abrirSeletorTreino"], .day-card button, .empty-slot, .btn-outline-primary'
+    );
+    botoesSelecao.forEach(btn => {
+        if (btn !== btnSalvar && !btn.classList.contains('treino-option')) {
+            btn.disabled = false;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        }
+    });
 
     // Atualizar estatísticas na interface
     atualizarEstatisticasPlanejamento(diasPreenchidos);
@@ -585,7 +619,8 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
         'quinta': 4, 'sexta': 5, 'sabado': 6
     };
     
-    const diaAtualSelecionado = typeof dia === 'string' ? diasMap[dia] : parseInt(dia);
+    const diaNumero = parseInt(dia, 10);
+    const diaAtualSelecionado = !isNaN(diaNumero) ? diaNumero : diasMap[String(dia).toLowerCase()];
     nomeDiaAtual = nomeDia;
     
     // Verificar se o dia pode ser editado
@@ -601,16 +636,8 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
     const title = document.getElementById('popup-day-title');
     const options = document.getElementById('treino-options');
     
-    console.log('[abrirSeletorTreino] Elementos encontrados:', {
-        popup: !!popup,
-        title: !!title,
-        options: !!options
-    });
-    
     if (!popup) {
-        console.error('[abrirSeletorTreino] Popup não encontrado! Elementos disponíveis:', 
-            Array.from(document.querySelectorAll('[id*="popup"], [id*="Popup"], [id*="seletor"]')).map(el => el.id)
-        );
+        console.error('[abrirSeletorTreino] Popup não encontrado!');
         return;
     }
     
@@ -635,47 +662,90 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
     }, diaAtualSelecionado);
     options.appendChild(cardioOption);
     
+    // Adicionar opção de folga
+    const folgaOption = criarOpcaoTreino({
+        id: 'folga',
+        icon: getWorkoutIcon('descanso'),
+        nome: 'Folga',
+        descricao: 'Dia de descanso',
+        tipo: 'folga',
+        categoria: 'folga'
+    }, diaAtualSelecionado);
+    options.appendChild(folgaOption);
+    
     // Adicionar treinos musculares
     console.log('[abrirSeletorTreino] Treinos disponíveis:', treinosDisponiveis);
     
     if (treinosDisponiveis.length === 0) {
-        console.warn('[abrirSeletorTreino] Nenhum treino disponível! Recarregando...');
+        console.warn('[abrirSeletorTreino] Nenhum treino disponível! Criando treinos padrão...');
         
-        // Tentar recarregar treinos
-        try {
-            // Garantir que temos um usuário válido
-            let userId = usuarioIdAtual;
-            if (!userId) {
-                const currentUser = AppState.get('currentUser');
-                userId = currentUser?.id;
-                console.log('[abrirSeletorTreino] UserId obtido do AppState:', userId);
+        // Criar treinos padrão se não há nenhum
+        treinosDisponiveis = [
+            {
+                id: 'muscular_peito',
+                nome: 'Peito',
+                tipo: 'Peito',
+                categoria: 'muscular'
+            },
+            {
+                id: 'muscular_costas',
+                nome: 'Costas',
+                tipo: 'Costas',
+                categoria: 'muscular'
+            },
+            {
+                id: 'muscular_pernas',
+                nome: 'Pernas',
+                tipo: 'Pernas',
+                categoria: 'muscular'
+            },
+            {
+                id: 'muscular_ombro',
+                nome: 'Ombro e Braço',
+                tipo: 'Ombro e Braço',
+                categoria: 'muscular'
             }
-            
-            if (!userId) {
-                console.error('[abrirSeletorTreino] Nenhum usuário encontrado!');
-                showNotification('Erro: usuário não identificado', 'error');
-                return;
-            }
-            
-            const tiposMusculares = await fetchTiposTreinoMuscular(userId);
-            console.log('[abrirSeletorTreino] Tipos musculares recarregados:', tiposMusculares);
-            
-            // Recriar lista de treinos
-            treinosDisponiveis = [];
-            let treinoIdCounter = 1;
-            
-            tiposMusculares.forEach(tipo => {
-                treinosDisponiveis.push({
-                    id: `muscular_${treinoIdCounter++}`,
-                    nome: `Muscular: ${tipo}`,
-                    tipo: tipo,
-                    categoria: 'muscular' 
+        ];
+        
+        console.log('[abrirSeletorTreino] Treinos padrão criados:', treinosDisponiveis);
+        
+        // Se ainda estiver vazio, tentar recarregar do banco
+        if (treinosDisponiveis.length === 0) {
+            try {
+                // Garantir que temos um usuário válido
+                let userId = usuarioIdAtual;
+                if (!userId) {
+                    const currentUser = AppState.get('currentUser');
+                    userId = currentUser?.id;
+                    console.log('[abrirSeletorTreino] UserId obtido do AppState:', userId);
+                }
+                
+                if (!userId) {
+                    console.error('[abrirSeletorTreino] Nenhum usuário encontrado!');
+                    showNotification('Erro: usuário não identificado', 'error');
+                    return;
+                }
+                
+                const tiposMusculares = await fetchTiposTreinoMuscular(userId);
+                console.log('[abrirSeletorTreino] Tipos musculares recarregados:', tiposMusculares);
+                
+                // Recriar lista de treinos
+                treinosDisponiveis = [];
+                let treinoIdCounter = 1;
+                
+                tiposMusculares.forEach(tipo => {
+                    treinosDisponiveis.push({
+                        id: `muscular_${treinoIdCounter++}`,
+                        nome: `Muscular: ${tipo}`,
+                        tipo: tipo,
+                        categoria: 'muscular' 
+                    });
                 });
-            });
-            
-            console.log('[abrirSeletorTreino] Treinos recriados:', treinosDisponiveis);
-        } catch (error) {
-            console.error('[abrirSeletorTreino] Erro ao recarregar treinos:', error);
+                
+                console.log('[abrirSeletorTreino] Treinos recriados:', treinosDisponiveis);
+            } catch (error) {
+                console.error('[abrirSeletorTreino] Erro ao recarregar treinos:', error);
+            }
         }
     }
     
@@ -696,25 +766,29 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
     
     console.log('[abrirSeletorTreino] Total de opções adicionadas:', options.children.length);
     
-    // Garantir popup visível com estilos forçados
-    popup.style.cssText = `
-        display: flex !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        background: rgba(0, 0, 0, 0.8) !important;
-        z-index: 200000 !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 20px !important;
-        box-sizing: border-box !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    `;
+    // Mostrar popup - CORREÇÃO: Limpar estilos !important primeiro
+    popup.classList.add('visible');
+    
+    // CORREÇÃO CRÍTICA: Limpar estilos inline !important que impedem o modal de aparecer
+    popup.style.cssText = '';
+    popup.style.display = 'flex';
+    popup.style.visibility = 'visible';
+    popup.style.opacity = '1';
+    popup.style.zIndex = '200000';
     
     document.body.style.overflow = 'hidden';
+    
+    // Adicionar event listeners para fechar modal
+    const fecharModalHandler = (e) => {
+        if (e.target === popup || e.key === 'Escape') {
+            fecharSeletorTreino();
+            document.removeEventListener('keydown', fecharModalHandler);
+            popup.removeEventListener('click', fecharModalHandler);
+        }
+    };
+    
+    popup.addEventListener('click', fecharModalHandler);
+    document.addEventListener('keydown', fecharModalHandler);
     
     // Verificar modal-content-small também
     const modalContent = popup.querySelector('.modal-content-small');
@@ -743,7 +817,70 @@ window.abrirSeletorTreino = async function(dia, nomeDia) {
         zIndex: window.getComputedStyle(popup).zIndex,
         visibility: window.getComputedStyle(popup).visibility
     });
+    
+    console.log('[abrirSeletorTreino] Popup exibido para', nomeDia, dia);
+    console.log('[abrirSeletorTreino] Popup DOM element:', popup);
+    console.log('[abrirSeletorTreino] Popup computed styles:', {
+        display: window.getComputedStyle(popup).display,
+        position: window.getComputedStyle(popup).position,
+        zIndex: window.getComputedStyle(popup).zIndex,
+        visibility: window.getComputedStyle(popup).visibility
+    });
 };
+
+// Fechar seletor de treino
+// Criar opção de treino
+function criarOpcaoTreino(treino, diaDestino) {
+    const option = document.createElement('div');
+    option.className = 'treino-option';
+
+    // Verificar se o treino já está usado (para musculares) - LÓGICA CORRIGIDA
+    let isDisabled = false;
+    let statusText = '';
+
+    if (treino.categoria === 'muscular') {
+        const diasComEsseTreino = Object.keys(planejamentoAtual).filter(dia => 
+            planejamentoAtual[dia] && planejamentoAtual[dia].tipo === treino.tipo
+        );
+
+        const treinoNoOutroDia = diasComEsseTreino.some(dia => dia != diaDestino);
+
+        if (treinoNoOutroDia) {
+            isDisabled = true;
+            const diaDoUso = diasComEsseTreino.find(d => d != diaDestino);
+            statusText = `Já usado em ${nomesDiasSemana[diaDoUso]}`;
+        }
+        
+        console.log(`[criarOpcaoTreino] Validação para ${treino.tipo}:`, {
+            diaDestino,
+            diasComEsseTreino,
+            treinoNoOutroDia,
+            isDisabled,
+            statusText
+        });
+    }
+
+    if (isDisabled) {
+        option.classList.add('disabled');
+    }
+
+    option.innerHTML = `
+        <span class="option-icon">${getWorkoutIcon(treino.tipo)}</span>
+        <div class="option-info">
+            <div class="option-name">${treino.nome}</div>
+            <div class="option-description">${treino.descricao || ''}</div>
+            ${statusText ? `<div class="option-status">${statusText}</div>` : ''}
+        </div>
+    `;
+
+    if (!isDisabled) {
+        option.addEventListener('click', () => {
+            selecionarTreinoParaDia(treino, diaDestino);
+        });
+    }
+
+    return option;
+}
 
 // Fechar seletor de treino
 window.fecharSeletorTreino = function() {
@@ -751,27 +888,47 @@ window.fecharSeletorTreino = function() {
     
     const popup = document.getElementById('seletorTreinoPopup');
     if (popup) {
+        popup.classList.remove('visible');
         popup.style.display = 'none';
         popup.style.visibility = 'hidden';
         popup.style.opacity = '0';
-        popup.style.zIndex = '';
+        popup.style.zIndex = '-1';
+        popup.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important;';
+        
         document.body.style.overflow = '';
-        console.log('[fecharSeletorTreino] Popup fechado');
+        console.log('[fecharSeletorTreino] Popup fechado completamente');
     }
     
     // Limpar estado
     nomeDiaAtual = '';
     
-    // Restaurar botões que podem ter ficado desabilitados
+    // Restaurar botões que podem ter ficado desabilitados - VERSÃO AGRESSIVA
     const botoesParaHabilitar = document.querySelectorAll(
-        'button[onclick*="abrirSeletorTreino"], .day-card button, .empty-slot, .treino-assigned button'
+        'button, .btn, .day-card button, .empty-slot, .treino-assigned button, .btn-outline-primary, [onclick*="abrirSeletorTreino"]'
     );
     botoesParaHabilitar.forEach(btn => {
-        if (btn.disabled) {
+        // Pular apenas o botão de salvar planejamento
+        if (!btn.id || !btn.id.includes('salvar') && !btn.id.includes('confirm')) {
             btn.disabled = false;
-            console.log('[fecharSeletorTreino] Botão reabilitado:', btn.textContent || btn.className);
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.removeAttribute('data-disabled-by-modal');
+            console.log('[fecharSeletorTreino] Botão habilitado:', btn.textContent || btn.className);
         }
     });
+    
+    // Aguardar e reabilitar novamente para garantir
+    setTimeout(() => {
+        const botoesDia = document.querySelectorAll('[onclick*="abrirSeletorTreino"]');
+        botoesDia.forEach(btn => {
+            btn.disabled = false;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
+        console.log('[fecharSeletorTreino] Segunda verificação - botões reabilitados');
+    }, 50);
     
     // Remover event listeners temporários se houver
     const options = document.querySelectorAll('.treino-option');
@@ -785,49 +942,34 @@ window.fecharSeletorTreino = function() {
     console.log('[fecharSeletorTreino] Estado limpo e botões restaurados');
 };
 
-// Criar opção de treino
-function criarOpcaoTreino(treino, diaDestino) {
-    const option = document.createElement('div');
-    option.className = 'treino-option';
+// Função auxiliar para limpar estado antes de abrir seletor
+function limparEstadoSeletor(dia) {
+    console.log(`[limparEstadoSeletor] Limpeza ROBUSTA do estado para dia ${dia}`);
     
-    // Verificar se o treino já está usado (para musculares)
-    let isDisabled = false;
-    let statusText = '';
+    // Limpar todas as possíveis referências - VERSÃO MELHORADA
+    delete planejamentoAtual[dia];
+    delete planejamentoAtual[String(dia)];
+    delete planejamentoAtual[parseInt(dia)];
     
-    if (treino.categoria === 'muscular') {
-        for (const dia in planejamentoAtual) {
-            const treinoExistente = planejamentoAtual[dia];
-            if (treinoExistente && treinoExistente.tipo === treino.tipo && dia != diaDestino) {
-                isDisabled = true;
-                statusText = 'Já utilizado';
-                break;
-            }
+    // Forçar limpeza de qualquer referência residual
+    Object.keys(planejamentoAtual).forEach(key => {
+        if (key == dia || key === String(dia) || key === parseInt(dia)) {
+            delete planejamentoAtual[key];
+            console.log(`[limparEstadoSeletor] Removida chave residual: ${key}`);
         }
+    });
+    
+    // Limpar possíveis caches ou estados temporários
+    if (window.tempPlanejamento) {
+        delete window.tempPlanejamento[dia];
+        delete window.tempPlanejamento[String(dia)];
+        delete window.tempPlanejamento[parseInt(dia)];
     }
     
-    if (isDisabled) {
-        option.classList.add('disabled');
-    }
-    
-    option.innerHTML = `
-        <span class="option-icon">${treino.icon}</span>
-        <div class="option-info">
-            <div class="option-name">${treino.nome}</div>
-            <div class="option-description">${treino.descricao}</div>
-            ${statusText ? `<div class="option-status">${statusText}</div>` : ''}
-        </div>
-    `;
-    
-    if (!isDisabled) {
-        option.addEventListener('click', () => {
-            selecionarTreinoParaDia(treino, diaDestino);
-        });
-    }
-    
-    return option;
+    console.log(`[limparEstadoSeletor] Estado limpo para dia ${dia}:`, planejamentoAtual);
 }
 
-// Selecionar treino para um dia com validação de numero_treino
+// Selecionar treino para um dia com validação de semana_referencia
 async function selecionarTreinoParaDia(treino, dia) {
     // Garantir que temos um usuário válido
     let userId = usuarioIdAtual;
@@ -838,38 +980,42 @@ async function selecionarTreinoParaDia(treino, dia) {
     
     if (!userId) {
         showNotification('Erro: usuário não identificado', 'error');
+        fecharSeletorTreino();
         return;
     }
     
-    // Validar numero_treino se for treino muscular
+    // Validar semana_referencia se for treino muscular
     if (treino.categoria === 'muscular' || treino.categoria === 'treino') {
         try {
             // Buscar protocolo ativo do usuário
             const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
             if (!protocoloAtivo) {
                 showNotification('Erro: usuário sem protocolo ativo', 'error');
+                fecharSeletorTreino();
                 return;
             }
             
-            // Verificar se existe numero_treino válido para este protocolo
+            // Verificar se existe semana_referencia válida para este protocolo
             const { data: protocoloTreinos } = await query('protocolo_treinos', {
                 eq: { protocolo_id: protocoloAtivo.protocolo_treinamento_id },
-                select: 'numero_treino'
+                select: 'semana_referencia'
             });
             
             if (!protocoloTreinos || protocoloTreinos.length === 0) {
                 showNotification('Erro: protocolo sem treinos configurados', 'error');
+                fecharSeletorTreino();
                 return;
             }
             
-            // Adicionar numero_treino válido ao treino
-            const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
+            // Adicionar semana_referencia válida ao treino
+            const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.semana_referencia))];
             const treinoIndex = parseInt(dia) % treinosDisponiveis.length;
-            treino.numero_treino = treinosDisponiveis[treinoIndex] || treinosDisponiveis[0];
+            treino.semana_referencia = treinosDisponiveis[treinoIndex] || treinosDisponiveis[0];
             
         } catch (error) {
             console.error('[selecionarTreinoParaDia] Erro na validação:', error);
             showNotification('Erro ao validar treino com protocolo', 'error');
+            fecharSeletorTreino();
             return;
         }
     }
@@ -880,6 +1026,7 @@ async function selecionarTreinoParaDia(treino, dia) {
         
         if (!resultado.success) {
             showNotification(`Erro: ${resultado.error}`, 'error');
+            fecharSeletorTreino();
             return;
         }
         
@@ -904,7 +1051,11 @@ async function selecionarTreinoParaDia(treino, dia) {
     
     atualizarVisualizacaoDia(dia, treino);
     fecharSeletorTreino();
-    validarPlanejamentoDebounced();
+    
+    // Aguardar DOM atualizar antes de validar para evitar conflitos
+    setTimeout(() => {
+        validarPlanejamentoDebounced();
+    }, 100);
 }
 
 // Atualizar visualização do dia - OTIMIZADO
@@ -943,30 +1094,80 @@ function atualizarVisualizacaoDia(dia, treino) {
     `;
 }
 
-// Remover treino do dia
+// Remover treino do dia - VERSÃO MELHORADA
 window.removerTreinoDoDia = function(dia) {
-    delete planejamentoAtual[dia];
+    console.log(`[removerTreinoDoDia] Removendo treino do dia ${dia}`);
+    console.log(`[removerTreinoDoDia] Estado antes da remoção:`, planejamentoAtual);
     
+    // CORREÇÃO: Garantir limpeza completa do estado - VERSÃO MELHORADA
+    const treinoRemovido = planejamentoAtual[dia];
+    
+    // Limpar todas as possíveis referências
+    delete planejamentoAtual[dia];
+    delete planejamentoAtual[String(dia)];
+    delete planejamentoAtual[parseInt(dia)];
+    
+    // Forçar limpeza de qualquer referência residual
+    Object.keys(planejamentoAtual).forEach(key => {
+        if (key == dia || key === String(dia) || key === parseInt(dia)) {
+            delete planejamentoAtual[key];
+        }
+    });
+    
+    console.log(`[removerTreinoDoDia] Treino removido:`, treinoRemovido);
+    console.log(`[removerTreinoDoDia] Estado após remoção:`, planejamentoAtual);
+
     const dayContent = document.getElementById(`dia-${dia}-content`);
     if (dayContent) {
-        dayContent.innerHTML = `
-            <div class="empty-slot">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14m-7-7h14"/>
-                </svg>
-                <span>Adicionar</span>
-            </div>
+        dayContent.innerHTML = '';
+
+        const addButton = document.createElement('button');
+        addButton.className = 'empty-slot';
+        
+        // CORREÇÃO: Garantir que o botão funcione corretamente após remoção
+        addButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log(`[removerTreinoDoDia] Botão clicado para dia ${dia}`);
+            
+            // NOVA CORREÇÃO: Limpar estado antes de abrir seletor
+            limparEstadoSeletor(dia);
+            
+            if (window.abrirSeletorTreino) {
+                // Aguardar um pouco para garantir que o estado foi limpo
+                setTimeout(() => {
+                    window.abrirSeletorTreino(dia, nomesDiasSemana[dia]);
+                }, 100);
+            } else {
+                console.error('[removerTreinoDoDia] A função abrirSeletorTreino não foi encontrada no window.');
+            }
+        });
+
+        addButton.innerHTML = `
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14m-7-7h14"/>
+            </svg>
+            <span>Adicionar</span>
         `;
+        dayContent.appendChild(addButton);
+    }
+
+    // CORREÇÃO: Aguardar um pouco antes de validar para garantir que o DOM foi atualizado
+    setTimeout(() => {
+        validarPlanejamentoDebounced();
+    }, 150);
+    
+    if (window.showNotification) {
+        const nomeRemovido = treinoRemovido ? treinoRemovido.nome : 'Treino';
+        window.showNotification(`${nomeRemovido} removido de ${nomesDiasSemana[dia]}`, 'info');
     }
     
-    validarPlanejamentoDebounced();
-    if (window.showNotification) {
-        window.showNotification('Treino removido', 'info');
-    }
+    console.log(`[removerTreinoDoDia] Remoção concluída para dia ${dia}`);
 };
 
-// FUNÇÃO PRINCIPAL: Salvar planejamento semanal com validação
-export async function salvarPlanejamentoSemanal() {
+// Salvar planejamento semanal com validação
+async function salvarPlanejamentoSemanal() {
     console.log('[salvarPlanejamentoSemanal] Iniciando salvamento...');
 
     if (!validarPlanejamento()) {
@@ -983,7 +1184,7 @@ export async function salvarPlanejamentoSemanal() {
         userId = currentUser?.id;
         console.log('[salvarPlanejamentoSemanal] UserId obtido do AppState:', userId);
     }
-
+    
     if (!userId) {
         if (window.showNotification) {
             window.showNotification('Erro: usuário não identificado', 'error');
@@ -1015,7 +1216,7 @@ export async function salvarPlanejamentoSemanal() {
         console.log('[salvarPlanejamentoSemanal] Object.keys(planejamentoAtual):', Object.keys(planejamentoAtual));
         console.log('[salvarPlanejamentoSemanal] Object.entries(planejamentoAtual):', Object.entries(planejamentoAtual));
 
-        // Montar objeto indexado para Supabase com validação de numero_treino
+        // Montar objeto indexado para Supabase com validação de semana_referencia
         const planejamentoParaSupabase = {};
         for (let dia = 0; dia < 7; dia++) {
             let treino = null;
@@ -1039,20 +1240,20 @@ export async function salvarPlanejamentoSemanal() {
                 console.log(`[salvarPlanejamentoSemanal] ⚠️ DIA ${dia} - Nenhum treino definido`);
             }
             
-            // Validar numero_treino para treinos musculares
+            // Validar semana_referencia para treinos musculares
             let numeroTreino = null;
             if (treino && (treino.categoria === 'muscular' || treino.categoria === 'treino')) {
-                numeroTreino = treino.numero_treino;
+                numeroTreino = treino.semana_referencia;
                 // Se não foi definido, usar um válido do protocolo
                 if (!numeroTreino) {
                     const { data: protocoloTreinos } = await query('protocolo_treinos', {
                         eq: { protocolo_id: protocoloAtivo.protocolo_treinamento_id },
-                        select: 'numero_treino',
-                        order: { column: 'numero_treino', ascending: true }
+                        select: 'semana_referencia',
+                        order: { column: 'semana_referencia', ascending: true }
                     });
                     
                     if (protocoloTreinos && protocoloTreinos.length > 0) {
-                        const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.numero_treino))];
+                        const treinosDisponiveis = [...new Set(protocoloTreinos.map(pt => pt.semana_referencia))];
                         const treinoIndex = dia % treinosDisponiveis.length;
                         numeroTreino = treinosDisponiveis[treinoIndex] || treinosDisponiveis[0];
                     }
@@ -1063,7 +1264,7 @@ export async function salvarPlanejamentoSemanal() {
                 planejamentoParaSupabase[dia] = {
                     tipo: treino.tipo,
                     categoria: treino.categoria,
-                    numero_treino: numeroTreino,
+                    semana_referencia: numeroTreino,
                     concluido: false
                 };
             }
@@ -1085,7 +1286,7 @@ export async function salvarPlanejamentoSemanal() {
             console.log(`[salvarPlanejamentoSemanal] 📅 DIA ${dia}:`, {
                 tipo: config.tipo,
                 categoria: config.categoria,
-                numero_treino: config.numero_treino,
+                semana_referencia: config.semana_referencia,
                 config_completa: config
             });
         });
@@ -1122,13 +1323,29 @@ export async function salvarPlanejamentoSemanal() {
         AppState.set('weekPlan', planejamentoParaSupabase);
         AppState.set('planSaved', { timestamp: Date.now(), userId });
         
+        // CORREÇÃO: Limpar cache do dashboard antes de recarregar
+        if (window.limparCachesDashboard) {
+            console.log('[salvarPlanejamentoSemanal] Limpando caches do dashboard...');
+            window.limparCachesDashboard();
+        }
+        
         // Forçar atualização imediata dos indicadores na home
-        setTimeout(() => {
-            if (window.carregarIndicadoresSemana) {
-                window.carregarIndicadoresSemana();
-            }
-            if (window.carregarDashboard) {
-                window.carregarDashboard();
+        setTimeout(async () => {
+            try {
+                if (window.carregarDashboard) {
+                    console.log('[salvarPlanejamentoSemanal] Recarregando dashboard...');
+                    await window.carregarDashboard();
+                }
+                if (window.carregarIndicadoresSemana) {
+                    console.log('[salvarPlanejamentoSemanal] Recarregando indicadores...');
+                    await window.carregarIndicadoresSemana();
+                }
+                if (window.atualizarSeletorSemanas) {
+                    console.log('[salvarPlanejamentoSemanal] Atualizando seletor de semanas...');
+                    window.atualizarSeletorSemanas();
+                }
+            } catch (error) {
+                console.warn('[salvarPlanejamentoSemanal] Erro ao recarregar (não crítico):', error);
             }
         }, 100);
         
@@ -1137,7 +1354,7 @@ export async function salvarPlanejamentoSemanal() {
             window.showNotification('✅ Planejamento salvo com sucesso!', 'success');
         }
 
-        // CORREÇÃO PRINCIPAL: Forçar fechamento antes de navegar
+        // CORREÇÃO: Forçar fechamento antes de navegar
         console.log('[salvarPlanejamentoSemanal] Forçando fechamento do modal...');
         forcarFechamentoModal();
         
@@ -1156,17 +1373,15 @@ export async function salvarPlanejamentoSemanal() {
         setTimeout(async () => {
             try {
                 if (window.carregarDashboard) {
+                    console.log('[salvarPlanejamentoSemanal] Recarregando dashboard...');
                     await window.carregarDashboard();
-                    console.log('[salvarPlanejamentoSemanal] Dashboard carregado com sucesso');
                 }
-                
-                // NOVO: Inicializar home com dados dinâmicos
                 if (window.inicializarHome) {
+                    console.log('[salvarPlanejamentoSemanal] Inicializando home...');
                     await window.inicializarHome();
-                    console.log('[salvarPlanejamentoSemanal] Home inicializada com dados dinâmicos');
                 }
-            } catch (dashboardError) {
-                console.warn('[salvarPlanejamentoSemanal] Erro no dashboard (não crítico):', dashboardError);
+            } catch (error) {
+                console.warn('[salvarPlanejamentoSemanal] Erro ao recarregar (não crítico):', error);
             }
         }, 400);
 
@@ -1181,7 +1396,7 @@ export async function salvarPlanejamentoSemanal() {
 }
 
 // Fechar modal de planejamento - VERSÃO CORRIGIDA
-export function fecharModalPlanejamento() {
+function fecharModalPlanejamento() {
     console.log('[fecharModalPlanejamento] Fechando modal...');
     
     // Usar função robusta de fechamento
@@ -1195,7 +1410,7 @@ export function fecharModalPlanejamento() {
 }
 
 // Função para CRIAR novo planejamento
-export async function abrirCriacaoPlanejamento(usuarioId) {
+async function abrirCriacaoPlanejamento(usuarioId) {
     console.log('[abrirCriacaoPlanejamento] Criando novo planejamento para usuário:', usuarioId);
     
     try {
@@ -1223,10 +1438,7 @@ export async function abrirCriacaoPlanejamento(usuarioId) {
                 position: window.getComputedStyle(modal).position
             });
             
-            modal.style.display = 'flex';
-            modal.style.visibility = 'visible';
-            modal.style.opacity = '1';
-            modal.style.zIndex = '9999';
+            modal.classList.add('visible');
             document.body.style.overflow = 'hidden';
             
             console.log('[abrirCriacaoPlanejamento] Estado final do modal:', {
@@ -1259,7 +1471,7 @@ export async function abrirCriacaoPlanejamento(usuarioId) {
 }
 
 // Função para EDITAR planejamento existente
-export async function abrirEdicaoPlanejamento(usuarioId) {
+async function abrirEdicaoPlanejamento(usuarioId) {
     console.log('[abrirEdicaoPlanejamento] Editando planejamento para usuário:', usuarioId);
     
     try {
@@ -1313,7 +1525,7 @@ export async function abrirEdicaoPlanejamento(usuarioId) {
 }
 
 // Função auxiliar para detectar e abrir o tipo correto
-export async function abrirModalPlanejamento(usuarioId) {
+async function abrirModalPlanejamento(usuarioId) {
     console.log('[abrirModalPlanejamento] Detectando tipo de abertura para usuário:', usuarioId);
     
     try {
@@ -1336,22 +1548,47 @@ export async function abrirModalPlanejamento(usuarioId) {
 }
 
 // Função para verificar se precisa de planejamento
-export async function needsWeekPlanningAsync(userId) {
+async function needsWeekPlanningAsync(userId) {
     return await WeeklyPlanService.needsPlanning(userId);
 }
 
 // Exportar função removerTreinoDoDia para compatibilidade
-export const removerTreinoDoDia = window.removerTreinoDoDia;
+// Disponibilizar função para compatibilidade
+window.inicializarPlanejamento = inicializarPlanejamento;
+window.salvarPlanejamentoSemanal = salvarPlanejamentoSemanal;
+window.fecharModalPlanejamento = fecharModalPlanejamento;
+window.abrirCriacaoPlanejamento = abrirCriacaoPlanejamento;
+window.abrirEdicaoPlanejamento = abrirEdicaoPlanejamento;
+window.abrirModalPlanejamento = abrirModalPlanejamento;
+window.needsWeekPlanningAsync = needsWeekPlanningAsync;
 
 // Função global para compatibilidade com o template
 window.salvarPlanejamento = async function() {
     console.log('[window.salvarPlanejamento] Função chamada!');
+    
+    // Adicionar feedback visual no botão
+    const botaoSalvar = document.querySelector('.btn-save-plan, [onclick*="salvarPlanejamento"], button[onclick*="salvarPlanejamento"]');
+    if (botaoSalvar) {
+        botaoSalvar.disabled = true;
+        botaoSalvar.textContent = 'Salvando...';
+        botaoSalvar.style.opacity = '0.7';
+    }
+    
     try {
+        console.log('[window.salvarPlanejamento] Chamando salvarPlanejamentoSemanal...');
         await salvarPlanejamentoSemanal();
+        console.log('[window.salvarPlanejamento] salvarPlanejamentoSemanal concluída com sucesso!');
     } catch (error) {
         console.error('[window.salvarPlanejamento] Erro:', error);
         if (window.showNotification) {
             window.showNotification('Erro ao salvar: ' + error.message, 'error');
+        }
+    } finally {
+        // Restaurar botão
+        if (botaoSalvar) {
+            botaoSalvar.disabled = false;
+            botaoSalvar.textContent = 'Salvar Planejamento';
+            botaoSalvar.style.opacity = '1';
         }
     }
 };
@@ -1418,75 +1655,311 @@ window.debugPlanejamento = function() {
 // Função global para forçar fechamento (para emergências)
 window.forcarFechamentoModal = forcarFechamentoModal;
 
-// Função de debug simplificada para testar inserção direta na tabela planejamento_semanal
-window.testInsercaoDireta = async function() {
-    console.log('[testInsercaoDireta] 🧪 TESTE DE INSERÇÃO DIRETA');
+// Função de debug para diagnosticar problemas de seleção de grupos musculares
+window.debugPlanejamentoSemanal = function() {
+    console.log('=== DEBUG PLANEJAMENTO SEMANAL ===');
+    console.log('Estado atual do planejamento:', planejamentoAtual);
+    console.log('Chaves do planejamento:', Object.keys(planejamentoAtual));
+    console.log('Valores do planejamento:', Object.values(planejamentoAtual));
+    
+    // Verificar duplicatas
+    const tiposUsados = {};
+    Object.entries(planejamentoAtual).forEach(([dia, treino]) => {
+        if (treino && treino.tipo) {
+            tiposUsados[treino.tipo] = (tiposUsados[treino.tipo] || 0) + 1;
+        }
+    });
+    
+    console.log('Tipos de treino por dia:', tiposUsados);
+    
+    // Identificar duplicatas
+    const duplicatas = Object.entries(tiposUsados).filter(([tipo, dias]) => dias.length > 1);
+    if (duplicatas.length > 0) {
+        console.warn('⚠️ DUPLICATAS ENCONTRADAS:', duplicatas);
+    } else {
+        console.log('✅ Nenhuma duplicata encontrada');
+    }
+    
+    // Verificar estado dos botões
+    const botoesSelecao = document.querySelectorAll('[onclick*="abrirSeletorTreino"]');
+    console.log('Botões de seleção encontrados:', botoesSelecao.length);
+    
+    botoesSelecao.forEach((btn, index) => {
+        console.log(`Botão ${index}:`, {
+            disabled: btn.disabled,
+            text: btn.textContent?.trim(),
+            onclick: btn.onclick?.toString().substring(0, 50) + '...'
+        });
+    });
+    
+    console.log('================================');
+    
+    return {
+        planejamentoAtual,
+        tiposUsados,
+        duplicatas,
+        totalBotoes: botoesSelecao.length
+    };
+};
+
+// Função de correção automática para problemas de estado inconsistente no planejamento
+window.corrigirEstadoPlanejamento = function() {
+    console.log('[corrigirEstadoPlanejamento] 🔧 INICIANDO CORREÇÃO AUTOMÁTICA');
+    
+    let correcoesFeiras = 0;
+    
+    // 1. Limpar chaves duplicadas ou inválidas
+    const chavesValidas = ['0', '1', '2', '3', '4', '5', '6', 0, 1, 2, 3, 4, 5, 6];
+    const chavesParaRemover = Object.keys(planejamentoAtual).filter(chave => 
+        !chavesValidas.includes(chave) && !chavesValidas.includes(parseInt(chave))
+    );
+    
+    chavesParaRemover.forEach(chave => {
+        console.log(`[corrigirEstadoPlanejamento] Removendo chave inválida: ${chave}`);
+        delete planejamentoAtual[chave];
+        correcoesFeiras++;
+    });
+    
+    // 2. Normalizar chaves para números
+    const planejamentoNormalizado = {};
+    Object.entries(planejamentoAtual).forEach(([dia, treino]) => {
+        const diaNumerico = parseInt(dia);
+        if (diaNumerico >= 0 && diaNumerico <= 6) {
+            planejamentoNormalizado[diaNumerico] = treino;
+        }
+    });
+    
+    // 3. Detectar e resolver duplicatas de grupos musculares
+    const tiposUsados = {};
+    Object.entries(planejamentoNormalizado).forEach(([dia, treino]) => {
+        if (treino && treino.tipo) {
+            tiposUsados[treino.tipo] = (tiposUsados[treino.tipo] || 0) + 1;
+        }
+    });
+
+    // Resolver duplicatas mantendo apenas a primeira ocorrência
+    Object.entries(tiposUsados).forEach(([tipo, dias]) => {
+        if (dias.length > 1) {
+            console.log(`[corrigirEstadoPlanejamento] ⚠️ Duplicata encontrada para ${tipo} nos dias: ${dias.join(', ')}`);
+            // Manter apenas o primeiro dia, remover os outros
+            for (let i = 1; i < dias.length; i++) {
+                console.log(`[corrigirEstadoPlanejamento] Removendo duplicata de ${tipo} do dia ${dias[i]}`);
+                delete planejamentoNormalizado[dias[i]];
+                correcoesFeiras++;
+            }
+        }
+    });
+    
+    // 4. Atualizar o planejamento global
+    Object.keys(planejamentoAtual).forEach(key => delete planejamentoAtual[key]);
+    Object.assign(planejamentoAtual, planejamentoNormalizado);
+    
+    // 5. Reabilitar todos os botões de seleção
+    const botoesParaHabilitar = document.querySelectorAll(
+        'button, .btn, .day-card button, .empty-slot, .treino-assigned button, .btn-outline-primary, [onclick*="abrirSeletorTreino"]'
+    );
+    botoesParaHabilitar.forEach(btn => {
+        if (btn.hasAttribute('data-disabled-by-modal') || btn.disabled) {
+            btn.disabled = false;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+            btn.removeAttribute('data-disabled-by-modal');
+            console.log('[corrigirEstadoPlanejamento] Botão habilitado:', btn.className);
+        }
+    });
+    
+    // 6. Limpar cache de validação
+    if (validarPlanejamento._cachedElements) {
+        validarPlanejamento._cachedElements = null;
+    }
+    
+    // Limpar outros caches que podem estar causando problemas
+    if (window.abrirSeletorTreino._cached) {
+        window.abrirSeletorTreino._cached = null;
+    }
+    
+    // 7. Forçar revalidação
+    setTimeout(() => {
+        validarPlanejamentoDebounced();
+    }, 100);
+    
+    console.log('[corrigirEstadoPlanejamento] ✅ CORREÇÃO CONCLUÍDA! ${correcoesFeiras} problemas corrigidos');
+    console.log('[corrigirEstadoPlanejamento] Estado final:', planejamentoAtual);
+    
+    if (window.showNotification) {
+        window.showNotification(`✅ Estado corrigido! ${correcoesFeiras} problemas resolvidos`, 'success');
+    }
+    
+    return {
+        correcoesFeiras,
+        estadoFinal: planejamentoAtual,
+        tiposUsados: Object.keys(tiposUsados)
+    };
+};
+
+// Função para diagnosticar problema de semana
+window.diagnosticarProblemaSemanea = async function() {
+    console.log('[diagnosticarProblemaSemanea] 🔍 VERIFICANDO PROBLEMA DE SEMANA');
     
     try {
-        const currentUser = AppState.get('currentUser');
-        if (!currentUser || !currentUser.id) {
-            console.error('[testInsercaoDireta] ❌ Usuário não encontrado');
-            return { success: false, error: 'Usuário não encontrado' };
+        const userId = AppState.get('currentUser')?.id;
+        if (!userId) {
+            console.error('[diagnosticarProblemaSemanea] Usuário não encontrado');
+            return;
         }
         
-        // Importar supabase diretamente para teste
-        const { supabase } = await import('../services/supabaseService.js');
+        // 1. Verificar d_calendario para semana atual real
+        const { data: calendarioAtual } = await query('d_calendario', {
+            eq: { eh_semana_atual: true },
+            limit: 1
+        });
         
-        // Dados de teste simples para inserção direta
-        const registro = {
-            usuario_id: currentUser.id,
-            ano: 2025,
-            semana: 1,
-            dia_semana: 1, // Segunda-feira
-            tipo_atividade: 'teste_direto',
-            numero_treino: null,
-            concluido: false
-        };
+        console.log('[diagnosticarProblemaSemanea] 📅 Calendário atual:', calendarioAtual);
         
-        console.log('[testInsercaoDireta] 📋 Dados para inserir:', registro);
+        // 2. Verificar usuario_plano_treino
+        const { data: planoUsuario } = await query('usuario_plano_treino', {
+            eq: { 
+                usuario_id: userId,
+                status: 'ativo'
+            },
+            limit: 1
+        });
         
-        // Tentar inserir diretamente
-        const { data, error } = await supabase
-            .from('planejamento_semanal')
-            .insert(registro)
-            .select();
+        console.log('[diagnosticarProblemaSemanea] 👤 Plano usuário:', planoUsuario);
+        
+        // 3. MUDANÇA: Verificar planejamento baseado na semana individual do usuário
+        const semanaUsuario = planoUsuario?.[0]?.semana_atual;
+        if (semanaUsuario) {
+            const { data: planejamentoAtual } = await query('planejamento_semanal', {
+                eq: { 
+                    usuario_id: userId,
+                    // Buscar dados da semana do protocolo do usuário
+                    ano: new Date().getFullYear(),
+                    semana: semanaUsuario // MUDANÇA: Usar semana individual do usuário
+                }
+            });
             
-        if (error) {
-            console.error('[testInsercaoDireta] ❌ ERRO:', error);
+            console.log('[diagnosticarProblemaSemanea] 📋 Planejamento semana usuário:', planejamentoAtual);
+        }
+        
+        // 4. MUDANÇA: Diagnóstico atualizado - não comparar mais com calendário global
+        const semanaCalendario = calendarioAtual?.[0]?.semana_treino; // Apenas para referência
+        
+        console.log('[diagnosticarProblemaSemanea] 🎯 DIAGNÓSTICO ATUALIZADO:');
+        console.log('- Semana individual do usuário (ATUAL):', semanaUsuario);
+        console.log('- Semana global do calendário (OBSOLETA):', semanaCalendario);
+        console.log('- 📝 NOTA: Sistema agora usa progressão individual, não semana global');
+        
+        // MUDANÇA: Não tratar diferença como problema - é normal agora
+        if (semanaUsuario !== semanaCalendario) {
+            console.log('[diagnosticarProblemaSemanea] ✅ DIFERENÇA NORMAL: Cada usuário tem sua própria progressão');
+            
             if (window.showNotification) {
-                window.showNotification('❌ Erro na inserção: ' + error.message, 'error');
+                window.showNotification(`✅ Sistema atualizado: Usuário está na semana ${semanaUsuario} do seu protocolo`, 'info');
             }
-            return { success: false, error: error.message };
+            
+            return {
+                problema: false, // MUDANÇA: Não é mais um problema
+                semanaUsuario,
+                semanaCalendario,
+                planoUsuario: planoUsuario?.[0],
+                calendarioAtual: calendarioAtual?.[0],
+                nota: 'Sistema usa progressão individual - diferença é normal'
+            };
+        } else {
+            console.log('[diagnosticarProblemaSemanea] ✅ Semanas alinhadas');
+            if (window.showNotification) {
+                window.showNotification('✅ Semanas estão alinhadas', 'success');
+            }
+            return { problema: false };
         }
-        
-        console.log('[testInsercaoDireta] ✅ SUCESSO! Dados inseridos:', data);
-        
-        // Limpar o registro de teste
-        if (data && data[0] && data[0].id) {
-            console.log('[testInsercaoDireta] 🧹 Limpando registro de teste...');
-            await supabase
-                .from('planejamento_semanal')
-                .delete()
-                .eq('id', data[0].id);
-            console.log('[testInsercaoDireta] ✅ Registro de teste removido');
-        }
-        
-        if (window.showNotification) {
-            window.showNotification('✅ Teste de inserção direta PASSOU!', 'success');
-        }
-        
-        return { success: true, data };
         
     } catch (error) {
-        console.error('[testInsercaoDireta] ❌ ERRO CRÍTICO:', error);
+        console.error('[diagnosticarProblemaSemanea] Erro:', error);
         if (window.showNotification) {
-            window.showNotification('❌ Erro crítico: ' + error.message, 'error');
+            window.showNotification('Erro ao diagnosticar: ' + error.message, 'error');
         }
-        return { success: false, error: error.message };
     }
 };
 
-// Função de debug para testar salvamento no Supabase
+// Função para corrigir problema de semana
+window.corrigirProblemaSemanea = async function() {
+    console.log('[corrigirProblemaSemanea] 🔧 CORRIGINDO PROBLEMA DE SEMANA');
+    
+    try {
+        const userId = AppState.get('currentUser')?.id;
+        if (!userId) {
+            console.error('[corrigirProblemaSemanea] Usuário não encontrado');
+            return;
+        }
+        
+        // 1. MUDANÇA: Não usar mais semana global do calendário
+        // A semana correta agora é baseada na progressão individual do usuário
+        console.log('[corrigirProblemaSemanea] ⚠️ FUNÇÃO DESATUALIZADA: Semana não é mais global');
+        console.log('[corrigirProblemaSemanea] 📝 Use a progressão individual do usuário em usuario_plano_treino.semana_atual');
+        
+        // Obter protocolo ativo do usuário
+        const { data: protocoloAtivo } = await query('usuario_plano_treino', {
+            eq: { usuario_id: userId, status: 'ativo' },
+            limit: 1
+        });
+        
+        if (!protocoloAtivo || protocoloAtivo.length === 0) {
+            console.error('[corrigirProblemaSemanea] Usuário não tem protocolo ativo');
+            return;
+        }
+        
+        const semanaCorreta = protocoloAtivo[0].semana_atual;
+        console.log('[corrigirProblemaSemanea] 📊 Semana atual do usuário:', semanaCorreta);
+        
+        // 2. Atualizar usuario_plano_treino
+        const { supabase } = await import('../services/supabaseService.js');
+        const { data, error } = await supabase
+            .from('usuario_plano_treino')
+            .update({ semana_atual: semanaCorreta })
+            .eq('usuario_id', userId)
+            .eq('status', 'ativo')
+            .select();
+            
+        if (error) {
+            console.error('[corrigirProblemaSemanea] Erro ao atualizar:', error);
+            if (window.showNotification) {
+                window.showNotification('Erro ao corrigir: ' + error.message, 'error');
+            }
+            return;
+        }
+        
+        console.log('[corrigirProblemaSemanea] ✅ Semana corrigida:', data);
+        
+        if (window.showNotification) {
+            window.showNotification(`✅ Semana corrigida para ${semanaCorreta}!`, 'success');
+        }
+        
+        // 3. Forçar recarregamento dos dados
+        if (window.limparCachesDashboard) {
+            window.limparCachesDashboard();
+        }
+        
+        setTimeout(async () => {
+            if (window.carregarDashboard) {
+                await window.carregarDashboard();
+            }
+            if (window.carregarIndicadoresSemana) {
+                await window.carregarIndicadoresSemana();
+            }
+        }, 200);
+        
+        return { success: true, semanaCorrigida: semanaCorreta };
+        
+    } catch (error) {
+        console.error('[corrigirProblemaSemanea] Erro:', error);
+        if (window.showNotification) {
+            window.showNotification('Erro ao corrigir: ' + error.message, 'error');
+        }
+    }
+};
+
+// Função para testar salvamento no Supabase
 window.testSalvamentoSupabase = async function() {
     console.log('[testSalvamentoSupabase] 🧪 INICIANDO TESTE DE SALVAMENTO');
     
@@ -1501,10 +1974,10 @@ window.testSalvamentoSupabase = async function() {
         
         // Dados de teste simples
         const dadosTeste = {
-            0: { tipo: 'Peito', categoria: 'muscular', numero_treino: 1, concluido: false },
-            2: { tipo: 'Costas', categoria: 'muscular', numero_treino: 2, concluido: false },
-            4: { tipo: 'Pernas', categoria: 'muscular', numero_treino: 3, concluido: false },
-            5: { tipo: 'Cardio', categoria: 'cardio', numero_treino: null, concluido: false }
+            0: { tipo: 'Peito', categoria: 'muscular', semana_referencia: 1, concluido: false },
+            2: { tipo: 'Costas', categoria: 'muscular', semana_referencia: 2, concluido: false },
+            4: { tipo: 'Pernas', categoria: 'muscular', semana_referencia: 3, concluido: false },
+            5: { tipo: 'Cardio', categoria: 'cardio', semana_referencia: null, concluido: false }
         };
         
         console.log('[testSalvamentoSupabase] 📋 Dados de teste:', dadosTeste);
@@ -1512,8 +1985,8 @@ window.testSalvamentoSupabase = async function() {
         // Testar salvamento
         const resultado = await WeeklyPlanService.savePlan(currentUser.id, dadosTeste);
         
-        console.log('[testSalvamentoSupabase] 📥 Resultado:', resultado);
-        
+        console.log('[testSalvamentoSupabase] 📥 Resultado retornado:', resultado);
+
         if (resultado.success) {
             console.log('[testSalvamentoSupabase] ✅ TESTE PASSOU! Dados salvos com sucesso');
             if (window.showNotification) {
@@ -1532,87 +2005,6 @@ window.testSalvamentoSupabase = async function() {
         console.error('[testSalvamentoSupabase] ❌ ERRO CRÍTICO:', error);
         if (window.showNotification) {
             window.showNotification('❌ Erro crítico no teste: ' + error.message, 'error');
-        }
-        return { success: false, error: error.message };
-    }
-};
-
-// Função para verificar acesso à tabela planejamento_semanal
-window.verificarAcessoTabelaPlanejamento = async function() {
-    console.log('[verificarAcessoTabelaPlanejamento] 🔍 VERIFICANDO ACESSO À TABELA');
-    
-    try {
-        // Importar supabase diretamente
-        const { supabase } = await import('../services/supabaseService.js');
-        
-        console.log('[verificarAcessoTabelaPlanejamento] 📊 Testando SELECT na tabela...');
-        
-        // Tentar fazer um select simples para verificar acesso
-        const { data, error } = await supabase
-            .from('planejamento_semanal')
-            .select('*')
-            .limit(1);
-            
-        if (error) {
-            console.error('[verificarAcessoTabelaPlanejamento] ❌ ERRO no SELECT:', error);
-            if (window.showNotification) {
-                window.showNotification('❌ Erro de acesso à tabela: ' + error.message, 'error');
-            }
-            return { success: false, error: error.message };
-        }
-        
-        console.log('[verificarAcessoTabelaPlanejamento] ✅ ACESSO OK! Dados encontrados:', data);
-        if (window.showNotification) {
-            window.showNotification('✅ Acesso à tabela OK!', 'success');
-        }
-        
-        // Testar também INSERT
-        console.log('[verificarAcessoTabelaPlanejamento] 🧪 Testando INSERT...');
-        const dadosTeste = {
-            usuario_id: 999999, // ID fictício para teste
-            ano: 2023,
-            semana: 99,
-            dia_semana: 1,
-            tipo_atividade: 'teste',
-            numero_treino: null,
-            concluido: false
-        };
-        
-        const { data: insertData, error: insertError } = await supabase
-            .from('planejamento_semanal')
-            .insert(dadosTeste)
-            .select();
-            
-        if (insertError) {
-            console.error('[verificarAcessoTabelaPlanejamento] ❌ ERRO no INSERT:', insertError);
-            if (window.showNotification) {
-                window.showNotification('❌ Erro de INSERT na tabela: ' + insertError.message, 'error');
-            }
-            return { success: false, error: insertError.message, step: 'insert' };
-        }
-        
-        console.log('[verificarAcessoTabelaPlanejamento] ✅ INSERT OK! Dados inseridos:', insertData);
-        
-        // Limpar o registro de teste
-        if (insertData && insertData[0] && insertData[0].id) {
-            console.log('[verificarAcessoTabelaPlanejamento] 🧹 Limpando registro de teste...');
-            await supabase
-                .from('planejamento_semanal')
-                .delete()
-                .eq('id', insertData[0].id);
-            console.log('[verificarAcessoTabelaPlanejamento] ✅ Registro de teste removido');
-        }
-        
-        if (window.showNotification) {
-            window.showNotification('✅ Todos os testes de acesso PASSARAM!', 'success');
-        }
-        
-        return { success: true, message: 'Acesso total à tabela confirmado' };
-        
-    } catch (error) {
-        console.error('[verificarAcessoTabelaPlanejamento] ❌ ERRO CRÍTICO:', error);
-        if (window.showNotification) {
-            window.showNotification('❌ Erro crítico: ' + error.message, 'error');
         }
         return { success: false, error: error.message };
     }
@@ -1707,6 +2099,6 @@ window.diagnosticoCompletoSalvamento = async function() {
         if (window.showNotification) {
             window.showNotification('❌ Erro crítico no diagnóstico: ' + error.message, 'error');
         }
-        return { success: false, error: error.message, resultados };
+        return { success: false, error: error.message, resultados: [] };
     }
 };

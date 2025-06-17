@@ -7,7 +7,12 @@ class AppStateManager {
             currentUser: null,
             currentWorkout: null,
             weekPlan: null,
-            userMetrics: null
+            userMetrics: null,
+            weekNavigation: {
+                currentWeek: null,
+                viewingWeek: null,
+                isViewingCurrent: true
+            }
         };
         
         this.listeners = new Map();
@@ -104,6 +109,12 @@ class AppStateManager {
     get weekPlan() { return this.state.weekPlan; }
     get users() { return this.state.users; }
     
+    // Week Navigation getters
+    get weekNavigation() { return this.state.weekNavigation; }
+    get currentWeek() { return this.state.weekNavigation.currentWeek; }
+    get viewingWeek() { return this.state.weekNavigation.viewingWeek; }
+    get isViewingCurrentWeek() { return this.state.weekNavigation.isViewingCurrent; }
+    
     // Verifica se há usuário logado
     get isLoggedIn() {
         return this.state.currentUser !== null;
@@ -112,6 +123,33 @@ class AppStateManager {
     // Verifica se há treino em andamento
     get isWorkoutActive() {
         return this.state.currentWorkout !== null && this.state.workoutStartTime !== null;
+    }
+    
+    // Métodos para navegação de semanas
+    setCurrentWeek(ano, semana) {
+        this.update('weekNavigation', {
+            currentWeek: { ano, semana }
+        });
+    }
+    
+    setViewingWeek(ano, semana) {
+        const isCurrentWeek = this.state.weekNavigation.currentWeek && 
+                              this.state.weekNavigation.currentWeek.ano === ano && 
+                              this.state.weekNavigation.currentWeek.semana === semana;
+        
+        this.update('weekNavigation', {
+            viewingWeek: { ano, semana },
+            isViewingCurrent: isCurrentWeek
+        });
+    }
+    
+    goToCurrentWeek() {
+        if (this.state.weekNavigation.currentWeek) {
+            this.setViewingWeek(
+                this.state.weekNavigation.currentWeek.ano,
+                this.state.weekNavigation.currentWeek.semana
+            );
+        }
     }
 }
 

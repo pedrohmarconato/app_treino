@@ -1,5 +1,6 @@
 // Serviço para gerenciar finalização manual de treinos
 import { supabase } from './supabaseService.js';
+import WeeklyPlanService from './weeklyPlanningService.js';
 import TreinoExecutladoService from './treinoExecutadoService.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 
@@ -94,8 +95,7 @@ export class TreinoFinalizacaoService {
             const hoje = new Date();
             const ano = hoje.getFullYear();
             const semana = this.calcularSemana(hoje);
-            const { dayToDb } = await import('./weeklyPlanningService.js');
-            const diaSemana = dayToDb(hoje.getDay());
+            const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
             
             // Verificar no planejamento_semanal
             const { data: planejamento } = await supabase
@@ -245,8 +245,7 @@ export class TreinoFinalizacaoService {
         try {
             const ano = dataFinalizacao.getFullYear();
             const semana = this.calcularSemana(dataFinalizacao);
-            const { dayToDb } = await import('./weeklyPlanningService.js');
-            const diaSemana = dayToDb(dataFinalizacao.getDay());
+            const diaSemana = WeeklyPlanService.dayToDb(dataFinalizacao.getDay());
             
             const updateData = {
                 concluido: true,

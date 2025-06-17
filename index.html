@@ -38,6 +38,7 @@
     
     <!-- Estilos do Workout Execution -->
     <link rel="stylesheet" href="./styles/workoutExecution.css">
+    <link rel="stylesheet" href="./styles/planning.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="./favicon.png">
@@ -83,10 +84,10 @@
         });
     </script>
     
-    <!-- PWA Service Worker -->
+    <!-- PWA Service Worker (desativado em localhost para evitar erros de cache) -->
     <script>
         // Registrar Service Worker para PWA
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && !(location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
             window.addEventListener('load', async () => {
                 try {
                     const registration = await navigator.serviceWorker.register('/sw.js', {

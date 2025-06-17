@@ -5,6 +5,7 @@
 
 import { query, insert, update, supabase } from './supabaseService.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
+import { CalendarioService } from './calendarioService.js';
 
 // Verifica se a semana já está programada para o usuário e semana_treino
 function verificarSemanaJaProgramada(userId, semanaTreino) {
@@ -69,14 +70,31 @@ import { fetchExerciciosTreino, carregarPesosSugeridos } from './workoutService.
 // }
 
 class WeeklyPlanService {
-    // Converter dia JS (0-6) para dia DB (1-7)
+    // Converter dia JS (0-6) para dia DB (1-7) - CORRIGIDO
     static dayToDb(jsDay) {
-        return jsDay === 0 ? 7 : jsDay;
+        // Validar entrada
+        if (jsDay === null || jsDay === undefined || isNaN(jsDay)) {
+            console.error('[dayToDb] Valor inválido recebido:', jsDay);
+            return 7; // Default para domingo (7 no DB)
+        }
+        const numDay = parseInt(jsDay);
+        if (numDay < 0 || numDay > 6) {
+            console.error('[dayToDb] Dia fora do range 0-6:', numDay);
+            return 7; // Default para domingo (7 no DB)
+        }
+        
+        // JS usa 0-6 (Domingo=0, Segunda=1)
+        // DB usa 1-7 (Segunda=1, Domingo=7)
+        if (numDay === 0) return 7; // Domingo: 0 → 7
+        return numDay; // Segunda-Sábado: 1-6 → 1-6
     }
-    
-    // Converter dia DB (1-7) para dia JS (0-6)
+
+    // Converter dia DB (1-7) para dia JS (0-6) - CORRIGIDO
     static dbToDay(dbDay) {
-        return dbDay === 7 ? 0 : dbDay;
+        // DB usa 1-7 (Segunda=1, Domingo=7)
+        // JS usa 0-6 (Domingo=0, Segunda=1)
+        if (dbDay === 7) return 0; // Domingo: 7 → 0
+        return dbDay; // Segunda-Sábado: 1-6 → 1-6
     }
     
     // Helpers de data
@@ -88,19 +106,40 @@ class WeeklyPlanService {
         };
     }
     
+    // Calcular número da semana do ano (domingo = 0, sábado = 6)
     static getWeekNumber(date) {
-        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-        const dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        // Semana começa no domingo (0)
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
     }
 
     // ==================== OPERAÇÕES PRINCIPAIS ====================
     
-    // Salvar plano completo
+    // Salvar plano completo - REFATORADO PARA USAR SEMANA DO PROTOCOLO
     static async savePlan(userId, plan) {
-        const { ano, semana } = this.getCurrentWeek();
+        // MUDANÇA: Buscar semana do protocolo diretamente
+        let ano = new Date().getFullYear();
+        let semana = 1;
+        
+        try {
+            const { data: protocolosAtivos } = await query('usuario_plano_treino', {
+                eq: { 
+                    usuario_id: userId,
+                    status: 'ativo'
+                },
+                limit: 1
+            });
+            
+            if (protocolosAtivos && protocolosAtivos.length > 0) {
+                semana = protocolosAtivos[0].semana_atual || 1;
+                console.log('[WeeklyPlanService.savePlan] 🔄 NOVA LÓGICA: Salvando para semana do protocolo:', { semana, protocoloId: protocolosAtivos[0].protocolo_treinamento_id });
+            } else {
+                console.warn('[WeeklyPlanService.savePlan] ⚠️ Protocolo não encontrado, usando semana 1');
+            }
+        } catch (error) {
+            console.error('[WeeklyPlanService.savePlan] ❌ Erro ao buscar protocolo:', error);
+        }
         
         try {
             console.log('[WeeklyPlanService.savePlan] 🚀 INICIANDO SALVAMENTO COMPLETO');
@@ -176,8 +215,8 @@ class WeeklyPlanService {
         }
     }
     
-    // Buscar plano atual com fallback robusto
-    static async getPlan(userId, useCache = true) {
+    // Buscar plano atual com fallback robusto - REFATORADO PARA USAR SEMANA DO PROTOCOLO
+    static async getPlan(userId, useCache = true, ano = null, semana = null) {
         console.log('[WeeklyPlanService.getPlan] 🔍 INICIANDO busca do plano para usuário:', userId);
         
         if (!userId) {
@@ -185,12 +224,45 @@ class WeeklyPlanService {
             return null;
         }
         
-        const { ano, semana } = this.getCurrentWeek();
-        console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana:', { ano, semana });
+        // MUDANÇA: Se não especificado, usar semana do protocolo do usuário
+        if (!ano || !semana) {
+            // Buscar protocolo ativo do usuário diretamente aqui
+            try {
+                const { data: protocolosAtivos } = await query('usuario_plano_treino', {
+                    eq: { 
+                        usuario_id: userId,
+                        status: 'ativo'
+                    },
+                    limit: 1
+                });
+                
+                if (protocolosAtivos && protocolosAtivos.length > 0) {
+                    ano = new Date().getFullYear();
+                    semana = protocolosAtivos[0].semana_atual || 1;
+                    console.log('[WeeklyPlanService.getPlan] 🔄 NOVA LÓGICA: Usando semana do protocolo:', { semana, protocoloId: protocolosAtivos[0].protocolo_treinamento_id });
+                } else {
+                    // Fallback para semana atual do calendário
+                    const current = this.getCurrentWeek();
+                    ano = current.ano;
+                    semana = current.semana;
+                    console.log('[WeeklyPlanService.getPlan] ⚠️ FALLBACK: Protocolo não encontrado, usando semana do calendário:', { ano, semana });
+                }
+            } catch (error) {
+                console.error('[WeeklyPlanService.getPlan] ❌ Erro ao buscar protocolo:', error);
+                // Fallback para semana atual do calendário
+                const current = this.getCurrentWeek();
+                ano = current.ano;
+                semana = current.semana;
+                console.log('[WeeklyPlanService.getPlan] ⚠️ FALLBACK: Erro, usando semana do calendário:', { ano, semana });
+            }
+        }
+        
+        console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana do protocolo:', { ano, semana });
         
         // 1. Tentar cache local primeiro (se habilitado)
+        const cacheKey = `${userId}-${ano}-${semana}`;
         if (useCache) {
-            const cached = this.getFromLocal(userId);
+            const cached = this.getFromLocal(cacheKey);
             if (cached) {
                 console.log('[WeeklyPlanService.getPlan] ✅ Dados do cache:', cached);
                 return cached;
@@ -256,7 +328,7 @@ class WeeklyPlanService {
             }
             
             // 6. Salvar no cache
-            this.saveToLocal(userId, plan);
+            this.saveToLocal(cacheKey, plan);
             console.log('[WeeklyPlanService.getPlan] ✅ Plano carregado com sucesso:', plan);
             
             return plan;
@@ -264,7 +336,7 @@ class WeeklyPlanService {
         } catch (error) {
             console.error('[WeeklyPlanService.getPlan] ❌ ERRO CRÍTICO:', error);
             // Fallback para cache em caso de erro
-            const cachedPlan = this.getFromLocal(userId);
+            const cachedPlan = this.getFromLocal(cacheKey);
             if (cachedPlan) {
                 console.log('[WeeklyPlanService.getPlan] 🔄 Usando cache como fallback');
                 return cachedPlan;
@@ -440,49 +512,85 @@ class WeeklyPlanService {
 
     // ==================== CACHE LOCALSTORAGE ====================
     
-    // Helpers localStorage
-    static getLocalKey(userId) {
-        const { ano, semana } = this.getCurrentWeek();
+    // Helpers localStorage - CORRIGIDO para usar semana específica
+    static getLocalKey(userId, ano = null, semana = null) {
+        if (!ano || !semana) {
+            const current = this.getCurrentWeek();
+            ano = current.ano;
+            semana = current.semana;
+        }
         return `weekPlan_${userId}_${ano}_${semana}`;
     }
     
-    static saveToLocal(userId, plan) {
+    static saveToLocal(cacheKey, plan) {
         try {
-            localStorage.setItem(this.getLocalKey(userId), JSON.stringify(plan));
+            localStorage.setItem(cacheKey, JSON.stringify(plan));
         } catch (e) {
             console.warn('[WeeklyPlanService] Erro ao salvar cache:', e);
         }
     }
     
-    static getFromLocal(userId) {
+    static getFromLocal(cacheKey) {
         try {
-            const data = localStorage.getItem(this.getLocalKey(userId));
+            const data = localStorage.getItem(cacheKey);
             return data ? JSON.parse(data) : null;
         } catch (e) {
             return null;
         }
     }
     
-    static clearLocal(userId) {
+    static clearLocal(userId, ano = null, semana = null) {
         try {
-            localStorage.removeItem(this.getLocalKey(userId));
+            const key = this.getLocalKey(userId, ano, semana);
+            localStorage.removeItem(key);
         } catch (e) {}
+    }
+    
+    // Limpar todo o cache
+    static clearCache() {
+        try {
+            // Remover itens que começam com 'weeklyPlan_'
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('weeklyPlan_')) {
+                    localStorage.removeItem(key);
+                }
+            }
+            console.log('[WeeklyPlanService] Cache limpo');
+        } catch (e) {
+            console.warn('[WeeklyPlanService] Erro ao limpar cache:', e);
+        }
     }
 
     // ==================== FUNCIONALIDADES AVANÇADAS ====================
     
-    // Buscar treino do dia com fallback robusto
+    // Buscar treino do dia com fallback robusto - CORRIGIDO PARA USAR SEMANA DO PROTOCOLO
     static async getTodaysWorkout(userId) {
         if (!userId) {
             console.error('[getTodaysWorkout] ❌ userId é obrigatório');
             return null;
         }
         
+        // MUDANÇA: Obter semana do protocolo em vez da semana do calendário
+        const { data: protocolosAtivos } = await query('usuario_plano_treino', {
+            eq: { 
+                usuario_id: userId,
+                status: 'ativo'
+            },
+            limit: 1
+        });
+        
+        if (!protocolosAtivos || protocolosAtivos.length === 0) {
+            console.error('[getTodaysWorkout] ❌ Usuário sem protocolo ativo');
+            return null;
+        }
+        
         const hoje = new Date().getDay(); // 0 = domingo, 1 = segunda, etc.
         const diaDb = this.dayToDb(hoje); // Converter para formato do banco
-        const { ano, semana } = this.getCurrentWeek();
+        const ano = new Date().getFullYear();
+        const semana = protocolosAtivos[0].semana_atual || 1;
         
-        console.log('[getTodaysWorkout] 🔍 Buscando treino do dia:', { userId, hoje: diaDb, ano, semana });
+        console.log('[getTodaysWorkout] 🔄 NOVA LÓGICA: Buscando treino da semana do protocolo:', { userId, hoje: diaDb, ano, semana });
         
         try {
             // 1. Buscar dados do planejamento_semanal diretamente
@@ -834,96 +942,45 @@ export async function verificarDisponibilidadeCalendario() {
     }
 }
 
-// Obter semana ativa do usuário - VERSÃO INTELIGENTE COM DETECÇÃO DE CALENDÁRIO
+// Função para calcular percentual 1RM baseado na semana de progressão
+function calcularPercentual1rmPorSemana(semana) {
+    // Progressão típica de 12 semanas: começa em 60% e vai até 90%
+    const progressao = {
+        1: 60,  // Semana de adaptação
+        2: 65,  
+        3: 70,  
+        4: 72,  
+        5: 75,  
+        6: 77,  
+        7: 80,  
+        8: 82,  
+        9: 85,  
+        10: 87,
+        11: 90,
+        12: 90  // Semana de teste/pico
+    };
+    
+    return progressao[semana] || 70; // Default 70% se semana inválida
+}
+
+// Função para obter número da semana no ano
+function getWeekNumber(date) {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+}
+
+// Obter semana ativa do usuário - VERSÃO REFATORADA BASEADA EM PROGRESSÃO INDIVIDUAL
 export async function obterSemanaAtivaUsuario(userId) {
     try {
         console.log('[obterSemanaAtivaUsuario] Buscando semana ativa para usuário:', userId);
         
-        // Verificar se "d_calendario" está disponível primeiro (cache de verificação)
-        if (!obterSemanaAtivaUsuario._calendarioStatus) {
-            console.log('[obterSemanaAtivaUsuario] Verificando disponibilidade do "d_calendario"...');
-            obterSemanaAtivaUsuario._calendarioStatus = await verificarDisponibilidadeCalendario();
-        }
+        // CORREÇÃO AUTOMÁTICA: Garantir que eh_semana_atual está correto
+        console.log('[obterSemanaAtivaUsuario] 🔧 Verificando e corrigindo semana atual...');
+        await CalendarioService.manterSemanaAtualizada();
         
-        const calendarioDisponivel = obterSemanaAtivaUsuario._calendarioStatus.disponivel && 
-                                   obterSemanaAtivaUsuario._calendarioStatus.temSemanaAtiva;
-        
-        console.log('[obterSemanaAtivaUsuario] Status do calendário:', {
-            disponivel: obterSemanaAtivaUsuario._calendarioStatus.disponivel,
-            temSemanaAtiva: obterSemanaAtivaUsuario._calendarioStatus.temSemanaAtiva,
-            usarCalendario: calendarioDisponivel
-        });
-        
-        // Método 1: View v_semana_atual_treino temporariamente desabilitada devido a problema de JOIN
-        // TODO: Investigar por que view não tem usuario_id disponível e reativar quando corrigido
-        if (calendarioDisponivel) {
-            // try {
-            //     const { data: semanaAtivaView, error: viewError } = await query('v_semana_atual_treino', {
-            //         eq: { usuario_id: userId },
-            //         limit: 1
-            //     });
-            //     
-            //     if (!viewError && semanaAtivaView && semanaAtivaView.length > 0) {
-            //         const semanaData = semanaAtivaView[0];
-            //         console.log('[obterSemanaAtivaUsuario] ✅ Dados obtidos da view v_semana_atual_treino:', semanaData);
-            //         return {
-            //             semana_treino: semanaData.semana_treino,
-            //             protocolo_treinamento_id: semanaData.protocolo_treinamento_id,
-            //             percentual_1rm_calculado: semanaData.percentual_1rm || 75,
-            //             usuario_id: userId,
-            //             calendario_id: semanaData.calendario_id,
-            //             eh_semana_ativa: semanaData.eh_semana_ativa,
-            //             fonte: 'view_calendario'
-            //         };
-            //     }
-            // } catch (viewError) {
-            //     console.log('[obterSemanaAtivaUsuario] View v_semana_atual_treino falhou:', viewError.message);
-            // }
-            
-            // Método 2: Buscar diretamente na tabela "d_calendario" se view falhou
-            try {
-                const { data: semanasAtivas } = await query('d_calendario', {
-                    eq: { 
-                        eh_semana_atual: true,
-                        eh_semana_ativa: true
-                    },
-                    limit: 1
-                });
-                
-                if (semanasAtivas && semanasAtivas.length > 0) {
-                    const semanaAtiva = semanasAtivas[0];
-                    console.log('[obterSemanaAtivaUsuario] ✅ Semana ativa encontrada no "d_calendario":', semanaAtiva);
-                    
-                    // Buscar protocolo do usuário para complementar dados
-                    const { data: protocolosUsuario } = await query('usuario_plano_treino', {
-                        eq: { 
-                            usuario_id: userId,
-                            status: 'ativo'
-                        },
-                        limit: 1
-                    });
-                    
-                    const protocoloUsuario = protocolosUsuario && protocolosUsuario.length > 0 ? protocolosUsuario[0] : null;
-                    
-                    return {
-                        semana_treino: semanaAtiva.semana_treino || 1,
-                        protocolo_treinamento_id: protocoloUsuario?.protocolo_treinamento_id || 1,
-                        percentual_1rm_calculado: semanaAtiva.percentual_1rm || 75,
-                        usuario_id: userId,
-                        calendario_id: semanaAtiva.id,
-                        eh_semana_ativa: semanaAtiva.eh_semana_ativa,
-                        ano: semanaAtiva.ano,
-                        semana_ano: semanaAtiva.semana_ano,
-                        fonte: 'calendario_direto'
-                    };
-                }
-            } catch (calendarioError) {
-                console.log('[obterSemanaAtivaUsuario] Erro no acesso direto ao "d_calendario":', calendarioError.message);
-            }
-        }
-        
-        // Método 3: Fallback para usuario_plano_treino (método anterior)
-        console.log('[obterSemanaAtivaUsuario] Usando fallback para usuario_plano_treino...');
+        // NOVO MÉTODO: Usar apenas a progressão individual do usuário
+        console.log('[obterSemanaAtivaUsuario] 📊 Buscando protocolo ativo do usuário...');
         const { data: protocolosAtivos } = await query('usuario_plano_treino', {
             eq: { 
                 usuario_id: userId,
@@ -935,19 +992,50 @@ export async function obterSemanaAtivaUsuario(userId) {
         const protocoloAtivo = protocolosAtivos && protocolosAtivos.length > 0 ? protocolosAtivos[0] : null;
         
         if (!protocoloAtivo) {
-            console.log('[obterSemanaAtivaUsuario] ❌ Nenhum protocolo ativo encontrado');
+            console.log('[obterSemanaAtivaUsuario] ❌ Nenhum protocolo ativo encontrado para usuário:', userId);
             return null;
         }
         
-        console.log('[obterSemanaAtivaUsuario] ✅ Fallback - protocolo ativo encontrado:', protocoloAtivo);
+        console.log('[obterSemanaAtivaUsuario] ✅ Protocolo ativo encontrado:', protocoloAtivo);
         
-        // Retornar dados do fallback
+        // Calcular percentual 1RM baseado na semana do usuário
+        const semanaUsuario = protocoloAtivo.semana_atual || 1;
+        const percentual1rm = calcularPercentual1rmPorSemana(semanaUsuario);
+        
+        console.log('[obterSemanaAtivaUsuario] 💪 Dados da semana ativa:', {
+            semanaUsuario,
+            percentual1rm,
+            protocoloId: protocoloAtivo.protocolo_treinamento_id
+        });
+        
+        // Buscar dados da data atual no calendário (apenas para informações de data)
+        let dadosCalendario = null;
+        try {
+            const { data: calendarioAtual } = await query('d_calendario', {
+                eq: { eh_semana_atual: true },
+                limit: 1
+            });
+            
+            if (calendarioAtual && calendarioAtual.length > 0) {
+                dadosCalendario = calendarioAtual[0];
+                console.log('[obterSemanaAtivaUsuario] 📅 Dados do calendário atual:', dadosCalendario);
+            }
+        } catch (calendarioError) {
+            console.log('[obterSemanaAtivaUsuario] ⚠️ Não foi possível obter dados do calendário:', calendarioError.message);
+        }
+        
+        // Retornar dados baseados na progressão individual do usuário
         return {
-            semana_treino: protocoloAtivo.semana_atual || 1,
+            semana_treino: semanaUsuario, // MUDANÇA: Usar semana individual do usuário
             protocolo_treinamento_id: protocoloAtivo.protocolo_treinamento_id,
-            percentual_1rm_calculado: 75, // Valor padrão na ausência do calendário
+            percentual_1rm_calculado: percentual1rm,
             usuario_id: userId,
-            fonte: 'fallback_usuario_plano'
+            data_inicio_protocolo: protocoloAtivo.data_inicio,
+            calendario_id: dadosCalendario?.id || null,
+            ano: dadosCalendario?.ano || new Date().getFullYear(),
+            semana_ano: dadosCalendario?.semana_ano || getWeekNumber(new Date()),
+            eh_semana_ativa: true, // Sempre ativa para progressão individual
+            fonte: 'progressao_individual'
         };
         
     } catch (error) {
@@ -988,11 +1076,18 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         
         console.log('[buscarExerciciosTreinoDia] 📅 Dia da semana (DB):', diaSemana);
         
-        // 1. Buscar planejamento do dia atual da semana atual
+        // 1. CORRIGIDO: Buscar planejamento usando semana do protocolo do usuário
         const ano = hoje.getFullYear();
-        const primeiroDiaAno = new Date(ano, 0, 1);
-        const diasPassados = Math.floor((hoje - primeiroDiaAno) / (24 * 60 * 60 * 1000));
-        const numeroSemana = Math.ceil((diasPassados + primeiroDiaAno.getDay() + 1) / 7);
+        
+        // Obter semana do protocolo do usuário em vez da semana do calendário
+        const semanaAtiva = await obterSemanaAtivaUsuario(userId);
+        if (!semanaAtiva) {
+            console.log('[buscarExerciciosTreinoDia] ❌ Não foi possível obter semana ativa do usuário');
+            return { data: [], error: 'Usuário sem protocolo ativo' };
+        }
+        
+        const numeroSemana = semanaAtiva.semana_treino;
+        console.log('[buscarExerciciosTreinoDia] 🔄 NOVA LÓGICA: Usando semana do protocolo:', numeroSemana);
         
         const { data: planejamento, error: planejamentoError } = await supabase
             .from('planejamento_semanal')
@@ -1042,13 +1137,15 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
             return { data: [], error: 'Plano de treino não encontrado' };
         }
         
-        // Usar semana do calendário como referência (mais precisa)
-        const semanaReferencia = calendarioHoje?.semana_treino || usuarioPlano.semana_atual;
+        // Usar SEMPRE semana do protocolo para home/treino do usuário
+        const semanaReferencia = usuarioPlano.semana_atual;
         
         console.log('[buscarExerciciosTreinoDia] 🎯 Plano do usuário:', usuarioPlano);
-        console.log('[buscarExerciciosTreinoDia] 📅 Semana de referência (calendário):', semanaReferencia);
+        console.log('[buscarExerciciosTreinoDia] 📅 Dados do calendário:', calendarioHoje);
+        console.log('[buscarExerciciosTreinoDia] 📅 Semana de referência (protocolo):', semanaReferencia);
+        console.log('[buscarExerciciosTreinoDia] 🔍 DEBUG - Data formatada para consulta:', toSaoPauloDateString(hoje));
         
-        // 3. Buscar exercícios do protocolo usando semana de referência do calendário
+        // 3. Buscar exercícios do protocolo usando semana de referência do protocolo
         const { data: protocoloTreinos, error: protocoloError } = await supabase
             .from('protocolo_treinos')
             .select(`
@@ -1090,6 +1187,13 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         
         console.log('[buscarExerciciosTreinoDia] 🏋️‍♂️ Exercícios encontrados:', exercicios.length);
         console.log('[buscarExerciciosTreinoDia] 💪 Dados de 1RM encontrados:', dadosRM.length);
+        console.log('[buscarExerciciosTreinoDia] 🔍 DEBUG - Protocolos encontrados:', protocoloTreinos.map(p => ({
+            exercicio_id: p.exercicio_id,
+            semana_referencia: p.semana_referencia,
+            percentual_base: p.percentual_1rm_base,
+            series: p.series,
+            repeticoes: p.repeticoes_alvo
+        })));
         
         // 5. Formatar dados dos exercícios com cálculos de peso
         const exerciciosFormatados = protocoloTreinos.map(protocolo => {
@@ -1099,6 +1203,14 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
             const dadoRM = dadosRM.find(rm => rm.exercicio_id === protocolo.exercicio_id);
             
             const rmCalculado = dadoRM?.rm_calculado || 0;
+            
+            console.log(`[buscarExerciciosTreinoDia] 🔍 DEBUG Exercício ${protocolo.exercicio_id}:`, {
+                nome: exercicio?.nome,
+                rm_calculado: rmCalculado,
+                percentual_base: protocolo.percentual_1rm_base,
+                peso_calculado: rmCalculado * (protocolo.percentual_1rm_base / 100),
+                semana_referencia: protocolo.semana_referencia
+            });
             
             return {
                 id: protocolo.exercicio_id,

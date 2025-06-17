@@ -756,63 +756,63 @@ export const homeStyles = `
     .week-indicators {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 12px;
+        gap: 10px;
+        max-width: 100%;
     }
 
     .day-indicator {
-        text-align: center;
-        padding: 16px 8px;
+        aspect-ratio: 1.2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         background: var(--bg-secondary);
-        border-radius: 16px;
-        transition: all 0.3s ease;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
         cursor: pointer;
         position: relative;
-        overflow: hidden;
-    }
-
-    .day-indicator::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: var(--primary-gradient);
-        opacity: 0;
-        transition: opacity 0.3s ease;
+        padding: 8px 4px;
+        min-height: 72px;
     }
 
     .day-indicator:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        border-color: var(--border-light);
+        transform: translateY(-1px);
     }
 
     .day-indicator.today {
-        border: 2px solid var(--neon-primary);
-        box-shadow: inset 0 0 20px rgba(207, 255, 4, 0.2);
+        border-color: var(--neon-primary);
+        background: rgba(207, 255, 4, 0.08);
     }
 
-    .day-indicator.completed .day-status {
-        background: var(--neon-success);
-        box-shadow: 0 0 10px var(--neon-success);
+    .day-indicator.completed {
+        background: rgba(39, 174, 96, 0.12);
+        border-color: var(--neon-success);
+    }
+
+    .day-indicator.cancelled {
+        background: rgba(231, 76, 60, 0.12);
+        border-color: #e74c3c;
+    }
+
+    .day-indicator.folga {
+        background: rgba(52, 152, 219, 0.12);
+        border-color: #3498db;
     }
 
     .day-label {
         font-size: 0.75rem;
-        font-weight: 700;
-        color: rgba(255, 255, 255, 0.5);
-        position: relative;
-        z-index: 1;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
     }
 
-    .day-status {
-        width: 8px;
-        height: 8px;
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        margin: 8px auto 0;
-        position: relative;
-        z-index: 1;
-        transition: all 0.3s ease;
+    .day-indicator.today .day-label {
+        color: var(--neon-primary);
     }
-
 
     .day-name {
         font-size: 0.7rem;
@@ -828,13 +828,8 @@ export const homeStyles = `
         font-weight: 600;
     }
 
-    /* Texto para treino concluído */
     .day-indicator.completed .day-name,
-    .day-indicator.workout-completed .day-name {
-        color: var(--text-secondary);
-    }
-
-    /* Texto para folga */
+    .day-indicator.workout-completed .day-name,
     .day-indicator.folga .day-name {
         color: var(--text-secondary);
     }
@@ -846,6 +841,10 @@ export const homeStyles = `
         text-align: center;
         margin-top: 2px;
         line-height: 1.3;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
     }
 
     .day-indicator.today .day-type {
@@ -853,34 +852,52 @@ export const homeStyles = `
         font-weight: 600;
     }
 
-    /* Texto para treino concluído */
     .day-indicator.completed .day-type,
-    .day-indicator.workout-completed .day-type {
-        color: var(--text-primary);
-        font-weight: 500;
-    }
-
-    /* Texto para folga */
+    .day-indicator.workout-completed .day-type,
     .day-indicator.folga .day-type {
         color: var(--text-primary);
         font-weight: 500;
     }
 
-    /* Texto para cancelado */
     .day-indicator.cancelled .day-type {
         color: var(--text-muted);
         font-weight: 400;
     }
 
-
     .empty-day {
-        border: 2px dashed var(--border-color);
+        border: 1px dashed var(--border-color);
         background: transparent;
     }
 
     .empty-day .day-type {
         color: var(--text-secondary);
         font-style: italic;
+    }
+
+    /* Status visual simplificado */
+    .day-status {
+        width: 6px;
+        height: 6px;
+        background: var(--border-color);
+        border-radius: 50%;
+        margin: 4px auto 0;
+        transition: all 0.2s ease;
+    }
+
+    .day-indicator.completed .day-status {
+        background: var(--neon-success);
+    }
+
+    .day-indicator.today .day-status {
+        background: var(--neon-primary);
+    }
+
+    .day-indicator.cancelled .day-status {
+        background: #e74c3c;
+    }
+
+    .day-indicator.folga .day-status {
+        background: #3498db;
     }
 
     /* ===== WORKOUT CARD - Estilo Login ===== */
@@ -938,7 +955,7 @@ export const homeStyles = `
         font-weight: 700;
         color: var(--text-primary);
         margin: 8px 0;
-        text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
     }
 
     .workout-subtitle {
@@ -2381,11 +2398,34 @@ export const homeStyles = `
         }
 
         .week-indicators {
-            gap: 8px;
+            gap: 6px;
         }
 
         .day-indicator {
-            padding: 12px 4px;
+            padding: 8px 2px;
+            min-height: 64px;
+            font-size: 0.85rem;
+        }
+
+        .day-label {
+            font-size: 0.7rem;
+            margin-bottom: 2px;
+        }
+
+        .day-name {
+            font-size: 0.65rem;
+            margin-bottom: 4px;
+        }
+
+        .day-type {
+            font-size: 0.65rem;
+            margin-top: 1px;
+        }
+
+        .day-status {
+            width: 5px;
+            height: 5px;
+            margin: 2px auto 0;
         }
 
         .quick-actions {
@@ -2515,6 +2555,273 @@ export const homeStyles = `
     @keyframes loading {
         0% { background-position: 200% 0; }
         100% { background-position: -200% 0; }
+    }
+
+    /* ===== ESTILOS PARA MODAL DE HISTÓRICO ===== */
+    
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .modal-content {
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        border: 1px solid var(--border-color);
+        transform: translate(-50%, -50%) scale(0.95);
+        transition: transform 0.3s ease;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+    }
+
+    .workout-history-modal {
+        max-width: 700px;
+    }
+
+    .modal-header {
+        padding: 24px 24px 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .workout-history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .history-title-section h2 {
+        margin: 0 0 8px 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .history-subtitle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .day-name {
+        font-weight: 600;
+        color: var(--accent-green);
+    }
+
+    .separator {
+        color: var(--text-muted);
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: var(--radius-sm);
+        transition: all 0.3s ease;
+    }
+
+    .btn-close:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .stats-overview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        border-color: var(--accent-green-border);
+        transform: translateY(-2px);
+    }
+
+    .stat-icon {
+        margin: 0 auto 12px;
+        width: 48px;
+        height: 48px;
+        background: var(--accent-green-bg);
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent-green);
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .performance-stat .stat-icon.good {
+        background: rgba(0, 255, 136, 0.1);
+        color: #00ff88;
+    }
+
+    .performance-stat .stat-value.good {
+        color: #00ff88;
+    }
+
+    .exercises-history h3 {
+        margin: 0 0 20px 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .exercises-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .exercise-card-history {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .exercise-card-history:hover {
+        border-color: var(--accent-green-border);
+    }
+
+    .exercise-header-history {
+        padding: 16px 20px 12px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .exercise-header-history h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .exercise-equipment {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .series-list {
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .serie-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        background: var(--bg-primary);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-light);
+    }
+
+    .serie-number {
+        background: var(--accent-green);
+        color: var(--bg-primary);
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .serie-weight {
+        font-weight: 600;
+        color: var(--text-primary);
+        min-width: 60px;
+    }
+
+    .serie-reps {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .no-data {
+        text-align: center;
+        color: var(--text-muted);
+        font-style: italic;
+        padding: 40px 20px;
+    }
+
+    /* Responsividade do modal */
+    @media (max-width: 768px) {
+        .modal-content {
+            width: 95%;
+            max-height: 90vh;
+        }
+
+        .stats-overview {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-card {
+            padding: 16px;
+        }
+
+        .modal-body {
+            padding: 16px;
+        }
+
+        .modal-header {
+            padding: 16px 16px 12px;
+        }
     }
 
     /* ===== ESTILOS PARA LISTA DE EXERCÍCIOS ===== */
@@ -2703,6 +3010,21 @@ export const homeStyles = `
             padding: 12px 0;
         }
     }
+
+    /* Adicionar elemento de loading para dados dinâmicos */
+    .loading-placeholder {
+        background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-primary) 50%, var(--bg-secondary) 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: var(--radius-sm);
+        height: 1.2em;
+        width: 60%;
+    }
+
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
 `;
 
 // Função para inicializar animações e efeitos
@@ -2820,34 +3142,9 @@ export async function inicializarHome() {
     }
 }
 
-// Função para expandir/contrair o card de treino
-export function toggleWorkoutCard() {
-    const expandableContent = document.getElementById('expandable-content');
-    const toggleButton = document.getElementById('workout-toggle');
-    const expandIcon = toggleButton?.querySelector('.expand-icon');
-    
-    if (!expandableContent) return;
-    
-    const isExpanded = expandableContent.style.display !== 'none';
-    
-    if (isExpanded) {
-        // Contrair
-        expandableContent.style.display = 'none';
-        if (expandIcon) {
-            expandIcon.style.transform = 'rotate(0deg)';
-        }
-    } else {
-        // Expandir
-        expandableContent.style.display = 'block';
-        if (expandIcon) {
-            expandIcon.style.transform = 'rotate(180deg)';
-        }
-    }
-    
-    console.log('[toggleWorkoutCard] Card de treino', isExpanded ? 'contraído' : 'expandido');
-}
+// REMOVIDO: toggleWorkoutCard - delegado para workoutToggle.js
+// A função global window.toggleWorkoutCard é definida em workoutToggle.js
 
 // Disponibilizar funções globalmente
 window.inicializarHome = inicializarHome;
-window.toggleWorkoutCard = toggleWorkoutCard;
 window.initializeHomeAnimations = initializeHomeAnimations;

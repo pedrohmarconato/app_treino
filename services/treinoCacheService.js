@@ -1,4 +1,6 @@
 // Serviço para gerenciar cache local de execuções de treino
+import WeeklyPlanService from './weeklyPlanningService.js';
+
 export class TreinoCacheService {
     
     static STORAGE_KEY = 'treino_em_andamento';
@@ -298,8 +300,7 @@ export class TreinoCacheService {
             const hoje = new Date();
             const ano = hoje.getFullYear();
             const semana = this.calcularSemana(hoje);
-            const { dayToDb } = await import('./weeklyPlanningService.js');
-            const diaSemana = dayToDb(hoje.getDay());
+            const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
             
             const { error: planejamentoError } = await supabase
                 .from('planejamento_semanal')

@@ -5,6 +5,7 @@ import { showNotification } from '../ui/notifications.js';
 import { workoutTemplate, exerciseCardTemplate } from '../templates/workoutExecution.js';
 import TreinoCacheService from '../services/treinoCacheService.js';
 import { getActionIcon, getAchievementIcon, getWorkoutIcon } from '../utils/icons.js';
+import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 
 class WorkoutExecutionManager {
     constructor() {
@@ -478,6 +479,13 @@ class WorkoutExecutionManager {
         try {
             console.log('[WorkoutExecution] 🏁 Finalizando treino...');
             
+            // Verificar se há treino atual
+            if (!this.currentWorkout || !this.currentWorkout.exercicios) {
+                console.error('[WorkoutExecution] Erro: Nenhum treino ativo para finalizar');
+                showNotification('Erro: Nenhum treino ativo', 'error');
+                return;
+            }
+            
             // Parar cronômetro
             this.pararCronometro();
             
@@ -595,7 +603,7 @@ class WorkoutExecutionManager {
                 protocolo_treino_id: exercicio.id,
                 peso_utilizado: peso,
                 repeticoes_realizadas: reps,
-                data_execucao: new Date().toISOString()
+                data_execucao: nowInSaoPaulo()
             };
 
             // Usar WorkoutProtocolService para salvar
@@ -623,7 +631,7 @@ class WorkoutExecutionManager {
                 tipo_atividade: this.currentWorkout.tipo_atividade,
                 tempo_total: this.calcularTempoTotal(),
                 exercicios_realizados: this.exerciciosExecutados.length,
-                data_conclusao: new Date().toISOString()
+                data_conclusao: nowInSaoPaulo()
             };
 
             // Usar WeeklyPlanningService para marcar como concluído
@@ -2002,6 +2010,39 @@ class WorkoutExecutionManager {
             
         } catch (error) {
             console.error('[ExecucaoTreino] ❌ Erro ao configurar eventos:', error);
+        }
+    }
+
+    // Salvar progresso quando input é alterado
+    salvarProgresso(event) {
+        try {
+            const input = event.target;
+            const valor = input.value;
+            
+            // Identificar qual série/exercício está sendo alterado  
+            const seriesItem = input.closest('[data-series]');
+            if (!seriesItem) return;
+            
+            const exerciseIndex = parseInt(seriesItem.dataset.exerciseIndex) || 0;
+            const seriesIndex = parseInt(seriesItem.dataset.series) || 0;
+            
+            console.log(`[WorkoutExecution] Salvando progresso: Exercício ${exerciseIndex}, Série ${seriesIndex}, Valor: ${valor}`);
+            
+            // Salvar no cache local para evitar perda de dados
+            if (this.currentWorkout && this.currentWorkout.exercicios) {
+                const exercicio = this.currentWorkout.exercicios[exerciseIndex];
+                if (exercicio && exercicio.series && exercicio.series[seriesIndex]) {
+                    // Identificar se é peso ou reps pelo type ou classe
+                    if (input.classList.contains('peso-input') || input.dataset.type === 'peso') {
+                        exercicio.series[seriesIndex].peso = valor;
+                    } else if (input.classList.contains('reps-input') || input.dataset.type === 'reps') {
+                        exercicio.series[seriesIndex].reps = valor;
+                    }
+                }
+            }
+            
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro ao salvar progresso:', error);
         }
     }
     

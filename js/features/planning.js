@@ -495,7 +495,7 @@ export async function salvarPlanejamentoSemanal() {
             planejamentoParaSupabase[dia] = {
                 tipo: null,
                 categoria: null,
-                numero_treino: null,
+                semana_referencia: null,
                 concluido: false
             };
         }
@@ -507,7 +507,7 @@ export async function salvarPlanejamentoSemanal() {
                 planejamentoParaSupabase[diaIndex] = {
                     tipo: treino.tipo || '',
                     categoria: treino.categoria || '',
-                    numero_treino: treino.numero_treino || null,
+                    semana_referencia: treino.semana_referencia || null,
                     concluido: false
                 };
             }
@@ -544,7 +544,7 @@ export async function salvarPlanejamentoSemanal() {
                       treinoDoDia.tipo === 'Cardio' ? 'Cardio' :
                       `Treino ${treinoDoDia.tipo}`,
                 exercicios: [],
-                numero_treino: treinoDoDia.numero_treino
+                semana_referencia: treinoDoDia.semana_referencia
             };
             AppState.set('currentWorkout', mockWorkout);
         }

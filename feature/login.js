@@ -6,7 +6,7 @@ import { fetchUsuarios, fetchProtocoloAtivoUsuario } from '../services/userServi
 import { fetchProximoTreino } from '../services/workoutService.js';
 // Import removido para compatibilidade com browser tradicional
 // Use window.WeeklyPlanService.metodo() para acessar métodos
-import { needsWeekPlanningAsync } from './planning.js';
+import './planning.js';
 import { showLoading, hideLoading, showNotification } from '../ui/notifications.js';
 import { mostrarTela, adicionarBotaoOrdemSemana } from '../ui/navigation.js';
 import { carregarDashboard } from './dashboard.js';
@@ -112,7 +112,16 @@ export async function selecionarUsuario(usuario) {
         console.log('[selecionarUsuario] Usuário definido no AppState:', usuario.nome);
 
         // 2. Verificar se precisa de planejamento semanal (SUPABASE + localStorage)
-        const precisaPlanejamento = await needsWeekPlanningAsync(usuario.id);
+        // Aguardar função estar disponível
+        let attempts = 0;
+        while (!window.needsWeekPlanningAsync && attempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        const precisaPlanejamento = window.needsWeekPlanningAsync ? 
+            await window.needsWeekPlanningAsync(usuario.id) : 
+            await WeeklyPlanService.needsPlanning(usuario.id);
         console.log('[selecionarUsuario] Precisa de planejamento?', precisaPlanejamento);
         
         if (precisaPlanejamento) {

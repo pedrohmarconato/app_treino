@@ -2,6 +2,7 @@
 // Serviço para gerenciar treinos e exercícios
 
 import { query, insert, update } from './supabaseService.js';
+import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 // import removido para compatibilidade com browser tradicional
 // Utilize window.WeeklyPlanService diretamente quando necessário
 
@@ -154,7 +155,7 @@ export async function salvarExecucaoExercicio(dados) {
         usuario_id: dados.usuario_id,
         protocolo_treino_id: dados.protocolo_treino_id,
         exercicio_id: dados.exercicio_id,
-        data_execucao: dados.data_execucao || new Date().toISOString(),
+        data_execucao: dados.data_execucao || nowInSaoPaulo(),
         peso_utilizado: dados.peso_utilizado,
         repeticoes: dados.repeticoes_realizadas,
         serie_numero: dados.serie_numero,
@@ -167,7 +168,7 @@ export async function salvarExecucaoExercicio(dados) {
 
 // Buscar execuções de um exercício
 export async function fetchExecucoesExercicio(userId, protocoloTreinoId, exercicioId) {
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = toSaoPauloDateString(new Date());
     
     const { data, error } = await query('execucao_exercicio_usuario', {
         eq: {
@@ -188,12 +189,12 @@ export async function marcarTreinoConcluido(userId) {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const semana = WeeklyPlanService.getWeekNumber(hoje);
-        const diaSemana = hoje.getDay() === 0 ? 7 : hoje.getDay(); // Converter para formato DB
+        const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay()); // Converter para formato DB
         
         const { error } = await update('planejamento_semanal', 
             { 
                 concluido: true, 
-                data_conclusao: new Date().toISOString() 
+                data_conclusao: nowInSaoPaulo() 
             },
             {
                 eq: { 

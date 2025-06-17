@@ -1,5 +1,6 @@
 // Serviço para gerenciar sessões de treino executadas
 import { supabase } from './supabaseService.js';
+import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 
 // AVISO: Todas as operações com 'treino_executado' foram desativadas por ausência da tabela.
 export class TreinoExecutadoService {
@@ -11,14 +12,14 @@ export class TreinoExecutadoService {
                 // .from('treino_executado') // DESATIVADO: tabela inexistente
                 .insert({
                     usuario_id: dados.usuario_id,
-                    data_treino: dados.data_treino || new Date().toISOString().split('T')[0],
+                    data_treino: dados.data_treino || toSaoPauloDateString(new Date()),
                     grupo_muscular: dados.grupo_muscular,
                     tipo_atividade: dados.tipo_atividade,
                     protocolo_treino_id: dados.protocolo_treino_id,
                     ano: dados.ano || new Date().getFullYear(),
                     semana: dados.semana,
                     dia_semana: dados.dia_semana,
-                    data_inicio: new Date().toISOString(),
+                    data_inicio: nowInSaoPaulo(),
                     observacoes: dados.observacoes
                 })
                 .select()
@@ -38,10 +39,10 @@ export class TreinoExecutadoService {
                 // .from('treino_executado') // DESATIVADO: tabela inexistente
                 .update({
                     concluido: true,
-                    data_fim: new Date().toISOString(),
+                    data_fim: nowInSaoPaulo(),
                     duracao_minutos: dados.duracao_minutos,
                     observacoes: dados.observacoes,
-                    updated_at: new Date().toISOString()
+                    updated_at: nowInSaoPaulo()
                 })
                 .eq('id', sessaoId)
                 .select()
@@ -280,7 +281,7 @@ export class TreinoExecutadoService {
                 .from('planejamento_semanal')
                 .update({
                     concluido: true,
-                    data_conclusao: sessao.data_fim || new Date().toISOString(),
+                    data_conclusao: sessao.data_fim || nowInSaoPaulo(),
                     protocolo_treino_id: sessao.protocolo_treino_id
                 })
                 .eq('usuario_id', sessao.usuario_id)
@@ -308,7 +309,7 @@ export class TreinoExecutadoService {
                 .select('*')
                 .eq('usuario_id', userId)
                 .eq('concluido', true)
-                .gte('data_treino', dataInicio.toISOString().split('T')[0]);
+                .gte('data_treino', toSaoPauloDateString(dataInicio));
                 
             if (error) throw error;
             
