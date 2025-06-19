@@ -198,7 +198,7 @@ export class TreinoCacheService {
     static async finalizarTreinoComAvaliacao(dadosAvaliacao) {
         try {
             const {
-                avaliacao_qualidade, // 0-5
+                post_workout, // 0-5: nível de fadiga após treino
                 observacoes_finais = null,
                 dificuldade_percebida = null, // 1-10 opcional
                 energia_nivel = null // 1-10 opcional
@@ -212,7 +212,7 @@ export class TreinoCacheService {
             
             // Adicionar dados de avaliação à sessão
             sessao.avaliacao = {
-                qualidade: avaliacao_qualidade,
+                post_workout: post_workout, // Nível de fadiga (0-5)
                 dificuldade_percebida,
                 energia_nivel,
                 observacoes_finais,
@@ -226,7 +226,7 @@ export class TreinoCacheService {
             this.salvarSessaoCache(sessao);
             
             console.log('[TreinoCacheService] ✅ Sessão finalizada com avaliação:', {
-                avaliacao: avaliacao_qualidade,
+                post_workout: post_workout,
                 execucoes: sessao.execucoes.length
             });
             
@@ -263,7 +263,7 @@ export class TreinoCacheService {
                     concluido: true,
                     data_inicio: sessao.data_inicio,
                     data_fim: sessao.data_fim,
-                    avaliacao_qualidade: sessao.avaliacao?.qualidade,
+                    post_workout: sessao.avaliacao?.post_workout,
                     dificuldade_percebida: sessao.avaliacao?.dificuldade_percebida,
                     energia_nivel: sessao.avaliacao?.energia_nivel,
                     observacoes: sessao.avaliacao?.observacoes_finais
@@ -325,7 +325,7 @@ export class TreinoCacheService {
             console.log('[TreinoCacheService] ✅ Commit realizado com sucesso:', {
                 sessao_id: sessaoDb.id,
                 execucoes: execucoesParaBanco.length,
-                avaliacao: sessao.avaliacao?.qualidade
+                post_workout: sessao.avaliacao?.post_workout
             });
             
             return {
@@ -481,6 +481,107 @@ export class TreinoCacheService {
         }
         
         return sessao;
+    }
+
+    // ----- NOVOS MÉTODOS ADICIONADOS -----
+    /**
+     * Salva estado completo do workout (nova versão unificada)
+     * @param {Object} state - Estado do workoutExecutionManager
+     * @param {Boolean} isPartial - Se é salvamento parcial
+     */
+    static async saveWorkoutState(state, isPartial = false) {
+        try {
+            const current = this.obterSessaoAtiva() || {};
+            const newState = {
+                ...current,
+                state: {
+                    ...state,
+                    _metadata: {
+                        savedAt: new Date().toISOString(),
+                        isPartial,
+                        version: '2.0'
+                    }
+                }
+            };
+            
+            await this.salvarSessaoCache(newState);
+            return true;
+        } catch (error) {
+            console.error('[TreinoCacheService] saveWorkoutState error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Obtém estado salvo do workout (com validação)
+     */
+    static async getWorkoutState() {
+        const sessao = this.obterSessaoAtiva();
+        if (!sessao?.state) return null;
+        
+        // Validação básica do estado
+        if (!sessao.state.currentWorkout || !Array.isArray(sessao.state.exerciciosExecutados)) {
+            console.warn('[TreinoCacheService] Estado inválido:', sessao.state);
+            return null;
+        }
+        
+        return sessao.state;
+    }
+
+    /**
+     * Migração de dados antigos para novo formato
+     */
+    static async migrateOldData() {
+        const oldData = localStorage.getItem('old_workout_state');
+        if (oldData) {
+            try {
+                await this.saveWorkoutState(JSON.parse(oldData));
+                localStorage.removeItem('old_workout_state');
+            } catch (error) {
+                console.error('Migration error:', error);
+            }
+        }
+    }
+
+    /**
+     * Limpa dados do cache por chave
+     * @param {string} key - Chave a ser limpa
+     */
+    static async clear(key) {
+        try {
+            localStorage.removeItem(key);
+            console.log(`[TreinoCacheService] Chave ${key} limpa do cache`);
+        } catch (error) {
+            console.error(`[TreinoCacheService] Erro ao limpar chave ${key}:`, error);
+        }
+    }
+
+    /**
+     * Salva dados no cache por chave
+     * @param {string} key - Chave para salvar
+     * @param {any} data - Dados a serem salvos
+     */
+    static async save(key, data) {
+        try {
+            localStorage.setItem(key, JSON.stringify(data));
+            console.log(`[TreinoCacheService] Dados salvos na chave ${key}`);
+        } catch (error) {
+            console.error(`[TreinoCacheService] Erro ao salvar na chave ${key}:`, error);
+        }
+    }
+
+    /**
+     * Obtém dados do cache por chave
+     * @param {string} key - Chave a ser recuperada
+     */
+    static async get(key) {
+        try {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error(`[TreinoCacheService] Erro ao obter chave ${key}:`, error);
+            return null;
+        }
     }
 }
 

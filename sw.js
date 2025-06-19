@@ -26,6 +26,7 @@ const CORE_FILES = [
   '/ui/notifications.js',
   '/pedro.png',
   '/japa.png',
+  '/vini.png',
   '/favicon.png'
 ];
 

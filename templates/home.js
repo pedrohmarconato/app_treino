@@ -5,32 +5,25 @@ import { getWorkoutIcon, getActionIcon, getNavigationIcon, getAchievementIcon } 
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
         <!-- Header Moderno -->
-        <div class="home-header">
-            <div class="header-content">
-                <div class="user-info">
-                    <div class="user-avatar-wrapper">
-                        <div class="user-avatar-small">
-                            <img id="user-avatar" src="pedro.png" alt="Avatar">
-                            <div class="avatar-status-indicator"></div>
-                        </div>
-                    </div>
-                    <div class="user-greeting">
-                        <h4>Bom dia,</h4>
-                        <p id="user-name">Atleta</p>
+        <header class="app-header">
+            <div class="header-container">
+                <!-- User Avatar -->
+                <div class="header-avatar">
+                    <div class="avatar-wrapper">
+                        <img id="user-avatar" src="pedro.png" alt="Avatar" class="avatar-img">
+                        <span class="avatar-status"></span>
                     </div>
                 </div>
-                <div class="app-logo-secondary">
-                    <div class="brand-logos-mini">
-    <img src="./icons/logo.png" alt="Logo" class="secondary-logo main-logo" style="height: 90px; width: auto; max-width: 80vw;">
-</div>
+                
+                <!-- Logo Central -->
+                <div class="header-logo">
+                    <img src="./icons/logo.png" alt="App Treino" class="logo-img">
                 </div>
+                
+                <!-- Ações -->
                 <div class="header-actions">
-                    <button class="notification-btn">
-                        ${getNavigationIcon('notification')}
-                        <span class="notification-badge pulse"></span>
-                    </button>
-                    <button class="btn-icon logout-btn" onclick="logout()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="action-btn" onclick="logout()" title="Sair">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="action-icon">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                             <polyline points="16,17 21,12 16,7"/>
                             <line x1="21" y1="12" x2="9" y2="12"/>
@@ -38,7 +31,7 @@ export const homeTemplate = () => `
                     </button>
                 </div>
             </div>
-        </div>
+        </header>
 
         <!-- Home Content Principal - ESTRUTURA CORRIGIDA -->
         <div class="home-content">
@@ -66,9 +59,27 @@ export const homeTemplate = () => `
                     </div>
                 </div>
                 
-                <!-- Indicadores da Semana -->
-                <div class="week-indicators" id="week-indicators">
-                    <!-- Preenchido dinamicamente -->
+                <!-- Carrossel Infinito de Dias da Semana -->
+                <div class="week-carousel-container">
+                    <button class="carousel-nav carousel-prev" onclick="window.navigateCarousel(-1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <div class="week-carousel" id="week-carousel">
+                        <!-- Preenchido dinamicamente pelo carrossel infinito -->
+                    </div>
+                    
+                    <button class="carousel-nav carousel-next" onclick="window.navigateCarousel(1)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                    
+                    <div class="carousel-dots" id="carousel-dots">
+                        <!-- Indicadores de posição -->
+                    </div>
                 </div>
 
                 <!-- Card de Treino do Dia -->
@@ -145,17 +156,14 @@ export const homeTemplate = () => `
                 
                 <!-- Conteúdo Expandido do Treino -->
                 <div class="current-workout-card expandable-card" id="current-workout-card">
-                    <div class="workout-header-modern">
-                        <div class="workout-info-section">
-                            <div class="workout-badge-container">
-                                <span class="workout-type-badge" id="workout-type">Detalhes do Treino</span>
-                            </div>
-                            <h3 class="workout-title">Exercícios do Treino</h3>
-                            <p class="workout-subtitle">Expandir para ver detalhes</p>
+                    <div class="workout-expand-header">
+                        <div class="expand-info">
+                            <span class="expand-badge" id="workout-type">Detalhes</span>
+                            <h4 class="expand-title">Lista de Exercícios</h4>
                         </div>
                         
-                        <button class="expand-toggle-modern" id="workout-toggle" onclick="toggleWorkoutCard()">
-                            <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button class="expand-btn" id="workout-toggle" onclick="toggleWorkoutCard()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <path d="M6 9l6 6 6-6"/>
                             </svg>
                         </button>
@@ -178,6 +186,13 @@ export const homeTemplate = () => `
 
 
 
+
+            <!-- Week Overview Section -->
+            <div class="week-overview">
+                <div class="week-indicators" id="week-indicators">
+                    <!-- Week day indicators will be populated by dashboard.js -->
+                </div>
+            </div>
 
         </div> <!-- Fechamento home-content -->
     </div>
@@ -247,49 +262,37 @@ export const homeStyles = `
     }
 
     @keyframes pulse-bg {
-        0%, 100% { transform: scale(1); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 0.8; }
+        from { transform: scale(1); opacity: 0.5; }
+        to { transform: scale(1.1); opacity: 0.8; }
     }
 
-    .header-content {
-        position: relative;
-        z-index: 1;
+    /* Header content moved to header-redesign.css for better organization */
+
+    .user-section {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .user-avatar-wrapper {
-        position: relative;
+        gap: 8px;
+        justify-self: start;
     }
 
     .user-avatar-small {
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
         overflow: hidden;
         border: 2px solid var(--neon-primary);
         box-shadow: var(--shadow-neon);
         position: relative;
     }
 
-    .avatar-status-indicator {
+    .avatar-glow {
         position: absolute;
-        bottom: -2px;
-        right: -2px;
-        width: 16px;
-        height: 16px;
-        background: var(--neon-success);
-        border-radius: 50%;
-        border: 3px solid var(--bg-primary);
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle, var(--neon-primary) 0%, transparent 70%);
+        opacity: 0.3;
         animation: pulse-status 2s ease-in-out infinite;
     }
 
@@ -298,40 +301,38 @@ export const homeStyles = `
         50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(0, 255, 136, 0); }
     }
 
-    .header-actions {
+    .logo-section {
+        display: flex;
+        align-items: center;
+        justify-self: center;
+    }
+
+    .header-logo {
+        width: 90px;
+        height: 90px;
+        opacity: 1;
+        filter: drop-shadow(0 0 15px rgba(207, 255, 4, 0.7));
+        transition: all 0.3s ease;
+    }
+
+    .header-logo:hover {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px rgba(207, 255, 4, 0.6));
+        transform: scale(1.1);
+    }
+
+    .actions-section {
         display: flex;
         align-items: center;
         gap: 12px;
+        justify-self: end;
     }
 
-
-    @keyframes pulse-glow {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-
-
-    .user-greeting h4 {
-        font-size: 0.875rem;
-        color: rgba(255, 255, 255, 0.7);
-        margin-bottom: 4px;
-        letter-spacing: 0.5px;
-    }
-
-    .user-greeting p {
-        font-size: 1.125rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #fff 0%, var(--neon-primary) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .notification-btn {
+    .logout-button {
         position: relative;
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
         color: white;
@@ -342,30 +343,10 @@ export const homeStyles = `
         transition: all 0.3s ease;
     }
 
-    .notification-btn:hover {
+    .logout-button:hover {
         background: rgba(255, 255, 255, 0.2);
         transform: translateY(-2px);
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .notification-badge {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 10px;
-        height: 10px;
-        background: var(--neon-danger);
-        border-radius: 50%;
-        border: 2px solid var(--bg-primary);
-    }
-
-    .notification-badge.pulse {
-        animation: pulse-notification 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse-notification {
-        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 128, 0.4); }
-        50% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(255, 0, 128, 0); }
     }
 
     /* Home Content - ESPAÇAMENTO OTIMIZADO */
@@ -397,8 +378,8 @@ export const homeStyles = `
     }
 
     .section-header h2 {
-        font-size: 1.375rem;
-        font-weight: 700;
+        font-size: 1.25rem;
+        font-weight: 600;
         color: var(--text-primary);
     }
 
@@ -620,8 +601,8 @@ export const homeStyles = `
     }
 
     .workout-info h1 {
-        font-size: 1.75rem;
-        font-weight: 800;
+        font-size: 1.5rem;
+        font-weight: 700;
         margin-bottom: 16px;
         background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
         -webkit-background-clip: text;
@@ -680,8 +661,8 @@ export const homeStyles = `
     }
 
     .progress-value {
-        font-size: 2rem;
-        font-weight: 800;
+        font-size: 1.75rem;
+        font-weight: 700;
         color: var(--neon-primary);
         text-shadow: 0 0 20px rgba(207, 255, 4, 0.5);
     }
@@ -918,7 +899,7 @@ export const homeStyles = `
         box-shadow: var(--shadow-lg);
     }
 
-    .workout-header-modern {
+    .workout-expand-header {
         display: flex;
         align-items: center;
         padding: 28px;
@@ -928,15 +909,11 @@ export const homeStyles = `
         border-bottom: 1px solid var(--border-color);
     }
 
-    .workout-info-section {
+    .expand-info {
         flex: 1;
     }
 
-    .workout-badge-container {
-        margin-bottom: 12px;
-    }
-
-    .workout-type-badge {
+    .expand-badge {
         display: inline-block;
         background: var(--bg-secondary);
         color: var(--text-secondary);
@@ -949,8 +926,7 @@ export const homeStyles = `
         border: 1px solid var(--border-color);
     }
 
-
-    .workout-title {
+    .expand-title {
         font-size: 1.5rem;
         font-weight: 700;
         color: var(--text-primary);
@@ -958,44 +934,7 @@ export const homeStyles = `
         text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
     }
 
-    .workout-subtitle {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin: 0;
-    }
-
-    .workout-progress-section {
-        position: relative;
-    }
-
-    .progress-circle-container {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .progress-circle {
-        filter: drop-shadow(0 0 10px var(--accent-green-glow));
-        transition: var(--transition);
-    }
-
-    .progress-text {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-    }
-
-    .progress-text span {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--accent-green);
-        text-shadow: 0 0 10px var(--accent-green-glow);
-    }
-
-    .expand-toggle-modern {
+    .expand-btn {
         width: 44px;
         height: 44px;
         border-radius: 50%;
@@ -1010,36 +949,36 @@ export const homeStyles = `
         overflow: hidden;
     }
 
-    .expand-toggle-modern::before {
+    .expand-btn::before {
         content: '';
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        background: radial-gradient(circle at center, var(--accent-green-glow) 0%, transparent 70%);
+        background: radial-gradient(circle, var(--accent-green-glow) 0%, transparent 70%);
         opacity: 0;
         transition: opacity 0.3s ease;
     }
 
-    .expand-toggle-modern:hover {
+    .expand-btn:hover {
         border-color: var(--accent-green);
         transform: translateY(-2px);
         box-shadow: var(--shadow-md);
     }
 
-    .expand-toggle-modern:hover::before {
+    .expand-btn:hover::before {
         opacity: 1;
     }
 
-    .expand-toggle-modern .expand-icon {
+    .expand-btn .expand-icon {
         width: 20px;
         height: 20px;
         stroke: var(--text-primary);
         transition: var(--transition);
     }
 
-    .expand-toggle-modern.expanded .expand-icon {
+    .expand-btn.expanded .expand-icon {
         transform: rotate(180deg);
         stroke: var(--accent-green);
     }
@@ -1049,7 +988,6 @@ export const homeStyles = `
         position: relative;
         z-index: 1;
     }
-
 
     .expandable-card {
         cursor: pointer;
@@ -1099,7 +1037,6 @@ export const homeStyles = `
         color: var(--bg-primary);
     }
 
-
     .floating-action-btn:hover {
         background: var(--accent-green-soft);
         transform: translateY(-2px);
@@ -1133,7 +1070,6 @@ export const homeStyles = `
         font-weight: 600;
         z-index: 1;
     }
-
 
     /* Disabled state */
     .floating-action-btn:disabled {
@@ -1307,7 +1243,6 @@ export const homeStyles = `
         align-items: center;
     }
 
-
     /* Botão Iniciar Treino no Topo */
     .top-action-area {
         padding: 20px 24px 16px;
@@ -1327,7 +1262,6 @@ export const homeStyles = `
         padding: 12px 24px;
         display: flex;
         align-items: center;
-        justify-content: center;
         gap: 8px;
         border-radius: var(--radius-full);
         box-sizing: border-box;
@@ -1387,7 +1321,6 @@ export const homeStyles = `
         opacity: 0.5;
         stroke: #666;
     }
-
 
     /* Conteúdo Expansível */
     .expandable-content {
@@ -1451,10 +1384,8 @@ export const homeStyles = `
     }
 
     .exercise-item:hover {
-        background: rgba(207, 255, 4, 0.05);
-        border-color: rgba(207, 255, 4, 0.2);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-glow);
+        background: var(--bg-primary);
+        border-color: var(--accent-green);
     }
 
     .exercise-header {
@@ -1542,502 +1473,6 @@ export const homeStyles = `
         color: var(--text-secondary);
     }
 
-    /* Secondary Logo Styles */
-    .app-logo-secondary {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .secondary-logo {
-        width: 28px;
-        height: 28px;
-        opacity: 0.8;
-        filter: drop-shadow(0 0 6px rgba(207, 255, 4, 0.3));
-        transition: all 0.3s ease;
-    }
-
-    .secondary-logo:hover {
-        opacity: 1;
-        filter: drop-shadow(0 0 12px rgba(207, 255, 4, 0.6));
-        transform: scale(1.1);
-    }
-
-    @media (max-width: 768px) {
-        .app-logo-secondary {
-            order: -1;
-            margin-right: auto;
-        }
-        
-        .secondary-logo {
-            width: 24px;
-            height: 24px;
-        }
-    }
-
-    .no-exercises svg {
-        width: 48px;
-        height: 48px;
-        margin-bottom: 16px;
-        opacity: 0.5;
-    }
-
-    .metric-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, var(--accent-green-bg) 0%, transparent 60%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-        border-color: var(--accent-green);
-    }
-
-    .metric-card:hover::before {
-        opacity: 1;
-    }
-
-    .metric-icon {
-        font-size: 2rem;
-        margin-bottom: 8px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .metric-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--accent-green);
-        margin-bottom: 4px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .metric-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-        position: relative;
-        z-index: 1;
-    }
-
-    /* Comparison Card */
-    .comparison-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        border: 1px solid var(--border-color);
-    }
-
-    .comparison-card h4 {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 16px;
-    }
-
-    .comparison-bars {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .user-comparison {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .user-comparison span {
-        min-width: 60px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-secondary);
-    }
-
-    .bar-container {
-        flex: 1;
-        height: 24px;
-        background: var(--bg-secondary);
-        border-radius: var(--radius-full);
-        overflow: hidden;
-        position: relative;
-    }
-
-    .bar {
-        height: 100%;
-        border-radius: var(--radius-full);
-        transition: width 0.5s ease;
-        position: relative;
-    }
-
-    .user-bar {
-        background: linear-gradient(90deg, var(--accent-green) 0%, var(--accent-green-dark) 100%);
-        width: 0%;
-    }
-
-    .goal-bar {
-        background: linear-gradient(90deg, var(--text-secondary) 0%, #666 100%);
-        width: 100%;
-    }
-
-    /* Exercises Preview Integrated */
-    .exercises-preview-integrated {
-        margin: 16px 0;
-        position: relative;
-        z-index: 1;
-        background: var(--bg-secondary);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-color);
-        overflow: hidden;
-    }
-
-    .exercises-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border-color);
-        background: var(--bg-primary);
-    }
-
-    .exercises-header h4 {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .btn-expand {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: none;
-        border: none;
-        color: var(--accent-green);
-        cursor: pointer;
-        padding: 4px 8px;
-        border-radius: var(--radius-sm);
-        transition: var(--transition);
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .btn-expand:hover {
-        background: var(--accent-green-bg);
-    }
-
-    .expand-icon {
-        width: 16px;
-        height: 16px;
-        transition: transform 0.3s ease;
-    }
-
-    .btn-expand.expanded .expand-icon {
-        transform: rotate(180deg);
-    }
-
-    .exercises-list {
-        padding: 12px 16px;
-    }
-
-    .exercises-expanded {
-        padding: 16px;
-        background: var(--bg-primary);
-        border-top: 1px solid var(--border-color);
-        animation: slideDown 0.3s ease;
-    }
-
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            max-height: 0;
-        }
-        to {
-            opacity: 1;
-            max-height: 500px;
-        }
-    }
-
-    .exercises-preview {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .exercise-preview-card {
-        background: var(--bg-secondary);
-        border-radius: var(--radius-md);
-        padding: 16px;
-        border: 1px solid var(--border-color);
-        transition: var(--transition);
-    }
-
-    .exercise-preview-card:hover {
-        background: var(--bg-primary);
-        border-color: var(--accent-green);
-    }
-
-    .exercise-preview-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
-    }
-
-    .exercise-name {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-
-    .exercise-group {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-    }
-
-    .exercise-rm-info {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.875rem;
-    }
-
-    .rm-badge {
-        background: var(--accent-green);
-        color: var(--bg-primary);
-        padding: 2px 8px;
-        border-radius: var(--radius-sm);
-        font-weight: 600;
-    }
-
-    .exercise-preview-details {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 12px;
-        margin-top: 12px;
-    }
-
-    .exercise-detail {
-        text-align: center;
-    }
-
-    .exercise-detail-label {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 4px;
-    }
-
-    .exercise-detail-value {
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--accent-green);
-    }
-
-    /* Novos estilos para exercícios detalhados */
-    .rest-day-card {
-        background: linear-gradient(135deg, var(--accent-green-bg) 0%, var(--bg-secondary) 100%);
-        border-color: var(--accent-green);
-    }
-
-    .rest-day-suggestions {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        margin-top: 16px;
-    }
-
-    .suggestion-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px;
-        background: var(--bg-primary);
-        border-radius: var(--radius-sm);
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-    }
-
-    .suggestion-icon {
-        font-size: 1.2rem;
-    }
-
-    .cardio-badge {
-        background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
-        color: white;
-        padding: 2px 8px;
-        border-radius: var(--radius-sm);
-        font-weight: 600;
-        font-size: 0.75rem;
-    }
-
-    .workout-summary-card {
-        background: linear-gradient(135deg, var(--accent-green-bg) 0%, var(--bg-secondary) 100%);
-        border-color: var(--accent-green);
-        margin-bottom: 20px;
-    }
-
-    .workout-summary-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
-        margin-top: 16px;
-    }
-
-    .summary-stat {
-        text-align: center;
-        padding: 12px;
-        background: var(--bg-primary);
-        border-radius: var(--radius-md);
-    }
-
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--accent-green);
-        margin-bottom: 4px;
-    }
-
-    .stat-label {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .exercise-number {
-        background: var(--accent-green);
-        color: var(--bg-primary);
-        padding: 2px 6px;
-        border-radius: var(--radius-sm);
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-right: 8px;
-    }
-
-    .first-exercise {
-        border-color: var(--accent-green);
-        box-shadow: 0 0 0 1px var(--accent-green-bg);
-    }
-
-    .exercise-weight-range {
-        margin: 16px 0;
-        padding: 12px;
-        background: var(--bg-primary);
-        border-radius: var(--radius-md);
-    }
-
-    .weight-indicator {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 8px;
-    }
-
-    .weight-min, .weight-max {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        min-width: 40px;
-    }
-
-    .weight-bar {
-        flex: 1;
-        height: 8px;
-        background: var(--bg-secondary);
-        border-radius: var(--radius-full);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .weight-range-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--accent-green) 0%, var(--accent-green-dark) 100%);
-        border-radius: var(--radius-full);
-        transition: width 0.5s ease;
-    }
-
-    .weight-target {
-        position: absolute;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: 12px;
-        height: 12px;
-        background: var(--accent-green);
-        border-radius: 50%;
-        border: 2px solid var(--bg-primary);
-        box-shadow: 0 0 0 2px var(--accent-green);
-    }
-
-    .weight-target-label {
-        text-align: center;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--accent-green);
-    }
-
-    .exercise-progress {
-        margin: 12px 0;
-        padding: 8px 12px;
-        background: var(--bg-primary);
-        border-radius: var(--radius-md);
-        border-left: 3px solid var(--accent-green);
-    }
-
-    .progress-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .progress-icon {
-        font-size: 1.1rem;
-    }
-
-    .progress-text {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-    }
-
-    .exercise-tips {
-        display: flex;
-        gap: 16px;
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid var(--border-color);
-    }
-
-    .tip-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-    }
-
-    .tip-icon {
-        font-size: 1rem;
-    }
-
-    .error-card {
-        background: linear-gradient(135deg, #ff6b6b20 0%, var(--bg-secondary) 100%);
-        border-color: #ff6b6b;
-    }
-
-    .error-actions {
-        margin-top: 12px;
-        text-align: center;
-    }
-
     /* Responsividade para exercícios detalhados */
     @media (max-width: 768px) {
         .rest-day-suggestions {
@@ -2071,7 +1506,6 @@ export const homeStyles = `
             font-size: 0.75rem;
         }
     }
-
 
     /* Metrics Grid Moderno */
     .metrics-grid {
@@ -2333,8 +1767,9 @@ export const homeStyles = `
         }
 
         .header-actions {
-            flex-direction: column;
-            gap: 8px;
+            flex-direction: row;
+            gap: 12px;
+            align-items: center;
         }
 
         .week-selector {
@@ -2856,8 +2291,8 @@ export const homeStyles = `
         border: 1px solid var(--border-color);
         border-radius: var(--radius-lg);
         padding: 16px;
-        transition: all 0.3s ease;
         border-left: 4px solid var(--accent-green);
+        transition: all 0.3s ease;
     }
     
     .exercise-card:hover {
@@ -3105,7 +2540,7 @@ export const initializeHomeAnimations = () => {
         const notification = document.createElement('div');
         notification.className = `notification-toast ${type}`;
         notification.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : 
                   type === 'error' ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' :
                   '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'}
@@ -3131,6 +2566,20 @@ export async function inicializarHome() {
         
         // Inicializar animações
         initializeHomeAnimations();
+
+        // Configurar listener do botão "Iniciar Treino"
+        const startBtn = document.getElementById('start-workout-btn');
+        if (startBtn) {
+            startBtn.removeEventListener('click', window.iniciarTreino);
+            if (typeof window.iniciarTreino === 'function') {
+                startBtn.addEventListener('click', window.iniciarTreino);
+                console.log('[templates/home.js] ✅ Listener iniciarTreino configurado');
+            } else {
+                console.warn('[templates/home.js] ⚠️ window.iniciarTreino não é uma função');
+            }
+        } else {
+            console.warn('[templates/home.js] ⚠️ Botão #start-workout-btn não encontrado');
+        }
         
         // Chamar o homeService
         // await homeService.inicializarHome();

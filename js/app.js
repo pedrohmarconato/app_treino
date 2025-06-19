@@ -4,12 +4,16 @@ import AppState from '../state/appState.js';
 import '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
+// Importar workoutExecution ANTES do protocolIntegration para garantir que workoutExecutionManager esteja disponível
+import '../feature/workoutExecution.js';
 import { initializeProtocol } from '../integration/protocolIntegration.js';
 import { integrationService } from '../services/integrationService.js';
 // Importar funções de localStorage para disponibilizar globalmente
 import '../utils/weekPlanStorage.js';
 // Importar weeklyPlanningService para disponibilizar WeeklyPlanService globalmente
 import '../services/weeklyPlanningService.js';
+// CRÍTICO: Importar e disponibilizar DisposicaoInicioModal globalmente
+import DisposicaoInicioModal from '../components/disposicaoInicioModal.js';
 
 // Verificar dependências críticas
 function checkDependencies() {
@@ -121,6 +125,18 @@ function setupGlobalFunctions() {
     };
     
     window.logout = logout;
+    
+    // === COMPONENTES CRÍTICOS ===
+    // Disponibilizar DisposicaoInicioModal globalmente
+    window.DisposicaoInicioModal = DisposicaoInicioModal;
+    console.log('[APP] ✅ DisposicaoInicioModal disponibilizado globalmente');
+
+    // === PERSISTÊNCIA DE TREINO ===
+    import('../feature/workoutPersistence.js')
+        .then((module) => {
+            console.log('[APP] ✅ workoutPersistence carregado, funções de debug disponíveis');
+        })
+        .catch(err => console.error('[APP] ❌ Falha ao importar workoutPersistence:', err));
     
     // === LOGIN ===
     window.initLogin = async () => {
@@ -313,7 +329,7 @@ function setupBasicHomeElements(user) {
         // Configurar informações básicas do usuário
         updateElement('user-name', user.nome);
         
-        const userImages = { 'Pedro': 'pedro.png', 'Japa': 'japa.png' };
+        const userImages = { 'Pedro': 'pedro.png', 'Japa': 'japa.png', 'Vini': 'vini.png' };
         const avatarEl = document.getElementById('user-avatar');
         if (avatarEl) {
             avatarEl.src = userImages[user.nome] || 'pedro.png';

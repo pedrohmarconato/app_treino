@@ -1,4 +1,5 @@
-// feature/workoutExecution.js - NOVO LAYOUT INTEGRADO
+// VERSÃO RESTAURADA - BASEADA NO V2 FUNCIONAL
+// feature/workoutExecution.js - LAYOUT INTEGRADO
 import WorkoutProtocolService from '../services/workoutProtocolService.js';
 import AppState from '../state/appState.js';
 import { showNotification } from '../ui/notifications.js';
@@ -6,7 +7,78 @@ import { workoutTemplate, exerciseCardTemplate } from '../templates/workoutExecu
 import TreinoCacheService from '../services/treinoCacheService.js';
 import { getActionIcon, getAchievementIcon, getWorkoutIcon } from '../utils/icons.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
-import DisposicaoInicioModal from '../components/disposicaoInicioModal.js';
+import { workoutPersistence } from './workoutPersistence.js';
+
+// Importação dinâmica e segura do modal
+let DisposicaoInicioModal = null;
+
+// Função para garantir que o modal esteja carregado
+async function ensureModalLoaded() {
+    console.log('[MODAL LOADER] 🔄 Verificando carregamento do DisposicaoInicioModal...');
+    
+    if (DisposicaoInicioModal) {
+        console.log('[MODAL LOADER] ✅ Modal já carregado via import');
+        return DisposicaoInicioModal;
+    }
+    
+    // Verificar se está disponível globalmente
+    if (window.DisposicaoInicioModal) {
+        console.log('[MODAL LOADER] ✅ Modal encontrado em window.DisposicaoInicioModal');
+        DisposicaoInicioModal = window.DisposicaoInicioModal;
+        return DisposicaoInicioModal;
+    }
+    
+    // Tentar importação dinâmica
+    try {
+        console.log('[MODAL LOADER] 🔄 Tentando importação dinâmica...');
+        const modalModule = await import('../components/disposicaoInicioModal.js');
+        DisposicaoInicioModal = modalModule.default;
+        
+        // Disponibilizar globalmente para outros usos
+        window.DisposicaoInicioModal = DisposicaoInicioModal;
+        
+        console.log('[MODAL LOADER] ✅ Importação dinâmica bem-sucedida');
+        return DisposicaoInicioModal;
+    } catch (error) {
+        console.error('[MODAL LOADER] ❌ Erro na importação dinâmica:', error);
+        throw new Error(`Falha ao carregar DisposicaoInicioModal: ${error.message}`);
+    }
+}
+
+// Verificação de dependências críticas antes da execução
+async function verificarDependenciasCriticas() {
+    console.log('[WORKOUT DEPENDENCIES] 🔍 Verificando dependências críticas...');
+    
+    const verificacoes = {
+        DOM: document.readyState === 'complete' || document.readyState === 'interactive',
+        body: !!document.body,
+        supabase: !!window.supabase,
+        AppState: !!AppState,
+        workoutPersistence: !!workoutPersistence
+    };
+    
+    console.log('[WORKOUT DEPENDENCIES] 📋 Status das dependências:', verificacoes);
+    
+    const falhas = Object.entries(verificacoes)
+        .filter(([_, status]) => !status)
+        .map(([dep]) => dep);
+    
+    if (falhas.length > 0) {
+        console.error('[WORKOUT DEPENDENCIES] ❌ Dependências faltando:', falhas);
+        throw new Error(`Dependências críticas não disponíveis: ${falhas.join(', ')}`);
+    }
+    
+    // Verificar e carregar o modal
+    try {
+        await ensureModalLoaded();
+        console.log('[WORKOUT DEPENDENCIES] ✅ Modal carregado com sucesso');
+    } catch (error) {
+        console.error('[WORKOUT DEPENDENCIES] ❌ Falha ao carregar modal:', error);
+        throw error;
+    }
+    
+    console.log('[WORKOUT DEPENDENCIES] ✅ Todas as dependências verificadas');
+}
 
 class WorkoutExecutionManager {
     constructor() {
@@ -18,19 +90,75 @@ class WorkoutExecutionManager {
         this.currentRestTime = 0;
         this.currentExerciseIndex = 0;
         this.disposicaoInicio = null;
+        this.seriesElement = document.getElementById('series-counter'); // Declaração segura
+        this.persistence = workoutPersistence;
+        this.modalSaidaAtivo = false;
+        this.estaEmModoEmergencia = false;
     }
 
-    // Iniciar treino
     async iniciarTreino() {
+        console.log('[WorkoutExecution] 🔥 MÉTODO INICIAR TREINO CHAMADO - INÍCIO ABSOLUTO');
+        console.log('[WorkoutExecution] 📍 Stack trace do chamador:', new Error().stack);
+        
         try {
             console.log('[WorkoutExecution] 🚀 Iniciando treino...');
+            console.log('[WorkoutExecution] 📋 Estado inicial:', {
+                currentWorkout: this.currentWorkout,
+                persistence: !!this.persistence,
+                DOM_ready: document.readyState
+            });
             
             const currentUser = AppState.get('currentUser');
             if (!currentUser) {
+                console.error('[WorkoutExecution] ❌ Usuário não encontrado no AppState');
                 throw new Error('Usuário não encontrado');
             }
             
             console.log('[WorkoutExecution] 👤 Usuário atual:', currentUser.nome, `(ID: ${currentUser.id})`);
+
+            // Verificar se há treino em andamento para recuperar
+            try {
+                const stateRecuperado = await this.persistence.restoreState();
+                if (stateRecuperado) {
+                    const desejaRecuperar = await this.confirmarRecuperacao();
+                    if (desejaRecuperar) {
+                        console.log('[WorkoutExecution] 🔄 Recuperando treino em andamento...');
+                        await this.recuperarTreinoEmAndamento(stateRecuperado);
+                        console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO');
+                        return;
+                    } else {
+                        // Usuário optou por iniciar novo treino
+                        if (this.persistence?.clearState) {
+                            await this.persistence.clearState();
+                        }
+                    }
+                }
+            } catch (persistenceError) {
+                console.warn('[WorkoutExecution] ⚠️ Erro na recuperação via persistence, verificando localStorage...', persistenceError);
+                
+                // Fallback: verificar localStorage para workoutProgress
+                try {
+                    const progressData = localStorage.getItem('workoutProgress');
+                    if (progressData) {
+                        const parsedData = JSON.parse(progressData);
+                        if (parsedData.status === 'em_andamento' && parsedData.currentWorkout) {
+                            console.log('[WorkoutExecution] 📋 Progresso encontrado no localStorage');
+                            const desejaRecuperar = await this.confirmarRecuperacao();
+                            if (desejaRecuperar) {
+                                console.log('[WorkoutExecution] 🔄 Recuperando treino do localStorage...');
+                                await this.recuperarTreinoEmAndamento(parsedData);
+                                console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO DO LOCALSTORAGE');
+                                return;
+                            } else {
+                                // Limpar progresso se usuário não quer continuar
+                                localStorage.removeItem('workoutProgress');
+                            }
+                        }
+                    }
+                } catch (localStorageError) {
+                    console.warn('[WorkoutExecution] ⚠️ Erro ao verificar localStorage:', localStorageError);
+                }
+            }
 
             // Mostrar loading
             if (window.showNotification) {
@@ -38,29 +166,36 @@ class WorkoutExecutionManager {
             }
 
             // Verificar se treino já está concluído ANTES de carregar dados
+            console.log('[WorkoutExecution] 🔍 Verificando status de conclusão...');
             let statusConclusao = { concluido: false };
             if (window.WeeklyPlanService?.verificarTreinoConcluido) {
                 try {
+                    console.log('[WorkoutExecution] 📞 Chamando WeeklyPlanService.verificarTreinoConcluido...');
                     statusConclusao = await window.WeeklyPlanService.verificarTreinoConcluido(currentUser.id);
-                    console.log('[WorkoutExecution] Status de conclusão:', statusConclusao);
+                    console.log('[WorkoutExecution] ✅ Status de conclusão obtido:', statusConclusao);
                 } catch (error) {
-                    console.warn('[WorkoutExecution] Erro ao verificar conclusão:', error);
+                    console.warn('[WorkoutExecution] ⚠️ Erro ao verificar conclusão:', error);
                 }
+            } else {
+                console.log('[WorkoutExecution] ⚠️ WeeklyPlanService.verificarTreinoConcluido não disponível');
             }
             
             // Bloquear se treino já está concluído
             if (statusConclusao.concluido) {
+                console.log('[WorkoutExecution] 🚫 Treino já concluído, bloqueando...');
                 if (window.showNotification) {
                     window.showNotification('⚠️ Treino já foi concluído hoje! 🎉', 'warning');
                 }
                 console.log('[WorkoutExecution] ❌ Tentativa de iniciar treino já concluído bloqueada');
+                console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO JÁ CONCLUÍDO');
                 return;
             }
 
             // Carregar treino do protocolo ANTES da disposição para verificar se há treino
             console.log('[WorkoutExecution] 📊 Carregando treino do protocolo...');
+            console.log('[WorkoutExecution] 📞 Chamando WorkoutProtocolService.carregarTreinoParaExecucao...');
             this.currentWorkout = await WorkoutProtocolService.carregarTreinoParaExecucao(currentUser.id);
-            console.log('[WorkoutExecution] 📊 Treino carregado:', this.currentWorkout);
+            console.log('[WorkoutExecution] ✅ Treino carregado do protocolo:', this.currentWorkout);
             
             if (!this.currentWorkout) {
                 throw new Error('Nenhum treino encontrado para hoje. Configure seu planejamento semanal primeiro.');
@@ -69,11 +204,13 @@ class WorkoutExecutionManager {
             // Verificar casos especiais ANTES da disposição (não faz sentido perguntar disposição para folga)
             if (this.currentWorkout.tipo === 'folga') {
                 showNotification(`Hoje é dia de descanso! ${getWorkoutIcon('descanso', 'small')}`, 'info');
+                console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - HOJE É FOLGA');
                 return;
             }
             
             if (this.currentWorkout.tipo === 'cardio') {
                 showNotification(`Treino de cardio! ${getWorkoutIcon('cardio', 'small')} Configure seu equipamento.`, 'info');
+                console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO DE CARDIO');
                 return;
             }
 
@@ -90,6 +227,9 @@ class WorkoutExecutionManager {
             // Salvar no estado global
             AppState.set('currentWorkout', this.currentWorkout);
             
+            // Salvar estado inicial para persistência
+            await this.salvarEstadoAtual(true);
+            
             console.log(`[WorkoutExecution] ✅ Treino carregado: ${this.currentWorkout.exercicios.length} exercícios`);
             
             // Navegar para tela de workout ANTES de solicitar disposição
@@ -100,28 +240,68 @@ class WorkoutExecutionManager {
             
             // Solicitar disposição inicial APÓS estar na tela de workout
             try {
-                console.log('[WorkoutExecution] 🚀 INICIANDO SOLICITAÇÃO DE DISPOSIÇÃO...');
-                console.log('[WorkoutExecution] 📋 DisposicaoInicioModal disponível:', !!DisposicaoInicioModal);
-                console.log('[WorkoutExecution] 📋 Método solicitar disponível:', !!DisposicaoInicioModal.solicitar);
+                console.log('[DEBUG WORKOUT] 🚀 ==> INICIANDO CHAMADA DO MODAL <==');
+                console.log('[DEBUG WORKOUT] 📍 Localização antes do modal:', window.location.href);
+                console.log('[DEBUG WORKOUT] 📍 Document ready state:', document.readyState);
+                console.log('[DEBUG WORKOUT] 📍 Body existe:', !!document.body);
+                console.log('[DEBUG WORKOUT] 📍 Elementos no body:', document.body.children.length);
                 
-                console.log('[WorkoutExecution] ⏳ Chamando DisposicaoInicioModal.solicitar()...');
-                const valorDisposicao = await DisposicaoInicioModal.solicitar();
-                console.log('[WorkoutExecution] 🎯 RETORNO DO MODAL:', valorDisposicao);
+                // Verificação adicional do DOM
+                await this.verificarEstadoDOM();
                 
-                if (valorDisposicao) {
-                    this.disposicaoInicio = valorDisposicao;
-                    await DisposicaoInicioModal.salvarValor(currentUser.id, valorDisposicao);
-                    console.log(`[WorkoutExecution] ✅ Disposição inicial registrada: ${valorDisposicao}/5`);
-                } else {
-                    console.log('[WorkoutExecution] ⚠️ Modal retornou null ou foi cancelado');
+                // NOVO: Verificar dependências críticas e carregar modal
+                await verificarDependenciasCriticas();
+                
+                // Garantir que o modal está carregado
+                const ModalClass = await ensureModalLoaded();
+                console.log('[DEBUG WORKOUT] ✅ Modal carregado com sucesso:', !!ModalClass);
+                console.log('[DEBUG WORKOUT] 🔍 Modal.solicitar disponível:', typeof ModalClass?.solicitar);
+                
+                // Verificar se há outros modais abertos
+                const existingModals = document.querySelectorAll('.modal-overlay');
+                console.log('[DEBUG WORKOUT] 🔍 Modais existentes:', existingModals.length);
+                existingModals.forEach((modal, i) => {
+                    console.log(`[DEBUG WORKOUT] Modal ${i}:`, {
+                        id: modal.id,
+                        display: window.getComputedStyle(modal).display,
+                        zIndex: window.getComputedStyle(modal).zIndex
+                    });
+                });
+                
+                console.log('[DEBUG WORKOUT] ⏰ Chamando DisposicaoInicioModal.solicitar()...');
+                const startTime = Date.now();
+                
+                // Adicionar timeout para detectar travamentos
+                const disposicaoPromise = ModalClass.solicitar();
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Modal timeout após 30 segundos')), 30000);
+                });
+                
+                let disposicao;
+                try {
+                    disposicao = await Promise.race([disposicaoPromise, timeoutPromise]);
+                } catch (timeoutError) {
+                    console.error('[DEBUG WORKOUT] ⏰ TIMEOUT no modal:', timeoutError);
+                    throw timeoutError;
                 }
                 
-                // Renderizar treino APENAS após disposição ser coletada
-                console.log('[WorkoutExecution] 🎬 Iniciando renderização do treino...');
-                setTimeout(() => {
-                    this.renderizarComSeguranca();
-                    this.iniciarCronometro();
-                }, 100);
+                const endTime = Date.now();
+                console.log('[DEBUG WORKOUT] ⏱️ Modal retornou após:', endTime - startTime, 'ms');
+                console.log('[DEBUG WORKOUT] ✅ Valor retornado pelo modal:', disposicao);
+                console.log('[DEBUG WORKOUT] 🔍 Tipo do valor:', typeof disposicao, disposicao === null ? '(NULL)' : '');
+                
+                if (disposicao !== null) {
+                    console.log('[DEBUG WORKOUT] 💾 Salvando disposição:', disposicao);
+                    // Salva a disposição inicial
+                    await ModalClass.salvarValor(disposicao);
+                    console.log('[DEBUG WORKOUT] ✅ Disposição salva com sucesso');
+                } else {
+                    console.log('[DEBUG WORKOUT] ⚠️ Modal fechado sem valor (disposicao é null)');
+                }
+                
+                console.log('[DEBUG WORKOUT] 🎬 Iniciando renderização do treino...');
+                await this.renderizarComSeguranca();
+                this.iniciarCronometro();
                 
             } catch (dispErr) {
                 console.error('[WorkoutExecution] ❌ ERRO ao solicitar disposição:', dispErr);
@@ -135,6 +315,8 @@ class WorkoutExecutionManager {
                 }, 100);
             }
             
+            console.log('[WorkoutExecution] 🎉 MÉTODO INICIAR TREINO CONCLUÍDO COM SUCESSO - FIM');
+            
         } catch (error) {
             console.error('[WorkoutExecution] ❌ Erro ao iniciar treino:', error);
             if (window.showNotification) {
@@ -143,23 +325,33 @@ class WorkoutExecutionManager {
         }
     }
 
-    // Navegação robusta para tela de workout
     async navegarParaTelaWorkout() {
         console.log('[WorkoutExecution] 📱 Navegando para tela de workout...');
+        console.log('[WorkoutExecution] 🔍 Estado antes da navegação:', {
+            renderTemplate: typeof window.renderTemplate,
+            mostrarTela: typeof window.mostrarTela,
+            currentURL: window.location.href,
+            bodyChildren: document.body.children.length
+        });
         
         try {
             // Tentar o sistema novo primeiro
             if (window.renderTemplate && typeof window.renderTemplate === 'function') {
-                console.log('[WorkoutExecution] Usando renderTemplate...');
+                console.log('[WorkoutExecution] 📞 Chamando renderTemplate("workout")...');
                 await window.renderTemplate('workout');
                 
                 // Verificar se a navegação funcionou
+                console.log('[WorkoutExecution] ⏳ Aguardando elemento #workout-screen...');
                 await this.aguardarElemento('#workout-screen', 3000);
                 console.log('[WorkoutExecution] ✅ Navegação via renderTemplate bem-sucedida');
+                console.log('[WorkoutExecution] 🔍 URL após renderTemplate:', window.location.href);
                 return;
+            } else {
+                console.log('[WorkoutExecution] ⚠️ renderTemplate não disponível');
             }
         } catch (error) {
             console.warn('[WorkoutExecution] ⚠️ Falha no renderTemplate:', error);
+            console.warn('[WorkoutExecution] Stack trace:', error.stack);
         }
         
         try {
@@ -182,7 +374,6 @@ class WorkoutExecutionManager {
         this.navegacaoManual();
     }
     
-    // Aguardar elemento aparecer na DOM
     async aguardarElemento(selector, timeout = 3000) {
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
@@ -206,7 +397,6 @@ class WorkoutExecutionManager {
         });
     }
     
-    // Navegação manual como último recurso
     navegacaoManual() {
         console.log('[WorkoutExecution] 🔧 Executando navegação manual...');
         
@@ -235,7 +425,6 @@ class WorkoutExecutionManager {
         }
     }
     
-    // Criar tela de workout dinamicamente
     criarTelaWorkoutDinamica() {
         const appContainer = document.getElementById('app') || document.body;
         
@@ -254,7 +443,6 @@ class WorkoutExecutionManager {
         return workoutScreen;
     }
     
-    // Carregar CSS do workout
     carregarWorkoutCSS() {
         // Verificar se CSS já foi carregado
         if (document.querySelector('#workout-execution-css')) {
@@ -268,1008 +456,6 @@ class WorkoutExecutionManager {
         document.head.appendChild(link);
     }
     
-    // Renderizar informações do treino (função auxiliar mantida para compatibilidade)
-    renderizarInfoTreino() {
-        const workout = this.currentWorkout;
-        
-        // Título do treino
-        const titleEl = document.getElementById('workout-name');
-        if (titleEl) {
-            titleEl.textContent = workout.nome || `Treino ${workout.tipo_atividade || 'Força'}`;
-        }
-        
-        // Semana atual
-        const weekEl = document.getElementById('current-week');
-        if (weekEl) {
-            weekEl.textContent = workout.semana_atual || '1';
-        }
-        
-        // Grupos musculares
-        const muscleGroupsEl = document.getElementById('muscle-groups');
-        if (muscleGroupsEl) {
-            const grupos = workout.exercicios.map(ex => 
-                ex.exercicio_grupo || ex.grupo_muscular || ''
-            ).filter((grupo, index, array) => 
-                grupo && array.indexOf(grupo) === index
-            );
-            muscleGroupsEl.textContent = grupos.join(', ') || workout.tipo_atividade;
-        }
-        
-        // Total de exercícios
-        const totalEl = document.getElementById('total-exercises');
-        if (totalEl) {
-            totalEl.textContent = workout.exercicios.length;
-        }
-    }
-    
-    // Renderizar exercícios (versão corrigida)
-    renderizarExercicios() {
-        console.log('[WorkoutExecution] 📝 Renderizar exercícios (método auxiliar)...');
-        
-        const container = this.encontrarContainerExercicios();
-        if (!container) {
-            console.error('[WorkoutExecution] Container de exercícios não encontrado');
-            this.criarContainerNaRaiz();
-            return;
-        }
-        
-        this.renderizarExerciciosNoContainer(container);
-    }
-    
-    // Confirmar série
-    confirmarSerie(exerciseIndex, seriesIndex) {
-        try {
-            const exercicio = this.currentWorkout.exercicios[exerciseIndex];
-            if (!exercicio) {
-                throw new Error('Exercício não encontrado');
-            }
-            
-            // Buscar inputs da série
-            const seriesItem = document.querySelector(
-                `[data-exercise-index="${exerciseIndex}"] [data-series-index="${seriesIndex}"]`
-            );
-            
-            if (!seriesItem) {
-                throw new Error('Série não encontrada');
-            }
-            
-            const weightInput = seriesItem.querySelector('.series-weight');
-            const repsInput = seriesItem.querySelector('.series-reps');
-            
-            const peso = parseFloat(weightInput.value) || 0;
-            const reps = parseInt(repsInput.value) || 0;
-            
-            if (peso <= 0 || reps <= 0) {
-                showNotification('Por favor, preencha peso e repetições válidos', 'warning');
-                return;
-            }
-            
-            // Registrar execução
-            this.registrarExecucao(exercicio, peso, reps);
-            
-            // Marcar série como completa
-            this.marcarSerieCompleta(seriesItem);
-            
-            // Iniciar timer de descanso se não for a última série
-            if (seriesIndex < (exercicio.series - 1)) {
-                this.iniciarTimerDescanso(exercicio.tempo_descanso || 60);
-            }
-            
-            // Verificar se exercício está completo
-            this.verificarExercicioCompleto(exerciseIndex);
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao confirmar série:', error);
-            showNotification('Erro ao confirmar série', 'error');
-        }
-    }
-    
-    // Marcar série como completa
-    marcarSerieCompleta(seriesItem) {
-        seriesItem.classList.add('completed');
-        
-        // Animar checkmark
-        const btn = seriesItem.querySelector('.series-confirm-btn');
-        if (btn) {
-            btn.innerHTML = `
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                    <polyline points="20 6 9 17 4 12" style="stroke-dasharray: 30; stroke-dashoffset: 30; animation: checkmark 0.3s ease-out forwards;"/>
-                </svg>
-            `;
-        }
-        
-        // Desabilitar inputs
-        seriesItem.querySelectorAll('input').forEach(input => {
-            input.disabled = true;
-        });
-    }
-    
-    // Iniciar timer de descanso
-    iniciarTimerDescanso(tempoSegundos) {
-        const overlay = document.getElementById('rest-timer-overlay');
-        if (!overlay) return;
-        
-        // Mostrar overlay
-        overlay.style.display = 'flex';
-        
-        // Configurar tempo
-        this.currentRestTime = tempoSegundos;
-        
-        // Atualizar display
-        this.atualizarDisplayDescanso();
-        
-        // Animar círculo
-        this.animarCirculoDescanso(tempoSegundos);
-        
-        // Iniciar countdown
-        this.restTimerInterval = setInterval(() => {
-            this.currentRestTime--;
-            this.atualizarDisplayDescanso();
-            
-            if (this.currentRestTime <= 0) {
-                this.finalizarDescanso();
-            }
-        }, 1000);
-        
-        // Configurar botão de pular
-        const skipBtn = document.getElementById('skip-rest');
-        if (skipBtn) {
-            skipBtn.onclick = () => this.finalizarDescanso();
-        }
-        
-        // Atualizar texto motivacional
-        const motivationEl = document.getElementById('motivation-text');
-        if (motivationEl && window.getRandomMotivation) {
-            motivationEl.textContent = window.getRandomMotivation();
-        }
-    }
-    
-    // Atualizar display do timer de descanso
-    atualizarDisplayDescanso() {
-        const displayEl = document.getElementById('rest-timer-display');
-        if (displayEl) {
-            const minutes = Math.floor(this.currentRestTime / 60);
-            const seconds = this.currentRestTime % 60;
-            displayEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-    }
-    
-    // Animar círculo de progresso do descanso
-    animarCirculoDescanso(duration) {
-        const circle = document.querySelector('.rest-progress-fill');
-        if (circle) {
-            const circumference = 2 * Math.PI * 90; // raio = 90
-            circle.style.strokeDasharray = circumference;
-            circle.style.strokeDashoffset = circumference;
-            
-            // Animate to 0
-            setTimeout(() => {
-                circle.style.transition = `stroke-dashoffset ${duration}s linear`;
-                circle.style.strokeDashoffset = '0';
-            }, 100);
-        }
-    }
-    
-    // Finalizar descanso
-    finalizarDescanso() {
-        // Limpar interval
-        if (this.restTimerInterval) {
-            clearInterval(this.restTimerInterval);
-            this.restTimerInterval = null;
-        }
-        
-        // Esconder overlay
-        const overlay = document.getElementById('rest-timer-overlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-        
-        // Reset timer
-        this.currentRestTime = 0;
-    }
-    
-    // Atualizar progress bar
-    atualizarProgressBar() {
-        const totalExercicios = this.currentWorkout.exercicios.length;
-        const exerciciosCompletos = this.exerciciosExecutados.length;
-        
-        const progressEl = document.getElementById('workout-progress');
-        if (progressEl) {
-            const percentage = (exerciciosCompletos / totalExercicios) * 100;
-            progressEl.style.width = `${percentage}%`;
-        }
-        
-        const currentEl = document.getElementById('current-exercise-number');
-        if (currentEl) {
-            currentEl.textContent = Math.min(exerciciosCompletos + 1, totalExercicios);
-        }
-    }
-    
-    // Verificar se exercício está completo
-    verificarExercicioCompleto(exerciseIndex) {
-        const exerciseCard = document.querySelector(`[data-exercise-index="${exerciseIndex}"]`);
-        if (!exerciseCard) return;
-        
-        const totalSeries = exerciseCard.querySelectorAll('.series-item').length;
-        const seriesCompletas = exerciseCard.querySelectorAll('.series-item.completed').length;
-        
-        if (seriesCompletas >= totalSeries) {
-            // Marcar exercício como completo
-            exerciseCard.classList.add('completed');
-            
-            // Adicionar aos executados se ainda não estiver
-            if (!this.exerciciosExecutados.includes(exerciseIndex)) {
-                this.exerciciosExecutados.push(exerciseIndex);
-            }
-            
-            // Atualizar progress bar
-            this.atualizarProgressBar();
-            
-            // Verificar se treino está completo
-            if (this.exerciciosExecutados.length >= this.currentWorkout.exercicios.length) {
-                setTimeout(() => this.finalizarTreino(), 1000);
-            }
-        }
-    }
-    
-    // Finalizar treino
-    finalizarTreino() {
-        try {
-            console.log('[WorkoutExecution] 🏁 Finalizando treino...');
-            
-            // Verificar se há treino atual
-            if (!this.currentWorkout || !this.currentWorkout.exercicios) {
-                console.error('[WorkoutExecution] Erro: Nenhum treino ativo para finalizar');
-                showNotification('Erro: Nenhum treino ativo', 'error');
-                return;
-            }
-            
-            // Parar cronômetro
-            this.pararCronometro();
-            
-            // Calcular estatísticas
-            const tempoTotal = this.calcularTempoTotal();
-            const totalExercicios = this.currentWorkout.exercicios.length;
-            const totalSeries = this.calcularTotalSeries();
-            
-            // Mostrar tela de conclusão
-            this.mostrarTelaCompletacao(tempoTotal, totalExercicios, totalSeries);
-            
-            // Registrar conclusão do treino
-            this.registrarTreinoConcluido();
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao finalizar treino:', error);
-            showNotification('Erro ao finalizar treino', 'error');
-        }
-    }
-    
-    // Mostrar tela de completação
-    mostrarTelaCompletacao(tempoTotal, totalExercicios, totalSeries) {
-        const overlay = document.getElementById('workout-completion');
-        if (!overlay) return;
-        
-        // Atualizar estatísticas
-        const timeEl = document.getElementById('total-time');
-        if (timeEl) {
-            timeEl.textContent = this.formatarTempo(tempoTotal);
-        }
-        
-        const exercisesEl = document.getElementById('total-exercises-completed');
-        if (exercisesEl) {
-            exercisesEl.textContent = totalExercicios;
-        }
-        
-        const seriesEl = document.getElementById('total-series');
-        if (seriesEl) {
-            seriesEl.textContent = totalSeries;
-        }
-        
-        // Mostrar overlay
-        overlay.style.display = 'flex';
-    }
-    
-    // Calcular tempo total
-    calcularTempoTotal() {
-        if (!this.startTime) return 0;
-        return Math.floor((Date.now() - this.startTime) / 1000);
-    }
-    
-    // Calcular total de séries
-    calcularTotalSeries() {
-        return document.querySelectorAll('.series-item.completed').length;
-    }
-    
-    // Formatar tempo
-    formatarTempo(segundos) {
-        const minutos = Math.floor(segundos / 60);
-        const segs = segundos % 60;
-        return `${minutos}:${segs.toString().padStart(2, '0')}`;
-    }
-    
-    // Inicializar interações
-    inicializarInteracoes() {
-        // Adicionar event listeners para inputs
-        document.querySelectorAll('.neon-input').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.classList.add('focused');
-            });
-            
-            input.addEventListener('blur', function() {
-                this.parentElement.classList.remove('focused');
-            });
-        });
-    }
-    
-    // Voltar para home
-    voltarParaHome() {
-        try {
-            // Limpar timers
-            this.pararCronometro();
-            this.finalizarDescanso();
-            
-            // Resetar estado
-            this.resetarEstado();
-            
-            // Navegar para home
-            if (window.mostrarTela) {
-                window.mostrarTela('dashboard');
-            } else if (window.renderTemplate) {
-                window.renderTemplate('dashboard');
-            } else {
-                // Fallback manual
-                location.reload();
-            }
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao voltar para home:', error);
-            location.reload();
-        }
-    }
-    
-    // Registrar execução da série no banco
-    async registrarExecucao(exercicio, peso, reps) {
-        try {
-            const currentUser = AppState.get('currentUser');
-            if (!currentUser) {
-                throw new Error('Usuário não encontrado');
-            }
-
-            const execucaoData = {
-                usuario_id: currentUser.id,
-                exercicio_id: exercicio.exercicio_id,
-                protocolo_treino_id: exercicio.id,
-                peso_utilizado: peso,
-                repeticoes_realizadas: reps,
-                data_execucao: nowInSaoPaulo()
-            };
-
-            // Usar WorkoutProtocolService para salvar
-            await WorkoutProtocolService.registrarExecucaoSerie(execucaoData);
-            
-            console.log('[WorkoutExecution] ✅ Execução registrada no banco');
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] ❌ Erro ao registrar execução:', error);
-            throw error;
-        }
-    }
-
-    // Registrar treino concluído
-    async registrarTreinoConcluido() {
-        try {
-            const currentUser = AppState.get('currentUser');
-            if (!currentUser || !this.currentWorkout) {
-                return;
-            }
-
-            const conclusaoData = {
-                usuario_id: currentUser.id,
-                protocolo_id: this.currentWorkout.protocolo_id,
-                tipo_atividade: this.currentWorkout.tipo_atividade,
-                tempo_total: this.calcularTempoTotal(),
-                exercicios_realizados: this.exerciciosExecutados.length,
-                data_conclusao: nowInSaoPaulo()
-            };
-
-            // Usar WeeklyPlanningService para marcar como concluído
-            if (window.WeeklyPlanService?.marcarTreinoConcluido) {
-                await window.WeeklyPlanService.marcarTreinoConcluido(currentUser.id);
-            }
-
-            console.log('[WorkoutExecution] ✅ Treino marcado como concluído');
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] ❌ Erro ao registrar conclusão:', error);
-        }
-    }
-
-    // Parar cronômetro
-    pararCronometro() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-    }
-
-    // Resetar estado
-    resetarEstado() {
-        this.currentWorkout = null;
-        this.exerciciosExecutados = [];
-        this.startTime = null;
-        this.currentExerciseIndex = 0;
-        this.currentRestTime = 0;
-    }
-
-    // Renderizar treino (versão corrigida e unificada)
-    renderizarTreino() {
-        try {
-            console.log('[WorkoutExecution] 🎨 Renderizando treino...');
-            
-            if (!this.currentWorkout || !this.currentWorkout.exercicios) {
-                throw new Error('Dados do treino não disponíveis');
-            }
-            
-            console.log('[WorkoutExecution] Dados do treino:', {
-                nome: this.currentWorkout.nome,
-                exercicios: this.currentWorkout.exercicios.length,
-                primeiroExercicio: this.currentWorkout.exercicios[0]
-            });
-            
-            // Aguardar template carregar e renderizar
-            setTimeout(() => {
-                this.renderizarComSeguranca();
-            }, 200);
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] ❌ Erro ao renderizar treino:', error);
-            if (window.showNotification) {
-                window.showNotification('Erro ao exibir treino: ' + error.message, 'error');
-            }
-        }
-    }
-
-    // NOVA FUNÇÃO: Encontrar o container correto para exercícios (CORRIGIDA)
-    encontrarContainerExercicios() {
-        console.log('[WorkoutExecution] 🔍 Procurando container no template...');
-        
-        // ESTRATÉGIA 1: Procurar o container oficial do template
-        let container = document.getElementById('exercises-container');
-        if (container) {
-            console.log('[WorkoutExecution] ✅ Container #exercises-container encontrado');
-            return container;
-        }
-        
-        // ESTRATÉGIA 2: Procurar outros containers conhecidos
-        const possiveisIds = [
-            'exercise-list',
-            'workout-content',
-            'exercise-container',
-            'exercises-list'
-        ];
-        
-        for (const id of possiveisIds) {
-            container = document.getElementById(id);
-            if (container) {
-                console.log(`[WorkoutExecution] ✅ Container alternativo encontrado: #${id}`);
-                return container;
-            }
-        }
-        
-        // ESTRATÉGIA 3: Procurar containers por classe
-        container = document.querySelector('.exercises-container, .workout-content, .exercise-container');
-        if (container) {
-            console.log('[WorkoutExecution] ✅ Container encontrado por classe:', container.className);
-            return container;
-        }
-        
-        // ESTRATÉGIA 4: Criar dentro do workout-screen
-        const workoutScreen = document.querySelector('#workout-screen');
-        if (workoutScreen) {
-            console.log('[WorkoutExecution] 🔨 Criando container dentro do workout-screen...');
-            container = document.createElement('div');
-            container.id = 'exercises-container-dynamic';
-            container.className = 'exercises-container';
-            container.style.cssText = `
-                padding: 20px;
-                max-width: 600px;
-                margin: 0 auto;
-                min-height: 400px;
-                background: transparent;
-            `;
-            workoutScreen.appendChild(container);
-            console.log('[WorkoutExecution] ✅ Container dinâmico criado');
-            return container;
-        }
-        
-        console.error('[WorkoutExecution] ❌ Não foi possível encontrar/criar container para exercícios');
-        return null;
-    }
-
-    renderizarExerciciosNoContainer(container) {
-        try {
-            console.log('[WorkoutExecution] 📝 Renderizando exercícios no container...');
-            
-            if (!container) {
-                throw new Error('Container não fornecido');
-            }
-            
-            const exercicios = this.currentWorkout.exercicios;
-            
-            if (!exercicios || exercicios.length === 0) {
-                container.innerHTML = `
-                    <div class="no-exercises" style="padding: 40px; text-align: center; color: #999;">
-                        <h3>Nenhum exercício encontrado</h3>
-                        <p>Verifique seu planejamento semanal</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            console.log(`[WorkoutExecution] Renderizando ${exercicios.length} exercícios`);
-            container.innerHTML = '';
-            
-            exercicios.forEach((exercicio, index) => {
-                console.log(`[WorkoutExecution] Renderizando exercício ${index + 1}:`, {
-                    nome: exercicio.exercicio_nome || exercicio.nome,
-                    id: exercicio.exercicio_id || exercicio.id
-                });
-                
-                const exerciseCard = this.criarCardExercicioCompleto(exercicio, index);
-                container.appendChild(exerciseCard);
-            });
-            
-            console.log('[WorkoutExecution] ✅ Exercícios renderizados no container');
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] ❌ Erro ao renderizar exercícios:', error);
-            if (container) {
-                container.innerHTML = `
-                    <div style="padding: 20px; color: #ff6b6b; text-align: center;">
-                        <h3>Erro ao carregar exercícios</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            }
-        }
-    }
-    
-    // NOVA FUNÇÃO: Criar card de exercício completo
-    criarCardExercicioCompleto(exercicio, index) {
-        const card = document.createElement('div');
-        card.className = 'exercise-card';
-        card.id = `exercise-${exercicio.exercicio_id}`;
-        card.style.cssText = `
-            background: var(--bg-secondary, #2a2a2a);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border-color, #444);
-        `;
-        
-        // Extrair dados detalhados do exercício
-        const nomeExercicio = exercicio.exercicios?.nome || exercicio.exercicio_nome || exercicio.nome || 'Exercício ' + (index + 1);
-        const numSeries = exercicio.series || 3;
-        const repeticoesAlvo = exercicio.repeticoes_alvo || exercicio.pesos_sugeridos?.repeticoes_alvo || '8-12';
-        const tempoDescanso = exercicio.tempo_descanso || 60;
-        const pesoSugerido = exercicio.pesos_sugeridos?.peso_base || '';
-        const grupoMuscular = exercicio.exercicios?.grupo_muscular || exercicio.exercicio_grupo || '';
-        const equipamento = exercicio.exercicios?.equipamento || exercicio.exercicio_equipamento || '';
-        
-        card.innerHTML = `
-            <div class="exercise-header">
-                <h3 style="margin: 0 0 8px 0; color: var(--text-primary, #fff);">
-                    ${nomeExercicio}
-                </h3>
-                <div class="exercise-details" style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.875rem; color: var(--text-secondary, #ccc);">
-                    <span>${getActionIcon('repeat')} ${numSeries} séries</span>
-                    <span>${getAchievementIcon('target')} ${repeticoesAlvo} reps</span>
-                    <span>${getActionIcon('timer')} ${tempoDescanso}s descanso</span>
-                    ${pesoSugerido ? `<span>${getActionIcon('weight')} ${pesoSugerido}kg sugerido</span>` : ''}
-                </div>
-                ${grupoMuscular || equipamento ? `
-                    <div class="exercise-meta" style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 0.75rem; color: var(--text-secondary, #999);">
-                        ${grupoMuscular ? `<span>${getAchievementIcon('target')} ${grupoMuscular}</span>` : ''}
-                        ${equipamento ? `<span>${getActionIcon('weight')} ${equipamento}</span>` : ''}
-                    </div>
-                ` : ''}
-            </div>
-            
-            <div class="exercise-series" id="series-${exercicio.exercicio_id}">
-                ${this.gerarSeriesHTMLCompleto(exercicio)}
-            </div>
-            
-        `;
-        
-        return card;
-    }
-    
-    // NOVA FUNÇÃO: Gerar HTML das séries completo com sugestões de peso
-    gerarSeriesHTMLCompleto(exercicio) {
-        const numSeries = exercicio.series || 3;
-        const pesoSugerido = exercicio.pesos_sugeridos?.peso_base || exercicio.peso_sugerido || '';
-        const repeticoesAlvo = exercicio.repeticoes_alvo || exercicio.pesos_sugeridos?.repeticoes_alvo || 10;
-        let html = '';
-        
-        for (let i = 1; i <= numSeries; i++) {
-            html += `
-                <div class="series-item" data-serie="${i}" style="display: flex; align-items: center; gap: 12px; background: var(--bg-primary, #1a1a1a); padding: 16px; border-radius: 12px; margin-bottom: 12px; transition: all 0.3s ease;">
-                    <div class="series-number" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--accent-green, #a8ff00); color: var(--bg-primary, #000); border-radius: 50%; font-weight: 600; flex-shrink: 0;">
-                        ${i}
-                    </div>
-                    <div class="serie-inputs" style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                        <input 
-                            type="number" 
-                            placeholder="${pesoSugerido ? pesoSugerido + 'kg (sugerido)' : 'Peso (kg)'}" 
-                            class="peso-input" 
-                            step="0.5" 
-                            min="0"
-                            data-peso-sugerido="${pesoSugerido}"
-                            style="width: 120px; padding: 8px; background: var(--bg-secondary, #2a2a2a); border: 1px solid var(--border-color, #444); border-radius: 6px; color: var(--text-primary, #fff); text-align: center;"
-                        >
-                        <span style="color: var(--text-secondary, #ccc);">×</span>
-                        <input 
-                            type="number" 
-                            placeholder="${repeticoesAlvo}" 
-                            class="reps-input" 
-                            step="1" 
-                            min="0"
-                            data-reps-alvo="${repeticoesAlvo}"
-                            style="width: 80px; padding: 8px; background: var(--bg-secondary, #2a2a2a); border: 1px solid var(--border-color, #444); border-radius: 6px; color: var(--text-primary, #fff); text-align: center;"
-                        >
-                        <button 
-                            class="confirmar-serie" 
-                            onclick="workoutExecutionManager.confirmarSerie(${exercicio.exercicio_id}, ${i})"
-                            style="padding: 8px 16px; background: var(--bg-secondary, #2a2a2a); color: var(--text-secondary, #ccc); border: 2px solid var(--border-color, #444); border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s ease;"
-                        >
-                            ✓
-                        </button>
-                    </div>
-                </div>
-            `;
-        }
-        
-        return html;
-    }
-
-    // Confirmar série (mantido da versão original mas melhorado)
-    async confirmarSerie(exercicioId, serieNumero) {
-        try {
-            console.log(`[WorkoutExecution] Confirmando série ${serieNumero} do exercício ${exercicioId}`);
-            
-            const serieElement = document.querySelector(`#series-${exercicioId} [data-serie="${serieNumero}"]`);
-            if (!serieElement) {
-                throw new Error('Série não encontrada na interface');
-            }
-            
-            const pesoInput = serieElement.querySelector('.peso-input');
-            const repsInput = serieElement.querySelector('.reps-input');
-            
-            const peso = parseFloat(pesoInput.value);
-            const reps = parseInt(repsInput.value);
-            
-            if (!peso || !reps) {
-                window.showNotification && window.showNotification('Preencha peso e repetições', 'error');
-                return;
-            }
-            
-            // Encontrar exercício
-            const exercicio = this.currentWorkout.exercicios.find(ex => ex.exercicio_id === exercicioId);
-            if (!exercicio) {
-                throw new Error('Exercício não encontrado');
-            }
-            
-            // Salvar execução no banco
-            const dadosExecucao = {
-                exercicio_id: exercicioId,
-                protocolo_treino_id: exercicio.id,
-                peso_utilizado: peso,
-                repeticoes_realizadas: reps,
-                serie_numero: serieNumero,
-                repeticoes_alvo: exercicio.repeticoes_alvo
-            };
-            
-            // Salvar no banco usando o serviço
-            const resultado = await WorkoutProtocolService.executarSerie(
-                AppState.get('currentUser').id,
-                dadosExecucao
-            );
-            
-            // Marcar série como concluída na interface
-            this.marcarSerieComoConcluida(exercicioId, serieNumero, peso, reps);
-            
-            // Atualizar progresso do exercício
-            exercicio.series_executadas = (exercicio.series_executadas || 0) + 1;
-            this.atualizarProgresso();
-            
-            // Verificar se completou todas as séries
-            if (exercicio.series_executadas >= exercicio.series) {
-                exercicio.status = 'concluido';
-                this.habilitarBotaoConcluirExercicio(exercicioId);
-                
-                // Verificar se treino está completo
-                if (this.verificarTreinoCompleto()) {
-                    this.mostrarTelaConclusao();
-                }
-            } else {
-                // Iniciar descanso entre séries
-                this.iniciarDescanso(exercicio.tempo_descanso || 60);
-            }
-            
-            window.showNotification && window.showNotification(`Série ${serieNumero} registrada: ${peso}kg × ${reps}`, 'success');
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao confirmar série:', error);
-            window.showNotification && window.showNotification('Erro ao registrar série: ' + error.message, 'error');
-        }
-    }
-
-    // Marcar série como concluída
-    marcarSerieComoConcluida(exercicioId, serieNumero, peso, reps) {
-        const serieElement = document.querySelector(`#series-${exercicioId} [data-serie="${serieNumero}"]`);
-        if (serieElement) {
-            serieElement.classList.add('completed');
-            serieElement.style.backgroundColor = 'rgba(168, 255, 0, 0.1)';
-            serieElement.style.border = '1px solid var(--accent-green, #a8ff00)';
-            serieElement.innerHTML = `
-                <div class="series-number" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--accent-green, #a8ff00); color: var(--bg-primary, #000); border-radius: 50%; font-weight: 600; flex-shrink: 0; box-shadow: 0 0 10px rgba(168, 255, 0, 0.3);">
-                    ${serieNumero}
-                </div>
-                <div class="serie-result" style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: var(--text-primary, #fff); font-weight: 600;">${peso}kg × ${reps} reps</span>
-                    <span class="completed-icon" style="color: var(--accent-green, #a8ff00); font-size: 1.2em;">✅</span>
-                </div>
-            `;
-        }
-    }
-
-    // Verificar se treino está completo
-    verificarTreinoCompleto() {
-        if (!this.currentWorkout || !this.currentWorkout.exercicios) return false;
-        
-        return this.currentWorkout.exercicios.every(exercicio => 
-            exercicio.status === 'concluido' || 
-            (exercicio.series_executadas || 0) >= (exercicio.series || 3)
-        );
-    }
-
-    // Mostrar tela de conclusão
-    mostrarTelaConclusao() {
-        console.log('[WorkoutExecution] 🎉 Treino completo! Mostrando tela de conclusão...');
-        
-        const tempoTotal = this.calcularTempoTotal();
-        const totalExercicios = this.currentWorkout.exercicios.length;
-        
-        // Atualizar elementos se existirem
-        this.updateElement('total-time', tempoTotal);
-        this.updateElement('total-exercises', totalExercicios.toString());
-        
-        // Mostrar tela de conclusão
-        const completionScreen = document.getElementById('workout-completion');
-        if (completionScreen) {
-            completionScreen.style.display = 'block';
-        } else {
-            // Criar tela de conclusão dinamicamente
-            this.criarTelaConclusaoDinamica(tempoTotal, totalExercicios);
-        }
-        
-        window.showNotification && window.showNotification('🎉 Treino concluído com sucesso!', 'success');
-    }
-
-    // Criar tela de conclusão dinâmica
-    criarTelaConclusaoDinamica(tempoTotal, totalExercicios) {
-        const workoutScreen = document.querySelector('#workout-screen');
-        if (!workoutScreen) return;
-        
-        const conclusaoHTML = `
-            <div id="workout-completion-dynamic" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-                <div style="background: var(--bg-secondary, #2a2a2a); padding: 40px; border-radius: 16px; text-align: center; max-width: 400px; margin: 20px;">
-                    <h2 style="color: var(--text-primary, #fff); margin-bottom: 20px;">🎉 Treino Concluído!</h2>
-                    <div style="margin-bottom: 30px;">
-                        <div style="margin-bottom: 15px;">
-                            <span style="color: var(--text-secondary, #ccc);">Tempo Total:</span><br>
-                            <span style="color: var(--accent-green, #a8ff00); font-size: 1.5em; font-weight: bold;">${tempoTotal}</span>
-                        </div>
-                        <div>
-                            <span style="color: var(--text-secondary, #ccc);">Exercícios:</span><br>
-                            <span style="color: var(--accent-green, #a8ff00); font-size: 1.5em; font-weight: bold;">${totalExercicios}</span>
-                        </div>
-                    </div>
-                    <button onclick="workoutExecutionManager.voltarParaHome()" style="padding: 12px 24px; background: var(--accent-green, #a8ff00); color: var(--bg-primary, #000); border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem;">
-                        Finalizar Treino
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        workoutScreen.insertAdjacentHTML('beforeend', conclusaoHTML);
-    }
-
-    // Calcular tempo total
-    calcularTempoTotal() {
-        if (!this.startTime) return '00:00';
-        
-        const elapsed = Date.now() - this.startTime;
-        const minutes = Math.floor(elapsed / 60000);
-        const seconds = Math.floor((elapsed % 60000) / 1000);
-        
-        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-
-    // Atualizar progresso
-    atualizarProgresso() {
-        if (!this.currentWorkout || !this.currentWorkout.exercicios) return;
-        
-        const totalExercicios = this.currentWorkout.exercicios.length;
-        const exerciciosConcluidos = this.currentWorkout.exercicios.filter(ex => 
-            ex.status === 'concluido' || 
-            (ex.series_executadas || 0) >= (ex.series || 3)
-        ).length;
-        
-        const progresso = totalExercicios > 0 ? (exerciciosConcluidos / totalExercicios) * 100 : 0;
-        
-        const progressBar = document.getElementById('workout-progress');
-        if (progressBar) {
-            progressBar.style.width = `${progresso}%`;
-        }
-        
-        console.log(`[WorkoutExecution] Progresso: ${exerciciosConcluidos}/${totalExercicios} (${progresso.toFixed(1)}%)`);
-    }
-
-    // Iniciar cronômetro
-    iniciarCronometro() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-        }
-        
-        this.timerInterval = setInterval(() => {
-            const elapsed = Date.now() - this.startTime;
-            const minutes = Math.floor(elapsed / 60000);
-            const seconds = Math.floor((elapsed % 60000) / 1000);
-            
-            const timerDisplay = document.getElementById('workout-timer-display');
-            if (timerDisplay) {
-                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }, 1000);
-    }
-
-    // Iniciar descanso
-    iniciarDescanso(segundos) {
-        const restTimer = document.getElementById('rest-timer');
-        const restTimeDisplay = document.getElementById('rest-time');
-        
-        if (!restTimer || !restTimeDisplay) {
-            // Criar timer de descanso dinâmico se não existir
-            this.criarTimerDescansoDinamico(segundos);
-            return;
-        }
-        
-        this.currentRestTime = segundos;
-        restTimer.style.display = 'flex';
-        
-        this.restTimerInterval = setInterval(() => {
-            restTimeDisplay.textContent = this.currentRestTime;
-            this.currentRestTime--;
-            
-            if (this.currentRestTime < 0) {
-                this.pararDescanso();
-            }
-        }, 1000);
-        
-        // Botão para pular
-        const skipButton = document.getElementById('skip-rest');
-        if (skipButton) {
-            skipButton.onclick = () => this.pararDescanso();
-        }
-        
-        // Atualizar texto motivacional
-        const motivationEl = document.getElementById('motivation-text');
-        if (motivationEl && window.getRandomMotivation) {
-            motivationEl.textContent = window.getRandomMotivation();
-        }
-    }
-
-    // Criar timer de descanso dinâmico
-    criarTimerDescansoDinamico(segundos) {
-        console.log('[WorkoutExecution] 🕐 Criando timer de descanso dinâmico...');
-        
-        const workoutScreen = document.querySelector('#workout-screen');
-        if (!workoutScreen) return;
-        
-        // Remover timer anterior se existir
-        const existingOverlay = document.getElementById('rest-timer-dynamic');
-        if (existingOverlay) {
-            existingOverlay.remove();
-        }
-        
-        const timerHTML = `
-            <div id="rest-timer-dynamic" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 999;">
-                <div style="background: var(--bg-secondary, #2a2a2a); padding: 40px; border-radius: 16px; text-align: center; max-width: 300px;">
-                    <h3 style="color: var(--text-primary, #fff); margin-bottom: 20px;">${getActionIcon('timer')} Descanso</h3>
-                    <div style="font-size: 3rem; color: var(--accent-green, #a8ff00); font-weight: bold; margin-bottom: 20px;">
-                        <span id="rest-time-dynamic">${segundos}</span>s
-                    </div>
-                    <button onclick="workoutExecutionManager.pularDescanso()" style="padding: 12px 24px; background: var(--accent-green, #a8ff00); color: var(--bg-primary, #000); border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                        Pular Descanso
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        workoutScreen.insertAdjacentHTML('beforeend', timerHTML);
-        
-        // Iniciar contagem
-        this.currentRestTime = segundos;
-        this.restTimerInterval = setInterval(() => {
-            const display = document.getElementById('rest-time-dynamic');
-            if (display) {
-                display.textContent = this.currentRestTime;
-            }
-            
-            this.currentRestTime--;
-            
-            if (this.currentRestTime < 0) {
-                this.pararDescanso();
-            }
-        }, 1000);
-        
-        // Configurar botão de pular
-        const skipBtn = document.getElementById('skip-rest');
-        if (skipBtn) {
-            skipBtn.onclick = () => this.pararDescanso();
-        }
-        
-        // Atualizar texto motivacional
-        const motivationEl = document.getElementById('motivation-text');
-        if (motivationEl && window.getRandomMotivation) {
-            motivationEl.textContent = window.getRandomMotivation();
-        }
-    }
-
-    // Parar descanso
-    pararDescanso() {
-        if (this.restTimerInterval) {
-            clearInterval(this.restTimerInterval);
-            this.restTimerInterval = null;
-        }
-        
-        // Remover timer padrão
-        const restTimer = document.getElementById('rest-timer');
-        if (restTimer) {
-            restTimer.style.display = 'none';
-        }
-        
-        // Remover timer dinâmico
-        const restTimerDynamic = document.getElementById('rest-timer-dynamic');
-        if (restTimerDynamic) {
-            restTimerDynamic.remove();
-        }
-        
-        console.log('[WorkoutExecution] ✅ Descanso finalizado');
-    }
-
-    // Função para pular descanso (chamada pelo botão)
-    pularDescanso() {
-        this.pararDescanso();
-        window.showNotification && window.showNotification('Descanso pulado!', 'info');
-    }
-
-    // Utilitário para atualizar elementos
-    updateElement(id, content) {
-        const element = document.getElementById(id);
-        if (element) {
-            if (typeof content === 'string') {
-                element.textContent = content;
-            } else {
-                element.innerHTML = content;
-            }
-            return true;
-        }
-        return false;
-    }
-
-    // NOVA FUNÇÃO: Renderizar com segurança (VERSÃO CORRIGIDA)
     renderizarComSeguranca() {
         console.log('[WorkoutExecution] 🎨 Renderizando treino com segurança...');
         
@@ -1277,7 +463,7 @@ class WorkoutExecutionManager {
             // 1. Popular elementos do template
             this.popularElementosDoTemplate();
             
-            // 2. Encontrar container para exercícios
+            // 2. Encontrar container para os exercícios
             const exerciseContainer = this.encontrarContainerExercicios();
             
             if (!exerciseContainer) {
@@ -1288,6 +474,8 @@ class WorkoutExecutionManager {
             
             // 3. Renderizar exercícios
             this.renderizarExerciciosNoContainer(exerciseContainer);
+            // Destacar e rolar para o exercício atual (se houver)
+            this.destacarExercicioAtual();
             
             // 4. Atualizar progresso
             this.atualizarProgresso();
@@ -1303,9 +491,39 @@ class WorkoutExecutionManager {
         }
     }
 
-    // Popular elementos do template (VERSÃO CORRIGIDA)
+    // Atualiza um elemento do DOM com o valor fornecido
+    updateElement(id, value) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.warn(`[WorkoutExecution] Elemento não encontrado: ${id}`);
+        }
+    }
+
+    // Inicia o cronômetro do treino
+    iniciarCronometro() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+        
+        this.startTime = this.startTime || Date.now();
+        
+        this.timerInterval = setInterval(() => {
+            const elapsed = Date.now() - this.startTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            const timerElement = document.getElementById('workout-timer');
+            if (timerElement) {
+                timerElement.textContent = timeString;
+            }
+        }, 1000);
+    }
+
     popularElementosDoTemplate() {
-        console.log('[WorkoutExecution] 🔧 Populando elementos do template...');
+        console.log('[WorkoutExecution] \ud83d\udd27 Populando elementos do template...');
         
         const workout = this.currentWorkout;
         const nome = workout.nome || 'Treino do Dia';
@@ -1319,7 +537,7 @@ class WorkoutExecutionManager {
         // Grupos musculares
         if (workout.exercicios && workout.exercicios.length > 0) {
             const grupos = workout.exercicios
-                .map(ex => ex.exercicio_grupo || ex.grupo_muscular || ex.exercicios?.grupo_muscular)
+                .map(ex => ex.exercicios?.grupo_muscular || ex.grupo_muscular || '')
                 .filter((grupo, index, array) => grupo && array.indexOf(grupo) === index)
                 .join(', ');
             
@@ -1339,408 +557,805 @@ class WorkoutExecutionManager {
         console.log('[WorkoutExecution] ✅ Elementos do template populados');
     }
 
-    // Criar container na raiz como último recurso (VERSÃO CORRIGIDA)
-    criarContainerNaRaiz() {
-        console.log('[WorkoutExecution] 🆘 Criando container de emergência...');
+    encontrarContainerExercicios() {
+        // destaca o container existente
         
-        const app = document.getElementById('app');
-        if (!app) {
-            console.error('[WorkoutExecution] ❌ Elemento #app não encontrado!');
-            return;
-        }
-        
-        // Remover overlay anterior se existir
-        const existingOverlay = document.getElementById('workout-overlay');
-        if (existingOverlay) {
-            existingOverlay.remove();
-        }
-        
-        const workout = this.currentWorkout;
-        const overlay = document.createElement('div');
-        overlay.id = 'workout-overlay';
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-primary, #1a1a1a);
-            z-index: 1000;
-            overflow-y: auto;
-            padding: 20px;
-        `;
-        
-        overlay.innerHTML = `
-            <div style="max-width: 600px; margin: 0 auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #2a2a2a; padding: 16px; border-radius: 12px;">
-                    <button onclick="workoutExecutionManager.voltarParaHome()" style="background: #13f1fc; color: #000; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">← Voltar</button>
-                    <div style="text-align: center; color: white;">
-                        <h2 style="margin: 0;">${workout.nome || 'Treino em Execução'}</h2>
-                        <p style="margin: 4px 0 0 0; color: #ccc;">Interface de Emergência</p>
-                    </div>
-                    <div id="workout-timer-display" style="background: #333; padding: 8px 12px; border-radius: 6px; color: white;">00:00</div>
-                </div>
-                
-                <div style="background: #333; height: 4px; border-radius: 2px; margin-bottom: 20px;">
-                    <div id="workout-progress" style="height: 100%; background: #13f1fc; width: 0%; border-radius: 2px; transition: width 0.3s;"></div>
-                </div>
-                
-                <div id="container-exercicios-emergency"></div>
-            </div>
-        `;
-        
-        app.appendChild(overlay);
-        
-        // Renderizar exercícios no container de emergência
-        const container = document.getElementById('container-exercicios-emergency');
-        if (container) {
-            this.renderizarExerciciosNoContainer(container);
-        }
-        
-        // Iniciar cronômetro
-        this.iniciarCronometro();
-        
-        console.log('[WorkoutExecution] 🆘 Container de emergência criado e renderizado');
     }
 
-    // Habilitar botão de concluir exercício
-    habilitarBotaoConcluirExercicio(exercicioId) {
-        const exerciseCard = document.getElementById(`exercise-${exercicioId}`);
-        if (exerciseCard) {
-            exerciseCard.style.border = '2px solid var(--accent-green, #a8ff00)';
-            exerciseCard.style.background = 'linear-gradient(135deg, var(--bg-secondary, #2a2a2a), rgba(168, 255, 0, 0.1))';
-            
-            // Adicionar badge de concluído
-            const header = exerciseCard.querySelector('.exercise-header h3');
-            if (header && !header.querySelector('.completed-badge')) {
-                header.innerHTML += ' <span class="completed-badge" style="background: var(--accent-green, #a8ff00); color: var(--bg-primary, #000); padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 8px;">✓ CONCLUÍDO</span>';
-            }
-        }
-        
-        console.log(`[WorkoutExecution] ✅ Exercício ${exercicioId} concluído`);
-    }
-
-    // Voltar para home
-    voltarParaHome() {
-    const confirmar = confirm('Tem certeza que deseja sair do treino? O progresso será perdido.');
-    if (!confirmar) return;
-    this.resetarEstado();
-    // Remover overlay se existir
-    const overlay = document.getElementById('workout-overlay');
-    if (overlay) {
-        overlay.remove();
-    }
-    // Remover elementos dinâmicos
-    const elementosDinamicos = [
-        '#rest-timer-dynamic',
-        '#workout-completion-dynamic',
-        '#emergency-exercise-container',
-        '#workout-exercises-container'
-    ];
-    elementosDinamicos.forEach(selector => {
-        const element = document.querySelector(selector);
-        if (element) element.remove();
-    });
-    // Navegação de volta
-    if (window.renderTemplate) {
-        window.renderTemplate('home');
-    } else if (window.mostrarTela) {
-        window.mostrarTela('home-screen');
-    } else {
-        // Fallback manual
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-            screen.style.display = 'none';
-        });
-        const homeScreen = document.querySelector('#home-screen');
-        if (homeScreen) {
-            homeScreen.style.display = 'block';
-            homeScreen.classList.add('active');
-        }
-        }
-        
-        console.log('[WorkoutExecution] 🏠 Retornando para home');
-    }
-
-    // Resetar estado
-    resetarEstado() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
-        
-        if (this.restTimerInterval) {
-            clearInterval(this.restTimerInterval);
-            this.restTimerInterval = null;
-        }
-        
-        this.currentWorkout = null;
-        this.exerciciosExecutados = [];
-        this.startTime = null;
-        this.currentRestTime = 0;
-        this.currentExerciseIndex = 0;
-        
-        // Limpar estado global
-        AppState.set('currentWorkout', null);
-        
-        console.log('[WorkoutExecution] 🔄 Estado resetado');
-    }
-
-    // RENDERIZAÇÃO SEGURA: Sistema robusto com múltiplas estratégias
-    renderizarComSeguranca() {
-        console.log('[ExecucaoTreino] 🛡️ Iniciando renderização segura...');
-        
-        try {
-            if (!this.currentWorkout) {
-                throw new Error('Nenhum treino carregado para renderizar');
-            }
-
-            console.log('[ExecucaoTreino] 📋 Dados do treino carregado:', {
-                nome: this.currentWorkout.nome,
-                tipo: this.currentWorkout.tipo_atividade,
-                totalExercicios: this.currentWorkout.exercicios?.length || 0
-            });
-
-            // 1. Preencher informações básicas do treino
-            this.preencherInformacoesTreino();
-            
-            // 2. Localizar container para os exercícios
-            const container = this.localizarContainerExercicios();
-            
-            if (container) {
-                // 3. Renderizar exercícios no container localizado
-                this.renderizarExerciciosNoContainer(container);
-                
-                // 4. Configurar eventos e interações
-                this.configurarEventosInteracao();
-                
-                console.log('[ExecucaoTreino] ✅ Renderização concluída com sucesso!');
-            } else {
-                console.warn('[ExecucaoTreino] ⚠️ Container não encontrado, ativando modo emergência');
-                this.ativarModoEmergencia();
-            }
-            
-        } catch (error) {
-            console.error('[ExecucaoTreino] ❌ Erro durante renderização:', error);
-            this.ativarModoEmergencia();
+    // Destaca o exercício atual no UI
+    destacarExercicioAtual() {
+        const index = this.currentExerciseIndex || 0;
+        const card = document.getElementById(`exercise-card-${index}`);
+        if (card) {
+            document.querySelectorAll('.exercise-card').forEach(el => el.classList.remove('current-exercise'));
+            card.classList.add('current-exercise');
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 
-    // PREENCHER INFORMAÇÕES: Atualiza dados básicos do treino na interface
-    preencherInformacoesTreino() {
-        const treino = this.currentWorkout;
-        
-        const informacoes = [
-            { id: 'workout-name', conteudo: treino.nome || `Treino ${treino.tipo_atividade || 'do Dia'}` },
-            { id: 'workout-title', conteudo: treino.nome || `Treino ${treino.tipo_atividade || 'do Dia'}` },
-            { id: 'current-week', conteudo: treino.semana_atual || '1' },
-            { id: 'muscle-groups', conteudo: this.obterGruposMusculares() },
-            { id: 'total-exercises', conteudo: (treino.exercicios?.length || 0).toString() },
-            { id: 'current-exercise-number', conteudo: '1' }
-        ];
-
-        informacoes.forEach(({ id, conteudo }) => {
-            const elemento = document.getElementById(id);
-            if (elemento) {
-                elemento.textContent = conteudo;
-                console.log(`[ExecucaoTreino] ✅ Informação atualizada: ${id} = "${conteudo}"`);
-            }
-        });
-    }
-
-    // OBTER GRUPOS MUSCULARES: Extrai e formata grupos musculares dos exercícios
-    obterGruposMusculares() {
-        if (!this.currentWorkout?.exercicios) return this.currentWorkout?.tipo_atividade || '';
-        
-        const grupos = this.currentWorkout.exercicios
-            .map(ex => ex.exercicio_grupo || ex.grupo_muscular || ex.exercicios?.grupo_muscular || '')
-            .filter((grupo, index, array) => grupo && array.indexOf(grupo) === index);
-            
-        return grupos.join(', ') || this.currentWorkout.tipo_atividade || '';
-    }
-
-    // LOCALIZAR CONTAINER: Busca local para renderizar exercícios com múltiplas estratégias
-    localizarContainerExercicios() {
-        console.log('[ExecucaoTreino] 🔍 Buscando container para exercícios...');
-        
-        // Estratégia 1: Container oficial do template
-        let container = document.getElementById('exercises-container');
-        if (container) {
-            console.log('[ExecucaoTreino] ✅ Container principal encontrado: #exercises-container');
-            return container;
-        }
-        
-        // Estratégia 2: IDs alternativos comuns
-        const idsAlternativos = [
-            'exercise-container',
-            'exercicios-container', 
-            'workout-exercises',
-            'treino-exercicios',
-            'lista-exercicios'
+    encontrarContainerExercicios() {
+        const containers = [
+            'exercises-container',
+            'container-exercicios',
+            'workout-exercises'
         ];
         
-        for (const id of idsAlternativos) {
-            container = document.getElementById(id);
-            if (container) {
-                console.log(`[ExecucaoTreino] ✅ Container alternativo encontrado: #${id}`);
-                return container;
-            }
+        for (const id of containers) {
+            const container = document.getElementById(id);
+            if (container) return container;
         }
         
-        // Estratégia 3: Busca por classes CSS
-        const seletoresClasse = [
-            '.exercises-container',
-            '.exercise-container', 
-            '.workout-content .container',
-            '.workout-exercises',
-            '.lista-exercicios'
-        ];
-        
-        for (const seletor of seletoresClasse) {
-            container = document.querySelector(seletor);
-            if (container) {
-                console.log(`[ExecucaoTreino] ✅ Container encontrado por classe: ${seletor}`);
-                return container;
-            }
-        }
-        
-        // Estratégia 4: Criar dentro da tela de treino
-        const telaTreino = document.querySelector('#workout-screen');
-        if (telaTreino) {
-            console.log('[ExecucaoTreino] 🔨 Criando container dentro da tela...');
-            container = document.createElement('div');
-            container.id = 'exercises-container-dinamico';
-            container.className = 'exercises-container';
-            container.style.cssText = `
-                padding: 20px;
-                max-width: 600px;
-                margin: 0 auto;
-                min-height: 400px;
-            `;
-            telaTreino.appendChild(container);
-            console.log('[ExecucaoTreino] ✅ Container dinâmico criado');
-            return container;
-        }
-        
-        console.warn('[ExecucaoTreino] ⚠️ Nenhum container encontrado');
         return null;
     }
 
-    // NOVA FUNÇÃO: Renderizar exercícios de forma segura
-    renderizarExerciciosSeguro(container) {
-        const exercicios = this.currentWorkout.exercicios;
+    async confirmarSerie(exerciseIndex, seriesIndex) {
+        console.log(`[WorkoutExecution] Confirmando série ${seriesIndex + 1} do exercício ${exerciseIndex + 1}`);
         
-        if (!exercicios || exercicios.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #ccc;">
-                    <h3>Nenhum exercício encontrado</h3>
-                    <p>Verifique se o treino foi configurado corretamente.</p>
-                </div>
-            `;
+        const exercicio = this.currentWorkout.exercicios[exerciseIndex];
+        if (!exercicio) return;
+        
+        // Verificar se série já foi confirmada para evitar duplicação
+        if (!exercicio.seriesCompletas) {
+            exercicio.seriesCompletas = [];
+        }
+        
+        if (exercicio.seriesCompletas[seriesIndex]) {
+            console.log(`[WorkoutExecution] Série ${seriesIndex + 1} já confirmada`);
             return;
         }
         
-        console.log(`[WorkoutExecution] 🏋️‍♂️ Renderizando ${exercicios.length} exercícios...`);
+        exercicio.seriesCompletas[seriesIndex] = true;
         
-        container.innerHTML = '';
+        // Atualizar visual do botão
+        const btn = document.querySelector(`[onclick*="confirmarSerie(${exerciseIndex}, ${seriesIndex})"]`);
+        if (btn) {
+            btn.style.background = '#4CAF50';
+            btn.style.color = 'white';
+            btn.textContent = '✓';
+            btn.disabled = true;
+            btn.style.cursor = 'not-allowed';
+        }
         
-        exercicios.forEach((exercicio, index) => {
-            try {
-                const exerciseCard = this.criarCardExercicioSeguro(exercicio, index);
-                container.appendChild(exerciseCard);
-            } catch (error) {
-                console.error(`[WorkoutExecution] ❌ Erro ao renderizar exercício ${index}:`, error);
-                // Continuar com os outros exercícios
+        // Salvar progresso
+        await this.salvarEstadoAtual();
+        
+        // Verificar se todas as séries foram completadas
+        const totalSeries = exercicio.series || 3;
+        const seriesCompletadas = exercicio.seriesCompletas.filter(Boolean).length;
+        
+        if (seriesCompletadas >= totalSeries) {
+            console.log(`[WorkoutExecution] Exercício ${exerciseIndex + 1} completo!`);
+            
+            // Marcar exercício como completo visualmente
+            const exerciseCard = document.getElementById(`exercise-card-${exerciseIndex}`);
+            if (exerciseCard) {
+                exerciseCard.style.opacity = '0.7';
+                exerciseCard.style.border = '2px solid #4CAF50';
             }
-        });
-        
-        console.log(`[WorkoutExecution] ✅ ${exercicios.length} exercícios renderizados com sucesso`);
+            
+            // Atualizar progresso geral
+            this.atualizarProgresso();
+        }
     }
 
-    // NOVA FUNÇÃO: Criar card de exercício de forma segura
-    criarCardExercicioSeguro(exercicio, index) {
-        // Extrair dados com fallbacks robustos
-        const exerciseName = exercicio.exercicio_nome || 
-                            exercicio.nome || 
-                            exercicio.exercicios?.nome || 
-                            `Exercício ${index + 1}`;
-                            
-        const muscleGroup = exercicio.exercicio_grupo || 
-                           exercicio.grupo_muscular || 
-                           exercicio.exercicios?.grupo_muscular || 
-                           '';
-                           
-        const series = exercicio.series || 3;
-        const repsTarget = exercicio.repeticoes_alvo || exercicio.repeticoes || 12;
-        const restTime = exercicio.tempo_descanso || 60;
-        const suggestedWeight = exercicio.peso_sugerido || 
-                               exercicio.pesos_sugeridos?.peso_base || 
-                               '';
-
-        const card = document.createElement('div');
-        card.className = 'exercise-card';
-        card.id = `exercise-${exercicio.exercicio_id || index}`;
-        card.dataset.exerciseIndex = index;
+    async voltarParaHome() {
+        console.log('[WorkoutExecution] Tentativa de voltar para home...');
         
-        card.innerHTML = `
-            <div class="exercise-card-header">
-                <div class="exercise-number">${index + 1}</div>
-                <div class="exercise-info">
-                    <h3 class="exercise-name">${exerciseName}</h3>
-                    <p class="exercise-muscle">${muscleGroup}</p>
-                </div>
-            </div>
+        // Verificar se há treino ativo
+        const isWorkoutActive = this.currentWorkout && this.timerInterval;
+        const hasProgress = this.exerciciosExecutados && this.exerciciosExecutados.length > 0;
+        
+        if (isWorkoutActive || hasProgress) {
+            console.log('[WorkoutExecution] Treino em andamento detectado, mostrando modal...');
+            this.mostrarModalSaida();
+            return; // Não navegar ainda, aguardar decisão do usuário
+        }
+        
+        // Se não há treino ativo, navegar diretamente
+        this.navegarParaHomeDiretamente();
+    }
+
+    async finalizarTreino() {
+        console.log('[WorkoutExecution] Finalizando treino...');
+        
+        try {
+            // Parar cronômetro
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+            }
             
-            <div class="series-container" id="series-container-${index}">
-                ${this.gerarSeriesHTMLSeguro(exercicio, index, series, repsTarget, suggestedWeight)}
-            </div>
+            // Calcular dados do treino
+            const duracao = Math.round((Date.now() - this.startTime) / 60000);
             
-            ${restTime ? `
-                <div class="rest-info" style="margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.875rem; color: #ccc;">
-                    ${getActionIcon('timer')} Descanso: ${restTime}s entre séries
-                </div>
-            ` : ''}
+            // Salvar no Supabase
+            if (window.WorkoutProtocolService?.salvarTreinoConcluido) {
+                await window.WorkoutProtocolService.salvarTreinoConcluido({
+                    workout: this.currentWorkout,
+                    duracao,
+                    exerciciosExecutados: this.exerciciosExecutados
+                });
+            }
+            
+            // Limpar cache e estado
+            await this.limparEstadoPersistido();
+            
+            // Mostrar modal de conclusão
+            if (window.showModalTreinoSalvo) {
+                window.showModalTreinoSalvo();
+            }
+            
+            // Voltar para home após delay
+            setTimeout(() => this.navegarParaHomeDiretamente(), 2000);
+            
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro ao finalizar treino:', error);
+            if (window.showNotification) {
+                window.showNotification('Erro ao salvar treino', 'error');
+            }
+        }
+    }
+
+    // NOVOS MÉTODOS DE BACKUP LOCAL
+    async saveLocalProgress() {
+        try {
+            const state = {
+                exercicios: this.exercicios,
+                currentIndex: this.currentExerciseIndex,
+                timer: this.timer?.getState?.() || null,
+                timestamp: Date.now(),
+                version: 'local_v1'
+            };
+            localStorage.setItem('workoutLocalBackup', JSON.stringify(state));
+            console.log('[Workout] Progresso salvo localmente');
+        } catch (e) {
+            console.warn('[Workout] Erro ao salvar localmente:', e);
+        }
+    }
+
+    loadLocalProgress() {
+        try {
+            const saved = localStorage.getItem('workoutLocalBackup');
+            if (!saved) return null;
+            
+            const parsed = JSON.parse(saved);
+            
+            // Validar dados e tempo (max 24h)
+            if (!parsed || (Date.now() - parsed.timestamp) > 86400000) {
+                localStorage.removeItem('workoutLocalBackup');
+                return null;
+            }
+            
+            return parsed;
+        } catch (e) {
+            console.warn('[Workout] Erro ao carregar backup local:', e);
+            return null;
+        }
+    }
+
+    // Salva o estado atual do treino
+    async salvarEstadoAtual(forceSave = false) {
+        if (!this.currentWorkout || !this.persistence) return;
+        
+        try {
+            const state = {
+                workout: this.currentWorkout,
+                exerciciosExecutados: this.exerciciosExecutados,
+                currentExerciseIndex: this.currentExerciseIndex,
+                startTime: this.startTime,
+                timestamp: Date.now()
+            };
+            
+            await this.persistence.saveState(state, forceSave);
+            console.log('[WorkoutExecution] Estado do treino salvo');
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro ao salvar estado do treino:', error);
+        }
+    }
+
+    // VERIFICAÇÃO AO INICIAR (BACKUP)
+    async iniciarTreino_backup() {
+        // ... código existente ...
+        
+        const localProgress = this.loadLocalProgress();
+        if (localProgress && !this.carregandoTreinoRemoto) {
+            if (confirm('Deseja continuar o treino incompleto salvo localmente?')) {
+                this.exercicios = localProgress.exercicios || [];
+                this.currentExerciseIndex = localProgress.currentIndex || 0;
+                if (localProgress.timer && this.timer?.setState) {
+                    this.timer.setState(localProgress.timer);
+                }
+                console.log('[Workout] Progresso local carregado');
+            } else {
+                localStorage.removeItem('workoutLocalBackup');
+            }
+        }
+        
+        // ... código existente ...
+    }
+
+    // Método para verificar estado do DOM antes de exibir modais
+    async verificarEstadoDOM() {
+        console.log('[WorkoutExecution] 🔍 Verificando estado do DOM...');
+        
+        try {
+            // Verificar elementos essenciais
+            const body = document.body;
+            const head = document.head;
+            
+            console.log('[WorkoutExecution] 📊 DOM Status:', {
+                body: !!body,
+                head: !!head,
+                readyState: document.readyState,
+                bodyChildren: body?.children?.length || 0,
+                headChildren: head?.children?.length || 0,
+                location: window.location.href
+            });
+            
+            // Verificar se há CSS carregado
+            const stylesheets = document.styleSheets.length;
+            console.log('[WorkoutExecution] 🎨 Stylesheets carregadas:', stylesheets);
+            
+            // Verificar se há elementos com problemas de CSS
+            if (body) {
+                const computedStyle = window.getComputedStyle(body);
+                console.log('[WorkoutExecution] 🎨 Body styles:', {
+                    overflow: computedStyle.overflow,
+                    position: computedStyle.position,
+                    zIndex: computedStyle.zIndex
+                });
+            }
+            
+            // Verificar se há JavaScript carregado
+            console.log('[WorkoutExecution] 📜 JavaScript global objects:', {
+                DisposicaoInicioModal: typeof DisposicaoInicioModal,
+                showNotification: typeof window.showNotification,
+                renderTemplate: typeof window.renderTemplate
+            });
+            
+            return true;
+            
+        } catch (error) {
+            console.error('[WorkoutExecution] ❌ Erro na verificação do DOM:', error);
+            return false;
+        }
+    }
+
+    criarContainerNaRaiz() {
+        console.log('[WorkoutExecution] Criando container do treino...');
+        
+        // Limpar conteúdo existente
+        const app = document.getElementById('app') || document.body;
+        app.innerHTML = '';
+        
+        // Criar container principal
+        const container = document.createElement('div');
+        container.id = 'workout-container';
+        container.style.cssText = `
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #fff;
         `;
         
-        return card;
+        // Cabeçalho do treino
+        container.innerHTML = `
+            <header style="margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <button onclick="workoutExecutionManager.voltarParaHome()" 
+                            style="background: #a8ff00; 
+                                   color: #000; 
+                                   border: none; 
+                                   padding: 8px 16px; 
+                                   border-radius: 6px; 
+                                   cursor: pointer; 
+                                   font-weight: 600;">
+                        ← Voltar
+                    </button>
+                    <h1 id="workout-title" style="margin: 0; font-size: 1.5rem;"></h1>
+                    <div id="workout-timer" style="background: #2a2a2a; 
+                                                padding: 8px 16px; 
+                                                border-radius: 6px; 
+                                                font-family: monospace;">
+                        0:00
+                    </div>
+                </div>
+                <div id="workout-meta" style="margin-top: 15px; color: #aaa; font-size: 0.9rem;">
+                    <span id="current-week"></span>
+                    <span id="muscle-groups" style="margin-left: 10px;"></span>
+                </div>
+            </header>
+            <main id="exercises-container"></main>
+        `;
+        
+        app.appendChild(container);
+        
+        // Inicializar elementos
+        this.seriesElement = document.getElementById('series-counter');
+        
+        // Renderizar exercícios no container principal
+        const exercisesContainer = document.getElementById('exercises-container');
+        if (exercisesContainer) {
+            this.renderizarExerciciosNoContainer(exercisesContainer);
+        }
+        
+        console.log('[WorkoutExecution] Container do treino criado');
+        return container;
     }
 
-    // NOVA FUNÇÃO: Gerar HTML das séries de forma segura
-    gerarSeriesHTMLSeguro(exercicio, exerciseIndex, numSeries, repsTarget, suggestedWeight) {
+    renderizarExerciciosNoContainer(container) {
+        if (!this.currentWorkout?.exercicios) {
+            console.warn('Dados do treino não encontrados');
+            return;
+        }
+
+        container.innerHTML = '';
+        
+        this.currentWorkout.exercicios.forEach((exercicio, index) => {
+            const card = this.criarCardExercicioFuncional(exercicio, index);
+            if (card) {
+                container.appendChild(card);
+            }
+        });
+    }
+
+    // TEMPLATE REDESENHADO COM DESIGN SYSTEM DO PROJETO
+    criarCardExercicioFuncional(exercicio, exerciseIndex) {
+        const div = document.createElement('div');
+        div.className = 'exercise-card';
+        div.dataset.exerciseIndex = exerciseIndex;
+        
+        const pesos = exercicio.pesos_sugeridos || {};
+        const pesoSugerido = pesos.peso_base || pesos.peso_minimo || 20;
+        const repsAlvo = exercicio.repeticoes_alvo || 10;
+        const numSeries = exercicio.series || 3;
+        const equipamento = exercicio.exercicio_equipamento || exercicio.equipamento || '';
+        const grupo = exercicio.exercicio_grupo || exercicio.grupo_muscular || 'Geral';
+        
+        div.innerHTML = `
+            <div class="exercise-card-content" style="
+                background: var(--bg-card);
+                border-radius: var(--radius-lg);
+                padding: 24px;
+                margin-bottom: 24px;
+                border: 1px solid var(--border-color);
+                transition: var(--transition);
+                position: relative;
+                overflow: hidden;
+            ">
+                <!-- Header do Exercício -->
+                <div class="exercise-header" style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 20px;
+                ">
+                    <div class="exercise-info" style="flex: 1;">
+                        <h3 class="exercise-name" style="
+                            color: var(--text-primary);
+                            font-size: 1.25rem;
+                            font-weight: 700;
+                            margin-bottom: 8px;
+                            line-height: 1.2;
+                        ">${exercicio.exercicio_nome || exercicio.nome}</h3>
+                        
+                        <div class="exercise-details" style="
+                            display: flex;
+                            gap: 16px;
+                            flex-wrap: wrap;
+                            margin-bottom: 12px;
+                        ">
+                            <span class="detail-item" style="
+                                color: var(--text-secondary);
+                                font-size: 0.875rem;
+                                display: flex;
+                                align-items: center;
+                                gap: 4px;
+                            ">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12,6 12,12 16,14"/>
+                                </svg>
+                                ${grupo}
+                            </span>
+                            
+                            ${equipamento ? `
+                                <span class="detail-item" style="
+                                    color: var(--text-secondary);
+                                    font-size: 0.875rem;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                ">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M7 8h10M7 16h10M8 12h8"/>
+                                    </svg>
+                                    ${equipamento}
+                                </span>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Stats do Protocolo -->
+                        <div class="exercise-stats" style="
+                            display: flex;
+                            gap: 24px;
+                            margin-top: 16px;
+                        ">
+                            <div class="stat-item" style="text-align: center;">
+                                <div style="
+                                    color: var(--accent-primary);
+                                    font-size: 1.125rem;
+                                    font-weight: 700;
+                                    line-height: 1;
+                                ">${numSeries}</div>
+                                <div style="
+                                    color: var(--text-secondary);
+                                    font-size: 0.75rem;
+                                    font-weight: 500;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.05em;
+                                    margin-top: 2px;
+                                ">Séries</div>
+                            </div>
+                            
+                            <div class="stat-item" style="text-align: center;">
+                                <div style="
+                                    color: var(--accent-primary);
+                                    font-size: 1.125rem;
+                                    font-weight: 700;
+                                    line-height: 1;
+                                ">${repsAlvo}</div>
+                                <div style="
+                                    color: var(--text-secondary);
+                                    font-size: 0.75rem;
+                                    font-weight: 500;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.05em;
+                                    margin-top: 2px;
+                                ">Reps</div>
+                            </div>
+                            
+                            <div class="stat-item" style="text-align: center;">
+                                <div style="
+                                    color: var(--accent-primary);
+                                    font-size: 1.125rem;
+                                    font-weight: 700;
+                                    line-height: 1;
+                                ">${pesoSugerido}kg</div>
+                                <div style="
+                                    color: var(--text-secondary);
+                                    font-size: 0.75rem;
+                                    font-weight: 500;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.05em;
+                                    margin-top: 2px;
+                                ">Sugerido</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Exercise Counter -->
+                    <div class="exercise-counter" style="
+                        background: linear-gradient(45deg, var(--accent-primary), var(--accent-primary-dark));
+                        color: #000000;
+                        padding: 8px 16px;
+                        border-radius: var(--radius-full);
+                        font-size: 0.875rem;
+                        font-weight: 700;
+                        margin-left: 16px;
+                        box-shadow: var(--shadow-glow);
+                        min-width: 48px;
+                        text-align: center;
+                    ">${exerciseIndex + 1}</div>
+                </div>
+                
+                <!-- Container de Séries -->
+                <div class="series-container" style="margin-bottom: 20px;">
+                    <div class="series-header" style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 16px;
+                        padding-bottom: 8px;
+                        border-bottom: 1px solid var(--border-color);
+                    ">
+                        <h4 style="
+                            color: var(--text-primary);
+                            font-size: 1rem;
+                            font-weight: 600;
+                            margin: 0;
+                        ">Execução das Séries</h4>
+                        
+                        <div class="series-progress-badge" style="
+                            background: var(--bg-secondary);
+                            color: var(--text-secondary);
+                            padding: 4px 12px;
+                            border-radius: var(--radius-full);
+                            font-size: 0.875rem;
+                            font-weight: 600;
+                            border: 1px solid var(--border-color);
+                        ">
+                            <span class="series-progress">0/${numSeries}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="series-list">
+                        ${this.gerarSeriesHTMLFuncional(exercicio, exerciseIndex, numSeries, repsAlvo, pesoSugerido, exercicio.series_executadas || 0)}
+                    </div>
+                </div>
+                
+                <!-- Progresso Visual -->
+                <div class="exercise-progress-bar" style="
+                    height: 4px;
+                    background: var(--bg-secondary);
+                    border-radius: var(--radius-sm);
+                    overflow: hidden;
+                    margin-bottom: 16px;
+                ">
+                    <div class="progress-fill" style="
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(90deg, var(--accent-primary), var(--accent-primary-dark));
+                        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                        box-shadow: 0 0 8px rgba(255, 229, 0, 0.5);
+                    "></div>
+                </div>
+                
+                <!-- Ações do Exercício -->
+                <div class="exercise-actions" style="
+                    display: flex;
+                    gap: 12px;
+                    justify-content: flex-end;
+                ">
+                    <button class="btn-secondary exercise-action" style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        font-size: 0.875rem;
+                        padding: 12px 16px;
+                    " onclick="alert('Histórico em desenvolvimento')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12,6 12,12 16,14"/>
+                        </svg>
+                        Histórico
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        return div;
+    }
+
+    // MÉTODO DE GERAÇÃO DE SÉRIES COM DESIGN SYSTEM DO PROJETO
+    gerarSeriesHTMLFuncional(exercicio, exerciseIndex, numSeries, repsTarget, suggestedWeight, seriesExecutadas = 0) {
         let html = '';
         
         for (let i = 0; i < numSeries; i++) {
+            const isCompleted = i < seriesExecutadas;
             html += `
-                <div class="series-item" data-series-index="${i}" data-exercise-index="${exerciseIndex}" style="display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; margin-bottom: 8px;">
-                    <div class="series-number" style="width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #ccc;">
-                        ${i + 1}
-                    </div>
-                    <div class="series-inputs" style="flex: 1; display: flex; gap: 12px;">
-                        <div class="input-group" style="flex: 1;">
-                            <input type="number" 
-                                   class="series-weight neon-input" 
-                                   placeholder="${suggestedWeight || 'Peso'}"
-                                   step="0.5" 
-                                   min="0"
-                                   inputmode="decimal"
-                                   pattern="[0-9]*"
-                                   style="width: 100%; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
+                <div class="series-item ${isCompleted ? 'series-completed' : ''}" data-series-index="${i}" data-exercise-index="${exerciseIndex}" 
+                     style="
+                        display: grid;
+                        grid-template-columns: 40px 1fr 60px;
+                        gap: 16px;
+                        align-items: center;
+                        background: var(--bg-secondary);
+                        border: 1px solid var(--border-color);
+                        border-radius: var(--radius-md);
+                        padding: 16px;
+                        margin-bottom: 12px;
+                        transition: var(--transition);
+                        position: relative;
+                        overflow: hidden;
+                     ">
+                    
+                    <!-- Número da Série -->
+                    <div class="series-number" style="
+                        width: 32px;
+                        height: 32px;
+                        background: linear-gradient(45deg, var(--accent-primary), var(--accent-primary-dark));
+                        color: #000000;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: 700;
+                        font-size: 0.875rem;
+                        box-shadow: var(--shadow-glow);
+                    ">${i + 1}</div>
+                    
+                    <!-- Inputs de Peso e Repetições -->
+                    <div class="series-inputs" style="
+                        display: grid;
+                        grid-template-columns: 1fr auto 1fr;
+                        gap: 12px;
+                        align-items: center;
+                    ">
+                        <!-- Input de Peso -->
+                        <div class="input-group" style="position: relative;">
+                            <label style="
+                                position: absolute;
+                                top: -8px;
+                                left: 12px;
+                                background: var(--bg-secondary);
+                                color: var(--text-secondary);
+                                font-size: 0.75rem;
+                                font-weight: 500;
+                                padding: 0 8px;
+                                z-index: 1;
+                            ">Peso (kg)</label>
+                            
+                            <div class="input-wrapper" style="
+                                display: flex;
+                                align-items: center;
+                                background: var(--bg-primary);
+                                border: 1px solid var(--border-color);
+                                border-radius: var(--radius-sm);
+                                overflow: hidden;
+                                transition: var(--transition);
+                            ">
+                                <button class="input-btn" type="button" onclick="this.nextElementSibling.stepDown()" style="
+                                    padding: 12px;
+                                    background: transparent;
+                                    border: none;
+                                    color: var(--accent-primary);
+                                    cursor: pointer;
+                                    font-size: 1.125rem;
+                                    font-weight: 600;
+                                    transition: var(--transition);
+                                    min-width: 40px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                ">−</button>
+                                
+                                <input type="number" 
+                                       class="series-weight series-input" 
+                                       value="${suggestedWeight || ''}"
+                                       placeholder="0"
+                                       step="0.5" 
+                                       min="0"
+                                       max="500"
+                                       inputmode="decimal"
+                                       pattern="[0-9]*"
+                                       style="
+                                        flex: 1;
+                                        padding: 12px 8px;
+                                        background: transparent;
+                                        border: none;
+                                        color: var(--text-primary);
+                                        text-align: center;
+                                        font-size: 1rem;
+                                        font-weight: 600;
+                                        outline: none;
+                                       ">
+                                
+                                <button class="input-btn" type="button" onclick="this.previousElementSibling.stepUp()" style="
+                                    padding: 12px;
+                                    background: transparent;
+                                    border: none;
+                                    color: var(--accent-primary);
+                                    cursor: pointer;
+                                    font-size: 1.125rem;
+                                    font-weight: 600;
+                                    transition: var(--transition);
+                                    min-width: 40px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                ">+</button>
+                            </div>
                         </div>
-                        <span style="color: #ccc; display: flex; align-items: center;">×</span>
-                        <div class="input-group" style="flex: 1;">
-                            <input type="number" 
-                                   class="series-reps neon-input" 
-                                   placeholder="${repsTarget}"
-                                   min="1"
-                                   inputmode="numeric"
-                                   pattern="[0-9]*"
-                                   style="width: 100%; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
+                        
+                        <!-- Separador -->
+                        <span style="
+                            color: var(--text-secondary);
+                            font-size: 1.125rem;
+                            font-weight: 600;
+                        ">×</span>
+                        
+                        <!-- Input de Repetições -->
+                        <div class="input-group" style="position: relative;">
+                            <label style="
+                                position: absolute;
+                                top: -8px;
+                                left: 12px;
+                                background: var(--bg-secondary);
+                                color: var(--text-secondary);
+                                font-size: 0.75rem;
+                                font-weight: 500;
+                                padding: 0 8px;
+                                z-index: 1;
+                            ">Repetições</label>
+                            
+                            <div class="input-wrapper" style="
+                                display: flex;
+                                align-items: center;
+                                background: var(--bg-primary);
+                                border: 1px solid var(--border-color);
+                                border-radius: var(--radius-sm);
+                                overflow: hidden;
+                                transition: var(--transition);
+                            ">
+                                <button class="input-btn" type="button" onclick="this.nextElementSibling.stepDown()" style="
+                                    padding: 12px;
+                                    background: transparent;
+                                    border: none;
+                                    color: var(--accent-primary);
+                                    cursor: pointer;
+                                    font-size: 1.125rem;
+                                    font-weight: 600;
+                                    transition: var(--transition);
+                                    min-width: 40px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                ">−</button>
+                                
+                                <input type="number" 
+                                       class="series-reps series-input" 
+                                       value="${repsTarget || ''}"
+                                       placeholder="0"
+                                       min="1"
+                                       max="50"
+                                       inputmode="numeric"
+                                       pattern="[0-9]*"
+                                       style="
+                                        flex: 1;
+                                        padding: 12px 8px;
+                                        background: transparent;
+                                        border: none;
+                                        color: var(--text-primary);
+                                        text-align: center;
+                                        font-size: 1rem;
+                                        font-weight: 600;
+                                        outline: none;
+                                       ">
+                                
+                                <button class="input-btn" type="button" onclick="this.previousElementSibling.stepUp()" style="
+                                    padding: 12px;
+                                    background: transparent;
+                                    border: none;
+                                    color: var(--accent-primary);
+                                    cursor: pointer;
+                                    font-size: 1.125rem;
+                                    font-weight: 600;
+                                    transition: var(--transition);
+                                    min-width: 40px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                ">+</button>
+                            </div>
                         </div>
                     </div>
-                    <button class="series-confirm-btn" 
-                            onclick="workoutExecutionManager.confirmarSerieSegura(${exerciseIndex}, ${i})"
-                            style="width: 40px; height: 40px; background: linear-gradient(135deg, #13f1fc, #0470dc); border: none; border-radius: 8px; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                        ✓
+                    
+                    <!-- Botão de Confirmar -->
+                    <button class="series-confirm-btn ${isCompleted ? 'btn-success' : 'btn-primary'}" ${isCompleted ? 'disabled' : ''} 
+                            onclick="workoutExecutionManager.confirmarSerie(${exerciseIndex}, ${i})"
+                            style="
+                                width: 48px;
+                                height: 48px;
+                                background: linear-gradient(45deg, var(--accent-primary), var(--accent-primary-dark));
+                                color: #000000;
+                                border: none;
+                                border-radius: var(--radius-md);
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: 700;
+                                font-size: 1.125rem;
+                                transition: var(--transition);
+                                box-shadow: var(--shadow-glow);
+                                position: relative;
+                                overflow: hidden;
+                            "
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-glow-strong)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-glow)'">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
                     </button>
                 </div>
             `;
@@ -1749,441 +1364,589 @@ class WorkoutExecutionManager {
         return html;
     }
 
-    // NOVA FUNÇÃO: Configurar interações seguras
-    configurarInteracoesSeguras() {
-        // Adicionar event listeners para inputs com efeito neon
-        document.querySelectorAll('.neon-input').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.style.borderColor = '#13f1fc';
-                this.style.boxShadow = '0 0 10px rgba(19, 241, 252, 0.3)';
-            });
-            
-            input.addEventListener('blur', function() {
-                this.style.borderColor = 'rgba(255,255,255,0.2)';
-                this.style.boxShadow = 'none';
-            });
-        });
-    }
-
-    // NOVA FUNÇÃO: Confirmar série de forma segura
-    confirmarSerieSegura(exerciseIndex, seriesIndex) {
+    // Método para recuperar um treino em andamento a partir do estado salvo
+    async recuperarTreinoEmAndamento(state) {
         try {
-            console.log(`[WorkoutExecution] ✅ Confirmando série ${seriesIndex + 1} do exercício ${exerciseIndex + 1}`);
+            await this.navegarParaTelaWorkout();
             
-            const seriesItem = document.querySelector(
-                `[data-exercise-index="${exerciseIndex}"][data-series-index="${seriesIndex}"]`
-            );
+            // Aguardar tela carregar
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            if (!seriesItem) {
-                throw new Error('Série não encontrada na interface');
+            // Renderizar com estado recuperado
+            await this.renderizarComSeguranca();
+            this.iniciarCronometro();
+            
+            // Mostrar notificação de recuperação
+            if (window.showNotification) {
+                const tempoDecorrido = Math.round((Date.now() - this.startTime) / 60000);
+                window.showNotification(
+                    `Treino recuperado! Tempo decorrido: ${tempoDecorrido} min`, 
+                    'success'
+                );
             }
             
-            const weightInput = seriesItem.querySelector('.series-weight');
-            const repsInput = seriesItem.querySelector('.series-reps');
-            
-            const peso = parseFloat(weightInput.value);
-            const reps = parseInt(repsInput.value);
-            
-            if (!peso || !reps || peso <= 0 || reps <= 0) {
-                showNotification('Por favor, preencha peso e repetições válidos', 'warning');
-                return;
-            }
-            
-            // Marcar série como completa visualmente
-            this.marcarSerieCompletaSegura(seriesItem, peso, reps);
-            
-            // Verificar progresso do exercício
-            this.verificarProgressoExercicioSeguro(exerciseIndex);
-            
-            showNotification(`Série registrada: ${peso}kg × ${reps} reps`, 'success');
+            console.log('[WorkoutExecution] ✅ Treino recuperado com sucesso');
             
         } catch (error) {
-            console.error('[WorkoutExecution] ❌ Erro ao confirmar série:', error);
-            showNotification('Erro ao registrar série', 'error');
+            console.error('[WorkoutExecution] Erro ao recuperar treino:', error);
+            
+            // Em caso de erro, limpar estado e iniciar novo treino
+            if (this.persistence) {
+                await this.persistence.clearState();
+            }
+            throw new Error('Falha na recuperação. Iniciando novo treino...');
         }
     }
 
-    // NOVA FUNÇÃO: Marcar série como completa
-    marcarSerieCompletaSegura(seriesItem, peso, reps) {
-        seriesItem.classList.add('completed');
-        seriesItem.style.background = 'rgba(19, 241, 252, 0.1)';
-        seriesItem.style.border = '1px solid #13f1fc';
-        
-        // Atualizar conteúdo
-        const inputs = seriesItem.querySelector('.series-inputs');
-        inputs.innerHTML = `
-            <div style="flex: 1; color: #fff; font-weight: 600;">
-                ${peso}kg × ${reps} reps
-            </div>
-        `;
-        
-        // Atualizar botão
-        const btn = seriesItem.querySelector('.series-confirm-btn');
-        btn.innerHTML = '✅';
-        btn.style.background = '#00ff88';
-        btn.disabled = true;
-    }
-
-    // NOVA FUNÇÃO: Verificar progresso do exercício
-    verificarProgressoExercicioSeguro(exerciseIndex) {
-        const exerciseCard = document.querySelector(`[data-exercise-index="${exerciseIndex}"]`);
-        const totalSeries = exerciseCard.querySelectorAll('.series-item').length;
-        const seriesCompletas = exerciseCard.querySelectorAll('.series-item.completed').length;
-        
-        console.log(`[WorkoutExecution] 📊 Progresso exercício ${exerciseIndex + 1}: ${seriesCompletas}/${totalSeries}`);
-        
-        if (seriesCompletas >= totalSeries) {
-            // Exercício completo
-            exerciseCard.style.border = '2px solid #00ff88';
-            exerciseCard.style.background = 'linear-gradient(135deg, var(--bg-secondary, #2a2a2a), rgba(0, 255, 136, 0.1))';
-            
-            // Adicionar aos executados
-            if (!this.exerciciosExecutados.includes(exerciseIndex)) {
-                this.exerciciosExecutados.push(exerciseIndex);
-            }
-            
-            // Verificar se treino está completo
-            if (this.exerciciosExecutados.length >= this.currentWorkout.exercicios.length) {
-                setTimeout(() => this.mostrarConclusaoTreinoSegura(), 1000);
-            }
-        }
-        
-        // Atualizar progress bar
-        this.atualizarProgressBar();
-    }
-
-    // NOVA FUNÇÃO: Mostrar conclusão do treino com avaliação
-    async mostrarConclusaoTreinoSegura() {
+    /**
+     * Limpa o estado persistido (ao finalizar ou cancelar treino)
+     */
+    async limparEstadoPersistido() {
         try {
-            // Obter dados para avaliação
-            const dadosAvaliacao = await TreinoCacheService.obterDadosParaAvaliacao();
+            if (this.persistence) {
+                await this.persistence.clearState();
+                console.log('[WorkoutExecution] Estado persistido limpo');
+            }
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro ao limpar estado:', error);
+        }
+    }
+
+    // NOVOS MÉTODOS DE BACKUP LOCAL
+    async saveLocalProgress() {
+        try {
+            const state = {
+                exercicios: this.exercicios,
+                currentIndex: this.currentExerciseIndex,
+                timer: this.timer?.getState?.() || null,
+                timestamp: Date.now(),
+                version: 'local_v1'
+            };
+            localStorage.setItem('workoutLocalBackup', JSON.stringify(state));
+            console.log('[Workout] Progresso salvo localmente');
+        } catch (e) {
+            console.warn('[Workout] Erro ao salvar localmente:', e);
+        }
+    }
+
+    loadLocalProgress() {
+        try {
+            const saved = localStorage.getItem('workoutLocalBackup');
+            if (!saved) return null;
             
-            if (dadosAvaliacao.success && dadosAvaliacao.data) {
-                // Importar e mostrar modal de avaliação
-                const { AvaliacaoTreinoComponent } = await import('../components/avaliacaoTreino.js');
-                AvaliacaoTreinoComponent.mostrarModalAvaliacao(dadosAvaliacao.data);
+            const parsed = JSON.parse(saved);
+            
+            // Validar dados e tempo (max 24h)
+            if (!parsed || (Date.now() - parsed.timestamp) > 86400000) {
+                localStorage.removeItem('workoutLocalBackup');
+                return null;
+            }
+            
+            return parsed;
+        } catch (e) {
+            console.warn('[Workout] Erro ao carregar backup local:', e);
+            return null;
+        }
+    }
+
+    // MODIFICAÇÃO MÍNIMA NO MÉTODO EXISTENTE (BACKUP)
+    async salvarESairTreino_backup() {
+        // 1. Backup local primeiro (não bloqueante)
+        this.saveLocalProgress();
+        
+        // 2. Mantém fluxo original intacto
+        await this.salvarEstadoAtual(false);
+        this.voltarParaHome();
+    }
+
+    // VERIFICAÇÃO AO INICIAR (BACKUP)
+    async iniciarTreino_backup() {
+        // ... código existente ...
+        
+        const localProgress = this.loadLocalProgress();
+        if (localProgress && !this.carregandoTreinoRemoto) {
+            if (confirm('Deseja continuar o treino incompleto salvo localmente?')) {
+                this.exercicios = localProgress.exercicios || [];
+                this.currentExerciseIndex = localProgress.currentIndex || 0;
+                if (localProgress.timer && this.timer?.setState) {
+                    this.timer.setState(localProgress.timer);
+                }
+                console.log('[Workout] Progresso local carregado');
             } else {
-                // Fallback para tela básica se houver erro
-                this.mostrarConclusaoBasica();
+                localStorage.removeItem('workoutLocalBackup');
             }
-            
-            // Registrar conclusão
-            this.registrarTreinoConcluido();
-            
-            console.log('[WorkoutExecution] 🎉 Treino concluído - modal de avaliação exibido');
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao mostrar avaliação:', error);
-            // Fallback para tela básica
-            this.mostrarConclusaoBasica();
         }
-    }
-    
-    // Fallback: Tela básica de conclusão
-    mostrarConclusaoBasica() {
-        const tempoTotal = this.calcularTempoTotal();
-        const totalExercicios = this.currentWorkout.exercicios.length;
         
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1100;
-            color: white;
-            text-align: center;
-        `;
-        
-        overlay.innerHTML = `
-            <div style="max-width: 400px; padding: 40px;">
-                <h1 style="color: #13f1fc; margin-bottom: 20px; font-size: 2.5rem;">🎉 Treino Concluído!</h1>
-                <div style="margin-bottom: 30px;">
-                    <div style="margin-bottom: 15px;">
-                        <span style="color: #ccc;">Tempo Total:</span><br>
-                        <span style="color: #13f1fc; font-size: 1.5rem; font-weight: bold;">${tempoTotal}</span>
-                    </div>
-                    <div>
-                        <span style="color: #ccc;">Exercícios:</span><br>
-                        <span style="color: #13f1fc; font-size: 1.5rem; font-weight: bold;">${totalExercicios}</span>
-                    </div>
-                </div>
-                <button onclick="workoutExecutionManager.voltarParaHome()" 
-                        style="padding: 16px 32px; background: linear-gradient(135deg, #13f1fc, #0470dc); color: #000; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.1rem;">
-                    Finalizar Treino
-                </button>
-            </div>
-        `;
-        
-        document.body.appendChild(overlay);
+        // ... código existente ...
     }
 
-    // NOVA FUNÇÃO: Criar interface de emergência
-    criarInterfaceEmergencia() {
-        console.log('[WorkoutExecution] 🆘 Criando interface de emergência...');
+    // Método para verificar estado do DOM antes de exibir modais
+    async verificarEstadoDOM() {
+        console.log('[WorkoutExecution] 🔍 Verificando estado do DOM...');
         
-        const app = document.getElementById('app');
-        if (!app) return;
+        try {
+            // Verificar elementos essenciais
+            const body = document.body;
+            const head = document.head;
+            
+            console.log('[WorkoutExecution] 📊 DOM Status:', {
+                body: !!body,
+                head: !!head,
+                readyState: document.readyState,
+                bodyChildren: body?.children?.length || 0,
+                headChildren: head?.children?.length || 0,
+                location: window.location.href
+            });
+            
+            // Verificar se há CSS carregado
+            const stylesheets = document.styleSheets.length;
+            console.log('[WorkoutExecution] 🎨 Stylesheets carregadas:', stylesheets);
+            
+            // Verificar se há elementos com problemas de CSS
+            if (body) {
+                const computedStyle = window.getComputedStyle(body);
+                console.log('[WorkoutExecution] 🎨 Body styles:', {
+                    overflow: computedStyle.overflow,
+                    position: computedStyle.position,
+                    zIndex: computedStyle.zIndex
+                });
+            }
+            
+            // Verificar se há JavaScript carregado
+            console.log('[WorkoutExecution] 📜 JavaScript global objects:', {
+                DisposicaoInicioModal: typeof DisposicaoInicioModal,
+                showNotification: typeof window.showNotification,
+                renderTemplate: typeof window.renderTemplate
+            });
+            
+            return true;
+            
+        } catch (error) {
+            console.error('[WorkoutExecution] ❌ Erro na verificação do DOM:', error);
+            return false;
+        }
+    }
+
+    criarContainerNaRaiz() {
+        console.log('[WorkoutExecution] Criando container do treino...');
         
-        // Remover conteúdo existente
+        // Limpar conteúdo existente
+        const app = document.getElementById('app') || document.body;
         app.innerHTML = '';
         
-        const exercicios = this.currentWorkout?.exercicios || [];
+        // Criar container principal
+        const container = document.createElement('div');
+        container.id = 'workout-container';
+        container.style.cssText = `
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #fff;
+        `;
         
-        app.innerHTML = `
-            <div style="background: #1a1a1a; min-height: 100vh; padding: 20px; color: white;">
-                <div style="max-width: 600px; margin: 0 auto;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #2a2a2a; padding: 16px; border-radius: 12px;">
-                        <button onclick="workoutExecutionManager.voltarParaHome()" 
-                                style="background: #13f1fc; color: #000; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">← Voltar</button>
-                        <div style="text-align: center;">
-                            <h2 style="margin: 0;">${this.currentWorkout?.nome || 'Treino em Execução'}</h2>
-                            <p style="margin: 4px 0 0 0; color: #ccc;">Interface de Emergência</p>
-                        </div>
-                        <div id="emergency-timer" style="background: #333; padding: 8px 12px; border-radius: 6px;">00:00</div>
+        // Cabeçalho do treino
+        container.innerHTML = `
+            <header style="margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <button onclick="workoutExecutionManager.voltarParaHome()" 
+                            style="background: #a8ff00; 
+                                   color: #000; 
+                                   border: none; 
+                                   padding: 8px 16px; 
+                                   border-radius: 6px; 
+                                   cursor: pointer; 
+                                   font-weight: 600;">
+                        ← Voltar
+                    </button>
+                    <h1 id="workout-title" style="margin: 0; font-size: 1.5rem;"></h1>
+                    <div id="workout-timer" style="background: #2a2a2a; 
+                                                padding: 8px 16px; 
+                                                border-radius: 6px; 
+                                                font-family: monospace;">
+                        0:00
                     </div>
-                    
-                    <div style="background: #333; height: 4px; border-radius: 2px; margin-bottom: 20px;">
-                        <div id="emergency-progress" style="height: 100%; background: #13f1fc; width: 0%; border-radius: 2px; transition: width 0.3s;"></div>
-                    </div>
-                    
-                    <div id="emergency-exercises">
-                        ${exercicios.length ? this.gerarExerciciosEmergencia(exercicios) : '<p>Nenhum exercício encontrado</p>'}
+                </div>
+                <div id="workout-meta" style="margin-top: 15px; color: #aaa; font-size: 0.9rem;">
+                    <span id="current-week"></span>
+                    <span id="muscle-groups" style="margin-left: 10px;"></span>
+                </div>
+            </header>
+            <main id="exercises-container"></main>
+        `;
+        
+        app.appendChild(container);
+        
+        // Inicializar elementos
+        this.seriesElement = document.getElementById('series-counter');
+        
+        // Renderizar exercícios no container principal
+        const exercisesContainer = document.getElementById('exercises-container');
+        if (exercisesContainer) {
+            this.renderizarExerciciosNoContainer(exercisesContainer);
+        }
+        
+        console.log('[WorkoutExecution] Container do treino criado');
+        return container;
+    }
+
+    renderizarExerciciosNoContainer(container) {
+        if (!this.currentWorkout?.exercicios) {
+            console.warn('Dados do treino não encontrados');
+            return;
+        }
+
+        container.innerHTML = '';
+        
+        this.currentWorkout.exercicios.forEach((exercicio, index) => {
+            const card = this.criarCardExercicioFuncional(exercicio, index);
+            if (card) {
+                container.appendChild(card);
+            }
+        });
+    }
+
+    // MODIFICAÇÃO MÍNIMA NO MÉTODO EXISTENTE (BACKUP)
+    async salvarESairTreino_backup() {
+        // 1. Backup local primeiro (não bloqueante)
+        this.saveLocalProgress();
+        
+        // 2. Mantém fluxo original intacto
+        await this.salvarEstadoAtual(false);
+        this.voltarParaHome();
+    }
+
+    // Atualiza barra de progresso do treino
+    atualizarProgresso() {
+        if (!this.currentWorkout?.exercicios) return;
+        
+        const total = this.currentWorkout.exercicios.length;
+        const completados = this.exerciciosExecutados.length;
+        const percentual = Math.round((completados / total) * 100);
+        
+        // Atualizar barra de progresso se existir
+        const progressBar = document.getElementById('workout-progress');
+        if (progressBar) {
+            progressBar.style.width = `${percentual}%`;
+        }
+        
+        // Atualizar contador se existir
+        const progressText = document.getElementById('progress-text');
+        if (progressText) {
+            progressText.textContent = `${completados}/${total} exercícios`;
+        }
+        
+        console.log(`[WorkoutExecution] Progresso: ${percentual}% (${completados}/${total})`);
+    }
+
+    // Modal de saída do treino
+    mostrarModalSaida() {
+        const modalHTML = `
+            <div id="modal-saida-treino" class="modal-overlay" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            ">
+                <div class="modal-content" style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                ">
+                    <h3 style="margin: 0 0 16px 0; color: #333;">Sair do Treino</h3>
+                    <p style="margin: 0 0 24px 0; color: #666;">
+                        Deseja salvar o progresso atual antes de sair?
+                    </p>
+                    <div style="display: flex; gap: 12px; justify-content: center;">
+                        <button onclick="window.workoutExecutionManager.salvarESair()" style="
+                            background: #4CAF50;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Salvar e Sair</button>
+                        <button onclick="window.workoutExecutionManager.sairSemSalvar()" style="
+                            background: #f44336;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Sair sem Salvar</button>
+                        <button onclick="window.workoutExecutionManager.fecharModalSaida()" style="
+                            background: #ccc;
+                            color: #333;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Cancelar</button>
                     </div>
                 </div>
             </div>
         `;
         
-        // Iniciar cronômetro
-        this.iniciarCronometro();
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 
-    // NOVA FUNÇÃO: Gerar exercícios para interface de emergência
-    gerarExerciciosEmergencia(exercicios) {
-        return exercicios.map((exercicio, index) => {
-            const nome = exercicio.exercicio_nome || exercicio.nome || `Exercício ${index + 1}`;
-            const series = exercicio.series || 3;
-            
-            return `
-                <div style="background: #2a2a2a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-                    <h3 style="margin: 0 0 16px 0; color: #13f1fc;">${index + 1}. ${nome}</h3>
-                    <div id="emergency-series-${index}">
-                        ${Array.from({length: series}, (_, i) => `
-                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px; padding: 12px; background: #1a1a1a; border-radius: 8px;">
-                                <span style="width: 24px; text-align: center; color: #ccc;">${i + 1}</span>
-                                <input type="number" placeholder="Peso" inputmode="decimal" pattern="[0-9]*" step="0.5" min="0" style="flex: 1; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
-                                <span style="color: #ccc;">×</span>
-                                <input type="number" placeholder="Reps" inputmode="numeric" pattern="[0-9]*" min="1" style="flex: 1; padding: 8px; background: #333; border: 1px solid #555; border-radius: 4px; color: white;">
-                                <button onclick="workoutExecutionManager.confirmarSerieEmergencia(${index}, ${i})" 
-                                        style="background: #13f1fc; color: #000; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">✓</button>
-                            </div>
-                        `).join('')}
+    // Modal de treino salvo
+    mostrarModalAvisoTreinoSalvo() {
+        const modalHTML = `
+            <div id="modal-treino-salvo" class="modal-overlay" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            ">
+                <div class="modal-content" style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                ">
+                    <h3 style="margin: 0 0 16px 0; color: #4CAF50;">✅ Treino Salvo!</h3>
+                    <p style="margin: 0 0 24px 0; color: #666;">
+                        Seu progresso foi salvo com sucesso.
+                    </p>
+                    <div style="display: flex; gap: 12px; justify-content: center;">
+                        <button onclick="window.workoutExecutionManager.continuarTreino()" style="
+                            background: #4CAF50;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Continuar Treino</button>
+                        <button onclick="window.workoutExecutionManager.voltarParaHome()" style="
+                            background: #2196F3;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Ir para Home</button>
                     </div>
                 </div>
-            `;
-        }).join('');
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 
-    // NOVA FUNÇÃO: Confirmar série na interface de emergência
-    confirmarSerieEmergencia(exerciseIndex, seriesIndex) {
-        console.log(`[WorkoutExecution] Série ${seriesIndex + 1} do exercício ${exerciseIndex + 1} confirmada na interface de emergência`);
-        showNotification('Série registrada!', 'success');
+    // Modal de conclusão do treino
+    mostrarModalConclusao() {
+        const modalHTML = `
+            <div id="modal-conclusao-treino" class="modal-overlay" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            ">
+                <div class="modal-content" style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 400px;
+                    width: 90%;
+                    text-align: center;
+                ">
+                    <h3 style="margin: 0 0 16px 0; color: #4CAF50;">🎉 Parabéns!</h3>
+                    <p style="margin: 0 0 24px 0; color: #666;">
+                        Treino concluído com sucesso!
+                    </p>
+                    <button onclick="window.workoutExecutionManager.finalizarTreino()" style="
+                        background: #4CAF50;
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        width: 100%;
+                    ">Finalizar e Salvar</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 
-    // Debug exercícios
-    debugExercicios() {
-        console.log('[DEBUG] Estado atual do workout:', {
-            hasWorkout: !!this.currentWorkout,
-            exercicios: this.currentWorkout?.exercicios?.length || 0,
-            data: this.currentWorkout
-        });
-        return this.currentWorkout;
+    // Métodos de controle dos modais
+    fecharModalSaida() {
+        const modal = document.getElementById('modal-saida-treino');
+        if (modal) modal.remove();
     }
 
-    // Função de debug para verificar template
-    debugTemplate() {
-        console.log('[WorkoutExecution] 🔍 DEBUG: Verificando estrutura do template...');
-        
-        const elementos = [
-            '#workout-screen',
-            '#workout-name', 
-            '#exercises-container',
-            '#workout-progress',
-            '#exercise-list',
-            '#exercise-container',
-            '.exercise-container',
-            '.workout-content',
-            '.exercises-container'
-        ];
-        
-        elementos.forEach(selector => {
-            const element = document.querySelector(selector);
-            console.log(`[DEBUG] ${selector}: ${element ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO'}`);
-            if (element) {
-                console.log(`  - ID: ${element.id}`);
-                console.log(`  - Classes: ${element.className}`);
-                console.log(`  - TagName: ${element.tagName}`);
-                console.log(`  - innerHTML length: ${element.innerHTML.length}`);
-            }
-        });
-        
-        // Debug do estado atual
-        console.log('[DEBUG] Estado atual do workout:', {
-            currentWorkout: !!this.currentWorkout,
-            exercicios: this.currentWorkout?.exercicios?.length || 0,
-            nome: this.currentWorkout?.nome
-        });
-        
-        return elementos.map(sel => ({
-            selector: sel,
-            exists: !!document.querySelector(sel)
-        }));
-    }
-    
-    // CONFIGURAR EVENTOS DE INTERAÇÃO: Configura eventos de clique, mudança, etc.
-    configurarEventosInteracao() {
-        console.log('[ExecucaoTreino] ⚙️ Configurando eventos de interação...');
-        
-        try {
-            // Configurar eventos de botões de finalizar treino
-            const finishButtons = document.querySelectorAll('[id*="finish"], [class*="finish"], [data-action="finish"]');
-            finishButtons.forEach(btn => {
-                btn.addEventListener('click', () => this.finalizarTreino());
-            });
-            
-            // Configurar eventos de inputs de peso/reps
-            const inputs = document.querySelectorAll('input[type="number"], input[data-series]');
-            inputs.forEach(input => {
-                input.addEventListener('change', (e) => this.salvarProgresso(e));
-                input.addEventListener('blur', (e) => this.salvarProgresso(e));
-            });
-            
-            console.log('[ExecucaoTreino] ✅ Eventos configurados com sucesso');
-            
-        } catch (error) {
-            console.error('[ExecucaoTreino] ❌ Erro ao configurar eventos:', error);
-        }
+    async salvarESair() {
+        await this.salvarEstadoAtual();
+        this.fecharModalSaida();
+        this.navegarParaHomeDiretamente();
     }
 
-    // Salvar progresso quando input é alterado
-    salvarProgresso(event) {
-        try {
-            const input = event.target;
-            const valor = input.value;
-            
-            // Identificar qual série/exercício está sendo alterado  
-            const seriesItem = input.closest('[data-series]');
-            if (!seriesItem) return;
-            
-            const exerciseIndex = parseInt(seriesItem.dataset.exerciseIndex) || 0;
-            const seriesIndex = parseInt(seriesItem.dataset.series) || 0;
-            
-            console.log(`[WorkoutExecution] Salvando progresso: Exercício ${exerciseIndex}, Série ${seriesIndex}, Valor: ${valor}`);
-            
-            // Salvar no cache local para evitar perda de dados
-            if (this.currentWorkout && this.currentWorkout.exercicios) {
-                const exercicio = this.currentWorkout.exercicios[exerciseIndex];
-                if (exercicio && exercicio.series && exercicio.series[seriesIndex]) {
-                    // Identificar se é peso ou reps pelo type ou classe
-                    if (input.classList.contains('peso-input') || input.dataset.type === 'peso') {
-                        exercicio.series[seriesIndex].peso = valor;
-                    } else if (input.classList.contains('reps-input') || input.dataset.type === 'reps') {
-                        exercicio.series[seriesIndex].reps = valor;
-                    }
-                }
-            }
-            
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao salvar progresso:', error);
-        }
-    }
-    
-    // ATIVAR MODO EMERGÊNCIA: Fallback quando algo falha na renderização
-    ativarModoEmergencia() {
-        console.warn('[ExecucaoTreino] 🚨 Ativando modo emergência...');
-        
-        try {
-            // Tentar encontrar qualquer container disponível
-            const containers = [
-                document.getElementById('workout-content'),
-                document.querySelector('.workout-container'),
-                document.querySelector('#app .active'),
-                document.querySelector('#app')
-            ];
-            
-            const container = containers.find(c => c !== null);
-            
-            if (container) {
-                container.innerHTML = `
-                    <div class="emergency-mode">
-                        <h3>⚠️ Modo Emergência Ativo</h3>
-                        <p>Houve um problema na renderização do treino.</p>
-                        <button onclick="location.reload()" class="btn-emergency">🔄 Recarregar Página</button>
-                        <button onclick="window.renderTemplate('home')" class="btn-emergency">🏠 Voltar ao Início</button>
-                    </div>
-                `;
-                
-                console.log('[ExecucaoTreino] 🚨 Modo emergência ativado no container:', container.id || container.className);
-            } else {
-                console.error('[ExecucaoTreino] ❌ Nenhum container disponível para modo emergência');
-            }
-            
-        } catch (error) {
-            console.error('[ExecucaoTreino] ❌ Erro no modo emergência:', error);
-        }
+    sairSemSalvar() {
+        this.fecharModalSaida();
+        this.navegarParaHomeDiretamente();
     }
 
-    // Função de debug específica para exercícios
-    debugExercicios() {
-        console.log('[WorkoutExecution] 🔍 DEBUG: Verificando exercícios...');
+    continuarTreino() {
+        const modal = document.getElementById('modal-treino-salvo');
+        if (modal) modal.remove();
+    }
+
+    navegarParaHomeDiretamente() {
+        console.log('[WorkoutExecution] Navegando para home...');
         
-        if (!this.currentWorkout) {
-            console.log('[DEBUG] ❌ Nenhum workout carregado');
-            return;
+        // Parar cronômetro
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
         }
         
-        const exercicios = this.currentWorkout.exercicios;
-        console.log(`[DEBUG] Total de exercícios: ${exercicios?.length || 0}`);
-        
-        if (exercicios && exercicios.length > 0) {
-            exercicios.forEach((ex, index) => {
-                console.log(`[DEBUG] Exercício ${index + 1}:`, {
-                    id: ex.exercicio_id || ex.id,
-                    nome: ex.exercicio_nome || ex.nome || ex.exercicios?.nome,
-                    grupo: ex.exercicio_grupo || ex.grupo_muscular,
-                    series: ex.series,
-                    estrutura: Object.keys(ex)
-                });
-            });
+        // Navegar para home
+        if (window.navigateTo) {
+            window.navigateTo('home');
+        } else {
+            window.location.href = '/';
         }
-        
-        return {
-            totalExercicios: exercicios?.length || 0,
-            exercicios: exercicios || []
-        };
     }
 }
 
-// Criar instância global
-const workoutExecutionManager = new WorkoutExecutionManager();
+// ===== GLOBAL BINDINGS =====
+window.workoutExecutionManager = new WorkoutExecutionManager();
 
-// Exportar para uso global
-window.workoutExecutionManager = workoutExecutionManager;
+// Funções usadas no HTML
+window.confirmarSerie = (exerciseIndex, seriesIndex) => window.workoutExecutionManager.confirmarSerie(exerciseIndex, seriesIndex);
+window.voltarParaHome = () => window.workoutExecutionManager.voltarParaHome();
 
-// Funções globais de debug
-window.debugWorkoutTemplate = () => workoutExecutionManager.debugTemplate();
-window.debugWorkoutExercicios = () => workoutExecutionManager.debugExercicios();
-window.forceRenderWorkout = () => {
-    if (workoutExecutionManager.currentWorkout) {
-        workoutExecutionManager.renderizarComSeguranca();
-    } else {
-        console.log('❌ Nenhum workout carregado para renderizar');
+// Função de diagnóstico para testar o modal independentemente
+window.testarModalDisposicao = async function() {
+    console.log('[TESTE MODAL] 🧪 Iniciando teste independente do modal...');
+    
+    try {
+        // Verificar pré-requisitos
+        console.log('[TESTE MODAL] 🔍 Verificando pré-requisitos...');
+        await window.workoutExecutionManager.verificarEstadoDOM();
+        
+        // Testar modal
+        console.log('[TESTE MODAL] 🎯 Chamando modal...');
+        const resultado = await DisposicaoInicioModal.solicitar();
+        
+        console.log('[TESTE MODAL] ✅ Modal retornou:', resultado);
+        return resultado;
+        
+    } catch (error) {
+        console.error('[TESTE MODAL] ❌ Erro no teste:', error);
+        console.error('[TESTE MODAL] Stack:', error.stack);
+        return null;
     }
 };
 
-export default workoutExecutionManager;
+// Função de teste para iniciar treino SEM modal (para debug)
+window.testarTreinoSemModal = async function() {
+    console.log('[TESTE SEM MODAL] 🧪 Iniciando treino pulando o modal...');
+    
+    try {
+        const manager = window.workoutExecutionManager;
+        
+        // Verificar se há treino carregado
+        if (!manager.currentWorkout) {
+            console.log('[TESTE SEM MODAL] 📊 Carregando treino...');
+            const currentUser = { id: 1, nome: 'Teste' }; // Mock do usuário
+            manager.currentWorkout = await WorkoutProtocolService.carregarTreinoParaExecucao(currentUser.id);
+        }
+        
+        if (manager.currentWorkout) {
+            console.log('[TESTE SEM MODAL] ✅ Treino carregado, navegando...');
+            await manager.navegarParaTelaWorkout();
+            
+            console.log('[TESTE SEM MODAL] 🎬 Renderizando treino...');
+            await manager.renderizarComSeguranca();
+            manager.iniciarCronometro();
+            
+            console.log('[TESTE SEM MODAL] ✅ Teste concluído!');
+        } else {
+            console.error('[TESTE SEM MODAL] ❌ Nenhum treino encontrado');
+        }
+        
+    } catch (error) {
+        console.error('[TESTE SEM MODAL] ❌ Erro:', error);
+        console.error('[TESTE SEM MODAL] Stack:', error.stack);
+    }
+};
+
+// Funções globais para teste dos modais
+window.testarModalSaida = () => {
+    console.log('[TEST] 🧪 Testando modal de saída...');
+    if (window.workoutExecutionManager) {
+        window.workoutExecutionManager.mostrarModalSaida();
+    } else {
+        console.error('[TEST] ❌ workoutExecutionManager não encontrado');
+    }
+};
+
+window.testarModalTreinoSalvo = () => {
+    console.log('[TEST] 🧪 Testando modal de treino salvo...');
+    if (window.workoutExecutionManager) {
+        window.workoutExecutionManager.mostrarModalAvisoTreinoSalvo();
+    } else {
+        console.error('[TEST] ❌ workoutExecutionManager não encontrado');
+    }
+};
+
+window.testarModalConclusao = () => {
+    console.log('[TEST] 🧪 Testando modal de conclusão...');
+    if (window.workoutExecutionManager) {
+        window.workoutExecutionManager.mostrarModalConclusao();
+    } else {
+        console.error('[TEST] ❌ workoutExecutionManager não encontrado');
+    }
+};
+
+console.log('[WorkoutExecution] ✅ Funções de teste criadas:');
+console.log('  - testarModalSaida()');
+console.log('  - testarModalTreinoSalvo()');
+console.log('  - testarModalConclusao()');
+
+// Disponibilizar métodos globalmente para uso nos templates HTML
+// ASSINATURA RESTAURADA: confirmarSerie(exerciseIndex, seriesIndex)
+window.confirmarSerie = (exerciseIndex, seriesIndex) => {
+    return window.workoutExecutionManager.confirmarSerie(exerciseIndex, seriesIndex);
+};
+
+window.adicionarSerie = (exercicioId) => {
+    return window.workoutExecutionManager.adicionarSerie(exercicioId);
+};
+
+window.ajustarValor = (inputId, delta) => {
+    return window.workoutExecutionManager.ajustarValor(inputId, delta);
+};
+
+window.mostrarHistorico = (exercicioId) => {
+    return window.workoutExecutionManager.mostrarHistorico(exercicioId);
+};
+
+window.concluirExercicio = (exercicioId) => {
+    return window.workoutExecutionManager.concluirExercicio(exercicioId);
+};

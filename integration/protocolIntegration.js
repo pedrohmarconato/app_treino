@@ -1,5 +1,4 @@
 // integration/protocolIntegration.js - Integração final do protocolo no app
-import workoutExecutionManager from '../feature/workoutExecution.js';
 import WorkoutProtocolService from '../services/workoutProtocolService.js';
 import { WeightCalculatorService } from '../services/weightCalculatorService.js';
 import { exerciseCardStyles } from '../templates/exerciseCard.js';
@@ -354,14 +353,73 @@ export class ProtocolIntegration {
         // Função principal para iniciar treino
         window.iniciarTreino = async function() {
             console.log('[ProtocolIntegration] 🚀 window.iniciarTreino chamada - modal deve aparecer!');
-            console.log('[ProtocolIntegration] 📊 workoutExecutionManager:', workoutExecutionManager);
+            console.log('[ProtocolIntegration] 📊 workoutExecutionManager:', window.workoutExecutionManager);
+            
+            // Aguardar workoutExecutionManager ficar disponível (até 3 segundos)
+            let attempts = 0;
+            const maxAttempts = 30; // 30 tentativas de 100ms = 3 segundos
+            
+            while (!window.workoutExecutionManager && attempts < maxAttempts) {
+                console.log(`[ProtocolIntegration] 🔄 Aguardando workoutExecutionManager... (tentativa ${attempts + 1}/${maxAttempts})`);
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.workoutExecutionManager) {
+                console.error('[ProtocolIntegration] ❌ workoutExecutionManager não está disponível após 3 segundos!');
+                if (window.showNotification) {
+                    window.showNotification('Erro: Sistema de treino não carregado. Recarregue a página.', 'error');
+                }
+                return;
+            }
+            
+            console.log('[ProtocolIntegration] ✅ workoutExecutionManager encontrado!');
+            console.log('[ProtocolIntegration] 🔍 Detalhes do workoutExecutionManager:', {
+                constructor: window.workoutExecutionManager.constructor.name,
+                temIniciarTreino: typeof window.workoutExecutionManager.iniciarTreino,
+                currentWorkout: !!window.workoutExecutionManager.currentWorkout,
+                persistence: !!window.workoutExecutionManager.persistence
+            });
             console.log('[ProtocolIntegration] 🎯 Chamando workoutExecutionManager.iniciarTreino()...');
-            await workoutExecutionManager.iniciarTreino();
+            
+            const startTime = performance.now();
+            
+            try {
+                const resultado = await window.workoutExecutionManager.iniciarTreino();
+                const endTime = performance.now();
+                const duracao = Math.round(endTime - startTime);
+                
+                console.log('[ProtocolIntegration] ✅ iniciarTreino concluído com sucesso');
+                console.log('[ProtocolIntegration] ⏱️ Duração da execução:', duracao, 'ms');
+                console.log('[ProtocolIntegration] 📤 Valor retornado:', resultado);
+            } catch (error) {
+                console.error('[ProtocolIntegration] ❌ Erro em iniciarTreino:', error);
+                console.error('[ProtocolIntegration] Stack trace:', error.stack);
+                
+                // Mostrar erro ao usuário
+                if (window.showNotification) {
+                    window.showNotification('❌ Falha ao iniciar treino. Tente novamente.', 'error');
+                } else {
+                    alert('Falha ao iniciar treino. Tente novamente.');
+                }
+                
+                // Tentar resetar o estado em caso de erro
+                if (window.workoutExecutionManager && window.workoutExecutionManager.resetarEstado) {
+                    try {
+                        window.workoutExecutionManager.resetarEstado();
+                        console.log('[ProtocolIntegration] 🔄 Estado resetado após erro');
+                    } catch (resetError) {
+                        console.warn('[ProtocolIntegration] ⚠️ Erro ao resetar estado:', resetError);
+                    }
+                }
+            }
         };
         
         // Funções auxiliares
         window.voltarParaHome = function() {
-            workoutExecutionManager.resetarEstado();
+            if (window.workoutExecutionManager) {
+                window.workoutExecutionManager.resetarEstado();
+            }
             if (window.renderTemplate) {
                 window.renderTemplate('home');
             }
@@ -395,12 +453,12 @@ export class ProtocolIntegration {
         // Listener para teclas de atalho
         document.addEventListener('keydown', (e) => {
             // ESC para voltar da tela de treino
-            if (e.key === 'Escape' && workoutExecutionManager.currentWorkout) {
+            if (e.key === 'Escape' && window.workoutExecutionManager.currentWorkout) {
                 window.voltarParaHome();
             }
             
             // Espaço para pular descanso
-            if (e.code === 'Space' && workoutExecutionManager.restTimerInterval) {
+            if (e.code === 'Space' && window.workoutExecutionManager.restTimerInterval) {
                 e.preventDefault();
                 window.pularDescanso();
             }

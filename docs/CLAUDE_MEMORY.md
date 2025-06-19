@@ -48,27 +48,49 @@ mostrarConclusaoTreinoSegura() {
 }
 ```
 
-### **Nova Estrutura de Avaliação**
+### **Sistema de Avaliação: Energia + Fadiga**
 ```javascript
-// Avaliação obrigatória: qualidade (0-5)
-// Opcionais: dificuldade (1-10), energia (1-10), observações
-resposta_avaliacao: {
-    qualidade: 4,           // Obrigatório
-    dificuldade_percebida: 7,  // Opcional
-    energia_nivel: 8,       // Opcional  
-    observacoes_finais: "Treino excelente"
-}
+// Sistema pré/pós treino com escalas específicas (0-5)
+
+pre_workout: 3,    // ENERGIA: Como está seu nível de energia para treinar?
+post_workout: 2    // FADIGA: Qual seu nível de fadiga após o treino?
+
+// Escala PRE_WORKOUT (ENERGIA):
+// 0 = Sem energia nenhuma - exausto
+// 1 = Muito pouca energia - difícil treinar
+// 2 = Pouca energia - treino leve
+// 3 = Energia normal - treino padrão
+// 4 = Muita energia - treino intenso
+// 5 = Energia máxima - pronto para tudo
+
+// Escala POST_WORKOUT (FADIGA):
+// 0 = Nenhuma fadiga - como se não tivesse treinado
+// 1 = Fadiga leve - poderia treinar mais
+// 2 = Fadiga moderada - treino na medida certa
+// 3 = Fadiga intensa - treino puxado
+// 4 = Muito fadigado - treino pesado
+// 5 = Exaustão total - dei tudo que tinha
 ```
 
 ### **Database Schema Atualizado**
 ```sql
--- Nova coluna JSONB para respostas de avaliação
-ALTER TABLE planejamento_semanal 
-ADD COLUMN resposta_avaliacao JSONB;
+-- ✅ COLUNAS JÁ EXISTEM: pre_workout e post_workout
+-- As colunas já estão na estrutura da tabela planejamento_semanal
 
--- Índice GIN para consultas eficientes
-CREATE INDEX idx_planejamento_resposta_avaliacao 
-ON planejamento_semanal USING GIN (resposta_avaliacao);
+-- Verificar se existem (devem existir):
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'planejamento_semanal' 
+AND column_name IN ('pre_workout', 'post_workout');
+
+-- Se precisar adicionar constraints de validação:
+ALTER TABLE planejamento_semanal 
+ADD CONSTRAINT chk_pre_workout_range 
+CHECK (pre_workout IS NULL OR pre_workout BETWEEN 0 AND 5);
+
+ALTER TABLE planejamento_semanal 
+ADD CONSTRAINT chk_post_workout_range 
+CHECK (post_workout IS NULL OR post_workout BETWEEN 0 AND 5);
 ```
 
 ---
@@ -100,10 +122,12 @@ Semana 12: 95kg (95%)
 - `usuarios` - Perfis de usuário
 - `exercicios` - Catálogo com grupos musculares
 - `protocolo_treinos` - Protocolos por usuário
-- `planejamento_semanal` - Planning semanal + **resposta_avaliacao** (JSONB)
+- `planejamento_semanal` - Planning semanal + **pre_workout/post_workout** (escala 0-5)
 - `execucao_exercicio_usuario` - Histórico execuções
-- `treino_executado` - Sessões de treino finalizadas
-- `d_calendario` - Controle semanal
+- `usuario_1rm` - Dados de 1RM por usuário/exercício
+- `usuario_plano_treino` - Controle de protocolos ativos
+- `protocolos_treinamento` - Metadados de protocolos
+- `d_calendario` - Controle semanal de progressão
 
 ### **Joins Críticos**
 ```sql
@@ -228,7 +252,7 @@ forceRenderWorkout()      // Re-renderizar
 - [x] Sistema de design unificado
 - [x] Debug tools implementados
 - [x] Template system robusto
-- [ ] **Executar migração SQL crítica**
+- [x] **Sistema de avaliação pré/pós treino implementado**
 - [ ] Deploy no Vercel
 - [ ] Testar instalação iOS/Android
 

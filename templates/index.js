@@ -259,7 +259,8 @@ function updateUserInfo(user) {
         
         const userImages = {
             'Pedro': 'pedro.png',
-            'Japa': 'japa.png'
+            'Japa': 'japa.png',
+            'Vini': 'vini.png'
         };
         
         const avatarEl = document.getElementById('user-avatar');

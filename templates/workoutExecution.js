@@ -259,7 +259,7 @@ function generateSeriesHTML(exercise, exerciseIndex) {
     
     for (let i = 0; i < numSeries; i++) {
         series.push(`
-            <div class="series-item" data-series-index="${i}" data-exercise-index="${exerciseIndex}">
+            <div class="series-item" data-series-index="${i}" data-serie="${i}" data-exercise-index="${exerciseIndex}">
                 <div class="series-number">${i + 1}</div>
                 <div class="series-inputs">
                     <div class="input-group">

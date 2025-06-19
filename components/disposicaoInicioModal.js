@@ -8,64 +8,151 @@ import { toSaoPauloISOString } from '../utils/timezoneUtils.js';
 export default class DisposicaoInicioModal {
     // Exibe o modal e resolve a Promise com o valor (1-5) escolhido ou null se o usuário fechar
     static solicitar() {
-        console.log('[DisposicaoInicioModal] SOLICITAR CHAMADO! Modal deve aparecer agora...');
+        console.log('[DEBUG] 🚀 ==> INICIANDO SOLICITAÇÃO DO MODAL <==');
+        console.log('[DEBUG] 📍 Localização atual:', window.location.href);
+        console.log('[DEBUG] 📍 Document ready state:', document.readyState);
+        console.log('[DEBUG] 📍 Body existe:', !!document.body);
+        
         return new Promise(resolve => {
             // Se já existe modal aberto, remove
             const existing = document.getElementById('modal-disposicao-inicio');
             if (existing) {
-                console.log('[DisposicaoInicioModal] Removendo modal existente');
+                console.log('[DEBUG] 🗑️ Modal existente encontrado, removendo...');
                 existing.remove();
+                console.log('[DEBUG] ✅ Modal anterior removido');
+            } else {
+                console.log('[DEBUG] ✅ Nenhum modal anterior encontrado');
             }
 
             const html = `
-                <div id="modal-disposicao-inicio" class="modal-overlay clean-modal" style="backdrop-filter: blur(4px); z-index: 9999 !important; display: flex !important;" >
-                    <div class="modal-content clean-modal-content" onclick="event.stopPropagation()">
-                        <h2>Como você se sente agora?</h2>
-                        <p>De 1 (muito cansado) a 5 (cheio de energia)</p>
-                        <div class="escala-likert" id="escala-disposicao-inicio">
+                <div id="modal-disposicao-inicio" class="modal-disposicao-overlay">
+                    <div class="modal-disposicao-content" onclick="event.stopPropagation()">
+                        <div class="modal-disposicao-header">
+                            <h2>Qual seu nível de energia? ⚡</h2>
+                            <p>Escolha de 1 (sem energia) a 5 (energia máxima)</p>
+                        </div>
+                        <div class="escala-disposicao" id="escala-disposicao-inicio">
                             ${Array.from({ length: 5 }).map((_, i) => {
                                 const v = i + 1;
-                                return `<button class="likert-option" data-value="${v}">${v}</button>`;
+                                return `<button class="disposicao-option" data-value="${v}">
+                                    <span class="disposicao-value">${v}</span>
+                                </button>`;
                             }).join('')}
                         </div>
-                        <button id="btn-disposicao-confirmar" class="btn-primary" disabled>Confirmar</button>
+                        <button id="btn-disposicao-confirmar" class="btn-disposicao-confirmar" disabled>
+                            Confirmar 🎉
+                        </button>
                     </div>
                 </div>`;
 
-            console.log('[DisposicaoInicioModal] Inserindo HTML no DOM...');
-            document.body.insertAdjacentHTML('beforeend', html);
-
-            const modal = document.getElementById('modal-disposicao-inicio');
-            console.log('[DisposicaoInicioModal] Modal encontrado no DOM:', !!modal);
+            console.log('[DEBUG] 📝 HTML criado, tamanho:', html.length, 'caracteres');
+            console.log('[DEBUG] 📝 Inserindo no document.body...');
             
-            if (modal) {
-                console.log('[DisposicaoInicioModal] Estilo do modal:', window.getComputedStyle(modal).display);
-                console.log('[DisposicaoInicioModal] Z-index do modal:', window.getComputedStyle(modal).zIndex);
+            try {
+                document.body.insertAdjacentHTML('beforeend', html);
+                console.log('[DEBUG] ✅ HTML inserido com sucesso');
+            } catch (insertError) {
+                console.error('[DEBUG] ❌ ERRO ao inserir HTML:', insertError);
+                resolve(null);
+                return;
+            }
+
+            // Verificar se modal foi criado
+            const modal = document.getElementById('modal-disposicao-inicio');
+            console.log('[DEBUG] 🔍 Modal encontrado após inserção:', !!modal);
+            
+            if (!modal) {
+                console.error('[DEBUG] ❌ MODAL NÃO ENCONTRADO NO DOM!');
+                resolve(null);
+                return;
             }
             
+            console.log('[DEBUG] 📏 Dimensões do modal:', {
+                offsetWidth: modal.offsetWidth,
+                offsetHeight: modal.offsetHeight,
+                clientWidth: modal.clientWidth,
+                clientHeight: modal.clientHeight
+            });
+            
+            const computedStyle = window.getComputedStyle(modal);
+            console.log('[DEBUG] 🎨 Estilos computados:', {
+                display: computedStyle.display,
+                visibility: computedStyle.visibility,
+                opacity: computedStyle.opacity,
+                zIndex: computedStyle.zIndex,
+                position: computedStyle.position,
+                top: computedStyle.top,
+                left: computedStyle.left
+            });
+            
+            console.log('[DEBUG] 📍 Posição no DOM:', {
+                parentElement: modal.parentElement?.tagName,
+                nextSibling: modal.nextSibling?.tagName || 'nenhum',
+                previousSibling: modal.previousSibling?.tagName || 'nenhum'
+            });
+            
+            // Forçar visibilidade
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '999999';
+            
+            console.log('[DEBUG] 🔧 Estilos forçados aplicados');
+            
             const confirmBtn = document.getElementById('btn-disposicao-confirmar');
+            console.log('[DEBUG] 🔍 Botão confirmar encontrado:', !!confirmBtn);
+            
             let valorSelecionado = null;
 
             modal.addEventListener('click', () => {
+                console.log('[DEBUG] 🖱️ Click no modal (backdrop)');
                 // Clicar fora fecha sem valor
                 modal.remove();
+                console.log('[DEBUG] 🚪 Modal fechado sem valor');
                 resolve(null);
             });
 
-            modal.querySelectorAll('.likert-option').forEach(btn => {
+            modal.querySelectorAll('.disposicao-option').forEach((btn, index) => {
+                console.log('[DEBUG] 🔘 Configurando listener para botão', index + 1);
                 btn.addEventListener('click', (e) => {
-                    modal.querySelectorAll('.likert-option').forEach(b => b.classList.remove('selected'));
+                    e.stopPropagation();
+                    console.log('[DEBUG] 🎯 Botão clicado:', btn.dataset.value);
+                    
+                    // Remove seleção de todos os botões
+                    modal.querySelectorAll('.disposicao-option').forEach(b => {
+                        b.classList.remove('selected');
+                    });
+                    
+                    // Adiciona seleção ao botão clicado
                     btn.classList.add('selected');
-                    valorSelecionado = parseInt(btn.dataset.value);
-                    confirmBtn.disabled = false;
+                    
+                    const confirmarBtn = document.getElementById('btn-disposicao-confirmar');
+                    if (confirmarBtn) {
+                        confirmarBtn.disabled = false;
+                        console.log('[DEBUG] ✅ Botão confirmar habilitado');
+                    }
                 });
             });
 
-            confirmBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                modal.remove();
-                resolve(valorSelecionado);
-            });
+            if (confirmBtn) {
+                console.log('[DEBUG] ✅ Configurando listener do botão confirmar');
+                confirmBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const selectedBtn = modal.querySelector('.disposicao-option.selected');
+                    if (selectedBtn) {
+                        const valorSelecionado = parseInt(selectedBtn.dataset.value);
+                        console.log('[DEBUG] 🎯 Botão confirmar clicado com valor:', valorSelecionado);
+                        modal.remove();
+                        console.log('[DEBUG] 🚪 Modal fechado com valor:', valorSelecionado);
+                        resolve(valorSelecionado);
+                    }
+                });
+            } else {
+                console.error('[DEBUG] ❌ BOTÃO CONFIRMAR NÃO ENCONTRADO!');
+            }
+            
+            console.log('[DEBUG] ✅ Modal configurado e pronto para uso');
+            
         });
     }
 
@@ -109,4 +196,38 @@ window.testarModalDisposicao = async function() {
         console.error('[DEBUG] ❌ Erro no modal:', error);
         return null;
     }
+};
+
+// Função para teste e diagnóstico - função global
+window.testarModalDisposicao = () => {
+    console.log('[TESTE] 🧪 ==> INICIANDO TESTE DO MODAL <==');
+    DisposicaoInicioModal.solicitar().then(valor => {
+        console.log('[TESTE] ✅ Modal retornou:', valor);
+    }).catch(erro => {
+        console.error('[TESTE] ❌ Erro no modal:', erro);
+    });
+};
+
+// Função de diagnóstico completo
+window.diagnosticarModalCompleto = () => {
+    console.log('[DIAGNÓSTICO] 🔍 ==> DIAGNÓSTICO COMPLETO <==');
+    
+    // Verificar elementos existentes
+    const modalsExistentes = document.querySelectorAll('.modal-overlay');
+    console.log('[DIAGNÓSTICO] 📊 Modais existentes:', modalsExistentes.length);
+    
+    // Verificar viewport
+    console.log('[DIAGNÓSTICO] 📐 Viewport:', {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        scrollX: window.scrollX,
+        scrollY: window.scrollY
+    });
+    
+    // Verificar body
+    console.log('[DIAGNÓSTICO] 🏠 Body:', {
+        children: document.body.children.length,
+        overflow: window.getComputedStyle(document.body).overflow,
+        position: window.getComputedStyle(document.body).position
+    });
 };
