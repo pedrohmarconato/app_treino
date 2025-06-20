@@ -78,7 +78,7 @@ export const workoutTemplate = () => `
                 </button>
             </div>
             <!-- Container de Exercícios Expandido (inicialmente oculto) -->
-            <div id="exercises-expanded" class="exercises-container" style="display: none;">
+            <div id="exercises-expanded" class="exercises-container" style="display: block;">
                 <!-- Exercícios completos serão renderizados aqui -->
             </div>
         </div>

@@ -1975,13 +1975,18 @@ class WorkoutExecutionManager {
             'workout-exercises'
         ];
         
+        console.log('[WorkoutExecution] 🔍 Procurando container de exercícios...');
+        
         for (const id of containers) {
             const container = document.getElementById(id);
+            console.log(`[WorkoutExecution] Verificando container '${id}':`, container ? 'encontrado' : 'não encontrado');
             if (container) {
                 // Garantir que o container esteja visível
                 if (container.style.display === 'none') {
+                    console.log(`[WorkoutExecution] Container '${id}' estava oculto, exibindo...`);
                     container.style.display = 'block';
                 }
+                console.log(`[WorkoutExecution] ✅ Usando container '${id}'`);
                 return container;
             }
         }
@@ -2376,30 +2381,47 @@ class WorkoutExecutionManager {
     // Função removida - não usar fallbacks conforme regra crítica
 
     renderizarExerciciosNoContainer(container) {
-        if (!this.currentWorkout?.exercicios) {
-            console.warn('Dados do treino não encontrados');
+        console.log('[WorkoutExecution] 🎯 Renderizando exercícios no container:', container.id);
+        
+        if (!this.currentWorkout) {
+            console.error('[WorkoutExecution] ❌ currentWorkout é null');
             return;
         }
+        
+        if (!this.currentWorkout.exercicios) {
+            console.error('[WorkoutExecution] ❌ currentWorkout.exercicios é null');
+            return;
+        }
+        
+        console.log(`[WorkoutExecution] 📊 Total de exercícios a renderizar: ${this.currentWorkout.exercicios.length}`);
+        console.log('[WorkoutExecution] 🏋️ Exercícios:', this.currentWorkout.exercicios);
 
         container.innerHTML = '';
         
         this.currentWorkout.exercicios.forEach((exercicio, index) => {
+            console.log(`[WorkoutExecution] 🎨 Renderizando exercício ${index + 1}:`, exercicio.nome);
             const card = this.criarCardExercicioFuncional(exercicio, index);
             if (card) {
                 container.appendChild(card);
+            } else {
+                console.error(`[WorkoutExecution] ❌ Falha ao criar card para exercício ${index}`);
             }
         });
+        
+        console.log(`[WorkoutExecution] ✅ ${container.children.length} cards renderizados`);
     }
 
     // TEMPLATE REDESENHADO COM DESIGN SYSTEM DO PROJETO
     criarCardExercicioFuncional(exercicio, exerciseIndex) {
+        console.log(`[WorkoutExecution] 🔨 Criando card para exercício:`, exercicio);
+        
         const div = document.createElement('div');
         div.className = 'exercise-card';
         div.dataset.exerciseIndex = exerciseIndex;
         
         const pesos = exercicio.pesos_sugeridos || {};
-        const pesoSugerido = pesos.peso_base || pesos.peso_minimo || 20;
-        const repsAlvo = exercicio.repeticoes_alvo || 10;
+        const pesoSugerido = pesos.peso_base || pesos.peso_minimo || exercicio.peso_sugerido || exercicio.carga || 20;
+        const repsAlvo = exercicio.repeticoes_alvo || exercicio.repeticoes || 10;
         const numSeries = exercicio.series || 3;
         const equipamento = exercicio.exercicio_equipamento || exercicio.equipamento || '';
         const grupo = exercicio.exercicio_grupo || exercicio.grupo_muscular || 'Geral';
@@ -3076,19 +3098,34 @@ class WorkoutExecutionManager {
     // Função removida - não usar fallbacks conforme regra crítica
 
     renderizarExerciciosNoContainer(container) {
-        if (!this.currentWorkout?.exercicios) {
-            console.warn('Dados do treino não encontrados');
+        console.log('[WorkoutExecution] 🎯 Renderizando exercícios no container:', container.id);
+        
+        if (!this.currentWorkout) {
+            console.error('[WorkoutExecution] ❌ currentWorkout é null');
             return;
         }
+        
+        if (!this.currentWorkout.exercicios) {
+            console.error('[WorkoutExecution] ❌ currentWorkout.exercicios é null');
+            return;
+        }
+        
+        console.log(`[WorkoutExecution] 📊 Total de exercícios a renderizar: ${this.currentWorkout.exercicios.length}`);
+        console.log('[WorkoutExecution] 🏋️ Exercícios:', this.currentWorkout.exercicios);
 
         container.innerHTML = '';
         
         this.currentWorkout.exercicios.forEach((exercicio, index) => {
+            console.log(`[WorkoutExecution] 🎨 Renderizando exercício ${index + 1}:`, exercicio.nome);
             const card = this.criarCardExercicioFuncional(exercicio, index);
             if (card) {
                 container.appendChild(card);
+            } else {
+                console.error(`[WorkoutExecution] ❌ Falha ao criar card para exercício ${index}`);
             }
         });
+        
+        console.log(`[WorkoutExecution] ✅ ${container.children.length} cards renderizados`);
     }
 
     // MODIFICAÇÃO MÍNIMA NO MÉTODO EXISTENTE (BACKUP)
