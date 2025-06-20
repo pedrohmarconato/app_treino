@@ -421,13 +421,18 @@ forceRenderWorkout()      // Re-renderizar
 
 ---
 
-## 🚨 REGRA CRÍTICA
+## 🚨 REGRAS CRÍTICAS
 
-> **NUNCA SIMULAR OU INVENTAR DADOS**
-> 
+> **1. NUNCA SIMULAR OU INVENTAR DADOS**
 > - Todos os dados devem vir **EXCLUSIVAMENTE** do Supabase
 > - Não criar "exercícios padrão" ou "dados de exemplo"
 > - Sistema trabalha apenas com dados reais e verificáveis
+> 
+> **2. NUNCA USAR FALLBACKS COMO SOLUÇÃO**
+> - NUNCA usar como saída um fallback, dados simulados ou qualquer outro tipo de abordagem que não solucione os problemas
+> - Fallbacks devem ser temporários e apenas para evitar crashes
+> - Sempre resolver a causa raiz do problema
+> - Se algo não está funcionando, CONSERTAR ao invés de contornar
 
 ---
 
