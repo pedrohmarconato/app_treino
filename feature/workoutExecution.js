@@ -90,6 +90,14 @@ class WorkoutExecutionManager {
         this.autoSaveInterval = null;
         this.currentRestTime = 0;
         this.currentExerciseIndex = 0;
+        
+        // === REST TIMER PROPERTIES ===
+        this.isResting = false;
+        this.restStartTime = null;
+        this.restDuration = 60; // Default 60 segundos
+        this.restTimeRemaining = 0;
+        this.lastCompletedExercise = null;
+        this.restTimerModal = null;
         this.disposicaoInicio = null;
         this.seriesElement = document.getElementById('series-counter'); // Declaração segura
         this.persistence = workoutPersistence;
@@ -100,6 +108,16 @@ class WorkoutExecutionManager {
         this.isInitialized = false;
         this.sessionId = null;
         this.lastSaveTime = null;
+        
+        // === REST TIMER CONFIG ===
+        this.restTimerConfig = {
+            defaultRestTime: 60, // 60 segundos padrão
+            showCountdown: true,
+            allowSkip: true,
+            playSound: true,
+            vibrate: true,
+            autoAdvance: false // Se deve avançar automaticamente após o descanso
+        };
         this.autoSaveEnabled = true;
         this.autoSaveIntervalMs = 30000; // 30 segundos
         
@@ -1042,6 +1060,440 @@ class WorkoutExecutionManager {
         }, 1000);
     }
 
+    // === REST TIMER METHODS ===
+
+    /**
+     * Inicia cronômetro de descanso após completar uma série
+     * @param {number} restTime - Tempo de descanso em segundos (opcional)
+     * @param {Object} exerciseInfo - Informações do exercício completado
+     */
+    iniciarCronometroDescanso(restTime = null, exerciseInfo = {}) {
+        // Determinar tempo de descanso
+        this.restDuration = restTime || exerciseInfo.tempo_descanso || this.restTimerConfig.defaultRestTime;
+        this.restTimeRemaining = this.restDuration;
+        this.isResting = true;
+        this.restStartTime = Date.now();
+        this.lastCompletedExercise = exerciseInfo;
+
+        console.log(`[WorkoutExecution] 🛌 Iniciando descanso de ${this.restDuration}s após ${exerciseInfo.exercicio_nome || 'exercício'}`);
+
+        // Limpar timer anterior se existir
+        if (this.restTimerInterval) {
+            clearInterval(this.restTimerInterval);
+        }
+
+        // Mostrar modal de descanso
+        this.mostrarModalDescanso();
+
+        // Iniciar countdown
+        this.restTimerInterval = setInterval(() => {
+            this.restTimeRemaining--;
+            this.atualizarDisplayDescanso();
+
+            // Verificar se terminou
+            if (this.restTimeRemaining <= 0) {
+                this.finalizarDescanso();
+            }
+        }, 1000);
+
+        // Salvar estado do descanso
+        this.salvarEstadoDescanso();
+    }
+
+    /**
+     * Finaliza o período de descanso
+     */
+    finalizarDescanso() {
+        console.log('[WorkoutExecution] ✅ Descanso finalizado');
+
+        // Limpar timer
+        if (this.restTimerInterval) {
+            clearInterval(this.restTimerInterval);
+            this.restTimerInterval = null;
+        }
+
+        // Resetar estado
+        this.isResting = false;
+        this.restTimeRemaining = 0;
+        this.restStartTime = null;
+
+        // Fechar modal
+        this.fecharModalDescanso();
+
+        // Tocar som/vibrar se configurado
+        this.notificarFimDescanso();
+
+        // Auto-avançar se configurado
+        if (this.restTimerConfig.autoAdvance) {
+            this.proximoExercicio();
+        }
+    }
+
+    /**
+     * Pula o descanso atual
+     */
+    pularDescanso() {
+        if (!this.isResting) return;
+
+        console.log('[WorkoutExecution] ⏭️ Descanso pulado pelo usuário');
+        this.finalizarDescanso();
+    }
+
+    /**
+     * Adiciona tempo extra ao descanso
+     * @param {number} extraSeconds - Segundos extras a adicionar
+     */
+    adicionarTempoDescanso(extraSeconds = 30) {
+        if (!this.isResting) return;
+
+        this.restTimeRemaining += extraSeconds;
+        this.restDuration += extraSeconds;
+        
+        console.log(`[WorkoutExecution] ⏰ Adicionados ${extraSeconds}s ao descanso`);
+        this.atualizarDisplayDescanso();
+    }
+
+    /**
+     * Mostra modal de cronômetro de descanso
+     */
+    mostrarModalDescanso() {
+        // Remover modal anterior se existir
+        this.fecharModalDescanso();
+
+        const modalHTML = `
+            <div id="rest-timer-modal" class="modal-overlay rest-timer-modal" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                backdrop-filter: blur(4px);
+            ">
+                <div class="rest-timer-content" style="
+                    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+                    border-radius: 24px;
+                    padding: 32px;
+                    text-align: center;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+                    border: 1px solid #333;
+                    min-width: 320px;
+                ">
+                    <div class="rest-icon" style="
+                        font-size: 3rem;
+                        margin-bottom: 16px;
+                        color: #00bcd4;
+                    ">🛌</div>
+                    
+                    <h2 style="
+                        margin: 0 0 8px 0;
+                        color: #fff;
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                    ">Descanso</h2>
+                    
+                    <p id="rest-exercise-name" style="
+                        margin: 0 0 24px 0;
+                        color: #aaa;
+                        font-size: 0.9rem;
+                    ">${this.lastCompletedExercise?.exercicio_nome || 'Série completada'}</p>
+                    
+                    <div class="rest-timer-display" style="
+                        position: relative;
+                        margin-bottom: 32px;
+                    ">
+                        <div class="timer-circle" style="
+                            width: 120px;
+                            height: 120px;
+                            border-radius: 50%;
+                            background: conic-gradient(#00bcd4 0deg, #333 0deg);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin: 0 auto 16px;
+                            position: relative;
+                        ">
+                            <div class="timer-inner" style="
+                                width: 100px;
+                                height: 100px;
+                                background: #1a1a1a;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">
+                                <span id="rest-time-display" style="
+                                    font-size: 1.5rem;
+                                    font-weight: 700;
+                                    color: #00bcd4;
+                                ">${this.formatTime(this.restTimeRemaining)}</span>
+                            </div>
+                        </div>
+                        
+                        <div id="rest-progress-text" style="
+                            color: #aaa;
+                            font-size: 0.85rem;
+                        ">${this.restTimeRemaining}s restantes</div>
+                    </div>
+                    
+                    <div class="rest-actions" style="
+                        display: flex;
+                        gap: 12px;
+                        justify-content: center;
+                    ">
+                        <button id="add-time-btn" class="rest-btn" style="
+                            background: #333;
+                            border: 1px solid #555;
+                            color: #fff;
+                            padding: 12px 20px;
+                            border-radius: 12px;
+                            cursor: pointer;
+                            font-size: 0.9rem;
+                            transition: all 0.2s;
+                        ">+30s</button>
+                        
+                        <button id="skip-rest-btn" class="rest-btn" style="
+                            background: linear-gradient(45deg, #a8ff00, #8de000);
+                            border: none;
+                            color: #000;
+                            padding: 12px 24px;
+                            border-radius: 12px;
+                            cursor: pointer;
+                            font-size: 0.9rem;
+                            font-weight: 600;
+                            transition: all 0.2s;
+                        ">Pular</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        this.restTimerModal = document.getElementById('rest-timer-modal');
+
+        // Adicionar event listeners
+        document.getElementById('skip-rest-btn')?.addEventListener('click', () => this.pularDescanso());
+        document.getElementById('add-time-btn')?.addEventListener('click', () => this.adicionarTempoDescanso(30));
+
+        // Adicionar estilos de hover
+        this.addRestTimerStyles();
+    }
+
+    /**
+     * Fecha modal de descanso
+     */
+    fecharModalDescanso() {
+        if (this.restTimerModal) {
+            this.restTimerModal.remove();
+            this.restTimerModal = null;
+        }
+    }
+
+    /**
+     * Atualiza display do cronômetro de descanso
+     */
+    atualizarDisplayDescanso() {
+        const timeDisplay = document.getElementById('rest-time-display');
+        const progressText = document.getElementById('rest-progress-text');
+        const timerCircle = document.querySelector('.timer-circle');
+
+        if (timeDisplay) {
+            timeDisplay.textContent = this.formatTime(this.restTimeRemaining);
+        }
+
+        if (progressText) {
+            progressText.textContent = `${this.restTimeRemaining}s restantes`;
+        }
+
+        // Atualizar progresso circular
+        if (timerCircle) {
+            const progress = ((this.restDuration - this.restTimeRemaining) / this.restDuration) * 360;
+            timerCircle.style.background = `conic-gradient(#00bcd4 ${progress}deg, #333 ${progress}deg)`;
+        }
+
+        // Mudar cor quando restam poucos segundos
+        if (this.restTimeRemaining <= 10) {
+            if (timeDisplay) {
+                timeDisplay.style.color = '#ff4757';
+            }
+            if (timerCircle) {
+                const progress = ((this.restDuration - this.restTimeRemaining) / this.restDuration) * 360;
+                timerCircle.style.background = `conic-gradient(#ff4757 ${progress}deg, #333 ${progress}deg)`;
+            }
+        }
+    }
+
+    /**
+     * Formata tempo em MM:SS
+     * @param {number} seconds - Segundos para formatar
+     * @returns {string} Tempo formatado
+     */
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    /**
+     * Notifica fim do descanso
+     */
+    notificarFimDescanso() {
+        // Som
+        if (this.restTimerConfig.playSound) {
+            this.playNotificationSound();
+        }
+
+        // Vibração
+        if (this.restTimerConfig.vibrate && navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+        }
+
+        // Notificação visual
+        if (window.showNotification) {
+            window.showNotification('✅ Descanso finalizado! Próxima série.', 'success');
+        }
+    }
+
+    /**
+     * Toca som de notificação
+     */
+    playNotificationSound() {
+        try {
+            // Criar tom usando Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (error) {
+            console.warn('[WorkoutExecution] Erro ao tocar som:', error);
+        }
+    }
+
+    /**
+     * Salva estado do descanso no cache
+     */
+    salvarEstadoDescanso() {
+        if (!this.isResting) return;
+
+        const restState = {
+            isResting: this.isResting,
+            restStartTime: this.restStartTime,
+            restDuration: this.restDuration,
+            restTimeRemaining: this.restTimeRemaining,
+            lastCompletedExercise: this.lastCompletedExercise
+        };
+
+        try {
+            localStorage.setItem('workoutRestState', JSON.stringify(restState));
+        } catch (error) {
+            console.warn('[WorkoutExecution] Erro ao salvar estado de descanso:', error);
+        }
+    }
+
+    /**
+     * Restaura estado do descanso do cache
+     */
+    restaurarEstadoDescanso() {
+        try {
+            const restStateRaw = localStorage.getItem('workoutRestState');
+            if (!restStateRaw) return false;
+
+            const restState = JSON.parse(restStateRaw);
+            
+            // Verificar se não é muito antigo (máximo 5 minutos)
+            const elapsed = Date.now() - restState.restStartTime;
+            if (elapsed > 5 * 60 * 1000) {
+                localStorage.removeItem('workoutRestState');
+                return false;
+            }
+
+            // Calcular tempo restante
+            const timeElapsed = Math.floor(elapsed / 1000);
+            const timeRemaining = Math.max(0, restState.restDuration - timeElapsed);
+
+            if (timeRemaining > 0) {
+                this.restDuration = restState.restDuration;
+                this.restTimeRemaining = timeRemaining;
+                this.isResting = true;
+                this.restStartTime = restState.restStartTime;
+                this.lastCompletedExercise = restState.lastCompletedExercise;
+
+                console.log(`[WorkoutExecution] 🔄 Restaurando descanso: ${timeRemaining}s restantes`);
+                
+                this.mostrarModalDescanso();
+                this.iniciarCronometroDescanso(timeRemaining);
+                
+                return true;
+            } else {
+                localStorage.removeItem('workoutRestState');
+                return false;
+            }
+        } catch (error) {
+            console.warn('[WorkoutExecution] Erro ao restaurar estado de descanso:', error);
+            localStorage.removeItem('workoutRestState');
+            return false;
+        }
+    }
+
+    /**
+     * Limpa estado de descanso do cache
+     */
+    limparEstadoDescanso() {
+        localStorage.removeItem('workoutRestState');
+    }
+
+    /**
+     * Adiciona estilos CSS para o timer de descanso
+     */
+    addRestTimerStyles() {
+        if (document.getElementById('rest-timer-styles')) return;
+
+        const styles = `
+            <style id="rest-timer-styles">
+                .rest-btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                }
+                
+                #add-time-btn:hover {
+                    background: #444;
+                    border-color: #666;
+                }
+                
+                #skip-rest-btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 25px rgba(168, 255, 0, 0.3);
+                }
+                
+                @keyframes pulse {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
+                }
+                
+                .rest-timer-modal.ending .timer-circle {
+                    animation: pulse 1s infinite;
+                }
+            </style>
+        `;
+        
+        document.head.insertAdjacentHTML('beforeend', styles);
+    }
+
     popularElementosDoTemplate() {
         console.log('[WorkoutExecution] \ud83d\udd27 Populando elementos do template...');
         
@@ -1132,6 +1584,28 @@ class WorkoutExecutionManager {
             console.log(`[WorkoutExecution] Série ${seriesIndex + 1} já confirmada`);
             return;
         }
+
+        // Capturar dados da série (peso e repetições)
+        const pesoInput = document.querySelector(`input.series-weight[data-exercise="${exerciseIndex}"][data-series="${seriesIndex}"]`);
+        const repsInput = document.querySelector(`input.series-reps[data-exercise="${exerciseIndex}"][data-series="${seriesIndex}"]`);
+        
+        const peso = parseFloat(pesoInput?.value) || 0;
+        const reps = parseInt(repsInput?.value) || 0;
+        
+        // Salvar execução no array
+        const execucao = {
+            exercicio_id: exercicio.id,
+            exercicio_nome: exercicio.nome,
+            peso_utilizado: peso,
+            repeticoes: reps,
+            serie_numero: seriesIndex + 1,
+            exercicio_index: exerciseIndex,
+            timestamp: new Date().toISOString(),
+            tempo_descanso: exercicio.tempo_descanso || this.restTimerConfig.defaultRestTime
+        };
+        
+        this.exerciciosExecutados.push(execucao);
+        console.log(`[WorkoutExecution] Execução salva:`, execucao);
         
         exercicio.seriesCompletas[seriesIndex] = true;
         
@@ -1152,7 +1626,12 @@ class WorkoutExecutionManager {
         const totalSeries = exercicio.series || 3;
         const seriesCompletadas = exercicio.seriesCompletas.filter(Boolean).length;
         
-        if (seriesCompletadas >= totalSeries) {
+        // Verificar se deve iniciar cronômetro de descanso
+        const isLastSeriesOfExercise = seriesCompletadas >= totalSeries;
+        const isLastExercise = exerciseIndex >= (this.currentWorkout.exercicios.length - 1);
+        const isLastSeriesOfWorkout = isLastSeriesOfExercise && isLastExercise;
+        
+        if (isLastSeriesOfExercise) {
             console.log(`[WorkoutExecution] Exercício ${exerciseIndex + 1} completo!`);
             
             // Marcar exercício como completo visualmente
@@ -1164,6 +1643,28 @@ class WorkoutExecutionManager {
             
             // Atualizar progresso geral
             this.atualizarProgresso();
+            
+            // Se é o último exercício, não iniciar descanso
+            if (isLastSeriesOfWorkout) {
+                console.log(`[WorkoutExecution] 🎉 Treino completado! Não há descanso.`);
+                if (window.showNotification) {
+                    window.showNotification('🎉 Treino completado!', 'success');
+                }
+                return;
+            }
+            
+            // Descanso entre exercícios (tempo extra)
+            const restTime = (exercicio.tempo_descanso || this.restTimerConfig.defaultRestTime) + 30; // +30s entre exercícios
+            this.iniciarCronometroDescanso(restTime, {
+                ...execucao,
+                isExerciseComplete: true,
+                nextExercise: this.currentWorkout.exercicios[exerciseIndex + 1]?.nome
+            });
+            
+        } else {
+            // Descanso entre séries
+            const restTime = exercicio.tempo_descanso || this.restTimerConfig.defaultRestTime;
+            this.iniciarCronometroDescanso(restTime, execucao);
         }
     }
 
@@ -1982,6 +2483,14 @@ class WorkoutExecutionManager {
             await this.renderizarComSeguranca();
             this.iniciarCronometro();
             
+            // Tentar restaurar cronômetro de descanso se existir
+            setTimeout(() => {
+                const restoreSuccess = this.restaurarEstadoDescanso();
+                if (restoreSuccess) {
+                    console.log('[WorkoutExecution] 🛌 Cronômetro de descanso restaurado');
+                }
+            }, 1000); // Delay para garantir que o DOM esteja pronto
+            
             // Mostrar notificação de recuperação
             if (window.showNotification) {
                 const tempoDecorrido = Math.round((Date.now() - this.startTime) / 60000);
@@ -2013,6 +2522,24 @@ class WorkoutExecutionManager {
                 await this.persistence.clearState();
                 console.log('[WorkoutExecution] Estado persistido limpo');
             }
+            
+            // Limpar também estado de descanso
+            this.limparEstadoDescanso();
+            
+            // Fechar modal de descanso se estiver aberto
+            this.fecharModalDescanso();
+            
+            // Parar cronômetros de descanso
+            if (this.restTimerInterval) {
+                clearInterval(this.restTimerInterval);
+                this.restTimerInterval = null;
+            }
+            
+            // Resetar flags de descanso
+            this.isResting = false;
+            this.restTimeRemaining = 0;
+            this.restStartTime = null;
+            
         } catch (error) {
             console.error('[WorkoutExecution] Erro ao limpar estado:', error);
         }
