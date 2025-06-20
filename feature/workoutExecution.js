@@ -1010,7 +1010,10 @@ class WorkoutExecutionManager {
         if (element) {
             element.textContent = value;
         } else {
-            console.warn(`[WorkoutExecution] Elemento não encontrado: ${id}`);
+            // Só avisar sobre elementos críticos, não sobre elementos opcionais
+            if (id === 'workout-timer' || id === 'workout-timer-display') {
+                console.warn(`[WorkoutExecution] Elemento crítico não encontrado: ${id}`);
+            }
         }
     }
 
@@ -1020,7 +1023,13 @@ class WorkoutExecutionManager {
             clearInterval(this.timerInterval);
         }
         
-        this.startTime = this.startTime || Date.now();
+        // Se startTime já existe (recovery), manter; senão, criar novo
+        if (!this.startTime) {
+            this.startTime = Date.now();
+            console.log(`[WorkoutExecution] Timer iniciado com novo startTime: ${this.startTime}`);
+        } else {
+            console.log(`[WorkoutExecution] Timer continuando de startTime existente: ${this.startTime}`);
+        }
         
         this.timerInterval = setInterval(() => {
             const elapsed = Date.now() - this.startTime;
@@ -2217,9 +2226,19 @@ class WorkoutExecutionManager {
 
     // Atualiza barra de progresso do treino
     atualizarProgresso() {
-        if (!this.currentWorkout?.exercicios) return;
+        if (!this.currentWorkout?.exercicios) {
+            // Fallback para dados parciais de recovery
+            if (this.exerciciosExecutados && this.exerciciosExecutados.length > 0) {
+                const exerciciosUnicos = new Set(this.exerciciosExecutados.map(e => e.exercicio_id)).size;
+                const totalEstimado = Math.max(exerciciosUnicos * 3, this.exerciciosExecutados.length + 1);
+                const percentual = Math.round((this.exerciciosExecutados.length / totalEstimado) * 100);
+                console.log(`[WorkoutExecution] Progresso (fallback): ${percentual}% (${this.exerciciosExecutados.length}/${totalEstimado})`);
+                return;
+            }
+            return;
+        }
         
-        const total = this.currentWorkout.exercicios.length;
+        const total = this.currentWorkout.exercicios.length * 3; // 3 séries por exercício em média
         const completados = this.exerciciosExecutados.length;
         const percentual = Math.round((completados / total) * 100);
         
