@@ -132,11 +132,7 @@ function setupGlobalFunctions() {
     console.log('[APP] ✅ DisposicaoInicioModal disponibilizado globalmente');
 
     // === PERSISTÊNCIA DE TREINO ===
-    import('../feature/workoutPersistence.js')
-        .then((module) => {
-            console.log('[APP] ✅ workoutPersistence carregado, funções de debug disponíveis');
-        })
-        .catch(err => console.error('[APP] ❌ Falha ao importar workoutPersistence:', err));
+    // workoutPersistence.js foi removido - funcionalidade integrada em workoutExecution.js
     
     // === LOGIN ===
     window.initLogin = async () => {

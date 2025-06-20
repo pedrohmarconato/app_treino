@@ -1,6 +1,7 @@
 // templates/home.js - Template da tela home COMPLETO
 // import homeService from '../services/homeService.js'; // Temporariamente comentado para debug
 import { getWorkoutIcon, getActionIcon, getNavigationIcon, getAchievementIcon } from '../utils/icons.js';
+import { ContextualWorkoutButton } from '../components/ContextualWorkoutButton.js';
 
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
@@ -105,9 +106,13 @@ export const homeTemplate = () => `
 
                             </div>
                             <div class="workout-action">
-                                <button id="start-workout-btn" class="btn-primary btn-glow">
-                                    <span class="btn-text">Iniciar Treino</span>
-                                    ${getActionIcon('play', 'active')}
+                                <button id="contextual-workout-btn" class="contextual-workout-btn btn-loading">
+                                    <div class="btn-content">
+                                        <div class="btn-main">
+                                            <span class="btn-icon" aria-hidden="true">⏳</span>
+                                            <span class="btn-text">Carregando...</span>
+                                        </div>
+                                    </div>
                                 </button>
                             </div>
                             
@@ -2556,6 +2561,9 @@ export const initializeHomeAnimations = () => {
     };
 };
 
+// Global reference for contextual button instance
+let contextualWorkoutButtonInstance = null;
+
 // Função para inicializar a home com dados dinâmicos
 export async function inicializarHome() {
     try {
@@ -2567,19 +2575,8 @@ export async function inicializarHome() {
         // Inicializar animações
         initializeHomeAnimations();
 
-        // Configurar listener do botão "Iniciar Treino"
-        const startBtn = document.getElementById('start-workout-btn');
-        if (startBtn) {
-            startBtn.removeEventListener('click', window.iniciarTreino);
-            if (typeof window.iniciarTreino === 'function') {
-                startBtn.addEventListener('click', window.iniciarTreino);
-                console.log('[templates/home.js] ✅ Listener iniciarTreino configurado');
-            } else {
-                console.warn('[templates/home.js] ⚠️ window.iniciarTreino não é uma função');
-            }
-        } else {
-            console.warn('[templates/home.js] ⚠️ Botão #start-workout-btn não encontrado');
-        }
+        // === INICIALIZAÇÃO DO BOTÃO CONTEXTUAL ===
+        await initializeContextualWorkoutButton();
         
         // Chamar o homeService
         // await homeService.inicializarHome();
@@ -2591,9 +2588,179 @@ export async function inicializarHome() {
     }
 }
 
+/**
+ * Inicializa o botão contextual de treino
+ */
+async function initializeContextualWorkoutButton() {
+    try {
+        console.log('[templates/home.js] 🔄 Inicializando ContextualWorkoutButton...');
+        
+        const buttonElement = document.getElementById('contextual-workout-btn');
+        if (!buttonElement) {
+            console.error('[templates/home.js] ❌ Elemento #contextual-workout-btn não encontrado');
+            return;
+        }
+        
+        // Limpar instância anterior se existir
+        if (contextualWorkoutButtonInstance) {
+            contextualWorkoutButtonInstance.destroy();
+        }
+        
+        // Criar nova instância do botão contextual
+        contextualWorkoutButtonInstance = new ContextualWorkoutButton(buttonElement, {
+            updateInterval: 5000, // 5 segundos
+            enableAutoUpdate: true,
+            showProgress: true,
+            showTimeElapsed: true
+        });
+        
+        // Aguardar inicialização
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        console.log('[templates/home.js] ✅ ContextualWorkoutButton inicializado com sucesso');
+        
+        // Configurar evento global de mudança de estado
+        document.addEventListener('workout-button-state-change', handleWorkoutButtonStateChange);
+        
+    } catch (error) {
+        console.error('[templates/home.js] ❌ Erro ao inicializar ContextualWorkoutButton:', error);
+        
+        // Fallback: configurar botão simples
+        setupFallbackWorkoutButton();
+    }
+}
+
+/**
+ * Manipula mudanças de estado do botão contextual
+ */
+function handleWorkoutButtonStateChange(event) {
+    const { newState, data, oldState } = event.detail;
+    
+    console.log('[templates/home.js] Estado do botão alterado:', {
+        de: oldState,
+        para: newState,
+        dados: data
+    });
+    
+    // Atualizar outros elementos da UI baseado no estado
+    updateWorkoutUIElements(newState, data);
+}
+
+/**
+ * Atualiza elementos da UI baseado no estado do botão
+ */
+function updateWorkoutUIElements(state, data) {
+    try {
+        // Atualizar nome do treino
+        const workoutNameEl = document.getElementById('workout-name');
+        if (workoutNameEl) {
+            switch (state) {
+                case 'start':
+                    workoutNameEl.textContent = 'Preparando seu treino';
+                    break;
+                case 'resume':
+                    workoutNameEl.textContent = data.workoutName || 'Treino em Andamento';
+                    break;
+                case 'complete':
+                    workoutNameEl.textContent = 'Treino Concluído';
+                    break;
+                case 'rest':
+                    workoutNameEl.textContent = 'Dia de Descanso';
+                    break;
+                case 'error':
+                    workoutNameEl.textContent = 'Erro no Cache';
+                    break;
+                default:
+                    workoutNameEl.textContent = 'Carregando...';
+            }
+        }
+        
+        // Atualizar informações de exercícios
+        const exercisesEl = document.getElementById('workout-exercises');
+        if (exercisesEl) {
+            if (state === 'resume' && data.totalExercises) {
+                exercisesEl.textContent = `${data.exercisesCompleted}/${data.totalExercises} exercícios`;
+            } else if (state === 'complete') {
+                exercisesEl.textContent = 'Treino finalizado';
+            } else if (state === 'rest') {
+                exercisesEl.textContent = 'Dia de folga';
+            } else {
+                exercisesEl.textContent = 'Carregando exercícios...';
+            }
+        }
+        
+        console.log('[templates/home.js] UI atualizada para estado:', state);
+        
+    } catch (error) {
+        console.error('[templates/home.js] Erro ao atualizar UI:', error);
+    }
+}
+
+/**
+ * Configuração de fallback para o botão em caso de erro
+ */
+function setupFallbackWorkoutButton() {
+    try {
+        console.log('[templates/home.js] ⚠️ Configurando botão de fallback');
+        
+        const buttonElement = document.getElementById('contextual-workout-btn');
+        if (!buttonElement) return;
+        
+        // Resetar classes
+        buttonElement.className = 'btn-primary btn-glow';
+        buttonElement.innerHTML = `
+            <span class="btn-text">Iniciar Treino</span>
+            ${getActionIcon('play', 'active')}
+        `;
+        
+        // Configurar listener básico
+        buttonElement.onclick = () => {
+            if (typeof window.iniciarTreino === 'function') {
+                window.iniciarTreino();
+            } else {
+                console.warn('[templates/home.js] window.iniciarTreino não disponível');
+                if (window.showNotification) {
+                    window.showNotification('Função de iniciar treino não disponível', 'warning');
+                }
+            }
+        };
+        
+        console.log('[templates/home.js] ✅ Botão de fallback configurado');
+        
+    } catch (error) {
+        console.error('[templates/home.js] Erro ao configurar fallback:', error);
+    }
+}
+
+/**
+ * Força atualização do botão contextual
+ */
+export function forceUpdateContextualButton() {
+    if (contextualWorkoutButtonInstance) {
+        contextualWorkoutButtonInstance.forceUpdate();
+        console.log('[templates/home.js] Força atualização do botão contextual');
+    }
+}
+
+/**
+ * Limpa recursos do botão contextual
+ */
+export function cleanupContextualButton() {
+    if (contextualWorkoutButtonInstance) {
+        contextualWorkoutButtonInstance.destroy();
+        contextualWorkoutButtonInstance = null;
+        console.log('[templates/home.js] Recursos do botão contextual limpos');
+    }
+    
+    document.removeEventListener('workout-button-state-change', handleWorkoutButtonStateChange);
+}
+
 // REMOVIDO: toggleWorkoutCard - delegado para workoutToggle.js
 // A função global window.toggleWorkoutCard é definida em workoutToggle.js
 
 // Disponibilizar funções globalmente
 window.inicializarHome = inicializarHome;
 window.initializeHomeAnimations = initializeHomeAnimations;
+window.forceUpdateContextualButton = forceUpdateContextualButton;
+window.cleanupContextualButton = cleanupContextualButton;
+window.getContextualButtonInstance = () => contextualWorkoutButtonInstance;

@@ -1596,9 +1596,9 @@ function atualizarAtividadeRecente(execucoesRecentes) {
 
 // Configurar botão de iniciar treino
 function configurarBotaoIniciar() {
-    const startBtn = document.getElementById('start-workout-btn');
+    const startBtn = document.getElementById('contextual-workout-btn');
     if (!startBtn) {
-        console.warn('[configurarBotaoIniciar] Botão não encontrado');
+        console.warn('[configurarBotaoIniciar] Botão contextual não encontrado');
         return;
     }
     

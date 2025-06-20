@@ -12,7 +12,13 @@ class AppStateManager {
                 currentWeek: null,
                 viewingWeek: null,
                 isViewingCurrent: true
-            }
+            },
+            // === WORKOUT PERSISTENCE FLAGS ===
+            isWorkoutActive: false,
+            hasUnsavedData: false,
+            workoutStartTime: null,
+            lastWorkoutSave: null,
+            workoutSessionId: null
         };
         
         this.listeners = new Map();
@@ -94,6 +100,12 @@ class AppStateManager {
         this.set('isResting', false);
         this.set('pesosSugeridos', {});
         
+        // Reset workout persistence flags
+        this.set('isWorkoutActive', false);
+        this.set('hasUnsavedData', false);
+        this.set('lastWorkoutSave', null);
+        this.set('workoutSessionId', null);
+        
         if (this.state.timerInterval) {
             clearInterval(this.state.timerInterval);
             this.set('timerInterval', null);
@@ -122,7 +134,74 @@ class AppStateManager {
     
     // Verifica se há treino em andamento
     get isWorkoutActive() {
-        return this.state.currentWorkout !== null && this.state.workoutStartTime !== null;
+        return this.state.isWorkoutActive;
+    }
+
+    // === WORKOUT PERSISTENCE HELPERS ===
+    
+    /**
+     * Marca workout como ativo e define flags relacionadas
+     */
+    startWorkoutSession(workoutData = null, sessionId = null) {
+        this.set('isWorkoutActive', true);
+        this.set('hasUnsavedData', false);
+        this.set('workoutStartTime', Date.now());
+        this.set('workoutSessionId', sessionId || this.generateSessionId());
+        
+        if (workoutData) {
+            this.set('currentWorkout', workoutData);
+        }
+        
+        console.log('[AppState] Workout session iniciada:', this.state.workoutSessionId);
+    }
+    
+    /**
+     * Marca dados como não salvos
+     */
+    markDataAsUnsaved() {
+        if (this.state.isWorkoutActive) {
+            this.set('hasUnsavedData', true);
+        }
+    }
+    
+    /**
+     * Marca dados como salvos e atualiza timestamp
+     */
+    markDataAsSaved() {
+        this.set('hasUnsavedData', false);
+        this.set('lastWorkoutSave', Date.now());
+    }
+    
+    /**
+     * Finaliza sessão de workout
+     */
+    endWorkoutSession() {
+        this.set('isWorkoutActive', false);
+        this.set('hasUnsavedData', false);
+        this.set('lastWorkoutSave', Date.now());
+        
+        console.log('[AppState] Workout session finalizada:', this.state.workoutSessionId);
+    }
+    
+    /**
+     * Gera ID único para sessão
+     */
+    generateSessionId() {
+        return `workout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    /**
+     * Obtém informações da sessão atual
+     */
+    getWorkoutSessionInfo() {
+        return {
+            isActive: this.state.isWorkoutActive,
+            hasUnsavedData: this.state.hasUnsavedData,
+            sessionId: this.state.workoutSessionId,
+            startTime: this.state.workoutStartTime,
+            lastSave: this.state.lastWorkoutSave,
+            duration: this.state.workoutStartTime ? Date.now() - this.state.workoutStartTime : 0
+        };
     }
     
     // Métodos para navegação de semanas

@@ -7,7 +7,7 @@ import { workoutTemplate, exerciseCardTemplate } from '../templates/workoutExecu
 import TreinoCacheService from '../services/treinoCacheService.js';
 import { getActionIcon, getAchievementIcon, getWorkoutIcon } from '../utils/icons.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
-import { workoutPersistence } from './workoutPersistence.js';
+import { workoutPersistence } from '../services/treinoCacheService.js';
 
 // Importação dinâmica e segura do modal
 let DisposicaoInicioModal = null;
@@ -87,6 +87,7 @@ class WorkoutExecutionManager {
         this.startTime = null;
         this.timerInterval = null;
         this.restTimerInterval = null;
+        this.autoSaveInterval = null;
         this.currentRestTime = 0;
         this.currentExerciseIndex = 0;
         this.disposicaoInicio = null;
@@ -94,6 +95,18 @@ class WorkoutExecutionManager {
         this.persistence = workoutPersistence;
         this.modalSaidaAtivo = false;
         this.estaEmModoEmergencia = false;
+        
+        // === ENHANCED PROPERTIES ===
+        this.isInitialized = false;
+        this.sessionId = null;
+        this.lastSaveTime = null;
+        this.autoSaveEnabled = true;
+        this.autoSaveIntervalMs = 30000; // 30 segundos
+        
+        // Bind methods para event listeners
+        this.handleExit = this.handleExit.bind(this);
+        this.autoSave = this.autoSave.bind(this);
+        this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
     }
 
     async iniciarTreino() {
@@ -116,47 +129,43 @@ class WorkoutExecutionManager {
             
             console.log('[WorkoutExecution] 👤 Usuário atual:', currentUser.nome, `(ID: ${currentUser.id})`);
 
-            // Verificar se há treino em andamento para recuperar
+            // Verificar recovery usando NavigationGuard
             try {
-                const stateRecuperado = await this.persistence.restoreState();
-                if (stateRecuperado) {
-                    const desejaRecuperar = await this.confirmarRecuperacao();
-                    if (desejaRecuperar) {
-                        console.log('[WorkoutExecution] 🔄 Recuperando treino em andamento...');
-                        await this.recuperarTreinoEmAndamento(stateRecuperado);
-                        console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO');
-                        return;
-                    } else {
-                        // Usuário optou por iniciar novo treino
-                        if (this.persistence?.clearState) {
-                            await this.persistence.clearState();
-                        }
-                    }
-                }
-            } catch (persistenceError) {
-                console.warn('[WorkoutExecution] ⚠️ Erro na recuperação via persistence, verificando localStorage...', persistenceError);
+                const { checkAndShowRecovery } = await import('../ui/navigation.js');
+                const recoveryResult = await checkAndShowRecovery();
                 
-                // Fallback: verificar localStorage para workoutProgress
+                if (recoveryResult && recoveryResult.action === 'recover') {
+                    console.log('[WorkoutExecution] 🔄 Recuperando treino via NavigationGuard...');
+                    await this.recuperarTreinoEmAndamento(recoveryResult.data);
+                    console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO');
+                    return;
+                } else if (recoveryResult && recoveryResult.action === 'discard') {
+                    console.log('[WorkoutExecution] 🗑️ Descartando dados anteriores e iniciando novo treino');
+                    // Dados já foram limpos pelo NavigationGuard
+                }
+                
+            } catch (recoveryError) {
+                console.warn('[WorkoutExecution] ⚠️ Erro na verificação de recovery:', recoveryError);
+                
+                // Fallback: verificar persistence diretamente
                 try {
-                    const progressData = localStorage.getItem('workoutProgress');
-                    if (progressData) {
-                        const parsedData = JSON.parse(progressData);
-                        if (parsedData.status === 'em_andamento' && parsedData.currentWorkout) {
-                            console.log('[WorkoutExecution] 📋 Progresso encontrado no localStorage');
-                            const desejaRecuperar = await this.confirmarRecuperacao();
-                            if (desejaRecuperar) {
-                                console.log('[WorkoutExecution] 🔄 Recuperando treino do localStorage...');
-                                await this.recuperarTreinoEmAndamento(parsedData);
-                                console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO DO LOCALSTORAGE');
-                                return;
-                            } else {
-                                // Limpar progresso se usuário não quer continuar
-                                localStorage.removeItem('workoutProgress');
+                    const stateRecuperado = await this.persistence.restoreState();
+                    if (stateRecuperado) {
+                        const desejaRecuperar = await this.confirmarRecuperacao();
+                        if (desejaRecuperar) {
+                            console.log('[WorkoutExecution] 🔄 Recuperando treino (fallback)...');
+                            await this.recuperarTreinoEmAndamento(stateRecuperado);
+                            console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO (FALLBACK)');
+                            return;
+                        } else {
+                            // Usuário optou por iniciar novo treino
+                            if (this.persistence?.clearState) {
+                                await this.persistence.clearState();
                             }
                         }
                     }
-                } catch (localStorageError) {
-                    console.warn('[WorkoutExecution] ⚠️ Erro ao verificar localStorage:', localStorageError);
+                } catch (persistenceError) {
+                    console.warn('[WorkoutExecution] ⚠️ Erro no fallback de persistence:', persistenceError);
                 }
             }
 
@@ -224,8 +233,9 @@ class WorkoutExecutionManager {
             this.exerciciosExecutados = [];
             this.currentExerciseIndex = 0;
             
-            // Salvar no estado global
+            // Salvar no estado global e iniciar sessão
             AppState.set('currentWorkout', this.currentWorkout);
+            AppState.startWorkoutSession(this.currentWorkout);
             
             // Salvar estado inicial para persistência
             await this.salvarEstadoAtual(true);
@@ -323,6 +333,500 @@ class WorkoutExecutionManager {
                 window.showNotification('Erro ao carregar treino: ' + error.message, 'error');
             }
         }
+    }
+
+    // === ENHANCED WORKOUT MANAGER METHODS ===
+
+    /**
+     * Método principal para iniciar workout (substitui iniciarTreino)
+     * Implementa verificação de cache, modal de recuperação e auto-save
+     */
+    async startWorkout() {
+        console.log('[WorkoutManager] 🚀 STARTING WORKOUT - Enhanced Method');
+        
+        try {
+            // 1. Verificar cache existente
+            const cacheCheck = await this.checkExistingCache();
+            
+            if (cacheCheck.hasCache) {
+                // 2. Mostrar modal de recuperação se necessário
+                const recoveryDecision = await this.handleCacheRecovery(cacheCheck.data);
+                
+                if (recoveryDecision === 'recover') {
+                    return await this.resumeFromCache(cacheCheck.data);
+                } else if (recoveryDecision === 'discard') {
+                    await TreinoCacheService.clearWorkoutState();
+                }
+                // Se 'cancel', continua com novo treino
+            }
+            
+            // 3. Inicializar novo treino
+            await this.initializeNewWorkout();
+            
+            // 4. Ativar auto-save e navigation guard
+            this.activateWorkoutProtection();
+            
+            console.log('[WorkoutManager] ✅ Workout iniciado com sucesso');
+            return true;
+            
+        } catch (error) {
+            console.error('[WorkoutManager] ❌ Erro ao iniciar workout:', error);
+            
+            // Fallback para método antigo
+            console.log('[WorkoutManager] 🔄 Usando método legacy como fallback');
+            return await this.iniciarTreino();
+        }
+    }
+
+    /**
+     * Verifica se há cache existente
+     */
+    async checkExistingCache() {
+        try {
+            const workoutState = await TreinoCacheService.getWorkoutState();
+            const hasActiveWorkout = await TreinoCacheService.hasActiveWorkout();
+            
+            return {
+                hasCache: hasActiveWorkout && workoutState,
+                data: workoutState,
+                isValid: workoutState ? TreinoCacheService.validateState(workoutState) : false
+            };
+            
+        } catch (error) {
+            console.error('[WorkoutManager] Erro ao verificar cache:', error);
+            return { hasCache: false, data: null, isValid: false };
+        }
+    }
+
+    /**
+     * Manipula recuperação de cache com modal
+     */
+    async handleCacheRecovery(cacheData) {
+        try {
+            const { SessionRecoveryModal } = await import('../components/SessionRecoveryModal.js');
+            const modal = new SessionRecoveryModal(cacheData);
+            const result = await modal.show();
+            
+            console.log('[WorkoutManager] Recovery modal result:', result);
+            return result;
+            
+        } catch (error) {
+            console.error('[WorkoutManager] Erro no modal de recovery:', error);
+            
+            // Fallback para confirm simples
+            const recover = confirm('Foi encontrado um treino em andamento. Deseja continuar?');
+            return recover ? 'recover' : 'discard';
+        }
+    }
+
+    /**
+     * Inicializa novo treino
+     */
+    async initializeNewWorkout() {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser) {
+            throw new Error('Usuário não encontrado');
+        }
+
+        // Verificar se treino já foi concluído
+        const statusConclusao = await this.checkWorkoutCompletion(currentUser.id);
+        if (statusConclusao.concluido) {
+            throw new Error('Treino já foi concluído hoje');
+        }
+
+        // Carregar treino do protocolo
+        this.currentWorkout = await WorkoutProtocolService.carregarTreinoParaExecucao(currentUser.id);
+        if (!this.currentWorkout) {
+            throw new Error('Nenhum treino encontrado para hoje');
+        }
+
+        // Verificar casos especiais
+        if (this.currentWorkout.tipo === 'folga') {
+            throw new Error('Hoje é dia de descanso');
+        }
+        
+        if (this.currentWorkout.tipo === 'cardio') {
+            throw new Error('Treino de cardio detectado');
+        }
+
+        if (!this.currentWorkout.exercicios || this.currentWorkout.exercicios.length === 0) {
+            throw new Error('Nenhum exercício encontrado no treino');
+        }
+
+        // Configurar estado inicial
+        this.startTime = Date.now();
+        this.exerciciosExecutados = [];
+        this.currentExerciseIndex = 0;
+        this.sessionId = AppState.generateSessionId();
+        
+        // Atualizar AppState
+        AppState.set('currentWorkout', this.currentWorkout);
+        AppState.startWorkoutSession(this.currentWorkout, this.sessionId);
+        
+        // Navegar para tela de workout
+        await this.navegarParaTelaWorkout();
+        
+        // Salvar estado inicial
+        await this.saveCurrentState(true);
+        
+        // Solicitar disposição inicial
+        await this.requestInitialDisposition();
+        
+        // Renderizar treino
+        await this.renderizarComSeguranca();
+        this.iniciarCronometro();
+        
+        this.isInitialized = true;
+    }
+
+    /**
+     * Ativa proteções do workout (auto-save, navigation guard)
+     */
+    activateWorkoutProtection() {
+        // Ativar auto-save
+        if (this.autoSaveEnabled) {
+            this.startAutoSave();
+        }
+        
+        // Adicionar listener para beforeunload
+        window.addEventListener('beforeunload', this.handleBeforeUnload);
+        
+        console.log('[WorkoutManager] Proteções ativadas');
+    }
+
+    /**
+     * Auto-save a cada intervalo configurado
+     */
+    startAutoSave() {
+        if (this.autoSaveInterval) {
+            clearInterval(this.autoSaveInterval);
+        }
+        
+        this.autoSaveInterval = setInterval(async () => {
+            try {
+                await this.autoSave();
+            } catch (error) {
+                console.error('[WorkoutManager] Erro no auto-save:', error);
+            }
+        }, this.autoSaveIntervalMs);
+        
+        console.log('[WorkoutManager] Auto-save ativado:', this.autoSaveIntervalMs + 'ms');
+    }
+
+    /**
+     * Executa auto-save se houver mudanças
+     */
+    async autoSave() {
+        if (!this.isInitialized || !this.currentWorkout) {
+            return;
+        }
+        
+        try {
+            const currentState = this.getState();
+            await TreinoCacheService.saveWorkoutState(currentState, true);
+            
+            this.lastSaveTime = Date.now();
+            AppState.markDataAsSaved();
+            
+            console.log('[WorkoutManager] Auto-save executado');
+            
+        } catch (error) {
+            console.error('[WorkoutManager] Erro no auto-save:', error);
+        }
+    }
+
+    /**
+     * Manipula saída com modal de confirmação
+     */
+    async handleExit() {
+        if (this.modalSaidaAtivo) {
+            console.log('[WorkoutManager] Modal de saída já está ativo');
+            return false;
+        }
+        
+        this.modalSaidaAtivo = true;
+        
+        try {
+            // 1. Pausar timers
+            this.pauseTimers();
+            
+            // 2. Mostrar SaveExitModal
+            const { SaveExitModal } = await import('../components/SaveExitModal.js');
+            const modal = new SaveExitModal(this.getState());
+            const userChoice = await modal.show();
+            
+            // 3. Processar escolha do usuário
+            return await this.processExitChoice(userChoice);
+            
+        } catch (error) {
+            console.error('[WorkoutManager] Erro no handleExit:', error);
+            return false;
+        } finally {
+            this.modalSaidaAtivo = false;
+        }
+    }
+
+    /**
+     * Pausa todos os timers
+     */
+    pauseTimers() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+        if (this.restTimerInterval) {
+            clearInterval(this.restTimerInterval);
+        }
+        if (this.autoSaveInterval) {
+            clearInterval(this.autoSaveInterval);
+        }
+    }
+
+    /**
+     * Resume timers
+     */
+    resumeTimers() {
+        this.iniciarCronometro();
+        if (this.autoSaveEnabled) {
+            this.startAutoSave();
+        }
+    }
+
+    /**
+     * Processa escolha de saída do usuário
+     */
+    async processExitChoice(choice) {
+        switch (choice) {
+            case 'save-exit':
+                await this.saveAndExit();
+                return true;
+                
+            case 'exit-no-save':
+                await this.discardAndExit();
+                return true;
+                
+            case 'cancel':
+            default:
+                this.resumeTimers();
+                return false;
+        }
+    }
+
+    /**
+     * Salva dados e sai
+     */
+    async saveAndExit() {
+        try {
+            await this.saveCurrentState(false); // Save completo
+            this.cleanup();
+            this.navegarParaHomeDiretamente();
+            
+        } catch (error) {
+            console.error('[WorkoutManager] Erro ao salvar e sair:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Descarta dados e sai
+     */
+    async discardAndExit() {
+        try {
+            await TreinoCacheService.clearWorkoutState();
+            AppState.resetWorkout();
+            this.cleanup();
+            this.navegarParaHomeDiretamente();
+            
+        } catch (error) {
+            console.error('[WorkoutManager] Erro ao descartar e sair:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Recupera workout do cache
+     */
+    async resumeFromCache(cacheData) {
+        console.log('[WorkoutManager] 🔄 Resumindo workout do cache');
+        
+        try {
+            // 1. Validar dados do cache
+            if (!TreinoCacheService.validateState(cacheData)) {
+                throw new Error('Dados do cache inválidos');
+            }
+            
+            // 2. Restaurar estado completo
+            await this.restoreCompleteState(cacheData);
+            
+            // 3. Ajustar timers para tempo decorrido
+            this.adjustTimersForElapsedTime(cacheData);
+            
+            // 4. Navegar para tela de workout
+            await this.navegarParaTelaWorkout();
+            
+            // 5. Renderizar estado restaurado
+            await this.renderizarComSeguranca();
+            
+            // 6. Reativar proteções
+            this.activateWorkoutProtection();
+            
+            console.log('[WorkoutManager] ✅ Workout resumido com sucesso');
+            return true;
+            
+        } catch (error) {
+            console.error('[WorkoutManager] ❌ Erro ao resumir workout:', error);
+            
+            // Em caso de erro, limpar cache e iniciar novo
+            await TreinoCacheService.clearWorkoutState();
+            return await this.startWorkout();
+        }
+    }
+
+    /**
+     * Restaura estado completo do cache
+     */
+    async restoreCompleteState(cacheData) {
+        this.currentWorkout = cacheData.currentWorkout;
+        this.exerciciosExecutados = cacheData.exerciciosExecutados || [];
+        this.currentExerciseIndex = cacheData.currentExerciseIndex || 0;
+        this.startTime = cacheData.startTime || Date.now();
+        this.sessionId = cacheData.metadata?.sessionId || AppState.generateSessionId();
+        
+        // Atualizar AppState
+        AppState.set('currentWorkout', this.currentWorkout);
+        AppState.startWorkoutSession(this.currentWorkout, this.sessionId);
+        AppState.set('hasUnsavedData', true); // Dados recuperados não foram salvos
+        
+        this.isInitialized = true;
+        
+        console.log('[WorkoutManager] Estado restaurado:', {
+            workout: this.currentWorkout?.nome,
+            exerciciosExecutados: this.exerciciosExecutados.length,
+            sessionId: this.sessionId
+        });
+    }
+
+    /**
+     * Ajusta timers para tempo decorrido
+     */
+    adjustTimersForElapsedTime(cacheData) {
+        const savedTime = new Date(cacheData.metadata?.savedAt || cacheData.timestamp);
+        const now = new Date();
+        const elapsedMs = now - savedTime;
+        
+        console.log('[WorkoutManager] Ajustando timers:', {
+            savedTime: savedTime.toISOString(),
+            elapsedSinceCache: Math.round(elapsedMs / 1000) + 's'
+        });
+        
+        // Iniciar cronômetro considerando tempo total
+        this.iniciarCronometro();
+    }
+
+    /**
+     * Obtém estado atual do manager
+     */
+    getState() {
+        return {
+            currentWorkout: this.currentWorkout,
+            exerciciosExecutados: this.exerciciosExecutados,
+            currentExerciseIndex: this.currentExerciseIndex,
+            startTime: this.startTime,
+            sessionId: this.sessionId,
+            timestamp: Date.now(),
+            metadata: {
+                sessionId: this.sessionId,
+                savedAt: new Date().toISOString(),
+                version: '2.0',
+                isPartial: true
+            }
+        };
+    }
+
+    /**
+     * Salva estado atual
+     */
+    async saveCurrentState(isPartial = true) {
+        const state = this.getState();
+        state.metadata.isPartial = isPartial;
+        
+        await TreinoCacheService.saveWorkoutState(state, isPartial);
+        
+        if (isPartial) {
+            AppState.markDataAsUnsaved();
+        } else {
+            AppState.markDataAsSaved();
+        }
+        
+        this.lastSaveTime = Date.now();
+    }
+
+    /**
+     * Verifica se treino foi concluído
+     */
+    async checkWorkoutCompletion(userId) {
+        try {
+            if (window.WeeklyPlanService?.verificarTreinoConcluido) {
+                return await window.WeeklyPlanService.verificarTreinoConcluido(userId);
+            }
+            return { concluido: false };
+        } catch (error) {
+            console.warn('[WorkoutManager] Erro ao verificar conclusão:', error);
+            return { concluido: false };
+        }
+    }
+
+    /**
+     * Solicita disposição inicial (se disponível)
+     */
+    async requestInitialDisposition() {
+        try {
+            await ensureModalLoaded();
+            const ModalClass = await ensureModalLoaded();
+            
+            if (ModalClass?.solicitar) {
+                const disposicao = await ModalClass.solicitar();
+                if (disposicao !== null) {
+                    await ModalClass.salvarValor(disposicao);
+                }
+            }
+        } catch (error) {
+            console.warn('[WorkoutManager] Erro ao solicitar disposição:', error);
+            // Não é crítico, continua sem disposição
+        }
+    }
+
+    /**
+     * Manipula evento beforeunload
+     */
+    handleBeforeUnload(event) {
+        if (this.isInitialized && this.currentWorkout) {
+            const message = 'Você tem um treino em andamento. Os dados podem ser perdidos.';
+            event.preventDefault();
+            event.returnValue = message;
+            return message;
+        }
+    }
+
+    /**
+     * Cleanup completo do manager
+     */
+    cleanup() {
+        // Parar todos os timers
+        this.pauseTimers();
+        
+        // Remover event listeners
+        window.removeEventListener('beforeunload', this.handleBeforeUnload);
+        
+        // Reset de propriedades
+        this.isInitialized = false;
+        this.sessionId = null;
+        this.lastSaveTime = null;
+        this.modalSaidaAtivo = false;
+        
+        // Finalizar sessão no AppState
+        AppState.endWorkoutSession();
+        
+        console.log('[WorkoutManager] Cleanup completo executado');
     }
 
     async navegarParaTelaWorkout() {
@@ -641,6 +1145,47 @@ class WorkoutExecutionManager {
     async voltarParaHome() {
         console.log('[WorkoutExecution] Tentativa de voltar para home...');
         
+        try {
+            // Usar método enhanced handleExit
+            const exitAllowed = await this.handleExit();
+            
+            if (exitAllowed) {
+                console.log('[WorkoutExecution] Saída autorizada via handleExit');
+            } else {
+                console.log('[WorkoutExecution] Saída cancelada pelo usuário');
+            }
+            
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro na navegação enhanced:', error);
+            
+            // Fallback para navegação com NavigationGuard
+            try {
+                const { safeNavigate } = await import('../ui/navigation.js');
+                const success = await safeNavigate('home-screen');
+                
+                if (success) {
+                    console.log('[WorkoutExecution] Navegação para home autorizada (fallback)');
+                    
+                    // Parar cronômetro se estiver rodando
+                    if (this.timerInterval) {
+                        clearInterval(this.timerInterval);
+                        this.timerInterval = null;
+                    }
+                }
+                
+            } catch (fallbackError) {
+                console.error('[WorkoutExecution] Erro no fallback de navegação:', fallbackError);
+                this.voltarParaHomeLegacy();
+            }
+        }
+    }
+    
+    /**
+     * Método legacy de voltar para home (mantido para compatibilidade)
+     */
+    voltarParaHomeLegacy() {
+        console.log('[WorkoutExecution] Usando navegação legacy...');
+        
         // Verificar se há treino ativo
         const isWorkoutActive = this.currentWorkout && this.timerInterval;
         const hasProgress = this.exerciciosExecutados && this.exerciciosExecutados.length > 0;
@@ -732,13 +1277,19 @@ class WorkoutExecutionManager {
         }
     }
 
-    // Salva o estado atual do treino
+    // Salva o estado atual do treino (método legacy - use saveCurrentState)
     async salvarEstadoAtual(forceSave = false) {
         if (!this.currentWorkout || !this.persistence) return;
         
         try {
+            // Usar método enhanced se estiver inicializado
+            if (this.isInitialized) {
+                return await this.saveCurrentState(!forceSave);
+            }
+            
+            // Fallback para método legacy
             const state = {
-                workout: this.currentWorkout,
+                currentWorkout: this.currentWorkout,
                 exerciciosExecutados: this.exerciciosExecutados,
                 currentExerciseIndex: this.currentExerciseIndex,
                 startTime: this.startTime,
@@ -746,7 +1297,15 @@ class WorkoutExecutionManager {
             };
             
             await this.persistence.saveState(state, forceSave);
-            console.log('[WorkoutExecution] Estado do treino salvo');
+            
+            // Marcar como não salvo no AppState se não for forceSave
+            if (!forceSave) {
+                AppState.markDataAsUnsaved();
+            } else {
+                AppState.markDataAsSaved();
+            }
+            
+            console.log('[WorkoutExecution] Estado do treino salvo (legacy)');
         } catch (error) {
             console.error('[WorkoutExecution] Erro ao salvar estado do treino:', error);
         }
@@ -1835,6 +2394,12 @@ class WorkoutExecutionManager {
 
 // ===== GLOBAL BINDINGS =====
 window.workoutExecutionManager = new WorkoutExecutionManager();
+
+// === ENHANCED GLOBAL METHODS ===
+// Expor métodos enhanced para uso em templates
+window.startWorkout = () => window.workoutExecutionManager.startWorkout();
+window.resumeWorkout = (cacheData) => window.workoutExecutionManager.resumeFromCache(cacheData);
+window.handleWorkoutExit = () => window.workoutExecutionManager.handleExit();
 
 // Funções usadas no HTML
 window.confirmarSerie = (exerciseIndex, seriesIndex) => window.workoutExecutionManager.confirmarSerie(exerciseIndex, seriesIndex);

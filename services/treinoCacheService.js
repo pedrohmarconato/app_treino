@@ -483,63 +483,199 @@ export class TreinoCacheService {
         return sessao;
     }
 
-    // ----- NOVOS MÉTODOS ADICIONADOS -----
+    // ----- INTERFACE UNIFICADA DE PERSISTÊNCIA -----
     /**
-     * Salva estado completo do workout (nova versão unificada)
+     * Salva estado completo do workout (VERSÃO UNIFICADA)
      * @param {Object} state - Estado do workoutExecutionManager
      * @param {Boolean} isPartial - Se é salvamento parcial
      */
     static async saveWorkoutState(state, isPartial = false) {
         try {
-            const current = this.obterSessaoAtiva() || {};
-            const newState = {
-                ...current,
-                state: {
-                    ...state,
-                    _metadata: {
-                        savedAt: new Date().toISOString(),
-                        isPartial,
-                        version: '2.0'
-                    }
+            const stateToSave = {
+                ...state,
+                metadata: {
+                    savedAt: new Date().toISOString(),
+                    isPartial,
+                    appVersion: '2.0',
+                    stateKey: 'workoutSession_v2'
                 }
             };
+
+            // Validar estado antes de salvar
+            if (!this.validateState(stateToSave)) {
+                console.warn('[TreinoCacheService] Estado inválido, não será salvo:', stateToSave);
+                return false;
+            }
+
+            // Salvar no localStorage com chave unificada
+            localStorage.setItem('workoutSession_v2', JSON.stringify(stateToSave));
             
-            await this.salvarSessaoCache(newState);
+            // Também manter compatibilidade com sistema antigo
+            const current = this.obterSessaoAtiva() || {};
+            const legacyState = {
+                ...current,
+                state: stateToSave
+            };
+            this.salvarSessaoCache(legacyState);
+            
+            console.log('[TreinoCacheService] Estado salvo com sucesso');
+            
+            // Se não é parcial, tentar sincronizar com servidor
+            if (!isPartial) {
+                this._trySyncWithServer(stateToSave);
+            }
+            
             return true;
         } catch (error) {
-            console.error('[TreinoCacheService] saveWorkoutState error:', error);
+            console.error('[TreinoCacheService] Erro ao salvar estado:', error);
             return false;
         }
     }
 
     /**
      * Obtém estado salvo do workout (com validação)
+     * @returns {Promise<Object|null>} Estado recuperado ou null
      */
     static async getWorkoutState() {
-        const sessao = this.obterSessaoAtiva();
-        if (!sessao?.state) return null;
-        
-        // Validação básica do estado
-        if (!sessao.state.currentWorkout || !Array.isArray(sessao.state.exerciciosExecutados)) {
-            console.warn('[TreinoCacheService] Estado inválido:', sessao.state);
+        try {
+            // Tentar buscar pelo novo sistema primeiro
+            const newStateRaw = localStorage.getItem('workoutSession_v2');
+            if (newStateRaw) {
+                const newState = JSON.parse(newStateRaw);
+                if (this.validateState(newState)) {
+                    return newState;
+                }
+            }
+            
+            // Fallback: sistema antigo
+            const sessao = this.obterSessaoAtiva();
+            if (sessao?.state) {
+                if (this.validateState(sessao.state)) {
+                    return sessao.state;
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('[TreinoCacheService] Erro ao obter estado:', error);
             return null;
         }
+    }
+
+    /**
+     * Limpa estado do workout
+     */
+    static async clearWorkoutState() {
+        try {
+            localStorage.removeItem('workoutSession_v2');
+            this.limparSessaoAtiva();
+            console.log('[TreinoCacheService] Estado do workout limpo');
+        } catch (error) {
+            console.error('[TreinoCacheService] Erro ao limpar estado:', error);
+        }
+    }
+
+    /**
+     * Verifica se há treino ativo
+     * @returns {Promise<boolean>}
+     */
+    static async hasActiveWorkout() {
+        const state = await this.getWorkoutState();
+        return state && state.currentWorkout && state.metadata?.isPartial !== false;
+    }
+
+    /**
+     * Valida integridade do estado
+     * @param {Object} state - Estado a ser validado
+     * @returns {boolean}
+     */
+    static validateState(state) {
+        if (!state || typeof state !== 'object') {
+            return false;
+        }
         
-        return sessao.state;
+        const requiredKeys = ['currentWorkout', 'exerciciosExecutados'];
+        const hasRequiredKeys = requiredKeys.every(key => state[key] !== undefined);
+        
+        if (!hasRequiredKeys) {
+            console.warn('[TreinoCacheService] Estado faltando chaves obrigatórias:', requiredKeys.filter(key => !state[key]));
+            return false;
+        }
+        
+        // Validação específica
+        if (!Array.isArray(state.exerciciosExecutados)) {
+            console.warn('[TreinoCacheService] exerciciosExecutados deve ser array');
+            return false;
+        }
+        
+        if (!state.currentWorkout || typeof state.currentWorkout !== 'object') {
+            console.warn('[TreinoCacheService] currentWorkout deve ser objeto válido');
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Tenta sincronizar com servidor (background)
+     * @param {Object} state - Estado a ser sincronizado
+     */
+    static async _trySyncWithServer(state) {
+        try {
+            // Importação dinâmica para evitar dependência circular
+            const { workoutSyncService } = await import('./workoutSyncService.js');
+            if (workoutSyncService?.trySendOrQueue) {
+                workoutSyncService.trySendOrQueue(state);
+            }
+        } catch (error) {
+            console.warn('[TreinoCacheService] Sincronização com servidor falhou:', error);
+        }
     }
 
     /**
      * Migração de dados antigos para novo formato
      */
     static async migrateOldData() {
-        const oldData = localStorage.getItem('old_workout_state');
-        if (oldData) {
-            try {
-                await this.saveWorkoutState(JSON.parse(oldData));
-                localStorage.removeItem('old_workout_state');
-            } catch (error) {
-                console.error('Migration error:', error);
+        const migrations = [
+            'old_workout_state',
+            'workoutProgress',
+            'workoutLocalBackup'
+        ];
+        
+        for (const key of migrations) {
+            const oldData = localStorage.getItem(key);
+            if (oldData) {
+                try {
+                    const parsed = JSON.parse(oldData);
+                    await this.saveWorkoutState(parsed, false);
+                    localStorage.removeItem(key);
+                    console.log(`[TreinoCacheService] Migração concluída: ${key}`);
+                } catch (error) {
+                    console.error(`[TreinoCacheService] Erro na migração ${key}:`, error);
+                }
             }
+        }
+    }
+
+    /**
+     * Método de debug para verificar estado
+     */
+    static debugState() {
+        try {
+            const newState = localStorage.getItem('workoutSession_v2');
+            const oldState = this.obterSessaoAtiva();
+            
+            console.log('[TreinoCacheService] Estado novo:', newState ? JSON.parse(newState) : null);
+            console.log('[TreinoCacheService] Estado antigo:', oldState);
+            
+            return {
+                newState: newState ? JSON.parse(newState) : null,
+                oldState: oldState,
+                isValid: newState ? this.validateState(JSON.parse(newState)) : false
+            };
+        } catch (error) {
+            console.error('[TreinoCacheService] Erro no debug:', error);
+            return null;
         }
     }
 
@@ -583,6 +719,61 @@ export class TreinoCacheService {
             return null;
         }
     }
+    
+    // === MÉTODOS MIGRADOS DE workoutPersistence.js ===
+    
+    /**
+     * Restaura estado salvo (compatibilidade com workoutPersistence)
+     * @returns {Promise<Object|null>} Estado recuperado ou null  
+     */
+    static async restoreState() {
+        return await this.getWorkoutState();
+    }
+    
+    /**
+     * Limpa estado (compatibilidade com workoutPersistence)
+     */
+    static async clearState() {
+        return await this.clearWorkoutState();
+    }
 }
 
 export default TreinoCacheService;
+
+// === COMPATIBILIDADE COM workoutPersistence.js ===
+// Classe wrapper para manter compatibilidade
+export class WorkoutPersistence {
+    constructor() {
+        this.STATE_KEY = 'workoutSession_v2';
+        // Compatibilidade mantida para transição gradual
+    }
+
+    async saveState(state, isPartial = false) {
+        return await TreinoCacheService.saveWorkoutState(state, isPartial);
+    }
+
+    async restoreState() {
+        return await TreinoCacheService.getWorkoutState();
+    }
+
+    async clearState() {
+        return await TreinoCacheService.clearWorkoutState();
+    }
+
+    validateState(state) {
+        return TreinoCacheService.validateState(state);
+    }
+
+    debugState() {
+        return TreinoCacheService.debugState();
+    }
+}
+
+// Exporta instância singleton para compatibilidade
+export const workoutPersistence = new WorkoutPersistence();
+
+// Função global para debug rápido no console
+window.debugWorkoutState = () => {
+    console.log('[GLOBAL] Estado de treino salvo:', TreinoCacheService.debugState());
+    return TreinoCacheService.debugState();
+};

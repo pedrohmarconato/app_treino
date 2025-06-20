@@ -442,8 +442,123 @@ function obterTipoTreino(diaSemana) {
     return tipos[diaSemana] || 'A';
 }
 
-// Verificar se pode navegar (útil para prevenir navegação durante treino)
-export function canNavigate() {
+// === ENHANCED NAVIGATION GUARDS ===
+
+/**
+ * Verifica se pode navegar usando NavigationGuard inteligente
+ * @param {string} targetRoute - Rota de destino
+ * @param {Object} options - Opções da navegação
+ * @returns {Promise<boolean>} Se a navegação pode prosseguir
+ */
+export async function canNavigate(targetRoute = null, options = {}) {
+    try {
+        // Usar NavigationGuard para lógica inteligente
+        const { canNavigate: guardCanNavigate } = await import('../services/navigationGuard.js');
+        return await guardCanNavigate(targetRoute, options);
+        
+    } catch (error) {
+        console.error('[Navigation] Erro ao usar NavigationGuard, usando fallback:', error);
+        return canNavigateLegacy();
+    }
+}
+
+/**
+ * Intercepta navegação e aplica guards inteligentes
+ * @param {string} targetRoute - Rota de destino
+ * @param {Object} options - Opções da navegação
+ * @returns {Promise<boolean>} Se a navegação foi permitida
+ */
+export async function navigateWithGuards(targetRoute, options = {}) {
+    console.log('[Navigation] Tentativa de navegação para:', targetRoute);
+    
+    try {
+        const canProceed = await canNavigate(targetRoute, options);
+        
+        if (canProceed) {
+            console.log('[Navigation] Navegação permitida pelo guard');
+            mostrarTela(targetRoute);
+            return true;
+        } else {
+            console.log('[Navigation] Navegação bloqueada pelo guard');
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('[Navigation] Erro na navegação com guards:', error);
+        
+        // Em caso de erro, usar navegação direta
+        console.log('[Navigation] Usando navegação direta como fallback');
+        mostrarTela(targetRoute);
+        return true;
+    }
+}
+
+/**
+ * Navegação segura - sempre usa guards
+ * @param {string} targetRoute - Rota de destino
+ * @param {Object} options - Opções da navegação
+ */
+export async function safeNavigate(targetRoute, options = {}) {
+    const success = await navigateWithGuards(targetRoute, options);
+    
+    if (!success && !options.silent) {
+        console.log('[Navigation] Navegação cancelada pelo usuário');
+    }
+    
+    return success;
+}
+
+/**
+ * Força navegação sem guards (usar com cuidado)
+ * @param {string} targetRoute - Rota de destino
+ */
+export function forceNavigate(targetRoute) {
+    console.warn('[Navigation] FORÇANDO navegação sem guards para:', targetRoute);
+    mostrarTela(targetRoute);
+}
+
+/**
+ * Verifica se há sessão para recuperar no startup da app
+ */
+export async function checkAndShowRecovery() {
+    try {
+        const { checkForRecovery, showRecoveryModal } = await import('../services/navigationGuard.js');
+        
+        const sessionData = await checkForRecovery();
+        if (!sessionData) {
+            return null;
+        }
+        
+        console.log('[Navigation] Sessão de treino detectada, exibindo modal de recuperação');
+        const recoveryResult = await showRecoveryModal(sessionData);
+        
+        return recoveryResult;
+        
+    } catch (error) {
+        console.error('[Navigation] Erro ao verificar recovery:', error);
+        return null;
+    }
+}
+
+/**
+ * Configura o sistema de navigation guards
+ * @param {Object} config - Configurações
+ */
+export async function configureNavigation(config = {}) {
+    try {
+        const { configureGuard } = await import('../services/navigationGuard.js');
+        configureGuard(config);
+        console.log('[Navigation] Sistema configurado:', config);
+        
+    } catch (error) {
+        console.error('[Navigation] Erro ao configurar sistema:', error);
+    }
+}
+
+/**
+ * Versão legacy do canNavigate (para compatibilidade)
+ */
+export function canNavigateLegacy() {
     const isWorkoutActive = AppState.get('isWorkoutActive');
     
     if (isWorkoutActive) {
@@ -452,6 +567,19 @@ export function canNavigate() {
     
     return true;
 }
+
+// === BACKWARD COMPATIBILITY ===
+// Manter funções antigas para compatibilidade
+
+/**
+ * @deprecated Use safeNavigate() ao invés disso
+ */
+export const navigateWithModal = safeNavigate;
+
+/**
+ * @deprecated Use canNavigate() ao invés disso
+ */
+export const checkWorkoutBeforeNavigate = canNavigate;
 
 // Adicionar botão de ordem da semana após login
 export function adicionarBotaoOrdemSemana() {
