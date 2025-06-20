@@ -1276,9 +1276,7 @@ class WorkoutExecutionManager {
             const exerciseContainer = this.encontrarContainerExercicios();
             
             if (!exerciseContainer) {
-                console.error('[WorkoutExecution] ❌ Container não encontrado, criando fallback');
-                this.criarContainerNaRaiz();
-                return;
+                throw new Error('[WorkoutExecution] Container de exercícios não encontrado. Verifique se o template foi carregado corretamente.');
             }
             
             // 3. Renderizar exercícios
@@ -1296,9 +1294,7 @@ class WorkoutExecutionManager {
             
         } catch (error) {
             console.error('[WorkoutExecution] ❌ Erro na renderização segura:', error);
-            this.criarContainerNaRaiz();
-            // Iniciar cronômetro mesmo com erro
-            this.iniciarCronometro();
+            throw error; // Propagar erro ao invés de usar fallback
         }
     }
 
@@ -2314,67 +2310,7 @@ class WorkoutExecutionManager {
         }
     }
 
-    criarContainerNaRaiz() {
-        console.log('[WorkoutExecution] Criando container do treino...');
-        
-        // Limpar conteúdo existente
-        const app = document.getElementById('app') || document.body;
-        app.innerHTML = '';
-        
-        // Criar container principal
-        const container = document.createElement('div');
-        container.id = 'workout-container';
-        container.style.cssText = `
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            color: #fff;
-        `;
-        
-        // Cabeçalho do treino
-        container.innerHTML = `
-            <header style="margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <button onclick="workoutExecutionManager.voltarParaHome()" 
-                            style="background: #a8ff00; 
-                                   color: #000; 
-                                   border: none; 
-                                   padding: 8px 16px; 
-                                   border-radius: 6px; 
-                                   cursor: pointer; 
-                                   font-weight: 600;">
-                        ← Voltar
-                    </button>
-                    <h1 id="workout-title" style="margin: 0; font-size: 1.5rem;"></h1>
-                    <div id="workout-timer" style="background: #2a2a2a; 
-                                                padding: 8px 16px; 
-                                                border-radius: 6px; 
-                                                font-family: monospace;">
-                        0:00
-                    </div>
-                </div>
-                <div id="workout-meta" style="margin-top: 15px; color: #aaa; font-size: 0.9rem;">
-                    <span id="current-week"></span>
-                    <span id="muscle-groups" style="margin-left: 10px;"></span>
-                </div>
-            </header>
-            <main id="exercises-container"></main>
-        `;
-        
-        app.appendChild(container);
-        
-        // Inicializar elementos
-        this.seriesElement = document.getElementById('series-counter');
-        
-        // Renderizar exercícios no container principal
-        const exercisesContainer = document.getElementById('exercises-container');
-        if (exercisesContainer) {
-            this.renderizarExerciciosNoContainer(exercisesContainer);
-        }
-        
-        console.log('[WorkoutExecution] Container do treino criado');
-        return container;
-    }
+    // Função removida - não usar fallbacks conforme regra crítica
 
     renderizarExerciciosNoContainer(container) {
         if (!this.currentWorkout?.exercicios) {
@@ -3074,67 +3010,7 @@ class WorkoutExecutionManager {
         }
     }
 
-    criarContainerNaRaiz() {
-        console.log('[WorkoutExecution] Criando container do treino...');
-        
-        // Limpar conteúdo existente
-        const app = document.getElementById('app') || document.body;
-        app.innerHTML = '';
-        
-        // Criar container principal
-        const container = document.createElement('div');
-        container.id = 'workout-container';
-        container.style.cssText = `
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            color: #fff;
-        `;
-        
-        // Cabeçalho do treino
-        container.innerHTML = `
-            <header style="margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <button onclick="workoutExecutionManager.voltarParaHome()" 
-                            style="background: #a8ff00; 
-                                   color: #000; 
-                                   border: none; 
-                                   padding: 8px 16px; 
-                                   border-radius: 6px; 
-                                   cursor: pointer; 
-                                   font-weight: 600;">
-                        ← Voltar
-                    </button>
-                    <h1 id="workout-title" style="margin: 0; font-size: 1.5rem;"></h1>
-                    <div id="workout-timer" style="background: #2a2a2a; 
-                                                padding: 8px 16px; 
-                                                border-radius: 6px; 
-                                                font-family: monospace;">
-                        0:00
-                    </div>
-                </div>
-                <div id="workout-meta" style="margin-top: 15px; color: #aaa; font-size: 0.9rem;">
-                    <span id="current-week"></span>
-                    <span id="muscle-groups" style="margin-left: 10px;"></span>
-                </div>
-            </header>
-            <main id="exercises-container"></main>
-        `;
-        
-        app.appendChild(container);
-        
-        // Inicializar elementos
-        this.seriesElement = document.getElementById('series-counter');
-        
-        // Renderizar exercícios no container principal
-        const exercisesContainer = document.getElementById('exercises-container');
-        if (exercisesContainer) {
-            this.renderizarExerciciosNoContainer(exercisesContainer);
-        }
-        
-        console.log('[WorkoutExecution] Container do treino criado');
-        return container;
-    }
+    // Função removida - não usar fallbacks conforme regra crítica
 
     renderizarExerciciosNoContainer(container) {
         if (!this.currentWorkout?.exercicios) {
@@ -3165,14 +3041,6 @@ class WorkoutExecutionManager {
     // Atualiza barra de progresso do treino
     atualizarProgresso() {
         if (!this.currentWorkout?.exercicios) {
-            // Fallback para dados parciais de recovery
-            if (this.exerciciosExecutados && this.exerciciosExecutados.length > 0) {
-                const exerciciosUnicos = new Set(this.exerciciosExecutados.map(e => e.exercicio_id)).size;
-                const totalEstimado = Math.max(exerciciosUnicos * 3, this.exerciciosExecutados.length + 1);
-                const percentual = Math.round((this.exerciciosExecutados.length / totalEstimado) * 100);
-                console.log(`[WorkoutExecution] Progresso (fallback): ${percentual}% (${this.exerciciosExecutados.length}/${totalEstimado})`);
-                return;
-            }
             return;
         }
         
