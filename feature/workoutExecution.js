@@ -1950,6 +1950,28 @@ class WorkoutExecutionManager {
             // Aguardar tela carregar
             await new Promise(resolve => setTimeout(resolve, 500));
             
+            // CRÍTICO: Restaurar estado ANTES de renderizar
+            if (state) {
+                console.log('[WorkoutExecution] 🔄 Restaurando estado do treino...');
+                
+                // Restaurar dados do treino
+                this.currentWorkout = state.currentWorkout || null;
+                this.exerciciosExecutados = state.exerciciosExecutados || [];
+                this.startTime = state.startTime || Date.now();
+                
+                // Se não há currentWorkout válido, tentar buscar dados atuais
+                if (!this.currentWorkout && window.AppState) {
+                    this.currentWorkout = window.AppState.get('currentWorkout');
+                    console.log('[WorkoutExecution] 📋 Usando currentWorkout do AppState:', !!this.currentWorkout);
+                }
+                
+                console.log('[WorkoutExecution] ✅ Estado restaurado:', {
+                    hasCurrentWorkout: !!this.currentWorkout,
+                    exerciciosCount: this.exerciciosExecutados.length,
+                    startTime: this.startTime
+                });
+            }
+            
             // Renderizar com estado recuperado
             await this.renderizarComSeguranca();
             this.iniciarCronometro();
@@ -2402,10 +2424,25 @@ class WorkoutExecutionManager {
             this.timerInterval = null;
         }
         
-        // Navegar para home
-        if (window.navigateTo) {
-            window.navigateTo('home');
-        } else {
+        // Navegar para home usando sistema de templates
+        try {
+            if (window.renderTemplate) {
+                window.renderTemplate('home');
+            } else if (window.navigateTo) {
+                window.navigateTo('home');
+            } else {
+                // Último recurso: tentar mostrar tela de home
+                const homeScreen = document.getElementById('home-screen');
+                if (homeScreen) {
+                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                    homeScreen.classList.add('active');
+                } else {
+                    console.warn('[WorkoutExecution] Fallback: recarregando página');
+                    window.location.href = '/';
+                }
+            }
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro na navegação para home:', error);
             window.location.href = '/';
         }
     }

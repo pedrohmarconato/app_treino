@@ -613,10 +613,20 @@ export class TreinoCacheService {
             return false;
         }
         
-        // Validação mais rigorosa do currentWorkout
-        if (!state.currentWorkout.exercicios || !Array.isArray(state.currentWorkout.exercicios) || state.currentWorkout.exercicios.length === 0) {
-            console.warn('[TreinoCacheService] currentWorkout deve ter exercícios válidos');
-            return false;
+        // Validação flexível do currentWorkout para permitir recovery
+        if (state.currentWorkout) {
+            // Se currentWorkout existe, deve ter exercícios válidos
+            if (!state.currentWorkout.exercicios || !Array.isArray(state.currentWorkout.exercicios) || state.currentWorkout.exercicios.length === 0) {
+                console.warn('[TreinoCacheService] currentWorkout sem exercícios válidos');
+                return false;
+            }
+        } else {
+            // Se não há currentWorkout, mas há exercícios executados, permite recovery parcial
+            if (!state.exerciciosExecutados || state.exerciciosExecutados.length === 0) {
+                console.warn('[TreinoCacheService] Nenhum dado de treino válido encontrado');
+                return false;
+            }
+            console.log('[TreinoCacheService] ✅ Permitindo recovery parcial com exercícios executados');
         }
         
         return true;

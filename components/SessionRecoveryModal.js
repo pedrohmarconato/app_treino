@@ -68,9 +68,17 @@ export class SessionRecoveryModal {
                 ? Math.round((Date.now() - new Date(startTime).getTime()) / 60000)
                 : 0;
 
-            // Calcular exercícios completados
+            // Calcular exercícios completados com fallback
             const completed = session.exerciciosExecutados?.length || 0;
-            const total = session.currentWorkout?.exercicios?.length || 0;
+            let total = session.currentWorkout?.exercicios?.length || 0;
+            
+            // Fallback: se currentWorkout é null, tentar estimar total pelos exercícios executados
+            if (total === 0 && completed > 0) {
+                // Estimar baseado no padrão típico (exercícios únicos * séries por exercício)
+                const exerciciosUnicos = new Set(session.exerciciosExecutados?.map(e => e.exercicio_id) || []).size;
+                total = Math.max(exerciciosUnicos * 3, completed + 2); // Estimativa conservadora
+            }
+            
             const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
             // Última atividade
@@ -84,7 +92,7 @@ export class SessionRecoveryModal {
                 exercisesCompleted: `${completed} de ${total}`,
                 lastActivity,
                 progress,
-                workoutName: session.currentWorkout.nome || 'Treino em Andamento',
+                workoutName: session.currentWorkout?.nome || 'Treino em Andamento',
                 isValid: true
             };
         } catch (error) {
