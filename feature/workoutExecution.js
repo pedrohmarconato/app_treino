@@ -955,50 +955,31 @@ class WorkoutExecutionManager {
     }
 
     async navegarParaTelaWorkout() {
-        // console.log('[WorkoutExecution] 📱 Navegando para tela de workout...');
+        console.log('[WorkoutExecution] 📱 Navegando para tela de workout...');
         
         // Mostrar indicador de carregamento
         this.mostrarIndicadorCarregamento();
         
         try {
-            // 1. Primeiro, garantir que a tela de workout existe
-            let workoutScreen = document.querySelector('#workout-screen');
+            // Importar WorkoutSession dinamicamente
+            const { WorkoutSession } = await import('../core/WorkoutSession.js');
             
-            if (!workoutScreen) {
-                // console.log('[WorkoutExecution] 🔨 Criando tela de workout...');
-                workoutScreen = await this.criarEPrepararTelaWorkout();
-            }
+            // Criar nova sessão
+            this.workoutSession = new WorkoutSession();
             
-            // 2. Esconder todas as outras telas
-            // console.log('[WorkoutExecution] 🎭 Ocultando outras telas...');
-            document.querySelectorAll('.screen').forEach(screen => {
-                if (screen.id !== 'workout-screen') {
-                    screen.classList.remove('active');
-                    screen.style.display = 'none';
-                }
+            // Verificar se há estado salvo para recuperação
+            const hasActiveSession = await this.checkActiveSession();
+            
+            // Inicializar sessão com dados do treino
+            await this.workoutSession.init(this.currentWorkout, {
+                restore: hasActiveSession,
+                restoreData: hasActiveSession ? await this.getSessionData() : null
             });
             
-            // 3. Mostrar tela de workout
-            // console.log('[WorkoutExecution] 📺 Exibindo tela de workout...');
-            workoutScreen.style.display = 'block';
-            workoutScreen.classList.add('active', 'screen');
+            console.log('[WorkoutExecution] ✅ Navegação completa com WorkoutSession');
             
-            // 4. Aguardar um momento para garantir que o DOM está pronto
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // 5. Verificar se a navegação funcionou
-            const isVisible = workoutScreen.offsetParent !== null;
-            if (!isVisible) {
-                throw new Error('Tela de workout não está visível após navegação');
-            }
-            
-            // console.log('[WorkoutExecution] ✅ Navegação bem-sucedida');
-            
-            // 6. Remover indicador de carregamento
+            // Remover indicador de carregamento
             this.removerIndicadorCarregamento();
-            
-            // 7. Tentar métodos de navegação do sistema se disponíveis (sem bloquear)
-            this.tentarNavegacaoSistema();
             
             return true;
             
@@ -1008,11 +989,47 @@ class WorkoutExecutionManager {
             
             // Mostrar erro ao usuário
             if (window.showNotification) {
-                window.showNotification('Erro ao navegar para o treino. Tentando método alternativo...', 'warning');
+                window.showNotification('Erro ao carregar treino. Por favor, tente novamente.', 'error');
             }
             
-            // Último recurso
-            this.navegacaoManualComFeedback();
+            throw error;
+        }
+    }
+    
+    /**
+     * Verifica se há sessão ativa
+     */
+    async checkActiveSession() {
+        try {
+            const savedState = localStorage.getItem('workout_state');
+            if (!savedState) return false;
+            
+            const state = JSON.parse(savedState);
+            // Verificar se é o mesmo treino
+            if (state.workout && state.workout.id === this.currentWorkout.id) {
+                // Verificar se não está muito antigo (máx 2 horas)
+                const elapsed = Date.now() - state.timestamp;
+                return elapsed < 2 * 60 * 60 * 1000;
+            }
+            return false;
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro ao verificar sessão:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Obtém dados da sessão salva
+     */
+    async getSessionData() {
+        try {
+            const savedState = localStorage.getItem('workout_state');
+            if (!savedState) return null;
+            
+            return JSON.parse(savedState);
+        } catch (error) {
+            console.error('[WorkoutExecution] Erro ao obter dados da sessão:', error);
+            return null;
         }
     }
     
@@ -1992,6 +2009,12 @@ class WorkoutExecutionManager {
     async confirmarSerie(exerciseIndex, seriesIndex) {
         console.log(`[WorkoutExecution] Confirmando série ${seriesIndex + 1} do exercício ${exerciseIndex + 1}`);
         
+        // Delegar para WorkoutSession se estiver disponível
+        if (this.workoutSession && typeof this.workoutSession.confirmSeries === 'function') {
+            return await this.workoutSession.confirmSeries(exerciseIndex, seriesIndex);
+        }
+        
+        // Implementação existente apenas se WorkoutSession não estiver disponível
         const exercicio = this.currentWorkout.exercicios[exerciseIndex];
         if (!exercicio) return;
         
