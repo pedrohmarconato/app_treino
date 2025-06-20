@@ -657,4 +657,3 @@ export class WorkoutSession {
 
 // Exportar classe
 export { WorkoutSession };
-export default WorkoutSession;
