@@ -955,7 +955,7 @@ class WorkoutExecutionManager {
     }
 
     async navegarParaTelaWorkout() {
-        console.log('[WorkoutExecution] 📱 Navegando para tela de workout...');
+        // console.log('[WorkoutExecution] 📱 Navegando para tela de workout...');
         
         // Mostrar indicador de carregamento
         this.mostrarIndicadorCarregamento();
@@ -965,12 +965,12 @@ class WorkoutExecutionManager {
             let workoutScreen = document.querySelector('#workout-screen');
             
             if (!workoutScreen) {
-                console.log('[WorkoutExecution] 🔨 Criando tela de workout...');
+                // console.log('[WorkoutExecution] 🔨 Criando tela de workout...');
                 workoutScreen = await this.criarEPrepararTelaWorkout();
             }
             
             // 2. Esconder todas as outras telas
-            console.log('[WorkoutExecution] 🎭 Ocultando outras telas...');
+            // console.log('[WorkoutExecution] 🎭 Ocultando outras telas...');
             document.querySelectorAll('.screen').forEach(screen => {
                 if (screen.id !== 'workout-screen') {
                     screen.classList.remove('active');
@@ -979,7 +979,7 @@ class WorkoutExecutionManager {
             });
             
             // 3. Mostrar tela de workout
-            console.log('[WorkoutExecution] 📺 Exibindo tela de workout...');
+            // console.log('[WorkoutExecution] 📺 Exibindo tela de workout...');
             workoutScreen.style.display = 'block';
             workoutScreen.classList.add('active', 'screen');
             
@@ -992,7 +992,7 @@ class WorkoutExecutionManager {
                 throw new Error('Tela de workout não está visível após navegação');
             }
             
-            console.log('[WorkoutExecution] ✅ Navegação bem-sucedida');
+            // console.log('[WorkoutExecution] ✅ Navegação bem-sucedida');
             
             // 6. Remover indicador de carregamento
             this.removerIndicadorCarregamento();
@@ -1033,11 +1033,12 @@ class WorkoutExecutionManager {
         workoutScreen.id = 'workout-screen';
         workoutScreen.className = 'screen workout-screen';
         
-        // Importar template se disponível
-        if (window.workoutTemplate && typeof window.workoutTemplate === 'function') {
-            workoutScreen.innerHTML = window.workoutTemplate();
+        // Usar template importado
+        if (workoutTemplate && typeof workoutTemplate === 'function') {
+            workoutScreen.innerHTML = workoutTemplate();
         } else {
-            console.warn('[WorkoutExecution] workoutTemplate não encontrado, usando template de fallback');
+            // Log mais limpo para debug
+            console.warn('[WorkoutExecution] Usando template de fallback (workoutTemplate:', typeof workoutTemplate, ')');
             
             // Template completo de fallback baseado no workoutTemplate original
             workoutScreen.innerHTML = `
@@ -3470,6 +3471,10 @@ class WorkoutExecutionManager {
 
 // ===== GLOBAL BINDINGS =====
 window.workoutExecutionManager = new WorkoutExecutionManager();
+
+// Expor templates globalmente para compatibilidade
+window.workoutTemplate = workoutTemplate;
+window.exerciseCardTemplate = exerciseCardTemplate;
 
 // === ENHANCED GLOBAL METHODS ===
 // Expor métodos enhanced para uso em templates
