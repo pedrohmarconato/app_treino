@@ -778,13 +778,33 @@ class WorkoutExecutionManager {
      * Ajusta timers para tempo decorrido
      */
     adjustTimersForElapsedTime(cacheData) {
-        const savedTime = new Date(cacheData.metadata?.savedAt || cacheData.timestamp);
+        // Tentar obter timestamp de várias fontes possíveis
+        const possibleTimestamp = cacheData.metadata?.savedAt || 
+                                cacheData.timestamp || 
+                                cacheData.startTime ||
+                                Date.now();
+        
+        // Validar e criar data
+        let savedTime;
+        try {
+            savedTime = new Date(possibleTimestamp);
+            // Verificar se a data é válida
+            if (isNaN(savedTime.getTime())) {
+                console.warn('[WorkoutManager] Timestamp inválido, usando tempo atual');
+                savedTime = new Date();
+            }
+        } catch (error) {
+            console.warn('[WorkoutManager] Erro ao criar data, usando tempo atual:', error);
+            savedTime = new Date();
+        }
+        
         const now = new Date();
         const elapsedMs = now - savedTime;
         
         console.log('[WorkoutManager] Ajustando timers:', {
             savedTime: savedTime.toISOString(),
-            elapsedSinceCache: Math.round(elapsedMs / 1000) + 's'
+            elapsedSinceCache: Math.round(elapsedMs / 1000) + 's',
+            originalTimestamp: possibleTimestamp
         });
         
         // Iniciar cronômetro considerando tempo total

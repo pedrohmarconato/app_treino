@@ -98,7 +98,12 @@ async function testRecoverySystem() {
             currentExerciseIndex: 0,
             startTime: Date.now() - 360000, // 6 minutos atrás
             totalDuration: 360000,
-            isActive: true
+            isActive: true,
+            timestamp: Date.now(), // Adicionar timestamp explícito
+            metadata: {
+                savedAt: Date.now(),
+                version: '1.0'
+            }
         };
         
         // Salvar no cache
