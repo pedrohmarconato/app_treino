@@ -1930,11 +1930,22 @@ class WorkoutExecutionManager {
         // Total de exercícios
         this.updateElement('total-exercises', workout.exercicios.length.toString());
         this.updateElement('current-exercise-number', '1');
+        this.updateElement('summary-exercise-count', `${workout.exercicios.length} ex`);
         
         // Reset progress bar
         const progressEl = document.getElementById('workout-progress');
         if (progressEl) {
             progressEl.style.width = '0%';
+        }
+        
+        // Expandir exercícios automaticamente
+        const expandBtn = document.getElementById('expand-exercises');
+        const exercisesContainer = document.getElementById('exercises-expanded');
+        if (expandBtn && exercisesContainer) {
+            // Mudar ícone do botão para estado expandido
+            expandBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>';
+            // Mostrar container
+            exercisesContainer.style.display = 'block';
         }
         
         console.log('[WorkoutExecution] ✅ Elementos do template populados');
@@ -1958,14 +1969,21 @@ class WorkoutExecutionManager {
 
     encontrarContainerExercicios() {
         const containers = [
-            'exercises-container',
+            'exercises-expanded',    // ID correto do template
+            'exercises-container',   // Fallback para outros templates
             'container-exercicios',
             'workout-exercises'
         ];
         
         for (const id of containers) {
             const container = document.getElementById(id);
-            if (container) return container;
+            if (container) {
+                // Garantir que o container esteja visível
+                if (container.style.display === 'none') {
+                    container.style.display = 'block';
+                }
+                return container;
+            }
         }
         
         return null;
