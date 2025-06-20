@@ -134,11 +134,18 @@ class WorkoutExecutionManager {
                 const { checkAndShowRecovery } = await import('../ui/navigation.js');
                 const recoveryResult = await checkAndShowRecovery();
                 
-                if (recoveryResult && recoveryResult.action === 'recover') {
+                if (recoveryResult && recoveryResult.action === 'recover' && recoveryResult.data) {
                     console.log('[WorkoutExecution] 🔄 Recuperando treino via NavigationGuard...');
-                    await this.recuperarTreinoEmAndamento(recoveryResult.data);
-                    console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO');
-                    return;
+                    
+                    // Validar se os dados são utilizáveis
+                    if (recoveryResult.data.currentWorkout && recoveryResult.data.exerciciosExecutados) {
+                        await this.recuperarTreinoEmAndamento(recoveryResult.data);
+                        console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO');
+                        return;
+                    } else {
+                        console.warn('[WorkoutExecution] ⚠️ Dados de recovery inválidos, iniciando novo treino');
+                        await TreinoCacheService.clearWorkoutState();
+                    }
                 } else if (recoveryResult && recoveryResult.action === 'discard') {
                     console.log('[WorkoutExecution] 🗑️ Descartando dados anteriores e iniciando novo treino');
                     // Dados já foram limpos pelo NavigationGuard

@@ -613,6 +613,12 @@ export class TreinoCacheService {
             return false;
         }
         
+        // Validação mais rigorosa do currentWorkout
+        if (!state.currentWorkout.exercicios || !Array.isArray(state.currentWorkout.exercicios) || state.currentWorkout.exercicios.length === 0) {
+            console.warn('[TreinoCacheService] currentWorkout deve ter exercícios válidos');
+            return false;
+        }
+        
         return true;
     }
 
