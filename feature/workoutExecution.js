@@ -1033,68 +1033,28 @@ class WorkoutExecutionManager {
         workoutScreen.id = 'workout-screen';
         workoutScreen.className = 'screen workout-screen';
         
-        // Usar template importado
-        if (workoutTemplate && typeof workoutTemplate === 'function') {
-            workoutScreen.innerHTML = workoutTemplate();
-        } else {
-            // Log mais limpo para debug
-            console.warn('[WorkoutExecution] Usando template de fallback (workoutTemplate:', typeof workoutTemplate, ')');
-            
-            // Template completo de fallback baseado no workoutTemplate original
-            workoutScreen.innerHTML = `
-                <div id="workout-screen" class="workout-screen">
-                    <!-- Header Flutuante -->
-                    <div class="workout-header-float">
-                        <button class="back-button-float" onclick="workoutExecutionManager.voltarParaHome()">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
-                        </button>
-                        <div class="workout-timer">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                            </svg>
-                            <span id="workout-timer-display">00:00</span>
-                        </div>
-                        <button class="menu-button-float">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="3" y1="12" x2="21" y2="12"/>
-                                <line x1="3" y1="6" x2="21" y2="6"/>
-                                <line x1="3" y1="18" x2="21" y2="18"/>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Progress Bar -->
-                    <div class="workout-progress-container">
-                        <div class="workout-progress-bar">
-                            <div id="workout-progress" class="workout-progress-fill"></div>
-                        </div>
-                        <div class="workout-progress-info">
-                            <span class="progress-current" id="current-exercise-number">1</span>
-                            <span class="progress-separator">/</span>
-                            <span class="progress-total" id="total-exercises">0</span>
-                            <span class="progress-label">exercícios</span>
-                        </div>
-                    </div>
-
-                    <!-- Container Principal -->
-                    <div class="workout-content">
-                        <div class="workout-info-card">
-                            <h1 id="workout-name" class="workout-title">Carregando...</h1>
-                            <div class="workout-meta-pills">
-                                <span id="current-week"></span>
-                                <span id="muscle-groups"></span>
-                            </div>
-                        </div>
-                        
-                        <!-- Container de Exercícios -->
-                        <div id="exercises-container" class="exercises-container"></div>
-                    </div>
-                </div>
-            `;
+        // Garantir que o template esteja disponível
+        if (!workoutTemplate || typeof workoutTemplate !== 'function') {
+            // Tentar importar dinamicamente se não estiver disponível
+            console.warn('[WorkoutExecution] Template não disponível, tentando importar...');
+            try {
+                const templateModule = await import('../templates/workoutExecution.js');
+                // Atualizar referências locais
+                workoutTemplate = templateModule.workoutTemplate;
+                exerciseCardTemplate = templateModule.exerciseCardTemplate;
+                console.log('[WorkoutExecution] ✅ Templates importados dinamicamente');
+            } catch (error) {
+                console.error('[WorkoutExecution] ❌ Erro ao importar templates:', error);
+                throw new Error('Não foi possível carregar os templates necessários');
+            }
         }
+        
+        // Verificar novamente após tentativa de importação
+        if (!workoutTemplate || typeof workoutTemplate !== 'function') {
+            throw new Error('[WorkoutExecution] Template workoutTemplate não está disponível mesmo após importação dinâmica');
+        }
+        
+        workoutScreen.innerHTML = workoutTemplate();
         
         appContainer.appendChild(workoutScreen);
         
@@ -3472,9 +3432,32 @@ class WorkoutExecutionManager {
 // ===== GLOBAL BINDINGS =====
 window.workoutExecutionManager = new WorkoutExecutionManager();
 
-// Expor templates globalmente para compatibilidade
-window.workoutTemplate = workoutTemplate;
-window.exerciseCardTemplate = exerciseCardTemplate;
+// Garantir que templates estejam disponíveis globalmente
+(async function ensureGlobalTemplates() {
+    // Se já estão disponíveis, exportar
+    if (workoutTemplate && exerciseCardTemplate) {
+        window.workoutTemplate = workoutTemplate;
+        window.exerciseCardTemplate = exerciseCardTemplate;
+        console.log('[WorkoutExecution] ✅ Templates exportados globalmente');
+        return;
+    }
+    
+    // Se não estão disponíveis, tentar importar
+    console.log('[WorkoutExecution] ⏳ Templates não disponíveis ainda, tentando importar...');
+    try {
+        const templateModule = await import('../templates/workoutExecution.js');
+        workoutTemplate = templateModule.workoutTemplate;
+        exerciseCardTemplate = templateModule.exerciseCardTemplate;
+        
+        // Exportar globalmente
+        window.workoutTemplate = workoutTemplate;
+        window.exerciseCardTemplate = exerciseCardTemplate;
+        
+        console.log('[WorkoutExecution] ✅ Templates importados e exportados globalmente');
+    } catch (error) {
+        console.error('[WorkoutExecution] ❌ Erro ao importar templates para exportação global:', error);
+    }
+})();
 
 // === ENHANCED GLOBAL METHODS ===
 // Expor métodos enhanced para uso em templates
