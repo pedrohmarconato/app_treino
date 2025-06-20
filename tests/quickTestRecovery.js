@@ -22,7 +22,7 @@ async function testRecoverySystem() {
         // Verificar dependências
         const deps = {
             manager: !!window.workoutExecutionManager,
-            cache: !!window.TreinoCacheService,
+            cache: !!(window.TreinoCacheService || window.workoutPersistence),
             button: !!document.querySelector('#contextual-workout-btn'),
             state: !!window.AppState
         };
@@ -102,7 +102,15 @@ async function testRecoverySystem() {
         };
         
         // Salvar no cache
-        await TreinoCacheService.saveWorkoutState(testState);
+        if (window.TreinoCacheService) {
+            await window.TreinoCacheService.saveWorkoutState(testState);
+        } else if (window.workoutPersistence) {
+            await window.workoutPersistence.saveWorkoutState(testState);
+        } else {
+            // Tentar acessar diretamente via localStorage
+            localStorage.setItem('workout_state', JSON.stringify(testState));
+            localStorage.setItem('workout_cache_timestamp', Date.now().toString());
+        }
         console.log('✅ Dados de teste criados e salvos\n');
         
         results.progressSave = true;
@@ -210,7 +218,14 @@ async function testRecoverySystem() {
         
         // Limpar dados de teste
         console.log('\n🧹 Limpando dados de teste...');
-        await TreinoCacheService.clearWorkoutState();
+        if (window.TreinoCacheService?.clearWorkoutState) {
+            await window.TreinoCacheService.clearWorkoutState();
+        } else if (window.workoutPersistence?.clearWorkoutState) {
+            await window.workoutPersistence.clearWorkoutState();
+        } else {
+            localStorage.removeItem('workout_state');
+            localStorage.removeItem('workout_cache_timestamp');
+        }
         
         return results;
         
@@ -250,7 +265,14 @@ async function manualTestSteps() {
                     startTime: Date.now() - 60000,
                     currentExerciseIndex: 0
                 };
-                await TreinoCacheService.saveWorkoutState(state);
+                if (window.TreinoCacheService) {
+                    await window.TreinoCacheService.saveWorkoutState(state);
+                } else if (window.workoutPersistence) {
+                    await window.workoutPersistence.saveWorkoutState(state);
+                } else {
+                    localStorage.setItem('workout_state', JSON.stringify(state));
+                    localStorage.setItem('workout_cache_timestamp', Date.now().toString());
+                }
                 console.log('✅ Treino salvo no cache');
             }
         },
