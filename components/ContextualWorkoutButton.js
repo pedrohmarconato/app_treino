@@ -281,20 +281,60 @@ export class ContextualWorkoutButton {
         try {
             const { currentWorkout, exerciciosExecutados = [], startTime } = workoutState;
             
-            // Calcular progresso
+            // Calcular progresso baseado em SÉRIES completadas
             const totalExercises = currentWorkout.exercicios?.length || 0;
-            const completedExercises = exerciciosExecutados.length;
-            const progress = totalExercises > 0 ? Math.round((completedExercises / totalExercises) * 100) : 0;
+            
+            // Contar quantos exercícios únicos já tiveram pelo menos uma série executada
+            const exerciciosUnicos = new Set();
+            exerciciosExecutados.forEach(exec => {
+                if (exec.exercicio_id) {
+                    exerciciosUnicos.add(exec.exercicio_id);
+                }
+            });
+            
+            const uniqueExercisesCompleted = exerciciosUnicos.size;
+            
+            // Calcular progresso total de séries
+            let totalSeries = 0;
+            let completedSeries = exerciciosExecutados.length;
+            
+            // Calcular total de séries esperadas
+            currentWorkout.exercicios?.forEach(ex => {
+                totalSeries += (ex.series || 3); // Default 3 séries se não especificado
+            });
+            
+            // Progresso pode ser calculado de duas formas:
+            // 1. Por exercícios únicos completados (para o botão contextual)
+            // 2. Por séries totais (para mostrar progresso detalhado)
+            const progressByExercises = totalExercises > 0 
+                ? Math.round((uniqueExercisesCompleted / totalExercises) * 100) 
+                : 0;
+            
+            const progressBySeries = totalSeries > 0 
+                ? Math.round((completedSeries / totalSeries) * 100) 
+                : 0;
             
             // Calcular tempo decorrido
             const elapsed = startTime ? Date.now() - startTime : 0;
             const timeElapsed = this.formatDuration(Math.round(elapsed / 60000));
             
-            return {
-                progress,
-                timeElapsed,
-                exercisesCompleted: completedExercises,
+            console.log('[ContextualWorkoutButton] Progresso calculado:', {
+                uniqueExercisesCompleted,
                 totalExercises,
+                completedSeries,
+                totalSeries,
+                progressByExercises,
+                progressBySeries
+            });
+            
+            return {
+                progress: progressByExercises, // Usar progresso por exercícios para o botão
+                progressBySeries, // Adicional para uso futuro
+                timeElapsed,
+                exercisesCompleted: uniqueExercisesCompleted,
+                seriesCompleted: completedSeries,
+                totalExercises,
+                totalSeries,
                 workoutName: currentWorkout.nome || 'Treino em Andamento'
             };
             
@@ -447,14 +487,31 @@ export class ContextualWorkoutButton {
         
         console.log(`[ContextualWorkoutButton] Executando ação: ${state.action}`);
         
+        // Mostrar estado de carregamento
+        const originalState = this.currentState;
+        const originalData = { ...this.stateData };
+        this.setState('loading');
+        
         try {
             await this.executeAction(state.action);
         } catch (error) {
             console.error('[ContextualWorkoutButton] Erro ao executar ação:', error);
-            this.setState('error', { 
-                errorType: 'action_error',
-                errorMessage: error.message
-            });
+            
+            // Restaurar estado original
+            this.setState(originalState, originalData);
+            
+            // Mostrar erro ao usuário
+            if (window.showNotification) {
+                window.showNotification(`Erro: ${error.message}`, 'error');
+            }
+            
+            // Definir estado de erro temporariamente
+            setTimeout(() => {
+                this.setState('error', { 
+                    errorType: 'action_error',
+                    errorMessage: error.message
+                });
+            }, 100);
         }
     }
 
@@ -563,6 +620,20 @@ export class ContextualWorkoutButton {
         // AppState listeners
         const unsubscribe = AppState.subscribe('isWorkoutActive', this.onCacheUpdate);
         this.eventListeners.set('appState', unsubscribe);
+        
+        // Listener para cache updates via AppState
+        const unsubscribeCacheUpdate = AppState.subscribe('workoutCacheUpdated', this.onCacheUpdate);
+        this.eventListeners.set('cacheUpdate', unsubscribeCacheUpdate);
+        
+        // Listener para evento customizado
+        const cacheUpdateHandler = (event) => {
+            console.log('[ContextualWorkoutButton] Evento workout-cache-updated recebido:', event.detail);
+            this.onCacheUpdate();
+        };
+        document.addEventListener('workout-cache-updated', cacheUpdateHandler);
+        this.eventListeners.set('customEvent', () => {
+            document.removeEventListener('workout-cache-updated', cacheUpdateHandler);
+        });
     }
 
     /**

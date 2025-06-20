@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Recovery System</title>
+    <style>
+        body { 
+            font-family: monospace; 
+            background: #1a1a1a; 
+            color: #fff; 
+            padding: 20px; 
+        }
+        .test-result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #2a2a2a; 
+            border-radius: 4px; 
+            border-left: 4px solid #a8ff00;
+        }
+        .error { border-left-color: #f44336; }
+        .warning { border-left-color: #ff9800; }
+        button {
+            background: #a8ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        pre {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug do Sistema de Recovery</h1>
+    
+    <div class="test-result">
+        <h3>🚀 Testes Automatizados</h3>
+        <button onclick="runAllTests()">Executar Todos os Testes</button>
+        <button onclick="clearAllCache()">Limpar Cache</button>
+        <button onclick="simulateWorkout()">Simular Treino</button>
+        <button onclick="checkRecoveryState()">Verificar Recovery</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script type="module">
+        import TreinoCacheService from './services/treinoCacheService.js';
+        import { ContextualWorkoutButton } from './components/ContextualWorkoutButton.js';
+        import NavigationGuard from './services/navigationGuard.js';
+
+        // Disponibilizar globalmente
+        window.TreinoCacheService = TreinoCacheService;
+        window.NavigationGuard = NavigationGuard;
+        
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            resultsDiv.appendChild(div);
+        }
+
+        window.runAllTests = async function() {
+            document.getElementById('results').innerHTML = '';
+            log('🔄 Iniciando testes de recovery...', 'info');
+            
+            try {
+                // Teste 1: Estado inicial do cache
+                log('📋 TESTE 1: Estado inicial do cache');
+                const hasActive1 = await TreinoCacheService.hasActiveWorkout();
+                log(`hasActiveWorkout: ${hasActive1}`, hasActive1 ? 'warning' : 'info');
+                
+                const state1 = await TreinoCacheService.getWorkoutState();
+                log(`getWorkoutState: ${state1 ? 'EXISTE' : 'NULL'}`, state1 ? 'warning' : 'info');
+                
+                if (state1) {
+                    const isValid1 = TreinoCacheService.validateState(state1);
+                    log(`validateState: ${isValid1}`, isValid1 ? 'info' : 'error');
+                    log(`Estado encontrado: <pre>${JSON.stringify(state1, null, 2)}</pre>`);
+                }
+                
+                // Teste 2: Simular estado corrompido
+                log('📋 TESTE 2: Estado corrompido');
+                localStorage.setItem('workoutSession_v2', '{"invalid": "data"}');
+                
+                const hasActive2 = await TreinoCacheService.hasActiveWorkout();
+                log(`hasActiveWorkout (corrompido): ${hasActive2}`, hasActive2 ? 'error' : 'info');
+                
+                const state2 = await TreinoCacheService.getWorkoutState();
+                const isValid2 = state2 ? TreinoCacheService.validateState(state2) : false;
+                log(`validateState (corrompido): ${isValid2}`, isValid2 ? 'error' : 'info');
+                
+                // Teste 3: Estado vazio mas com flag
+                log('📋 TESTE 3: Estado com dados mínimos mas inválidos');
+                const emptyState = {
+                    exerciciosExecutados: [],
+                    currentWorkout: { exercicios: [] }
+                };
+                
+                await TreinoCacheService.saveWorkoutState(emptyState);
+                
+                const hasActive3 = await TreinoCacheService.hasActiveWorkout();
+                log(`hasActiveWorkout (vazio): ${hasActive3}`, hasActive3 ? 'error' : 'info');
+                
+                // Teste 4: Estado válido
+                log('📋 TESTE 4: Estado válido com progresso');
+                const validState = {
+                    exerciciosExecutados: [
+                        { exercicio_id: 1, peso_utilizado: 20, repeticoes: 10 }
+                    ],
+                    currentWorkout: {
+                        exercicios: [
+                            { exercicio_id: 1, nome: 'Supino', series: 3 }
+                        ],
+                        nome: 'Treino A'
+                    },
+                    startTime: Date.now() - 60000,
+                    currentExerciseIndex: 0
+                };
+                
+                await TreinoCacheService.saveWorkoutState(validState);
+                
+                const hasActive4 = await TreinoCacheService.hasActiveWorkout();
+                log(`hasActiveWorkout (válido): ${hasActive4}`, hasActive4 ? 'info' : 'error');
+                
+                const state4 = await TreinoCacheService.getWorkoutState();
+                const isValid4 = state4 ? TreinoCacheService.validateState(state4) : false;
+                log(`validateState (válido): ${isValid4}`, isValid4 ? 'info' : 'error');
+                
+                log('✅ Testes concluídos!', 'info');
+                
+            } catch (error) {
+                log(`❌ Erro nos testes: ${error.message}`, 'error');
+                console.error('Erro completo:', error);
+            }
+        };
+
+        window.clearAllCache = async function() {
+            log('🧹 Limpando todo o cache...', 'info');
+            
+            await TreinoCacheService.clearWorkoutState();
+            localStorage.removeItem('treino_em_andamento');
+            localStorage.removeItem('workoutSession_v2');
+            localStorage.removeItem('workoutProgress');
+            localStorage.removeItem('workoutLocalBackup');
+            
+            log('✅ Cache limpo!', 'info');
+        };
+
+        window.simulateWorkout = async function() {
+            log('💪 Simulando treino em andamento...', 'info');
+            
+            const simulatedState = {
+                exerciciosExecutados: [
+                    { exercicio_id: 1, peso_utilizado: 25, repeticoes: 12, serie_numero: 1 },
+                    { exercicio_id: 1, peso_utilizado: 25, repeticoes: 10, serie_numero: 2 },
+                    { exercicio_id: 2, peso_utilizado: 30, repeticoes: 8, serie_numero: 1 }
+                ],
+                currentWorkout: {
+                    id: 1,
+                    nome: 'Treino Push A',
+                    exercicios: [
+                        { exercicio_id: 1, nome: 'Supino Reto', series: 3, repeticoes_alvo: 10 },
+                        { exercicio_id: 2, nome: 'Desenvolvimento', series: 3, repeticoes_alvo: 8 },
+                        { exercicio_id: 3, nome: 'Tríceps Testa', series: 3, repeticoes_alvo: 12 }
+                    ]
+                },
+                startTime: Date.now() - (25 * 60 * 1000), // 25 minutos atrás
+                currentExerciseIndex: 1,
+                metadata: {
+                    savedAt: new Date().toISOString(),
+                    isPartial: false,
+                    appVersion: '2.0',
+                    stateKey: 'workoutSession_v2',
+                    exerciseCount: 3
+                }
+            };
+            
+            await TreinoCacheService.saveWorkoutState(simulatedState);
+            
+            log('✅ Treino simulado criado!', 'info');
+            log(`📊 ${simulatedState.exerciciosExecutados.length} execuções salvas`, 'info');
+            log(`⏱️ Iniciado há 25 minutos`, 'info');
+        };
+
+        window.checkRecoveryState = async function() {
+            log('🔍 Verificando estado de recovery...', 'info');
+            
+            // Verificar NavigationGuard
+            const recoveryState = await NavigationGuard.checkForRecovery();
+            log(`NavigationGuard.checkForRecovery: ${recoveryState ? 'ENCONTRADO' : 'NULL'}`, recoveryState ? 'info' : 'warning');
+            
+            // Verificar TreinoCacheService
+            const hasActive = await TreinoCacheService.hasActiveWorkout();
+            const workoutState = await TreinoCacheService.getWorkoutState();
+            
+            log(`TreinoCacheService.hasActiveWorkout: ${hasActive}`, hasActive ? 'info' : 'warning');
+            log(`TreinoCacheService.getWorkoutState: ${workoutState ? 'EXISTE' : 'NULL'}`, workoutState ? 'info' : 'warning');
+            
+            if (workoutState) {
+                const isValid = TreinoCacheService.validateState(workoutState);
+                log(`Estado é válido: ${isValid}`, isValid ? 'info' : 'error');
+                
+                const exercisesCount = workoutState.exerciciosExecutados?.length || 0;
+                log(`Exercícios executados: ${exercisesCount}`, exercisesCount > 0 ? 'info' : 'warning');
+                
+                if (workoutState.metadata?.savedAt) {
+                    const savedAgo = Date.now() - new Date(workoutState.metadata.savedAt).getTime();
+                    log(`Salvo há: ${Math.round(savedAgo / 60000)} minutos`, 'info');
+                }
+            }
+            
+            // Debug completo
+            const debugInfo = TreinoCacheService.debugState();
+            if (debugInfo) {
+                log(`Debug completo: <pre>${JSON.stringify(debugInfo, null, 2)}</pre>`);
+            }
+        };
+
+        // Executar teste inicial
+        setTimeout(() => {
+            log('🚀 Sistema de debug carregado! Use os botões acima para testar.', 'info');
+        }, 100);
+    </script>
+</body>
+</html>

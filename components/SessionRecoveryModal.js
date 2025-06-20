@@ -68,18 +68,37 @@ export class SessionRecoveryModal {
                 ? Math.round((Date.now() - new Date(startTime).getTime()) / 60000)
                 : 0;
 
-            // Calcular exercícios completados com fallback
-            const completed = session.exerciciosExecutados?.length || 0;
-            let total = session.currentWorkout?.exercicios?.length || 0;
+            // Calcular exercícios e séries completados
+            const seriesCompleted = session.exerciciosExecutados?.length || 0;
+            const exerciciosUnicos = new Set(session.exerciciosExecutados?.map(e => e.exercicio_id) || []);
+            const uniqueExercisesCompleted = exerciciosUnicos.size;
             
-            // Fallback: se currentWorkout é null, tentar estimar total pelos exercícios executados
-            if (total === 0 && completed > 0) {
-                // Estimar baseado no padrão típico (exercícios únicos * séries por exercício)
-                const exerciciosUnicos = new Set(session.exerciciosExecutados?.map(e => e.exercicio_id) || []).size;
-                total = Math.max(exerciciosUnicos * 3, completed + 2); // Estimativa conservadora
+            // Total de exercícios do treino
+            const totalExercises = session.currentWorkout?.exercicios?.length || 0;
+            
+            // Calcular total de séries esperadas
+            let totalSeries = 0;
+            if (session.currentWorkout?.exercicios) {
+                session.currentWorkout.exercicios.forEach(ex => {
+                    totalSeries += (ex.series || 3); // Default 3 séries se não especificado
+                });
             }
             
-            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            // Se não temos informação do workout, estimar baseado nos dados existentes
+            if (totalExercises === 0 && uniqueExercisesCompleted > 0) {
+                // Assumir que cada exercício tem 3 séries em média
+                totalSeries = Math.max(uniqueExercisesCompleted * 3, seriesCompleted + 2);
+            }
+            
+            // Calcular progresso baseado em exercícios únicos (mais intuitivo para o usuário)
+            const progress = totalExercises > 0 
+                ? Math.round((uniqueExercisesCompleted / totalExercises) * 100) 
+                : 0;
+            
+            // Texto de progresso mostrando séries
+            const exercisesCompletedText = totalSeries > 0 
+                ? `${seriesCompleted}/${totalSeries} séries (${uniqueExercisesCompleted}/${totalExercises} exercícios)`
+                : `${seriesCompleted} séries completadas`;
 
             // Última atividade
             const lastUpdate = session.metadata?.savedAt || session.timestamp;
@@ -89,11 +108,18 @@ export class SessionRecoveryModal {
 
             return {
                 timeElapsed: this.formatDuration(elapsed),
-                exercisesCompleted: `${completed} de ${total}`,
+                exercisesCompleted: exercisesCompletedText,
                 lastActivity,
                 progress,
                 workoutName: session.currentWorkout?.nome || 'Treino em Andamento',
-                isValid: true
+                isValid: true,
+                // Dados adicionais para debug
+                debugInfo: {
+                    uniqueExercisesCompleted,
+                    totalExercises,
+                    seriesCompleted,
+                    totalSeries
+                }
             };
         } catch (error) {
             console.error('[SessionRecoveryModal] Erro ao gerar preview:', error);

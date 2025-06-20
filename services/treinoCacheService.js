@@ -621,9 +621,15 @@ export class TreinoCacheService {
     /**
      * Valida integridade do estado
      * @param {Object} state - Estado a ser validado
+     * @param {Object} options - Opções de validação
      * @returns {boolean}
      */
-    static validateState(state) {
+    static validateState(state, options = {}) {
+        const { 
+            requireExecutions = true,  // Se deve exigir exercícios executados
+            forRecovery = false       // Se é para recovery (mais permissivo)
+        } = options;
+        
         if (!state || typeof state !== 'object') {
             console.warn('[TreinoCacheService] Estado não é objeto válido');
             return false;
@@ -640,27 +646,44 @@ export class TreinoCacheService {
             return false;
         }
         
-        // Verificação rigorosa de exerciciosExecutados
+        // Verificação de exerciciosExecutados
         if (!state.exerciciosExecutados || !Array.isArray(state.exerciciosExecutados)) {
             console.warn('[TreinoCacheService] exerciciosExecutados deve ser array válido');
             return false;
         }
         
-        // Para ser considerado um treino ativo, deve ter pelo menos 1 exercício executado
-        // OU ser um estado recém-criado com timestamp recente (< 5 minutos)
-        const isNewState = state.metadata?.savedAt && (Date.now() - new Date(state.metadata.savedAt).getTime() < 5 * 60 * 1000);
-        const hasExecutions = state.exerciciosExecutados.length > 0;
+        // Para recovery, ser mais permissivo
+        if (forRecovery) {
+            // Para recovery, aceitar estado mesmo sem execuções se for recente
+            const savedAt = state.metadata?.savedAt || state.timestamp;
+            const isRecent = savedAt && (Date.now() - new Date(savedAt).getTime() < 24 * 60 * 60 * 1000); // 24h
+            
+            console.log('[TreinoCacheService] ✅ Estado válido para recovery:', {
+                exercicios: state.currentWorkout.exercicios.length,
+                executados: state.exerciciosExecutados.length,
+                isRecent
+            });
+            
+            return true;
+        }
         
-        if (!hasExecutions && !isNewState) {
-            console.warn('[TreinoCacheService] Nenhuma execução encontrada e não é estado novo - inválido para recovery');
-            return false;
+        // Validação padrão (mais rigorosa)
+        if (requireExecutions) {
+            // Para ser considerado um treino ativo, deve ter pelo menos 1 exercício executado
+            // OU ser um estado recém-criado com timestamp recente (< 5 minutos)
+            const isNewState = state.metadata?.savedAt && (Date.now() - new Date(state.metadata.savedAt).getTime() < 5 * 60 * 1000);
+            const hasExecutions = state.exerciciosExecutados.length > 0;
+            
+            if (!hasExecutions && !isNewState) {
+                console.warn('[TreinoCacheService] Nenhuma execução encontrada e não é estado novo - inválido');
+                return false;
+            }
         }
         
         console.log('[TreinoCacheService] ✅ Estado válido:', {
             exercicios: state.currentWorkout.exercicios.length,
             executados: state.exerciciosExecutados.length,
-            isNewState,
-            hasExecutions
+            requireExecutions
         });
         
         return true;
@@ -842,8 +865,8 @@ export class WorkoutPersistence {
         return await TreinoCacheService.clearWorkoutState();
     }
 
-    validateState(state) {
-        return TreinoCacheService.validateState(state);
+    validateState(state, options = {}) {
+        return TreinoCacheService.validateState(state, options);
     }
 
     debugState() {

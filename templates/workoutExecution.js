@@ -84,22 +84,94 @@ export const workoutTemplate = () => `
         </div>
 
         <!-- Timer de Descanso (Overlay) -->
-        <div id="rest-timer-overlay" class="rest-timer-overlay" style="display: none;">
-            <div class="rest-timer-content">
+        <div id="rest-timer-overlay" class="rest-timer-overlay" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(8px);
+        ">
+            <div class="rest-timer-content" style="
+                background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+                border-radius: 24px;
+                padding: 32px;
+                text-align: center;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                border: 1px solid #333;
+                width: 90%;
+                max-width: 400px;
+                position: relative;
+            ">
                 <div class="rest-timer-bg"></div>
-                <h2 class="rest-timer-title">Tempo de Descanso</h2>
-                <div class="rest-timer-circle">
-                    <svg class="rest-progress-ring" width="200" height="200">
-                        <circle class="rest-progress-bg" cx="100" cy="100" r="90" stroke-width="8" fill="none"/>
-                        <circle class="rest-progress-fill" cx="100" cy="100" r="90" stroke-width="8" fill="none"/>
+                <h2 class="rest-timer-title" style="
+                    margin: 0 0 16px 0;
+                    color: #fff;
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                ">Tempo de Descanso</h2>
+                <div class="rest-timer-circle" style="
+                    margin: 0 auto 24px;
+                    position: relative;
+                    width: 160px;
+                    height: 160px;
+                ">
+                    <svg class="rest-progress-ring" width="160" height="160" style="
+                        transform: rotate(-90deg);
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                    ">
+                        <circle class="rest-progress-bg" cx="80" cy="80" r="70" stroke-width="6" fill="none" stroke="#333"/>
+                        <circle class="rest-progress-fill" cx="80" cy="80" r="70" stroke-width="6" fill="none" stroke="#00bcd4" stroke-linecap="round"/>
                     </svg>
-                    <div class="rest-timer-text">
-                        <span id="rest-timer-display" class="rest-time">00:00</span>
-                        <span class="rest-label">segundos</span>
+                    <div class="rest-timer-text" style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        text-align: center;
+                        width: 100%;
+                    ">
+                        <span id="rest-timer-display" class="rest-time" style="
+                            font-size: 2rem;
+                            font-weight: 700;
+                            color: #00bcd4;
+                            display: block;
+                            font-family: monospace;
+                            line-height: 1;
+                        ">00:00</span>
+                        <span class="rest-label" style="
+                            color: #aaa;
+                            font-size: 0.75rem;
+                            display: block;
+                            margin-top: 4px;
+                        ">segundos</span>
                     </div>
                 </div>
-                <div class="rest-timer-actions">
-                    <button id="skip-rest" class="btn-rest-skip">
+                <div class="rest-timer-actions" style="
+                    margin-top: 30px;
+                ">
+                    <button id="skip-rest" class="btn-rest-skip" style="
+                        background: linear-gradient(45deg, #a8ff00, #8de000);
+                        border: none;
+                        color: #000;
+                        padding: 14px 32px;
+                        border-radius: 12px;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        font-weight: 700;
+                        transition: all 0.2s;
+                        box-shadow: 0 4px 15px rgba(168, 255, 0, 0.3);
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                    ">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polygon points="5 4 15 12 5 20 5 4"/>
                             <line x1="19" y1="5" x2="19" y2="19"/>
@@ -107,8 +179,18 @@ export const workoutTemplate = () => `
                         <span>Pular Descanso</span>
                     </button>
                 </div>
-                <div class="rest-motivation">
-                    <p id="motivation-text">"Respire fundo e prepare-se para a próxima série!"</p>
+                <div class="rest-motivation" style="
+                    margin-top: 32px;
+                    padding-top: 24px;
+                    border-top: 1px solid #333;
+                ">
+                    <p id="motivation-text" style="
+                        margin: 0;
+                        color: #888;
+                        font-size: 0.9rem;
+                        font-style: italic;
+                        line-height: 1.5;
+                    ">"Respire fundo e prepare-se para a próxima série!"</p>
                 </div>
             </div>
         </div>

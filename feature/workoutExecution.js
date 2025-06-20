@@ -406,12 +406,21 @@ class WorkoutExecutionManager {
     async checkExistingCache() {
         try {
             const workoutState = await TreinoCacheService.getWorkoutState();
-            const hasActiveWorkout = await TreinoCacheService.hasActiveWorkout();
+            
+            // Para recovery, usar validação mais permissiva
+            const isValidForRecovery = workoutState ? TreinoCacheService.validateState(workoutState, { 
+                requireExecutions: false, 
+                forRecovery: true 
+            }) : false;
+            
+            // Verificar se tem algum progresso real
+            const hasProgress = workoutState?.exerciciosExecutados?.length > 0;
             
             return {
-                hasCache: hasActiveWorkout && workoutState,
+                hasCache: isValidForRecovery && workoutState,
                 data: workoutState,
-                isValid: workoutState ? TreinoCacheService.validateState(workoutState) : false
+                isValid: isValidForRecovery,
+                hasProgress
             };
             
         } catch (error) {
@@ -668,13 +677,27 @@ class WorkoutExecutionManager {
      * Recupera workout do cache
      */
     async resumeFromCache(cacheData) {
-        console.log('[WorkoutManager] 🔄 Resumindo workout do cache');
+        console.log('[WorkoutManager] 🔄 Resumindo workout do cache', cacheData);
         
         try {
-            // 1. Validar dados do cache
-            if (!TreinoCacheService.validateState(cacheData)) {
+            // 0. Verificar se cacheData existe
+            if (!cacheData) {
+                console.error('[WorkoutManager] ❌ Dados do cache são null/undefined');
+                throw new Error('Nenhum dado de cache fornecido');
+            }
+            
+            // 1. Validar dados do cache com opções para recovery
+            const isValid = TreinoCacheService.validateState(cacheData, { 
+                requireExecutions: false, 
+                forRecovery: true 
+            });
+            
+            if (!isValid) {
+                console.error('[WorkoutManager] ❌ Dados do cache inválidos:', cacheData);
                 throw new Error('Dados do cache inválidos');
             }
+            
+            console.log('[WorkoutManager] ✅ Cache validado, restaurando estado...');
             
             // 2. Restaurar estado completo
             await this.restoreCompleteState(cacheData);
@@ -683,23 +706,47 @@ class WorkoutExecutionManager {
             this.adjustTimersForElapsedTime(cacheData);
             
             // 4. Navegar para tela de workout
+            console.log('[WorkoutManager] 📱 Navegando para tela de workout...');
             await this.navegarParaTelaWorkout();
             
+            // Aguardar um momento para garantir que a tela foi carregada
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             // 5. Renderizar estado restaurado
+            console.log('[WorkoutManager] 🎨 Renderizando estado restaurado...');
             await this.renderizarComSeguranca();
             
-            // 6. Reativar proteções
+            // 6. Iniciar cronômetro se necessário
+            if (!this.timerInterval) {
+                this.iniciarCronometro();
+            }
+            
+            // 7. Reativar proteções
             this.activateWorkoutProtection();
             
+            // 8. Marcar como inicializado
+            this.isInitialized = true;
+            
             console.log('[WorkoutManager] ✅ Workout resumido com sucesso');
+            
+            // Mostrar notificação de sucesso
+            if (window.showNotification) {
+                window.showNotification('Treino restaurado com sucesso!', 'success');
+            }
+            
             return true;
             
         } catch (error) {
             console.error('[WorkoutManager] ❌ Erro ao resumir workout:', error);
+            console.error('[WorkoutManager] Stack trace:', error.stack);
             
-            // Em caso de erro, limpar cache e iniciar novo
-            await TreinoCacheService.clearWorkoutState();
-            return await this.startWorkout();
+            // Mostrar erro ao usuário
+            if (window.showNotification) {
+                window.showNotification(`Erro ao recuperar treino: ${error.message}`, 'error');
+            }
+            
+            // Não limpar cache automaticamente - deixar usuário decidir
+            return false;
         }
     }
 
@@ -780,6 +827,42 @@ class WorkoutExecutionManager {
         }
         
         this.lastSaveTime = Date.now();
+        
+        // Notificar ContextualWorkoutButton sobre mudança
+        this.notifyContextualButtons();
+    }
+
+    /**
+     * Notifica ContextualWorkoutButtons sobre mudança de estado
+     */
+    notifyContextualButtons() {
+        console.log('[WorkoutExecution] 📢 Notificando botões contextuais...');
+        
+        // Emitir evento customizado
+        const event = new CustomEvent('workout-cache-updated', {
+            detail: { 
+                hasWorkout: true,
+                exercisesCount: this.exerciciosExecutados?.length || 0,
+                timestamp: Date.now()
+            }
+        });
+        document.dispatchEvent(event);
+        
+        // Atualizar via AppState para trigger listeners
+        AppState.set('workoutCacheUpdated', Date.now());
+        
+        // Forçar atualização se botão global existir
+        if (window.contextualWorkoutButton?.forceUpdate) {
+            window.contextualWorkoutButton.forceUpdate();
+        }
+        
+        // Buscar todos os botões e forçar atualização
+        const buttons = document.querySelectorAll('[data-contextual-workout-button]');
+        buttons.forEach(btn => {
+            if (btn._contextualButton?.forceUpdate) {
+                btn._contextualButton.forceUpdate();
+            }
+        });
     }
 
     /**
@@ -853,51 +936,249 @@ class WorkoutExecutionManager {
 
     async navegarParaTelaWorkout() {
         console.log('[WorkoutExecution] 📱 Navegando para tela de workout...');
-        console.log('[WorkoutExecution] 🔍 Estado antes da navegação:', {
-            renderTemplate: typeof window.renderTemplate,
-            mostrarTela: typeof window.mostrarTela,
-            currentURL: window.location.href,
-            bodyChildren: document.body.children.length
-        });
+        
+        // Mostrar indicador de carregamento
+        this.mostrarIndicadorCarregamento();
         
         try {
-            // Tentar o sistema novo primeiro
-            if (window.renderTemplate && typeof window.renderTemplate === 'function') {
-                console.log('[WorkoutExecution] 📞 Chamando renderTemplate("workout")...');
-                await window.renderTemplate('workout');
-                
-                // Verificar se a navegação funcionou
-                console.log('[WorkoutExecution] ⏳ Aguardando elemento #workout-screen...');
-                await this.aguardarElemento('#workout-screen', 3000);
-                console.log('[WorkoutExecution] ✅ Navegação via renderTemplate bem-sucedida');
-                console.log('[WorkoutExecution] 🔍 URL após renderTemplate:', window.location.href);
-                return;
-            } else {
-                console.log('[WorkoutExecution] ⚠️ renderTemplate não disponível');
+            // 1. Primeiro, garantir que a tela de workout existe
+            let workoutScreen = document.querySelector('#workout-screen');
+            
+            if (!workoutScreen) {
+                console.log('[WorkoutExecution] 🔨 Criando tela de workout...');
+                workoutScreen = await this.criarEPrepararTelaWorkout();
             }
+            
+            // 2. Esconder todas as outras telas
+            console.log('[WorkoutExecution] 🎭 Ocultando outras telas...');
+            document.querySelectorAll('.screen').forEach(screen => {
+                if (screen.id !== 'workout-screen') {
+                    screen.classList.remove('active');
+                    screen.style.display = 'none';
+                }
+            });
+            
+            // 3. Mostrar tela de workout
+            console.log('[WorkoutExecution] 📺 Exibindo tela de workout...');
+            workoutScreen.style.display = 'block';
+            workoutScreen.classList.add('active', 'screen');
+            
+            // 4. Aguardar um momento para garantir que o DOM está pronto
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // 5. Verificar se a navegação funcionou
+            const isVisible = workoutScreen.offsetParent !== null;
+            if (!isVisible) {
+                throw new Error('Tela de workout não está visível após navegação');
+            }
+            
+            console.log('[WorkoutExecution] ✅ Navegação bem-sucedida');
+            
+            // 6. Remover indicador de carregamento
+            this.removerIndicadorCarregamento();
+            
+            // 7. Tentar métodos de navegação do sistema se disponíveis (sem bloquear)
+            this.tentarNavegacaoSistema();
+            
+            return true;
+            
         } catch (error) {
-            console.warn('[WorkoutExecution] ⚠️ Falha no renderTemplate:', error);
-            console.warn('[WorkoutExecution] Stack trace:', error.stack);
+            console.error('[WorkoutExecution] ❌ Erro na navegação:', error);
+            this.removerIndicadorCarregamento();
+            
+            // Mostrar erro ao usuário
+            if (window.showNotification) {
+                window.showNotification('Erro ao navegar para o treino. Tentando método alternativo...', 'warning');
+            }
+            
+            // Último recurso
+            this.navegacaoManualComFeedback();
+        }
+    }
+    
+    /**
+     * Cria e prepara a tela de workout
+     */
+    async criarEPrepararTelaWorkout() {
+        const appContainer = document.getElementById('app') || document.body;
+        
+        // Verificar se já existe
+        let workoutScreen = document.querySelector('#workout-screen');
+        if (workoutScreen) {
+            return workoutScreen;
         }
         
+        // Criar nova tela
+        workoutScreen = document.createElement('div');
+        workoutScreen.id = 'workout-screen';
+        workoutScreen.className = 'screen workout-screen';
+        
+        // Importar template se disponível
+        if (window.workoutTemplate && typeof window.workoutTemplate === 'function') {
+            workoutScreen.innerHTML = window.workoutTemplate();
+        } else {
+            console.warn('[WorkoutExecution] workoutTemplate não encontrado, usando template de fallback');
+            
+            // Template completo de fallback baseado no workoutTemplate original
+            workoutScreen.innerHTML = `
+                <div id="workout-screen" class="workout-screen">
+                    <!-- Header Flutuante -->
+                    <div class="workout-header-float">
+                        <button class="back-button-float" onclick="workoutExecutionManager.voltarParaHome()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                        <div class="workout-timer">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span id="workout-timer-display">00:00</span>
+                        </div>
+                        <button class="menu-button-float">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="3" y1="12" x2="21" y2="12"/>
+                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                <line x1="3" y1="18" x2="21" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="workout-progress-container">
+                        <div class="workout-progress-bar">
+                            <div id="workout-progress" class="workout-progress-fill"></div>
+                        </div>
+                        <div class="workout-progress-info">
+                            <span class="progress-current" id="current-exercise-number">1</span>
+                            <span class="progress-separator">/</span>
+                            <span class="progress-total" id="total-exercises">0</span>
+                            <span class="progress-label">exercícios</span>
+                        </div>
+                    </div>
+
+                    <!-- Container Principal -->
+                    <div class="workout-content">
+                        <div class="workout-info-card">
+                            <h1 id="workout-name" class="workout-title">Carregando...</h1>
+                            <div class="workout-meta-pills">
+                                <span id="current-week"></span>
+                                <span id="muscle-groups"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Container de Exercícios -->
+                        <div id="exercises-container" class="exercises-container"></div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        appContainer.appendChild(workoutScreen);
+        
+        // Carregar CSS se necessário
+        this.garantirCSSCarregado();
+        
+        return workoutScreen;
+    }
+    
+    /**
+     * Garante que o CSS está carregado
+     */
+    garantirCSSCarregado() {
+        if (!document.querySelector('#workout-execution-css')) {
+            const link = document.createElement('link');
+            link.id = 'workout-execution-css';
+            link.rel = 'stylesheet';
+            link.href = './styles/workoutExecution.css';
+            document.head.appendChild(link);
+        }
+    }
+    
+    /**
+     * Mostra indicador de carregamento
+     */
+    mostrarIndicadorCarregamento() {
+        const existing = document.querySelector('.workout-loading-indicator');
+        if (existing) return;
+        
+        const loader = document.createElement('div');
+        loader.className = 'workout-loading-indicator';
+        loader.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 20px 40px;
+                border-radius: 8px;
+                z-index: 10000;
+                text-align: center;
+            ">
+                <div style="margin-bottom: 10px;">Carregando treino...</div>
+                <div style="
+                    width: 40px;
+                    height: 40px;
+                    border: 3px solid #333;
+                    border-top-color: #a8ff00;
+                    border-radius: 50%;
+                    margin: 0 auto;
+                    animation: spin 1s linear infinite;
+                "></div>
+            </div>
+            <style>
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+            </style>
+        `;
+        document.body.appendChild(loader);
+    }
+    
+    /**
+     * Remove indicador de carregamento
+     */
+    removerIndicadorCarregamento() {
+        const loader = document.querySelector('.workout-loading-indicator');
+        if (loader) {
+            loader.remove();
+        }
+    }
+    
+    /**
+     * Tenta navegação usando métodos do sistema (não bloqueante)
+     */
+    tentarNavegacaoSistema() {
+        // Tentar renderTemplate em background
+        if (window.renderTemplate && typeof window.renderTemplate === 'function') {
+            window.renderTemplate('workout').catch(err => {
+                console.log('[WorkoutExecution] renderTemplate falhou (não crítico):', err);
+            });
+        }
+    }
+    
+    /**
+     * Navegação manual com feedback
+     */
+    navegacaoManualComFeedback() {
         try {
-            // Fallback para sistema antigo
-            if (window.mostrarTela && typeof window.mostrarTela === 'function') {
-                console.log('[WorkoutExecution] Usando mostrarTela como fallback...');
-                window.mostrarTela('workout-screen');
-                
-                // Verificar se funcionou
-                await this.aguardarElemento('#workout-screen', 3000);
-                console.log('[WorkoutExecution] ✅ Navegação via mostrarTela bem-sucedida');
-                return;
-            }
+            this.navegacaoManual();
+            
+            // Notificar sucesso após pequeno delay
+            setTimeout(() => {
+                if (window.showNotification) {
+                    window.showNotification('Treino carregado!', 'success');
+                }
+            }, 500);
         } catch (error) {
-            console.warn('[WorkoutExecution] ⚠️ Falha no mostrarTela:', error);
+            console.error('[WorkoutExecution] ❌ Falha total na navegação:', error);
+            if (window.showNotification) {
+                window.showNotification('Erro ao carregar treino. Por favor, recarregue a página.', 'error');
+            }
         }
-        
-        // Último recurso: navegação manual
-        console.log('[WorkoutExecution] 🔧 Usando navegação manual...');
-        this.navegacaoManual();
     }
     
     async aguardarElemento(selector, timeout = 3000) {
@@ -926,28 +1207,41 @@ class WorkoutExecutionManager {
     navegacaoManual() {
         console.log('[WorkoutExecution] 🔧 Executando navegação manual...');
         
-        // Esconder todas as telas
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-            screen.style.display = 'none';
-        });
-        
-        // Procurar tela de workout
-        let workoutScreen = document.querySelector('#workout-screen');
-        
-        // Se não existir, criar dinamicamente
-        if (!workoutScreen) {
-            console.log('[WorkoutExecution] Criando tela de workout dinamicamente...');
-            workoutScreen = this.criarTelaWorkoutDinamica();
-        }
-        
-        // Mostrar a tela
-        if (workoutScreen) {
-            workoutScreen.style.display = 'block';
-            workoutScreen.classList.add('active', 'screen');
-            console.log('[WorkoutExecution] ✅ Tela de workout ativada manualmente');
-        } else {
-            throw new Error('Não foi possível criar/encontrar a tela de workout');
+        try {
+            // Esconder todas as telas
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+                screen.style.display = 'none';
+            });
+            
+            // Procurar tela de workout
+            let workoutScreen = document.querySelector('#workout-screen');
+            
+            // Se não existir, criar usando o novo método
+            if (!workoutScreen) {
+                console.log('[WorkoutExecution] Criando tela de workout...');
+                workoutScreen = this.criarEPrepararTelaWorkout();
+                
+                // Se ainda não existir, tentar método antigo
+                if (!workoutScreen) {
+                    workoutScreen = this.criarTelaWorkoutDinamica();
+                }
+            }
+            
+            // Mostrar a tela
+            if (workoutScreen) {
+                workoutScreen.style.display = 'block';
+                workoutScreen.classList.add('active', 'screen');
+                console.log('[WorkoutExecution] ✅ Tela de workout ativada manualmente');
+                
+                // Garantir que o CSS está carregado
+                this.garantirCSSCarregado();
+            } else {
+                throw new Error('Não foi possível criar/encontrar a tela de workout');
+            }
+        } catch (error) {
+            console.error('[WorkoutExecution] ❌ Erro na navegação manual:', error);
+            throw error;
         }
     }
     
@@ -1157,152 +1451,233 @@ class WorkoutExecutionManager {
      * Mostra modal de cronômetro de descanso
      */
     mostrarModalDescanso() {
-        // Remover modal anterior se existir
-        this.fecharModalDescanso();
-
-        const modalHTML = `
-            <div id="rest-timer-modal" class="modal-overlay rest-timer-modal" style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.8);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
-                backdrop-filter: blur(4px);
-            ">
-                <div class="rest-timer-content" style="
-                    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-                    border-radius: 24px;
-                    padding: 32px;
-                    text-align: center;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-                    border: 1px solid #333;
-                    min-width: 320px;
+        console.log('[WorkoutExecution] 📺 Mostrando modal de descanso...');
+        
+        // Primeiro tentar usar o modal do template se existir
+        let modal = document.getElementById('rest-timer-overlay');
+        
+        if (modal) {
+            // Usar modal existente do template
+            console.log('[WorkoutExecution] ✅ Usando modal do template');
+            modal.style.display = 'flex';
+            
+            // Atualizar texto da motivação
+            const motivationEl = document.getElementById('motivation-text');
+            if (motivationEl) {
+                motivationEl.textContent = this.getMotivationalMessage();
+            }
+            
+            // Atualizar display inicial
+            this.atualizarDisplayDescanso();
+            
+            // Adicionar event listeners
+            const skipBtn = document.getElementById('skip-rest');
+            if (skipBtn && !skipBtn.hasListener) {
+                skipBtn.addEventListener('click', () => this.finalizarDescanso());
+                skipBtn.hasListener = true;
+            }
+        } else {
+            // Criar modal dinamicamente se template não existir
+            console.log('[WorkoutExecution] 🔨 Criando modal dinamicamente');
+            
+            const modalHTML = `
+                <div id="rest-timer-modal" class="modal-overlay rest-timer-modal" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.9);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                    backdrop-filter: blur(8px);
                 ">
-                    <div class="rest-icon" style="
-                        font-size: 3rem;
-                        margin-bottom: 16px;
-                        color: #00bcd4;
-                    ">🛌</div>
-                    
-                    <h2 style="
-                        margin: 0 0 8px 0;
-                        color: #fff;
-                        font-size: 1.5rem;
-                        font-weight: 700;
-                    ">Descanso</h2>
-                    
-                    <p id="rest-exercise-name" style="
-                        margin: 0 0 24px 0;
-                        color: #aaa;
-                        font-size: 0.9rem;
-                    ">${this.lastCompletedExercise?.exercicio_nome || 'Série completada'}</p>
-                    
-                    <div class="rest-timer-display" style="
-                        position: relative;
-                        margin-bottom: 32px;
+                    <div class="rest-timer-content" style="
+                        background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+                        border-radius: 24px;
+                        padding: 32px;
+                        text-align: center;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                        border: 1px solid #333;
+                        width: 90%;
+                        max-width: 400px;
                     ">
-                        <div class="timer-circle" style="
-                            width: 120px;
-                            height: 120px;
-                            border-radius: 50%;
-                            background: conic-gradient(#00bcd4 0deg, #333 0deg);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            margin: 0 auto 16px;
+                        <div class="rest-icon" style="
+                            font-size: 4rem;
+                            margin-bottom: 20px;
+                            color: #00bcd4;
+                            animation: pulse 2s infinite;
+                        ">🛌</div>
+                        
+                        <h2 style="
+                            margin: 0 0 12px 0;
+                            color: #fff;
+                            font-size: 1.75rem;
+                            font-weight: 700;
+                        ">Tempo de Descanso</h2>
+                        
+                        <p id="rest-exercise-name" style="
+                            margin: 0 0 32px 0;
+                            color: #aaa;
+                            font-size: 1rem;
+                        ">${this.lastCompletedExercise?.exercicio_nome || 'Série completada'}</p>
+                        
+                        <div class="rest-timer-display" style="
                             position: relative;
+                            margin-bottom: 32px;
                         ">
-                            <div class="timer-inner" style="
-                                width: 100px;
-                                height: 100px;
-                                background: #1a1a1a;
+                            <div class="timer-circle" style="
+                                width: 150px;
+                                height: 150px;
                                 border-radius: 50%;
+                                background: conic-gradient(#00bcd4 0deg, #333 0deg);
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
+                                margin: 0 auto 20px;
+                                position: relative;
+                                box-shadow: 0 0 30px rgba(0, 188, 212, 0.3);
                             ">
-                                <span id="rest-time-display" style="
-                                    font-size: 1.5rem;
-                                    font-weight: 700;
-                                    color: #00bcd4;
-                                ">${this.formatTime(this.restTimeRemaining)}</span>
+                                <div class="timer-inner" style="
+                                    width: 130px;
+                                    height: 130px;
+                                    background: #1a1a1a;
+                                    border-radius: 50%;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                ">
+                                    <span id="rest-timer-display" style="
+                                        font-size: 2rem;
+                                        font-weight: 700;
+                                        color: #00bcd4;
+                                        font-family: monospace;
+                                    ">${this.formatTime(this.restTimeRemaining)}</span>
+                                </div>
                             </div>
+                            
+                            <div id="rest-progress-text" style="
+                                color: #aaa;
+                                font-size: 0.9rem;
+                            ">${this.restTimeRemaining}s restantes</div>
                         </div>
                         
-                        <div id="rest-progress-text" style="
-                            color: #aaa;
-                            font-size: 0.85rem;
-                        ">${this.restTimeRemaining}s restantes</div>
-                    </div>
-                    
-                    <div class="rest-actions" style="
-                        display: flex;
-                        gap: 12px;
-                        justify-content: center;
-                    ">
-                        <button id="add-time-btn" class="rest-btn" style="
-                            background: #333;
-                            border: 1px solid #555;
-                            color: #fff;
-                            padding: 12px 20px;
-                            border-radius: 12px;
-                            cursor: pointer;
-                            font-size: 0.9rem;
-                            transition: all 0.2s;
-                        ">+30s</button>
+                        <div class="rest-actions" style="
+                            display: flex;
+                            gap: 12px;
+                            justify-content: center;
+                        ">
+                            <button id="add-time-btn" class="rest-btn" style="
+                                background: #333;
+                                border: 1px solid #555;
+                                color: #fff;
+                                padding: 12px 24px;
+                                border-radius: 12px;
+                                cursor: pointer;
+                                font-size: 0.95rem;
+                                transition: all 0.2s;
+                                font-weight: 600;
+                            ">+30s</button>
+                            
+                            <button id="skip-rest-btn" class="rest-btn" style="
+                                background: linear-gradient(45deg, #a8ff00, #8de000);
+                                border: none;
+                                color: #000;
+                                padding: 12px 32px;
+                                border-radius: 12px;
+                                cursor: pointer;
+                                font-size: 0.95rem;
+                                font-weight: 700;
+                                transition: all 0.2s;
+                                box-shadow: 0 4px 15px rgba(168, 255, 0, 0.3);
+                            ">Pular Descanso</button>
+                        </div>
                         
-                        <button id="skip-rest-btn" class="rest-btn" style="
-                            background: linear-gradient(45deg, #a8ff00, #8de000);
-                            border: none;
-                            color: #000;
-                            padding: 12px 24px;
-                            border-radius: 12px;
-                            cursor: pointer;
-                            font-size: 0.9rem;
-                            font-weight: 600;
-                            transition: all 0.2s;
-                        ">Pular</button>
+                        <div class="rest-motivation" style="
+                            margin-top: 32px;
+                            padding-top: 24px;
+                            border-top: 1px solid #333;
+                        ">
+                            <p id="motivation-text" style="
+                                margin: 0;
+                                color: #888;
+                                font-size: 0.9rem;
+                                font-style: italic;
+                                line-height: 1.5;
+                            ">${this.getMotivationalMessage()}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        this.restTimerModal = document.getElementById('rest-timer-modal');
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            modal = document.getElementById('rest-timer-modal');
 
-        // Adicionar event listeners
-        document.getElementById('skip-rest-btn')?.addEventListener('click', () => this.pularDescanso());
-        document.getElementById('add-time-btn')?.addEventListener('click', () => this.adicionarTempoDescanso(30));
+            // Adicionar event listeners
+            document.getElementById('skip-rest-btn')?.addEventListener('click', () => this.finalizarDescanso());
+            document.getElementById('add-time-btn')?.addEventListener('click', () => this.adicionarTempoDescanso(30));
+        }
+        
+        this.restTimerModal = modal;
 
         // Adicionar estilos de hover
         this.addRestTimerStyles();
+        
+        console.log('[WorkoutExecution] ✅ Modal de descanso ativo');
     }
 
     /**
      * Fecha modal de descanso
      */
     fecharModalDescanso() {
-        if (this.restTimerModal) {
-            this.restTimerModal.remove();
-            this.restTimerModal = null;
+        // Tentar fechar modal do template
+        const templateModal = document.getElementById('rest-timer-overlay');
+        if (templateModal) {
+            templateModal.style.display = 'none';
         }
+        
+        // Tentar fechar modal dinâmico
+        const dynamicModal = document.getElementById('rest-timer-modal');
+        if (dynamicModal) {
+            dynamicModal.remove();
+        }
+        
+        this.restTimerModal = null;
     }
 
     /**
      * Atualiza display do cronômetro de descanso
      */
     atualizarDisplayDescanso() {
-        const timeDisplay = document.getElementById('rest-time-display');
+        // Tentar atualizar ambos os tipos de display (template e dinâmico)
+        const timeDisplays = [
+            document.getElementById('rest-timer-display'),  // Modal do template
+            document.getElementById('rest-time-display')    // Modal dinâmico
+        ];
+        
         const progressText = document.getElementById('rest-progress-text');
         const timerCircle = document.querySelector('.timer-circle');
+        
+        // Para o modal do template, precisamos atualizar elementos específicos
+        const templateTimerText = document.querySelector('.rest-time');
+        const templateLabel = document.querySelector('.rest-label');
 
-        if (timeDisplay) {
-            timeDisplay.textContent = this.formatTime(this.restTimeRemaining);
+        // Atualizar displays de tempo
+        timeDisplays.forEach(display => {
+            if (display) {
+                display.textContent = this.formatTime(this.restTimeRemaining);
+            }
+        });
+        
+        // Atualizar display do template se existir
+        if (templateTimerText) {
+            templateTimerText.textContent = this.formatTime(this.restTimeRemaining);
+        }
+        
+        if (templateLabel) {
+            templateLabel.textContent = 'segundos';
         }
 
         if (progressText) {
@@ -1314,12 +1689,33 @@ class WorkoutExecutionManager {
             const progress = ((this.restDuration - this.restTimeRemaining) / this.restDuration) * 360;
             timerCircle.style.background = `conic-gradient(#00bcd4 ${progress}deg, #333 ${progress}deg)`;
         }
+        
+        // Para o modal do template, atualizar o SVG circle
+        const progressFill = document.querySelector('.rest-progress-fill');
+        if (progressFill) {
+            const radius = progressFill.getAttribute('r') || 70; // pegar raio do elemento
+            const circumference = 2 * Math.PI * radius;
+            const progress = (this.restTimeRemaining / this.restDuration);
+            const dashoffset = circumference * (1 - progress);
+            
+            progressFill.style.strokeDasharray = `${circumference}`;
+            progressFill.style.strokeDashoffset = `${dashoffset}`;
+            progressFill.style.stroke = this.restTimeRemaining <= 10 ? '#ff4757' : '#00bcd4';
+            progressFill.style.transition = 'stroke-dashoffset 0.5s ease-in-out';
+        }
 
         // Mudar cor quando restam poucos segundos
         if (this.restTimeRemaining <= 10) {
-            if (timeDisplay) {
-                timeDisplay.style.color = '#ff4757';
+            timeDisplays.forEach(display => {
+                if (display) {
+                    display.style.color = '#ff4757';
+                }
+            });
+            
+            if (templateTimerText) {
+                templateTimerText.style.color = '#ff4757';
             }
+            
             if (timerCircle) {
                 const progress = ((this.restDuration - this.restTimeRemaining) / this.restDuration) * 360;
                 timerCircle.style.background = `conic-gradient(#ff4757 ${progress}deg, #333 ${progress}deg)`;
@@ -1336,6 +1732,27 @@ class WorkoutExecutionManager {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    /**
+     * Retorna mensagem motivacional aleatória
+     * @returns {string} Mensagem motivacional
+     */
+    getMotivationalMessage() {
+        const messages = [
+            "Respire fundo e prepare-se para a próxima série!",
+            "Descanse bem, a próxima série será melhor ainda!",
+            "Hidrate-se e foque no próximo desafio!",
+            "Você está indo muito bem! Continue assim!",
+            "Cada série te deixa mais forte!",
+            "Mantenha o foco e a determinação!",
+            "Descanso merecido! Logo voltamos com tudo!",
+            "Aproveite para regular a respiração!",
+            "Mente forte, corpo forte!",
+            "Você consegue! Só mais algumas séries!"
+        ];
+        
+        return messages[Math.floor(Math.random() * messages.length)];
     }
 
     /**
@@ -1832,6 +2249,9 @@ class WorkoutExecutionManager {
             }
             
             console.log('[WorkoutExecution] Estado do treino salvo (legacy)');
+            
+            // Notificar ContextualWorkoutButton sobre mudança
+            this.notifyContextualButtons();
         } catch (error) {
             console.error('[WorkoutExecution] Erro ao salvar estado do treino:', error);
         }
@@ -2943,9 +3363,38 @@ class WorkoutExecutionManager {
     }
 
     async salvarESair() {
-        await this.salvarEstadoAtual();
+        console.log('[WorkoutExecution] 💾 Salvando treino antes de sair...');
+        
+        try {
+            // Forçar salvamento completo (não parcial)
+            await this.salvarEstadoAtual(true);
+            
+            // Aguardar um momento para garantir que o cache foi atualizado
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Notificar botões contextuais
+            this.notifyContextualButtons();
+            
+            console.log('[WorkoutExecution] ✅ Treino salvo com sucesso');
+            
+            // Mostrar notificação de sucesso
+            if (window.showNotification) {
+                window.showNotification('Treino salvo com sucesso!', 'success');
+            }
+            
+        } catch (error) {
+            console.error('[WorkoutExecution] ❌ Erro ao salvar treino:', error);
+            if (window.showNotification) {
+                window.showNotification('Erro ao salvar treino', 'error');
+            }
+        }
+        
         this.fecharModalSaida();
-        this.navegarParaHomeDiretamente();
+        
+        // Aguardar um pouco antes de navegar para garantir que tudo foi processado
+        setTimeout(() => {
+            this.navegarParaHomeDiretamente();
+        }, 300);
     }
 
     sairSemSalvar() {
@@ -3097,6 +3546,89 @@ console.log('  - testarModalConclusao()');
 // ASSINATURA RESTAURADA: confirmarSerie(exerciseIndex, seriesIndex)
 window.confirmarSerie = (exerciseIndex, seriesIndex) => {
     return window.workoutExecutionManager.confirmarSerie(exerciseIndex, seriesIndex);
+};
+
+// Função de debug para verificar estado do cache
+window.debugWorkoutCache = async function() {
+    console.log('[DEBUG CACHE] 🔍 Iniciando verificação completa do cache...');
+    
+    try {
+        const state = await TreinoCacheService.getWorkoutState();
+        const hasActive = await TreinoCacheService.hasActiveWorkout();
+        const isValid = state ? TreinoCacheService.validateState(state) : false;
+        
+        console.log('[DEBUG CACHE] Estado encontrado:', state);
+        console.log('[DEBUG CACHE] hasActiveWorkout:', hasActive);
+        console.log('[DEBUG CACHE] validateState:', isValid);
+        
+        if (state) {
+            console.log('[DEBUG CACHE] Detalhes:', {
+                exerciciosExecutados: state.exerciciosExecutados?.length || 0,
+                currentWorkout: !!state.currentWorkout,
+                isCompleted: state.isCompleted,
+                finalizado: state.finalizado,
+                metadata: state.metadata,
+                startTime: state.startTime ? new Date(state.startTime).toLocaleString() : 'N/A'
+            });
+            
+            if (state.exerciciosExecutados?.length > 0) {
+                console.log('[DEBUG CACHE] Primeiros exercícios executados:', 
+                    state.exerciciosExecutados.slice(0, 3));
+            }
+        }
+        
+        // Verificar localStorage diretamente
+        const rawV2 = localStorage.getItem('workoutSession_v2');
+        const rawLegacy = localStorage.getItem('treino_em_andamento');
+        
+        console.log('[DEBUG CACHE] localStorage workoutSession_v2:', rawV2 ? 'EXISTE' : 'NULL');
+        console.log('[DEBUG CACHE] localStorage treino_em_andamento:', rawLegacy ? 'EXISTE' : 'NULL');
+        
+        // Verificar ContextualWorkoutButton
+        const buttons = document.querySelectorAll('.contextual-workout-btn');
+        if (buttons.length > 0) {
+            console.log('[DEBUG CACHE] Botões contextuais encontrados:', buttons.length);
+            buttons.forEach((btn, idx) => {
+                console.log(`[DEBUG CACHE] Botão ${idx + 1}:`, {
+                    state: btn.getAttribute('data-state'),
+                    text: btn.textContent.trim(),
+                    disabled: btn.disabled
+                });
+            });
+        }
+        
+        return { state, hasActive, isValid };
+        
+    } catch (error) {
+        console.error('[DEBUG CACHE] Erro durante verificação:', error);
+        return null;
+    }
+};
+
+// Função para testar recuperação manual
+window.testResumeWorkout = async function() {
+    console.log('[TEST RESUME] 🧪 Testando recuperação manual do treino...');
+    
+    try {
+        const state = await TreinoCacheService.getWorkoutState();
+        
+        if (!state) {
+            console.error('[TEST RESUME] ❌ Nenhum estado encontrado no cache');
+            return false;
+        }
+        
+        console.log('[TEST RESUME] ✅ Estado encontrado:', state);
+        
+        // Testar resumeFromCache diretamente
+        const result = await window.workoutExecutionManager.resumeFromCache(state);
+        
+        console.log('[TEST RESUME] Resultado:', result);
+        return result;
+        
+    } catch (error) {
+        console.error('[TEST RESUME] ❌ Erro:', error);
+        return false;
+    }
 };
 
 window.adicionarSerie = (exercicioId) => {
