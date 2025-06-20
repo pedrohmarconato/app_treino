@@ -17,8 +17,9 @@ export class WorkoutSession {
         
         // Bind methods
         this.init = this.init.bind(this);
-        this.render = this.render.bind(this);
         this.destroy = this.destroy.bind(this);
+        this.confirmSeries = this.confirmSeries.bind(this);
+        this.showRestTimer = this.showRestTimer.bind(this);
     }
     
     /**
