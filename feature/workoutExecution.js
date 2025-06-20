@@ -209,9 +209,9 @@ class WorkoutExecutionManager {
 
             // Carregar treino do protocolo ANTES da disposição para verificar se há treino
             console.log('[WorkoutExecution] 📊 Carregando treino do protocolo...');
-            console.log('[WorkoutExecution] 📞 Chamando WorkoutProtocolService.carregarTreinoParaExecucao...');
+            console.log(`[WorkoutExecution] 📞 Chamando WorkoutProtocolService.carregarTreinoParaExecucao para usuário ID: ${currentUser.id}`);
             this.currentWorkout = await WorkoutProtocolService.carregarTreinoParaExecucao(currentUser.id);
-            console.log('[WorkoutExecution] ✅ Treino carregado do protocolo:', this.currentWorkout);
+            console.log(`[WorkoutExecution] ✅ Treino carregado para usuário ${currentUser.nome} (ID: ${currentUser.id}):`, this.currentWorkout);
             
             if (!this.currentWorkout) {
                 throw new Error('Nenhum treino encontrado para hoje. Configure seu planejamento semanal primeiro.');

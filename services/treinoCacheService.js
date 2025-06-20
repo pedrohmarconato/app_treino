@@ -491,13 +491,20 @@ export class TreinoCacheService {
      */
     static async saveWorkoutState(state, isPartial = false) {
         try {
+            // Verificar se há dados mínimos para salvar
+            if (!state.exerciciosExecutados || state.exerciciosExecutados.length === 0) {
+                console.log('[TreinoCacheService] Não salvando - nenhum exercício executado ainda');
+                return false;
+            }
+            
             const stateToSave = {
                 ...state,
                 metadata: {
                     savedAt: new Date().toISOString(),
                     isPartial,
                     appVersion: '2.0',
-                    stateKey: 'workoutSession_v2'
+                    stateKey: 'workoutSession_v2',
+                    exerciseCount: state.exerciciosExecutados.length
                 }
             };
 
@@ -581,7 +588,23 @@ export class TreinoCacheService {
      */
     static async hasActiveWorkout() {
         const state = await this.getWorkoutState();
-        return state && state.currentWorkout && state.metadata?.isPartial !== false;
+        
+        // Deve ter estado válido E pelo menos 1 exercício executado para ser considerado ativo
+        if (!state || !this.validateState(state)) {
+            return false;
+        }
+        
+        // Verificar se realmente há progresso (exercícios executados)
+        const hasProgress = state.exerciciosExecutados && state.exerciciosExecutados.length > 0;
+        
+        console.log('[TreinoCacheService] hasActiveWorkout:', {
+            hasState: !!state,
+            isValid: this.validateState(state),
+            hasProgress,
+            exercisesCount: state?.exerciciosExecutados?.length || 0
+        });
+        
+        return hasProgress;
     }
 
     /**
@@ -594,17 +617,9 @@ export class TreinoCacheService {
             return false;
         }
         
-        const requiredKeys = ['currentWorkout', 'exerciciosExecutados'];
-        const hasRequiredKeys = requiredKeys.every(key => state[key] !== undefined);
-        
-        if (!hasRequiredKeys) {
-            console.warn('[TreinoCacheService] Estado faltando chaves obrigatórias:', requiredKeys.filter(key => !state[key]));
-            return false;
-        }
-        
-        // Validação específica
-        if (!Array.isArray(state.exerciciosExecutados)) {
-            console.warn('[TreinoCacheService] exerciciosExecutados deve ser array');
+        // Verificação mais rigorosa - deve ter pelo menos exercícios executados E um workout válido
+        if (!state.exerciciosExecutados || !Array.isArray(state.exerciciosExecutados)) {
+            console.warn('[TreinoCacheService] exerciciosExecutados deve ser array válido');
             return false;
         }
         
@@ -613,21 +628,22 @@ export class TreinoCacheService {
             return false;
         }
         
-        // Validação flexível do currentWorkout para permitir recovery
-        if (state.currentWorkout) {
-            // Se currentWorkout existe, deve ter exercícios válidos
-            if (!state.currentWorkout.exercicios || !Array.isArray(state.currentWorkout.exercicios) || state.currentWorkout.exercicios.length === 0) {
-                console.warn('[TreinoCacheService] currentWorkout sem exercícios válidos');
-                return false;
-            }
-        } else {
-            // Se não há currentWorkout, mas há exercícios executados, permite recovery parcial
-            if (!state.exerciciosExecutados || state.exerciciosExecutados.length === 0) {
-                console.warn('[TreinoCacheService] Nenhum dado de treino válido encontrado');
-                return false;
-            }
-            console.log('[TreinoCacheService] ✅ Permitindo recovery parcial com exercícios executados');
+        // Verificar se o currentWorkout tem dados mínimos necessários
+        if (!state.currentWorkout.exercicios || !Array.isArray(state.currentWorkout.exercicios) || state.currentWorkout.exercicios.length === 0) {
+            console.warn('[TreinoCacheService] currentWorkout sem exercícios válidos');
+            return false;
         }
+        
+        // Para ser válido para recovery, deve ter pelo menos 1 exercício executado
+        if (state.exerciciosExecutados.length === 0) {
+            console.warn('[TreinoCacheService] Nenhuma execução encontrada - estado não válido para recovery');
+            return false;
+        }
+        
+        console.log('[TreinoCacheService] ✅ Estado válido para recovery:', {
+            exercicios: state.currentWorkout.exercicios.length,
+            executados: state.exerciciosExecutados.length
+        });
         
         return true;
     }
