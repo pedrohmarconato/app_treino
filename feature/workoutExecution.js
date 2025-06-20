@@ -1154,9 +1154,17 @@ class WorkoutExecutionManager {
     tentarNavegacaoSistema() {
         // Tentar renderTemplate em background
         if (window.renderTemplate && typeof window.renderTemplate === 'function') {
-            window.renderTemplate('workout').catch(err => {
-                console.log('[WorkoutExecution] renderTemplate falhou (não crítico):', err);
-            });
+            try {
+                const result = window.renderTemplate('workout');
+                // Verificar se é uma Promise
+                if (result && typeof result.catch === 'function') {
+                    result.catch(err => {
+                        console.log('[WorkoutExecution] renderTemplate falhou (não crítico):', err);
+                    });
+                }
+            } catch (err) {
+                console.log('[WorkoutExecution] renderTemplate erro síncrono (não crítico):', err);
+            }
         }
     }
     
