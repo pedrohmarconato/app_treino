@@ -2573,7 +2573,7 @@ class WorkoutExecutionManager {
                     </div>
                     
                     <div class="series-list">
-                        ${this.gerarSeriesHTMLFuncional(exercicio, exerciseIndex, numSeries, repsAlvo, pesoSugerido, exercicio.series_executadas || 0)}
+                        ${this.gerarSeriesHTMLFuncional(exercicio, exerciseIndex, numSeries, repsAlvo, pesoSugerido, exercicio.seriesCompletas ? exercicio.seriesCompletas.filter(Boolean).length : 0)}
                     </div>
                 </div>
                 
@@ -2625,7 +2625,8 @@ class WorkoutExecutionManager {
         let html = '';
         
         for (let i = 0; i < numSeries; i++) {
-            const isCompleted = i < seriesExecutadas;
+            // Verificar se a série foi completada baseado no array seriesCompletas
+            const isCompleted = exercicio.seriesCompletas && exercicio.seriesCompletas[i] === true;
             html += `
                 <div class="series-item ${isCompleted ? 'series-completed' : ''}" data-series-index="${i}" data-exercise-index="${exerciseIndex}" 
                      style="
@@ -2707,6 +2708,8 @@ class WorkoutExecutionManager {
                                        class="series-weight series-input" 
                                        value="${suggestedWeight || ''}"
                                        placeholder="0"
+                                       data-exercise="${exerciseIndex}"
+                                       data-series="${i}"
                                        step="0.5" 
                                        min="0"
                                        max="500"
@@ -2790,6 +2793,8 @@ class WorkoutExecutionManager {
                                        class="series-reps series-input" 
                                        value="${repsTarget || ''}"
                                        placeholder="0"
+                                       data-exercise="${exerciseIndex}"
+                                       data-series="${i}"
                                        min="1"
                                        max="50"
                                        inputmode="numeric"
@@ -2830,11 +2835,11 @@ class WorkoutExecutionManager {
                             style="
                                 width: 48px;
                                 height: 48px;
-                                background: linear-gradient(45deg, var(--accent-primary), var(--accent-primary-dark));
-                                color: #000000;
+                                background: ${isCompleted ? '#4CAF50' : 'linear-gradient(45deg, var(--accent-primary), var(--accent-primary-dark))'};
+                                color: ${isCompleted ? 'white' : '#000000'};
                                 border: none;
                                 border-radius: var(--radius-md);
-                                cursor: pointer;
+                                cursor: ${isCompleted ? 'not-allowed' : 'pointer'};
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
@@ -2845,11 +2850,11 @@ class WorkoutExecutionManager {
                                 position: relative;
                                 overflow: hidden;
                             "
-                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-glow-strong)'"
-                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-glow)'">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            ${!isCompleted ? `onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='var(--shadow-glow-strong)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='var(--shadow-glow)'"` : ''}>
+                        ${isCompleted ? '✓' : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                             <polyline points="20 6 9 17 4 12"/>
-                        </svg>
+                        </svg>`}
                     </button>
                 </div>
             `;
