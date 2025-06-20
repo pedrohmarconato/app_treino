@@ -992,6 +992,8 @@ class WorkoutExecutionManager {
         } catch (error) {
             console.error('[WorkoutExecution] ❌ Erro na renderização segura:', error);
             this.criarContainerNaRaiz();
+            // Iniciar cronômetro mesmo com erro
+            this.iniciarCronometro();
         }
     }
 
@@ -1019,7 +1021,8 @@ class WorkoutExecutionManager {
             const seconds = Math.floor((elapsed % 60000) / 1000);
             const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
             
-            const timerElement = document.getElementById('workout-timer');
+            const timerElement = document.getElementById('workout-timer-display') || 
+                                document.getElementById('workout-timer');
             if (timerElement) {
                 timerElement.textContent = timeString;
             }
@@ -1030,6 +1033,15 @@ class WorkoutExecutionManager {
         console.log('[WorkoutExecution] \ud83d\udd27 Populando elementos do template...');
         
         const workout = this.currentWorkout;
+        if (!workout) {
+            console.warn('[WorkoutExecution] ⚠️ currentWorkout está null, usando dados padrão');
+            this.updateElement('workout-name', 'Treino do Dia');
+            this.updateElement('workout-title', 'Treino do Dia');
+            this.updateElement('current-week', '1');
+            this.updateElement('muscle-groups', 'Treino de Força');
+            return;
+        }
+        
         const nome = workout.nome || 'Treino do Dia';
         const semana = workout.semana_atual || 1;
         
