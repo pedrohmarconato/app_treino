@@ -189,19 +189,22 @@ export class ContextualWorkoutButton {
                     this.setState('resume', { ...workoutState, ...progressData });
                     console.log('[ContextualWorkoutButton] Estado definido como RESUME - progresso real detectado');
                 } else {
-                    console.log('[ContextualWorkoutButton] Cache existe mas sem progresso real - limpando');
-                    await TreinoCacheService.clearWorkoutState();
+                    // Não limpar imediatamente, apenas mostrar START
+                    console.log('[ContextualWorkoutButton] Cache existe mas sem progresso real - mostrando START');
                     this.setState('start');
                 }
-            } else if (workoutState && !TreinoCacheService.validateState(workoutState)) {
-                console.log('[ContextualWorkoutButton] Cache corrompido detectado');
-                this.setState('error', { 
-                    errorType: 'corrupt_cache',
-                    errorMessage: 'Dados do treino corrompidos'
-                });
             } else {
-                console.log('[ContextualWorkoutButton] Nenhum cache válido - estado START');
-                this.setState('start');
+                // Verificar melhor se há cache corrompido
+                if (workoutState && !TreinoCacheService.validateState(workoutState)) {
+                    console.log('[ContextualWorkoutButton] Cache corrompido detectado');
+                    this.setState('error', { 
+                        errorType: 'corrupt_cache',
+                        errorMessage: 'Dados do treino corrompidos'
+                    });
+                } else {
+                    console.log('[ContextualWorkoutButton] Nenhum cache válido - estado START');
+                    this.setState('start');
+                }
             }
             
         } catch (error) {

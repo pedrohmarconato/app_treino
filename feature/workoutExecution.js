@@ -129,50 +129,47 @@ class WorkoutExecutionManager {
             
             console.log('[WorkoutExecution] 👤 Usuário atual:', currentUser.nome, `(ID: ${currentUser.id})`);
 
-            // Verificar recovery usando NavigationGuard
+            // Verificar recovery com lógica mais robusta
             try {
-                const { checkAndShowRecovery } = await import('../ui/navigation.js');
-                const recoveryResult = await checkAndShowRecovery();
+                console.log('[WorkoutExecution] 🔍 Verificando recovery...');
                 
-                if (recoveryResult && recoveryResult.action === 'recover' && recoveryResult.data) {
-                    console.log('[WorkoutExecution] 🔄 Recuperando treino via NavigationGuard...');
+                // Primeiro, tentar o sistema moderno
+                const { checkForRecovery } = await import('../services/navigationGuard.js');
+                const sessionData = await checkForRecovery();
+                
+                if (sessionData && this.persistence.validateState(sessionData)) {
+                    console.log('[WorkoutExecution] 📋 Sessão válida encontrada');
                     
-                    // Validar se os dados são utilizáveis
-                    if (recoveryResult.data.currentWorkout && recoveryResult.data.exerciciosExecutados) {
-                        await this.recuperarTreinoEmAndamento(recoveryResult.data);
-                        console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO');
-                        return;
+                    // Mostrar modal apenas se há progresso real
+                    const hasRealProgress = sessionData.exerciciosExecutados && sessionData.exerciciosExecutados.length > 0;
+                    
+                    if (hasRealProgress) {
+                        const { showRecoveryModal } = await import('../services/navigationGuard.js');
+                        const recoveryResult = await showRecoveryModal(sessionData);
+                
+                        if (recoveryResult && recoveryResult.action === 'recover') {
+                            console.log('[WorkoutExecution] 🔄 Recuperando treino...');
+                            await this.recuperarTreinoEmAndamento(sessionData);
+                            console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO');
+                            return;
+                        } else if (recoveryResult && recoveryResult.action === 'discard') {
+                            console.log('[WorkoutExecution] 🗑️ Descartando dados anteriores');
+                            await this.persistence.clearState();
+                        }
                     } else {
-                        console.warn('[WorkoutExecution] ⚠️ Dados de recovery inválidos, iniciando novo treino');
-                        await TreinoCacheService.clearWorkoutState();
+                        console.log('[WorkoutExecution] ⚠️ Sessão sem progresso real, limpando cache');
+                        await this.persistence.clearState();
                     }
-                } else if (recoveryResult && recoveryResult.action === 'discard') {
-                    console.log('[WorkoutExecution] 🗑️ Descartando dados anteriores e iniciando novo treino');
-                    // Dados já foram limpos pelo NavigationGuard
                 }
                 
             } catch (recoveryError) {
                 console.warn('[WorkoutExecution] ⚠️ Erro na verificação de recovery:', recoveryError);
                 
-                // Fallback: verificar persistence diretamente
+                // Fallback mais simples: apenas limpar cache corrompido
                 try {
-                    const stateRecuperado = await this.persistence.restoreState();
-                    if (stateRecuperado) {
-                        const desejaRecuperar = await this.confirmarRecuperacao();
-                        if (desejaRecuperar) {
-                            console.log('[WorkoutExecution] 🔄 Recuperando treino (fallback)...');
-                            await this.recuperarTreinoEmAndamento(stateRecuperado);
-                            console.log('[WorkoutExecution] 🚪 SAINDO DO MÉTODO - TREINO RECUPERADO (FALLBACK)');
-                            return;
-                        } else {
-                            // Usuário optou por iniciar novo treino
-                            if (this.persistence?.clearState) {
-                                await this.persistence.clearState();
-                            }
-                        }
-                    }
-                } catch (persistenceError) {
-                    console.warn('[WorkoutExecution] ⚠️ Erro no fallback de persistence:', persistenceError);
+                    await this.persistence.clearState();
+                } catch (clearError) {
+                    console.error('[WorkoutExecution] Erro ao limpar cache:', clearError);
                 }
             }
 
