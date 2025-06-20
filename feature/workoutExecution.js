@@ -961,26 +961,44 @@ class WorkoutExecutionManager {
         this.mostrarIndicadorCarregamento();
         
         try {
-            // Importar WorkoutSession dinamicamente com timestamp para evitar cache
-            const timestamp = Date.now();
-            const { WorkoutSession } = await import(`../core/WorkoutSession.js?t=${timestamp}`);
+            // 1. Primeiro, garantir que a tela de workout existe
+            let workoutScreen = document.querySelector('#workout-screen');
             
-            // Criar nova sessão
-            this.workoutSession = new WorkoutSession();
+            if (!workoutScreen) {
+                // console.log('[WorkoutExecution] 🔨 Criando tela de workout...');
+                workoutScreen = await this.criarEPrepararTelaWorkout();
+            }
             
-            // Verificar se há estado salvo para recuperação
-            const hasActiveSession = await this.checkActiveSession();
-            
-            // Inicializar sessão com dados do treino
-            await this.workoutSession.init(this.currentWorkout, {
-                restore: hasActiveSession,
-                restoreData: hasActiveSession ? await this.getSessionData() : null
+            // 2. Esconder todas as outras telas
+            // console.log('[WorkoutExecution] 🎭 Ocultando outras telas...');
+            document.querySelectorAll('.screen').forEach(screen => {
+                if (screen.id !== 'workout-screen') {
+                    screen.classList.remove('active');
+                    screen.style.display = 'none';
+                }
             });
             
-            console.log('[WorkoutExecution] ✅ Navegação completa com WorkoutSession');
+            // 3. Mostrar tela de workout
+            // console.log('[WorkoutExecution] 📺 Exibindo tela de workout...');
+            workoutScreen.style.display = 'block';
+            workoutScreen.classList.add('active', 'screen');
             
-            // Remover indicador de carregamento
+            // 4. Aguardar um momento para garantir que o DOM está pronto
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // 5. Verificar se a navegação funcionou
+            const isVisible = workoutScreen.offsetParent !== null;
+            if (!isVisible) {
+                throw new Error('Tela de workout não está visível após navegação');
+            }
+            
+            // console.log('[WorkoutExecution] ✅ Navegação bem-sucedida');
+            
+            // 6. Remover indicador de carregamento
             this.removerIndicadorCarregamento();
+            
+            // 7. Renderizar exercícios e UI
+            await this.renderizarComSeguranca();
             
             return true;
             
@@ -990,47 +1008,11 @@ class WorkoutExecutionManager {
             
             // Mostrar erro ao usuário
             if (window.showNotification) {
-                window.showNotification('Erro ao carregar treino. Por favor, tente novamente.', 'error');
+                window.showNotification('Erro ao navegar para o treino. Tentando método alternativo...', 'warning');
             }
             
-            throw error;
-        }
-    }
-    
-    /**
-     * Verifica se há sessão ativa
-     */
-    async checkActiveSession() {
-        try {
-            const savedState = localStorage.getItem('workout_state');
-            if (!savedState) return false;
-            
-            const state = JSON.parse(savedState);
-            // Verificar se é o mesmo treino
-            if (state.workout && state.workout.id === this.currentWorkout.id) {
-                // Verificar se não está muito antigo (máx 2 horas)
-                const elapsed = Date.now() - state.timestamp;
-                return elapsed < 2 * 60 * 60 * 1000;
-            }
-            return false;
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao verificar sessão:', error);
-            return false;
-        }
-    }
-    
-    /**
-     * Obtém dados da sessão salva
-     */
-    async getSessionData() {
-        try {
-            const savedState = localStorage.getItem('workout_state');
-            if (!savedState) return null;
-            
-            return JSON.parse(savedState);
-        } catch (error) {
-            console.error('[WorkoutExecution] Erro ao obter dados da sessão:', error);
-            return null;
+            // Último recurso
+            this.navegacaoManualComFeedback();
         }
     }
     
@@ -2010,12 +1992,6 @@ class WorkoutExecutionManager {
     async confirmarSerie(exerciseIndex, seriesIndex) {
         console.log(`[WorkoutExecution] Confirmando série ${seriesIndex + 1} do exercício ${exerciseIndex + 1}`);
         
-        // Delegar para WorkoutSession se estiver disponível
-        if (this.workoutSession && typeof this.workoutSession.confirmSeries === 'function') {
-            return await this.workoutSession.confirmSeries(exerciseIndex, seriesIndex);
-        }
-        
-        // Implementação existente apenas se WorkoutSession não estiver disponível
         const exercicio = this.currentWorkout.exercicios[exerciseIndex];
         if (!exercicio) return;
         
@@ -2050,6 +2026,32 @@ class WorkoutExecutionManager {
         
         this.exerciciosExecutados.push(execucao);
         console.log(`[WorkoutExecution] Execução salva:`, execucao);
+        
+        // IMPORTANTE: Salvar no Supabase (como na branch main)
+        try {
+            const currentUser = AppState.get('currentUser');
+            if (currentUser && WorkoutProtocolService) {
+                console.log(`[WorkoutExecution] Salvando série no Supabase...`);
+                
+                // Buscar o protocolo_treino_id correto
+                const protocoloTreinoId = exercicio.protocolo_treino_id || exercicio.id;
+                
+                await WorkoutProtocolService.executarSerie(
+                    currentUser.id,
+                    {
+                        exercicio_id: exercicio.exercicio_id || exercicio.id,
+                        protocolo_treino_id: protocoloTreinoId,
+                        peso_utilizado: peso,
+                        repeticoes_realizadas: reps,
+                        serie_numero: seriesIndex + 1
+                    }
+                );
+                console.log(`[WorkoutExecution] ✅ Série salva no Supabase`);
+            }
+        } catch (error) {
+            console.error('[WorkoutExecution] ❌ Erro ao salvar série no Supabase:', error);
+            // Continuar mesmo se falhar - dados locais já foram salvos
+        }
         
         exercicio.seriesCompletas[seriesIndex] = true;
         
@@ -2183,12 +2185,31 @@ class WorkoutExecutionManager {
             const duracao = Math.round((Date.now() - this.startTime) / 60000);
             
             // Salvar no Supabase
-            if (window.WorkoutProtocolService?.salvarTreinoConcluido) {
-                await window.WorkoutProtocolService.salvarTreinoConcluido({
-                    workout: this.currentWorkout,
-                    duracao,
-                    exerciciosExecutados: this.exerciciosExecutados
-                });
+            const currentUser = AppState.get('currentUser');
+            if (currentUser && WorkoutProtocolService) {
+                console.log('[WorkoutExecution] Salvando treino concluído no Supabase...');
+                
+                try {
+                    // Marcar treino como concluído no planejamento
+                    if (this.currentWorkout.planejamento_id) {
+                        await WorkoutProtocolService.marcarTreinoConcluido(
+                            currentUser.id,
+                            this.currentWorkout.planejamento_id
+                        );
+                    }
+                    
+                    // Salvar estatísticas finais
+                    const totalSeries = this.exerciciosExecutados.length;
+                    const volumeTotal = this.exerciciosExecutados.reduce((acc, ex) => 
+                        acc + (ex.peso_utilizado * ex.repeticoes), 0
+                    );
+                    
+                    console.log(`[WorkoutExecution] ✅ Treino finalizado: ${totalSeries} séries, ${volumeTotal}kg volume total`);
+                    
+                } catch (error) {
+                    console.error('[WorkoutExecution] Erro ao salvar conclusão no Supabase:', error);
+                    // Continuar mesmo se falhar
+                }
             }
             
             // Limpar cache e estado
