@@ -961,8 +961,9 @@ class WorkoutExecutionManager {
         this.mostrarIndicadorCarregamento();
         
         try {
-            // Importar WorkoutSession dinamicamente
-            const { WorkoutSession } = await import('../core/WorkoutSession.js');
+            // Importar WorkoutSession dinamicamente com timestamp para evitar cache
+            const timestamp = Date.now();
+            const { WorkoutSession } = await import(`../core/WorkoutSession.js?t=${timestamp}`);
             
             // Criar nova sessão
             this.workoutSession = new WorkoutSession();

@@ -654,6 +654,3 @@ export class WorkoutSession {
         this.exerciciosExecutados = [];
     }
 }
-
-// Exportar classe
-export { WorkoutSession };
