@@ -45,8 +45,7 @@ export class WorkoutProtocolService {
             });
             
             // 2. Buscar planejamento semanal (qual treino fazer hoje)
-            const resultadoPlanejamento = await this.buscarTreinoDeHoje(userId, semanaAtual);
-            const planejamentoHoje = resultadoPlanejamento.data;
+            const { data: planejamentoHoje } = await this.buscarTreinoDeHoje(userId, semanaAtual);
             
             if (!planejamentoHoje || planejamentoHoje.tipo_atividade === 'folga') {
                 return {

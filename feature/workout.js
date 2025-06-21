@@ -428,4 +428,5 @@ function updateElement(id, value) {
 }
 
 // Exportar funções globais
-window.iniciarTreino = iniciarTreino;
+// Renomeado para evitar conflito com nova implementação no WorkoutExecutionManager
+// window.iniciarTreinoLegacy = iniciarTreino;

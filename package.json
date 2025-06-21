@@ -109,11 +109,19 @@
   "jest": {
     "testEnvironment": "jsdom",
     "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js",
+      "<rootDir>/tests/**/*.spec.js"
+    ],
+    "testPathIgnorePatterns": [
+      "<rootDir>/templates/*.spec.js"
+    ],
     "collectCoverageFrom": [
       "**/*.js",
       "!**/node_modules/**",
       "!**/dist/**",
-      "!**/coverage/**"
+      "!**/coverage/**",
+      "!**/templates/*.spec.js"
     ],
     "coverageThreshold": {
       "global": {

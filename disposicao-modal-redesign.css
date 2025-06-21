@@ -1,0 +1,279 @@
+/* =============================================================================
+   MODAL DE DISPOSIÇÃO - REDESIGN MODERNO
+   ============================================================================= */
+
+/* Overlay do Modal */
+.modal-disposicao-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+    animation: fadeIn 0.3s ease !important;
+}
+
+/* Container do Modal */
+.modal-disposicao-content {
+    background: var(--bg-card) !important;
+    border-radius: var(--radius-xl) !important;
+    padding: 40px !important;
+    max-width: 480px !important;
+    width: 100% !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid var(--border-color) !important;
+    position: relative !important;
+    animation: slideUp 0.4s ease !important;
+    overflow: hidden !important;
+}
+
+/* Decoração de Background */
+.modal-disposicao-content::before {
+    content: '' !important;
+    position: absolute !important;
+    top: -50% !important;
+    right: -50% !important;
+    width: 200% !important;
+    height: 200% !important;
+    background: radial-gradient(circle, var(--accent-primary) 0%, transparent 70%) !important;
+    opacity: 0.05 !important;
+    pointer-events: none !important;
+}
+
+/* Header do Modal */
+.modal-disposicao-header {
+    text-align: center !important;
+    margin-bottom: 32px !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.modal-disposicao-header h2 {
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    margin: 0 0 8px 0 !important;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-primary) 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+}
+
+.modal-disposicao-header p {
+    font-size: 0.95rem !important;
+    color: var(--text-secondary) !important;
+    margin: 0 !important;
+    opacity: 0.8 !important;
+}
+
+/* Container da Escala */
+.escala-disposicao {
+    display: flex !important;
+    gap: 12px !important;
+    margin-bottom: 32px !important;
+    justify-content: space-between !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Opções da Escala */
+.disposicao-option {
+    flex: 1 !important;
+    aspect-ratio: 1 !important;
+    background: var(--bg-primary) !important;
+    border: 2px solid var(--border-color) !important;
+    border-radius: var(--radius-lg) !important;
+    color: var(--text-secondary) !important;
+    cursor: pointer !important;
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+}
+
+/* Emoji para cada nível */
+.disposicao-option::before {
+    content: attr(data-emoji) !important;
+    font-size: 1.5rem !important;
+    margin-bottom: 4px !important;
+    filter: grayscale(1) !important;
+    transition: all 0.3s ease !important;
+}
+
+.disposicao-option[data-value="1"]::before { content: "😴" !important; }
+.disposicao-option[data-value="2"]::before { content: "😔" !important; }
+.disposicao-option[data-value="3"]::before { content: "😐" !important; }
+.disposicao-option[data-value="4"]::before { content: "😊" !important; }
+.disposicao-option[data-value="5"]::before { content: "💪" !important; }
+
+/* Hover State */
+.disposicao-option:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+.disposicao-option:hover::before {
+    filter: grayscale(0) !important;
+    transform: scale(1.1) !important;
+}
+
+/* Selected State */
+.disposicao-option.selected {
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(139, 92, 246, 0.1) 100%) !important;
+    border-color: var(--accent-primary) !important;
+    color: var(--text-primary) !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3) !important;
+}
+
+.disposicao-option.selected::before {
+    filter: grayscale(0) !important;
+    animation: bounce 0.5s ease !important;
+}
+
+.disposicao-option.selected::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: radial-gradient(circle at center, var(--accent-primary), transparent) !important;
+    opacity: 0.1 !important;
+    animation: pulse 2s ease-in-out infinite !important;
+}
+
+/* Número do valor */
+.disposicao-value {
+    font-size: 0.875rem !important;
+    opacity: 0.7 !important;
+}
+
+/* Botão Confirmar */
+.btn-disposicao-confirmar {
+    width: 100% !important;
+    padding: 16px !important;
+    background: var(--bg-secondary) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    cursor: not-allowed !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+    opacity: 0.5 !important;
+}
+
+/* Botão Habilitado */
+.btn-disposicao-confirmar:not(:disabled) {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%) !important;
+    color: white !important;
+    cursor: pointer !important;
+    opacity: 1 !important;
+    border: none !important;
+}
+
+.btn-disposicao-confirmar:not(:disabled):hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3) !important;
+}
+
+.btn-disposicao-confirmar:not(:disabled):active {
+    transform: translateY(0) !important;
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.1;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.05;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.1;
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 480px) {
+    .modal-disposicao-content {
+        padding: 24px !important;
+        margin: 10px !important;
+    }
+    
+    .modal-disposicao-header h2 {
+        font-size: 1.5rem !important;
+    }
+    
+    .escala-disposicao {
+        gap: 8px !important;
+    }
+    
+    .disposicao-option {
+        font-size: 1rem !important;
+    }
+    
+    .disposicao-option::before {
+        font-size: 1.25rem !important;
+    }
+}
+
+/* Acessibilidade - Focus States */
+.disposicao-option:focus {
+    outline: 2px solid var(--accent-primary) !important;
+    outline-offset: 2px !important;
+}
+
+.btn-disposicao-confirmar:focus {
+    outline: 2px solid var(--accent-primary) !important;
+    outline-offset: 2px !important;
+}

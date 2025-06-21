@@ -410,3 +410,10 @@ export default {
     getMuscleIcon,
     workoutTypeMap
 };
+
+// Também expor globalmente para scripts não-modulares
+if (typeof window !== 'undefined') {
+    window.getWorkoutIcon = getWorkoutIcon;
+    window.getIconForWorkoutType = getIconForWorkoutType;
+    window.workoutTypeMap = workoutTypeMap;
+}

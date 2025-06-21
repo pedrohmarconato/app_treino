@@ -83,16 +83,16 @@ export class AvaliacaoTreinoComponent {
                         </div>
                     </div>
                     
-                    <!-- Avaliação de Qualidade -->
+                    <!-- Avaliação de Fadiga Pós-Treino -->
                     <div class="avaliacao-qualidade">
-                        <h3>Avalie a qualidade do seu treino:</h3>
+                        <h3>Qual seu nível de fadiga após o treino? 😴</h3>
                         <div class="escala-likert">
                             <div class="escala-labels">
-                                <span class="label-inicio">Muito Ruim</span>
-                                <span class="label-fim">Excelente</span>
+                                <span class="label-inicio">Sem Fadiga</span>
+                                <span class="label-fim">Exaustão Total</span>
                             </div>
                             <div class="escala-opcoes" id="escala-qualidade">
-                                ${this.criarEscalaLikert(0, 5)}
+                                ${this.criarEscalaFadiga(0, 5)}
                             </div>
                             <div class="escala-numeros">
                                 <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
@@ -100,23 +100,13 @@ export class AvaliacaoTreinoComponent {
                         </div>
                     </div>
                     
-                    <!-- Avaliações Opcionais -->
-                    <div class="avaliacoes-opcionais">
-                        <div class="avaliacao-item">
-                            <label>Dificuldade percebida (opcional):</label>
-                            <div class="escala-mini" id="escala-dificuldade">
-                                <span class="escala-label">Muito Fácil</span>
-                                ${this.criarEscalaMini(1, 10, 'dificuldade')}
-                                <span class="escala-label">Muito Difícil</span>
-                            </div>
-                        </div>
-                        
-                        <div class="avaliacao-item">
-                            <label>Nível de energia (opcional):</label>
-                            <div class="escala-mini" id="escala-energia">
-                                <span class="escala-label">Exausto</span>
-                                ${this.criarEscalaMini(1, 10, 'energia')}
-                                <span class="escala-label">Cheio de Energia</span>
+                    <!-- Informação sobre Energia Pré-Treino -->
+                    <div class="energia-pre-info">
+                        <div class="info-box">
+                            <div class="info-icon">⚡</div>
+                            <div class="info-text">
+                                <h4>Energia antes do treino</h4>
+                                <p>Você informou nível <strong id="energia-pre-valor">3</strong> de energia antes de começar</p>
                             </div>
                         </div>
                     </div>
@@ -162,11 +152,11 @@ export class AvaliacaoTreinoComponent {
         `;
     }
     
-    static criarEscalaLikert(min, max) {
+    static criarEscalaFadiga(min, max) {
         let html = '';
         for (let i = min; i <= max; i++) {
-            const emojis = ['😞', '😐', '😑', '🙂', '😊', '🤩'];
-            const labels = ['Péssimo', 'Ruim', 'Regular', 'Bom', 'Muito Bom', 'Excelente'];
+            const emojis = ['😎', '🙂', '😊', '😅', '🥵', '🥴'];
+            const labels = ['Sem fadiga', 'Fadiga leve', 'Moderada', 'Intensa', 'Muito fadigado', 'Exaustão total'];
             
             html += `
                 <div class="likert-option" data-value="${i}">
@@ -198,9 +188,7 @@ export class AvaliacaoTreinoComponent {
         
         // Estado da avaliação
         let avaliacaoEstado = {
-            qualidade: null,
-            dificuldade: null,
-            energia: null,
+            post_workout: null,  // Nível de fadiga (0-5)
             observacoes: ''
         };
         
@@ -213,32 +201,17 @@ export class AvaliacaoTreinoComponent {
                 
                 // Selecionar atual
                 option.classList.add('selected');
-                avaliacaoEstado.qualidade = parseInt(option.dataset.value);
+                avaliacaoEstado.post_workout = parseInt(option.dataset.value);
                 
                 // Habilitar botão finalizar
                 this.atualizarBotaoFinalizar(avaliacaoEstado);
                 
-                console.log('[AvaliacaoTreino] Qualidade selecionada:', avaliacaoEstado.qualidade);
+                console.log('[AvaliacaoTreino] Fadiga pós-treino selecionada:', avaliacaoEstado.post_workout);
             });
         });
         
-        // Escalas mini (opcionais)
-        modal.querySelectorAll('.escala-mini-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tipo = btn.dataset.tipo;
-                const valor = parseInt(btn.dataset.value);
-                
-                // Remover seleção anterior do mesmo tipo
-                modal.querySelectorAll(`.escala-mini-btn[data-tipo="${tipo}"]`)
-                    .forEach(b => b.classList.remove('selected'));
-                
-                // Selecionar atual
-                btn.classList.add('selected');
-                avaliacaoEstado[tipo] = valor;
-                
-                console.log(`[AvaliacaoTreino] ${tipo} selecionado:`, valor);
-            });
-        });
+        // Remover as escalas mini (não usadas mais)
+        // As escalas mini foram substituídas pelo sistema simplificado
         
         // Observações
         const textarea = modal.querySelector('#observacoes-treino');
@@ -260,8 +233,8 @@ export class AvaliacaoTreinoComponent {
         // Botão Finalizar
         const btnFinalizar = modal.querySelector('#btn-finalizar-treino');
         btnFinalizar?.addEventListener('click', async () => {
-            if (avaliacaoEstado.qualidade === null) {
-                alert('Por favor, avalie a qualidade do treino antes de finalizar.');
+            if (avaliacaoEstado.post_workout === null) {
+                alert('Por favor, avalie seu nível de fadiga antes de finalizar.');
                 return;
             }
             
@@ -299,10 +272,10 @@ export class AvaliacaoTreinoComponent {
         const btn = document.getElementById('btn-finalizar-treino');
         if (!btn) return;
         
-        const podeEinalizar = estado.qualidade !== null;
-        btn.disabled = !podeEinalizar;
+        const podeFinalizar = estado.post_workout !== null;
+        btn.disabled = !podeFinalizar;
         
-        if (podeEinalizar) {
+        if (podeFinalizar) {
             btn.classList.add('ready');
         } else {
             btn.classList.remove('ready');
@@ -316,29 +289,9 @@ export class AvaliacaoTreinoComponent {
             // Obter userId atual
             const userId = 1; // TODO: implementar sistema de usuários
             
-            // Criar objeto de avaliação
-            const avaliacao = {
-                qualidade: avaliacaoEstado.qualidade,
-                dificuldade_percebida: avaliacaoEstado.dificuldade,
-                energia_nivel: avaliacaoEstado.energia,
-                observacoes_finais: avaliacaoEstado.observacoes || null
-            };
-
-            // 1) Finalizar sessão no cache com avaliação
-            await TreinoCacheService.finalizarTreinoComAvaliacao({
-                avaliacao_qualidade: avaliacao.qualidade,
-                dificuldade_percebida: avaliacao.dificuldade_percebida,
-                energia_nivel: avaliacao.energia_nivel,
-                observacoes_finais: avaliacao.observacoes_finais
-            });
-
-            // 2) Commitar dados ao banco
-            const commitResultado = await TreinoCacheService.commitarTreinoParaBanco();
-            console.log('[AvaliacaoTreino] Resultado commit:', commitResultado);
-            
             // Finalizar treino usando o novo serviço
             const resultado = await TreinoFinalizacaoService.finalizarTreino(userId, {
-                avaliacao: avaliacao,
+                post_workout: avaliacaoEstado.post_workout,
                 observacoes: avaliacaoEstado.observacoes
             });
             

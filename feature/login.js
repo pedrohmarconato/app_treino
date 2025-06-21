@@ -75,7 +75,8 @@ function renderizarUsuarios(usuarios) {
         
         const userImages = {
             'Pedro': 'pedro.png',
-            'Japa': 'japa.png'
+            'Japa': 'japa.png',
+            'Vini': 'vini.png'
         };
         
         const card = document.createElement('div');

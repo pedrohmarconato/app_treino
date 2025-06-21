@@ -105,6 +105,31 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Gerenciamento de estado
 - Modularização do código
 
+## [2.0.1] - 2025-06-17
+
+### 🔒 Remoção Segura
+- Backup criado: `feature/workoutExecution.js.bak`
+- Funções obsoletas marcadas para remoção em 2025-06-24
+- Verificação completa: 0 dependências ativas encontradas
+
+### Arquivos Modificados
+- `feature/workoutExecution.js` (Estágio 1: Comentário)
+- `services/treinoCacheService.js` (Aprimorado)
+
+## [1.5.0] - 2025-06-17
+
+### 🔧 Melhorado
+- **Arquitetura de Cache**:
+  - Removidas funções duplicadas de cache local
+  - Centralizado todo o gerenciamento no `TreinoCacheService`
+  - Adicionado novo sistema de persistência de estado
+
+### 🗑️ Removido
+- Funções obsoletas:
+  - `saveToLocalStorage()`
+  - `loadFromLocalStorage()`
+  - `clearLocalWorkoutData()`
+
 ## [5.0.0] - 2024-10-XX
 
 ### 🎨 Adicionado

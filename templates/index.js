@@ -2,7 +2,8 @@
 import { modalPlanejamentoTemplate, modalPlanejamentoStyles } from './modals.js';
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';
-import { workoutTemplate, workoutStyles } from './workout.js';
+import { workoutTemplate, exerciseCardTemplate } from './workoutExecution.js';
+import { workoutStyles } from './workout.js';
 import { planejamentoSemanalPageTemplate } from './planejamentoSemanalPage.js';
 import { MetricsWidget, metricsWidgetStyles } from '../components/MetricsWidget.js';
 
@@ -218,7 +219,10 @@ async function initializeHomeComponents() {
             }
         }
         
-        // 3. Carregar dashboard
+        // 3. Configurar botão contextual primeiro
+        setupContextualWorkoutButton();
+        
+        // 4. Carregar dashboard
         setTimeout(async () => {
             try {
                 if (window.carregarDashboard) {
@@ -259,7 +263,8 @@ function updateUserInfo(user) {
         
         const userImages = {
             'Pedro': 'pedro.png',
-            'Japa': 'japa.png'
+            'Japa': 'japa.png',
+            'Vini': 'vini.png'
         };
         
         const avatarEl = document.getElementById('user-avatar');
@@ -272,6 +277,65 @@ function updateUserInfo(user) {
         
     } catch (error) {
         console.error('[updateUserInfo] Erro:', error);
+    }
+}
+
+// Configurar botão contextual de treino
+function setupContextualWorkoutButton() {
+    try {
+        const contextualBtn = document.getElementById('contextual-workout-btn');
+        if (!contextualBtn) {
+            console.warn('[setupContextualWorkoutButton] Botão contextual não encontrado');
+            return;
+        }
+        
+        console.log('[setupContextualWorkoutButton] ✅ Botão contextual encontrado, configurando...');
+        
+        // Remover estado de loading
+        contextualBtn.classList.remove('btn-loading');
+        contextualBtn.classList.add('btn-primary');
+        
+        // Atualizar conteúdo do botão
+        const btnIcon = contextualBtn.querySelector('.btn-icon');
+        const btnText = contextualBtn.querySelector('.btn-text');
+        
+        if (btnIcon && btnText) {
+            btnIcon.textContent = '▶️';
+            btnText.textContent = 'Iniciar Treino';
+        }
+        
+        // Configurar evento de clique
+        contextualBtn.onclick = () => {
+            const workout = window.AppState?.get('currentWorkout');
+            if (workout) {
+                if (workout.tipo === 'folga') {
+                    if (window.showNotification) {
+                        window.showNotification('Hoje é dia de descanso! 😴', 'info');
+                    }
+                } else if (workout.tipo === 'cardio') {
+                    if (window.showNotification) {
+                        window.showNotification('Hora do cardio! 🏃‍♂️', 'info');
+                    }
+                } else {
+                    if (window.iniciarTreino) {
+                        window.iniciarTreino();
+                    } else if (window.showNotification) {
+                        window.showNotification('Sistema de treino carregando...', 'info');
+                    }
+                }
+            } else {
+                if (window.abrirPlanejamentoParaUsuarioAtual) {
+                    window.abrirPlanejamentoParaUsuarioAtual();
+                } else if (window.showNotification) {
+                    window.showNotification('Configure seu planejamento primeiro', 'warning');
+                }
+            }
+        };
+        
+        console.log('[setupContextualWorkoutButton] ✅ Botão contextual configurado com sucesso');
+        
+    } catch (error) {
+        console.error('[setupContextualWorkoutButton] Erro:', error);
     }
 }
 
@@ -533,6 +597,7 @@ export {
     loginTemplate,
     homeTemplate,
     workoutTemplate,
+    exerciseCardTemplate,
     workoutStyles,
     planejamentoSemanalPageTemplate,
 };

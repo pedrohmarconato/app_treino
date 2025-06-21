@@ -4,345 +4,198 @@ import WeeklyPlanService from './weeklyPlanningService.js';
 import TreinoExecutladoService from './treinoExecutadoService.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 
-export class TreinoFinalizacaoService {
+class TreinoFinalizacaoService {
     
-    // Finalizar treino manualmente
-    static async finalizarTreino(userId, opcoes = {}) {
+    // Finalizar treino manualmente com dados básicos
+    static async finalizarTreino(
+        userId, 
+        { 
+            pre_workout = null, // escala 0-5: nível de ENERGIA antes
+            post_workout = null, // escala 0-5: nível de FADIGA depois
+            observacoes = null,
+            forcarFinalizacao = false
+        } = {}
+    ) {
         try {
-            const {
-                protocolo_treino_id = null,
-                grupo_muscular = null,
-                observacoes = null,
-                avaliacao = null // dados da avaliação do usuário
-            } = opcoes;
+            console.log('[TreinoFinalizacao] Iniciando finalização para usuário:', userId);
+            console.log('[TreinoFinalizacao] Parâmetros:', { pre_workout, post_workout, observacoes, forcarFinalizacao });
             
-            console.log(`[TreinoFinalizacaoService] Iniciando finalização manual para usuário ${userId}`);
+            // Obter informações básicas do planejamento atual
+            const dadosPlanejamento = await this.obterDadosPlanejamentoAtual(userId);
             
-            const hoje = new Date();
-            const dataHoje = toSaoPauloDateString(hoje);
+            if (!dadosPlanejamento.success) {
+                throw new Error(dadosPlanejamento.error);
+            }
             
-            // Verificar se já existe treino finalizado hoje
-            const jaFinalizado = await this.verificarTreinoJaFinalizado(userId, dataHoje, grupo_muscular);
+            const { ano, semana, diaSemana, planejamento } = dadosPlanejamento.data;
             
-            if (jaFinalizado.finalizado) {
+            // Verificar se treino já foi concluído
+            if (planejamento?.concluido && !forcarFinalizacao) {
                 return {
                     success: false,
-                    erro: 'TREINO_JA_FINALIZADO',
-                    mensagem: 'Treino já foi finalizado hoje',
-                    data_finalizacao: jaFinalizado.data_conclusao
+                    erro: 'Treino já foi concluído hoje',
+                    codigo: 'TREINO_JA_CONCLUIDO'
                 };
             }
             
-            // Buscar dados para finalização
-            const dadosTreino = await this.coletarDadosFinalizacao(userId, protocolo_treino_id, grupo_muscular);
+            // Preparar dados da atualização
+            const dadosAtualizacao = {
+                concluido: true,
+                data_conclusao: toSaoPauloISOString(nowInSaoPaulo()),
+                pre_workout,
+                post_workout,
+                observacoes_finalizacao: observacoes
+            };
             
-            if (!dadosTreino.execucoes || dadosTreino.execucoes.length === 0) {
-                return {
-                    success: false,
-                    erro: 'SEM_EXECUCOES',
-                    mensagem: 'Nenhuma execução encontrada para finalizar'
-                };
+            // Remover campos nulos para não sobrescrever dados existentes desnecessariamente
+            Object.keys(dadosAtualizacao).forEach(key => {
+                if (dadosAtualizacao[key] === null) {
+                    delete dadosAtualizacao[key];
+                }
+            });
+            
+            console.log('[TreinoFinalizacao] Dados para atualização:', dadosAtualizacao);
+            
+            // Atualizar planejamento semanal
+            const { error: updateError, data: planejamentoAtualizado } = await supabase
+                .from('planejamento_semanal')
+                .update(dadosAtualizacao)
+                .eq('usuario_id', userId)
+                .eq('ano', ano)
+                .eq('semana', semana)
+                .eq('dia_semana', diaSemana)
+                .select()
+                .single();
+            
+            if (updateError) {
+                console.error('[TreinoFinalizacao] Erro ao atualizar planejamento:', updateError);
+                throw updateError;
             }
             
-            // Criar ou atualizar sessão na nova estrutura
-            const sessaoResult = await this.criarSessaoTreino(userId, dadosTreino, observacoes);
+            console.log('[TreinoFinalizacao] Planejamento atualizado:', planejamentoAtualizado);
             
-            if (!sessaoResult.success) {
-                return sessaoResult;
-            }
-            
-            // Atualizar planejamento_semanal com avaliação
-            const planejamentoResult = await this.atualizarPlanejamentoSemanal(userId, dadosTreino, hoje, avaliacao);
-            
-            if (!planejamentoResult.success) {
-                console.warn('[TreinoFinalizacaoService] Erro ao atualizar planejamento:', planejamentoResult.error);
-                // Não falhar a finalização por erro no planejamento
-            }
-            
-            // Associar execuções à sessão
-            if (sessaoResult.data?.id) {
-                await this.associarExecucoesSessao(dadosTreino.execucoes, sessaoResult.data.id);
-            }
+            // Obter contagem de execuções do dia (se houver)
+            const execucoes = await this.contarExecucoesDia(userId);
             
             const resultado = {
                 success: true,
-                sessao_id: sessaoResult.data?.id,
-                execucoes_finalizadas: dadosTreino.execucoes.length,
-                grupo_muscular: dadosTreino.grupo_muscular,
-                tipo_finalizacao: 'manual',
-                data_finalizacao: toSaoPauloISOString(hoje),
-                planejamento_atualizado: planejamentoResult.success,
-                avaliacao_salva: !!avaliacao
+                mensagem: 'Treino finalizado com sucesso',
+                sessao_id: planejamentoAtualizado.id,
+                execucoes_finalizadas: execucoes.count || 0,
+                dados_planejamento: planejamentoAtualizado,
+                pre_workout: planejamentoAtualizado.pre_workout,
+                post_workout: planejamentoAtualizado.post_workout
             };
             
-            console.log('[TreinoFinalizacaoService] ✅ Treino finalizado com sucesso:', resultado);
-            
+            console.log('[TreinoFinalizacao] Resultado final:', resultado);
             return resultado;
             
         } catch (error) {
-            console.error('[TreinoFinalizacaoService] Erro ao finalizar treino:', error);
+            console.error('[TreinoFinalizacao] Erro na finalização:', error);
             return {
                 success: false,
-                erro: 'ERRO_FINALIZACAO',
-                mensagem: error.message
+                erro: error.message || 'Erro interno',
+                codigo: 'ERRO_FINALIZACAO'
             };
         }
     }
     
-    // Verificar se treino já foi finalizado hoje
-    static async verificarTreinoJaFinalizado(userId, data, grupoMuscular = null) {
+    // Obter dados do planejamento atual (dia, semana, ano)
+    static async obterDadosPlanejamentoAtual(userId) {
         try {
-            const hoje = new Date();
-            const ano = hoje.getFullYear();
-            const semana = this.calcularSemana(hoje);
-            const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
+            const agora = nowInSaoPaulo();
+            const { ano, semana } = WeeklyPlanService.getCurrentWeek();
+            const diaSemana = WeeklyPlanService.dayToDb(agora.getDay());
             
-            // Verificar no planejamento_semanal
-            const { data: planejamento } = await supabase
+            console.log('[TreinoFinalizacao] Buscando planejamento:', { userId, ano, semana, diaSemana });
+            
+            // Buscar planejamento atual
+            const { data: planejamento, error } = await supabase
                 .from('planejamento_semanal')
-                .select('concluido, data_conclusao, tipo_atividade')
+                .select('*')
                 .eq('usuario_id', userId)
                 .eq('ano', ano)
                 .eq('semana', semana)
                 .eq('dia_semana', diaSemana)
                 .single();
             
-            // Verificar na nova estrutura
-            // let query = supabase
-            //     .from('treino_executado') // DESATIVADO: tabela inexistente
-                .select('id, concluido, data_fim, grupo_muscular')
-                .eq('usuario_id', userId)
-                .eq('data_treino', data)
-                .eq('concluido', true);
-                
-            if (grupoMuscular) {
-                query = query.eq('grupo_muscular', grupoMuscular);
+            if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+                console.error('[TreinoFinalizacao] Erro ao buscar planejamento:', error);
+                throw error;
             }
-            
-            const { data: sessoes } = await query;
-            
-            const finalizadoPlanejamento = planejamento?.concluido || false;
-            const finalizadoSessao = sessoes && sessoes.length > 0;
             
             return {
-                finalizado: finalizadoPlanejamento || finalizadoSessao,
-                data_conclusao: planejamento?.data_conclusao || sessoes?.[0]?.data_fim,
-                fonte: finalizadoPlanejamento ? 'planejamento' : (finalizadoSessao ? 'sessao' : 'nenhuma')
+                success: true,
+                data: {
+                    ano,
+                    semana,
+                    diaSemana,
+                    planejamento: planejamento || null
+                }
             };
             
         } catch (error) {
-            console.error('[TreinoFinalizacaoService] Erro ao verificar finalização:', error);
-            return { finalizado: false, erro: error.message };
-        }
-    }
-    
-    // Coletar dados para finalização
-    static async coletarDadosFinalizacao(userId, protocoloTreinoId, grupoMuscular) {
-        try {
-            const hoje = new Date();
-            const dataHoje = toSaoPauloDateString(hoje);
-            const hojeInicio = `${dataHoje}T00:00:00`;
-            const hojeAtual = toSaoPauloISOString(hoje);
-            
-            // Buscar execuções do dia
-            let query = supabase
-                .from('execucao_exercicio_usuario')
-                .select(`
-                    *,
-                    exercicios (
-                        nome,
-                        grupo_muscular,
-                        tipo_atividade
-                    )
-                `)
-                .eq('usuario_id', userId)
-                .gte('data_execucao', hojeInicio)
-                .lte('data_execucao', hojeAtual)
-                .order('data_execucao');
-                
-            if (protocoloTreinoId) {
-                query = query.eq('protocolo_treino_id', protocoloTreinoId);
-            }
-            
-            const { data: execucoes } = await query;
-            
-            if (!execucoes || execucoes.length === 0) {
-                return { execucoes: [] };
-            }
-            
-            // Determinar grupo muscular principal
-            const grupoDetectado = grupoMuscular || 
-                this.determinarGrupoMuscularPrincipal(execucoes) || 
-                'Treino Geral';
-            
-            // Calcular métricas
-            const primeiraExecucao = execucoes[0];
-            const ultimaExecucao = execucoes[execucoes.length - 1];
-            const duracaoMinutos = Math.max(1, Math.round(
-                (new Date(ultimaExecucao.data_execucao) - new Date(primeiraExecucao.data_execucao)) / (1000 * 60)
-            ));
-            
-            const pesoTotal = execucoes.reduce((total, exec) => 
-                total + ((exec.peso_utilizado || 0) * (exec.repeticoes || 0)), 0
-            );
-            
+            console.error('[TreinoFinalizacao] Erro ao obter dados do planejamento:', error);
             return {
-                execucoes,
-                grupo_muscular: grupoDetectado,
-                tipo_atividade: primeiraExecucao.exercicios?.tipo_atividade || grupoDetectado,
-                protocolo_treino_id: protocoloTreinoId || primeiraExecucao.protocolo_treino_id,
-                data_inicio: primeiraExecucao.data_execucao,
-                data_fim: ultimaExecucao.data_execucao,
-                duracao_minutos: duracaoMinutos,
-                peso_total: pesoTotal,
-                total_exercicios: new Set(execucoes.map(e => e.exercicio_id)).size,
-                total_series: execucoes.length
+                success: false,
+                error: error.message
             };
-            
-        } catch (error) {
-            console.error('[TreinoFinalizacaoService] Erro ao coletar dados:', error);
-            return { execucoes: [], erro: error.message };
         }
     }
     
-    // Determinar grupo muscular principal do treino
-    static determinarGrupoMuscularPrincipal(execucoes) {
-        const grupos = {};
-        
-        execucoes.forEach(exec => {
-            const grupo = exec.exercicios?.grupo_muscular || 'Geral';
-            grupos[grupo] = (grupos[grupo] || 0) + 1;
-        });
-        
-        return Object.entries(grupos)
-            .sort(([,a], [,b]) => b - a)[0]?.[0];
-    }
-    
-    // Criar sessão na nova estrutura
-    static async criarSessaoTreino(userId, dadosTreino, observacoes) {
+    // Contar execuções do dia atual
+    static async contarExecucoesDia(userId) {
         try {
-            return await TreinoExecutladoService.criarSessaoTreino({
-                usuario_id: userId,
-                data_treino: toSaoPauloDateString(new Date()),
-                grupo_muscular: dadosTreino.grupo_muscular,
-                tipo_atividade: dadosTreino.tipo_atividade,
-                protocolo_treino_id: dadosTreino.protocolo_treino_id,
-                concluido: true,
-                data_inicio: dadosTreino.data_inicio,
-                data_fim: dadosTreino.data_fim,
-                duracao_minutos: dadosTreino.duracao_minutos,
-                observacoes: observacoes || `Finalizado ${dadosTreino.total_exercicios} exercícios, ${dadosTreino.total_series} séries`
-            });
+            const dataHoje = toSaoPauloDateString(nowInSaoPaulo());
             
-        } catch (error) {
-            console.error('[TreinoFinalizacaoService] Erro ao criar sessão:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // Atualizar planejamento_semanal
-    static async atualizarPlanejamentoSemanal(userId, dadosTreino, dataFinalizacao, avaliacao = null) {
-        try {
-            const ano = dataFinalizacao.getFullYear();
-            const semana = this.calcularSemana(dataFinalizacao);
-            const diaSemana = WeeklyPlanService.dayToDb(dataFinalizacao.getDay());
-            
-            const updateData = {
-                concluido: true,
-                data_conclusao: toSaoPauloISOString(dataFinalizacao),
-                protocolo_treino_id: dadosTreino.protocolo_treino_id
-            };
-            
-            // Adicionar resposta da avaliação se fornecida
-            if (avaliacao && avaliacao.qualidade !== undefined) {
-                updateData.resposta_avaliacao = JSON.stringify(avaliacao);
-            }
-            
-            const { error } = await supabase
-                .from('planejamento_semanal')
-                .update(updateData)
-                .eq('usuario_id', userId)
-                .eq('ano', ano)
-                .eq('semana', semana)
-                .eq('dia_semana', diaSemana);
-            
-            if (error) {
-                console.error('[TreinoFinalizacaoService] Erro ao atualizar planejamento:', error);
-                return { success: false, error: error.message };
-            }
-            
-            console.log('[TreinoFinalizacaoService] ✅ Planejamento semanal atualizado');
-            return { success: true };
-            
-        } catch (error) {
-            console.error('[TreinoFinalizacaoService] Erro ao atualizar planejamento:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // Associar execuções à sessão
-    static async associarExecucoesSessao(execucoes, sessaoId) {
-        try {
-            const execucaoIds = execucoes.map(e => e.id);
-            
-            const { error } = await supabase
+            const { count, error } = await supabase
                 .from('execucao_exercicio_usuario')
-
-                .in('id', execucaoIds);
+                .select('*', { count: 'exact', head: true })
+                .eq('usuario_id', userId)
+                .gte('data_execucao', `${dataHoje}T00:00:00`)
+                .lt('data_execucao', `${dataHoje}T23:59:59`);
             
             if (error) {
-                console.error('[TreinoFinalizacaoService] Erro ao associar execuções:', error);
-            } else {
-                console.log(`[TreinoFinalizacaoService] ✅ ${execucaoIds.length} execuções associadas à sessão ${sessaoId}`);
+                console.warn('[TreinoFinalizacao] Erro ao contar execuções (não crítico):', error);
+                return { count: 0 };
             }
             
+            return { count: count || 0 };
+            
         } catch (error) {
-            console.error('[TreinoFinalizacaoService] Erro ao associar execuções:', error);
+            console.warn('[TreinoFinalizacao] Erro ao contar execuções (não crítico):', error);
+            return { count: 0 };
         }
     }
     
-    // Utilitário para calcular semana do ano
-    static calcularSemana(data) {
-        const inicioAno = new Date(data.getFullYear(), 0, 1);
-        const diasDoAno = Math.floor((data - inicioAno) / (24 * 60 * 60 * 1000));
-        return Math.ceil((diasDoAno + inicioAno.getDay() + 1) / 7);
-    }
-    
-    // Interface para mostrar status de finalização
-    static async obterStatusFinalizacao(userId) {
+    // Verificar status de conclusão atual
+    static async verificarStatusConclusao(userId) {
         try {
-            const hoje = new Date();
-            const dataHoje = toSaoPauloDateString(hoje);
+            const dadosPlanejamento = await this.obterDadosPlanejamentoAtual(userId);
             
-            // Verificar se já finalizado
-            const jaFinalizado = await this.verificarTreinoJaFinalizado(userId, dataHoje);
-            
-            if (jaFinalizado.finalizado) {
+            if (!dadosPlanejamento.success) {
                 return {
-                    pode_finalizar: false,
-                    ja_finalizado: true,
-                    data_finalizacao: jaFinalizado.data_conclusao,
-                    fonte: jaFinalizado.fonte
+                    success: false,
+                    error: dadosPlanejamento.error
                 };
             }
             
-            // Buscar execuções do dia para mostrar status atual
-            const dadosTreino = await this.coletarDadosFinalizacao(userId);
+            const { planejamento } = dadosPlanejamento.data;
             
             return {
-                pode_finalizar: true,
-                ja_finalizado: false,
-                execucoes_hoje: dadosTreino.execucoes?.length || 0,
-                grupo_muscular: dadosTreino.grupo_muscular,
-                total_exercicios: dadosTreino.total_exercicios || 0,
-                total_series: dadosTreino.total_series || 0
+                success: true,
+                concluido: planejamento?.concluido || false,
+                data_conclusao: planejamento?.data_conclusao || null,
+                pre_workout: planejamento?.pre_workout || null,
+                post_workout: planejamento?.post_workout || null,
+                observacoes: planejamento?.observacoes_finalizacao || null
             };
             
         } catch (error) {
-            console.error('[TreinoFinalizacaoService] Erro ao obter status:', error);
-            return { 
-                pode_finalizar: false, 
-                erro: error.message 
+            console.error('[TreinoFinalizacao] Erro ao verificar status:', error);
+            return {
+                success: false,
+                error: error.message
             };
         }
     }

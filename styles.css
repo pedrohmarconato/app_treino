@@ -3606,15 +3606,20 @@ button:focus-visible {
 .avaliacao-modal {
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(10px);
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 .avaliacao-content {
     max-width: 600px;
+    width: 100%;
     max-height: 90vh;
     overflow-y: auto;
     padding: 0;
+    margin: 20px;
     background: var(--bg-primary);
     border: 2px solid var(--accent-primary);
+    border-radius: var(--radius-lg);
     box-shadow: 0 0 30px rgba(255, 229, 0, 0.3);
 }
 
@@ -4026,6 +4031,7 @@ button:focus-visible {
     .avaliacao-content {
         margin: 10px;
         max-height: calc(100vh - 20px);
+        width: calc(100% - 20px);
     }
     
     .resumo-grid {
@@ -4044,6 +4050,57 @@ button:focus-visible {
     
     .likert-option {
         padding: 8px 4px;
+    }
+    
+    .likert-emoji {
+        font-size: 1.25rem;
+    }
+    
+    .likert-numero {
+        font-size: 1rem;
+    }
+    
+    .likert-label {
+        font-size: 0.65rem;
+    }
+    
+    .escala-mini {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .escala-mini-opcoes {
+        gap: 3px;
+    }
+    
+    .escala-mini-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .avaliacao-content {
+        margin: 5px;
+        max-height: calc(100vh - 10px);
+        width: calc(100% - 10px);
+    }
+    
+    .escala-opcoes {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .escala-mini {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .escala-label {
+        text-align: center;
+        min-width: auto;
     }
     
     .likert-emoji {
@@ -4520,6 +4577,119 @@ button:focus-visible {
     .series-toggle-history {
         padding: 10px 12px;
         font-size: 0.75rem;
+    }
+}
+
+/* ===== MODAL DE DISPOSIÇÃO INICIAL ===== */
+.clean-modal {
+    backdrop-filter: blur(8px) !important;
+}
+
+.clean-modal-content {
+    max-width: 400px;
+    text-align: center;
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.clean-modal-content h2 {
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.clean-modal-content p {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+}
+
+/* Escala Likert */
+.escala-likert {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 24px 0;
+    flex-wrap: wrap;
+}
+
+.likert-option {
+    width: 50px;
+    height: 50px;
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.likert-option::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+.likert-option:hover {
+    border-color: var(--accent-primary);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(168, 255, 0, 0.3);
+}
+
+.likert-option:hover::before {
+    width: 100%;
+    height: 100%;
+}
+
+.likert-option:hover {
+    color: var(--bg-primary);
+}
+
+.likert-option.selected {
+    border-color: var(--accent-primary);
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(168, 255, 0, 0.4);
+}
+
+.likert-option.selected::before {
+    width: 100%;
+    height: 100%;
+}
+
+/* Responsividade da escala Likert */
+@media (max-width: 480px) {
+    .escala-likert {
+        gap: 8px;
+    }
+    
+    .likert-option {
+        width: 45px;
+        height: 45px;
+        font-size: 1.1rem;
+    }
+    
+    .clean-modal-content {
+        max-width: 320px;
+        margin: 20px;
     }
 }
 }

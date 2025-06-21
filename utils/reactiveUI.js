@@ -409,7 +409,8 @@ export class ReactiveUI {
             if (avatarEl) {
                 const userImages = {
                     'Pedro': 'pedro.png',
-                    'Japa': 'japa.png'
+                    'Japa': 'japa.png',
+                    'Vini': 'vini.png'
                 };
                 
                 avatarEl.src = userImages[user.nome] || 'pedro.png';

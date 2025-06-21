@@ -1,6 +1,6 @@
 // js/features/dashboard.js - Dashboard completo com dados reais
 import AppState from '../state/appState.js';
-import { obterSemanaAtivaUsuario, carregarStatusSemanas } from '../services/weeklyPlanningService.js';
+import { obterSemanaAtivaUsuario, carregarStatusSemanas, buscarExerciciosTreinoDia } from '../services/weeklyPlanningService.js';
 import { fetchMetricasUsuario } from '../services/userService.js';
 import { getWorkoutIcon, getActionIcon, workoutTypeMap } from '../utils/icons.js';
 import WeeklyPlanService from '../services/weeklyPlanningService.js';
@@ -1174,6 +1174,7 @@ async function carregarPlanejamentoSemanal() {
 
 // Carregar exercícios do dia com informações detalhadas
 async function carregarExerciciosDoDia() {
+    let container;
     try {
         const currentUser = AppState.get('currentUser');
         
@@ -1182,14 +1183,14 @@ async function carregarExerciciosDoDia() {
             return;
         }
         
-        const container = document.getElementById('workout-exercises-list');
+        container = document.getElementById('workout-exercises-list');
         if (!container) {
             console.warn('[carregarExerciciosDoDia] Container workout-exercises-list não encontrado');
             return;
         }
 
         // Usar nossa nova implementação para buscar exercícios
-        const resultado = await WeeklyPlanService.buscarExerciciosTreinoDia(currentUser.id);
+        const resultado = await buscarExerciciosTreinoDia(currentUser.id);
         
         console.log('[carregarExerciciosDoDia] 📊 Resultado da busca:', resultado);
         
@@ -1595,9 +1596,9 @@ function atualizarAtividadeRecente(execucoesRecentes) {
 
 // Configurar botão de iniciar treino
 function configurarBotaoIniciar() {
-    const startBtn = document.getElementById('start-workout-btn');
+    const startBtn = document.getElementById('contextual-workout-btn');
     if (!startBtn) {
-        console.warn('[configurarBotaoIniciar] Botão não encontrado');
+        console.warn('[configurarBotaoIniciar] Botão contextual não encontrado');
         return;
     }
     
@@ -2739,7 +2740,8 @@ function mostrarModalHistorico(historico, dayIndex) {
                 try {
                     const currentUser = AppState.get('currentUser');
                     if (!currentUser?.id) return;
-                    const resultado = await WeeklyPlanService.buscarExerciciosTreinoDia(currentUser.id, historico.data_treino);
+                    const { buscarExerciciosTreinoDia } = await import('../services/weeklyPlanningService.js');
+                    const resultado = await buscarExerciciosTreinoDia(currentUser.id, historico.data_treino);
                     if (resultado?.data && resultado.data.length) {
                         window.displayExercisesFromProtocol(resultado.data, resultado.planejamento, 'modal-workout-exercises-list');
                     } else {

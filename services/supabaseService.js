@@ -51,12 +51,22 @@ export async function query(table, options = {}) {
             q = q.order(options.order.column, { ascending: options.order.ascending ?? true });
         }
         if (options.limit) q = q.limit(options.limit);
-        if (options.single) q = q.single();
+        if (options.single) {
+            q = q.single();
+        } else if (options.maybeSingle) {
+            q = q.maybeSingle();
+        }
         
         console.log(`[query] Executando query na tabela ${table}...`);
         const { data, error } = await q;
         
         if (error) {
+            // Tratar erro de "single" quando não há registros ou múltiplos (PGRST116)
+            if (error.code === 'PGRST116') {
+                console.warn(`[query] ⚠️ Nenhum resultado único para ${table}. Retornando null. Detalhes:`, error.message);
+                return { data: null, error: null };
+            }
+
             console.error(`[query] Erro na consulta ${table}:`, error);
             throw error;
         }

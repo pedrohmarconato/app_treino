@@ -4,12 +4,16 @@ import AppState from '../state/appState.js';
 import '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
+// Importar workoutExecution ANTES do protocolIntegration para garantir que workoutExecutionManager esteja disponível
+import '../feature/workoutExecution.js';
 import { initializeProtocol } from '../integration/protocolIntegration.js';
 import { integrationService } from '../services/integrationService.js';
 // Importar funções de localStorage para disponibilizar globalmente
 import '../utils/weekPlanStorage.js';
 // Importar weeklyPlanningService para disponibilizar WeeklyPlanService globalmente
 import '../services/weeklyPlanningService.js';
+// CRÍTICO: Importar e disponibilizar DisposicaoInicioModal globalmente
+import DisposicaoInicioModal from '../components/disposicaoInicioModal.js';
 
 // Verificar dependências críticas
 function checkDependencies() {
@@ -121,6 +125,14 @@ function setupGlobalFunctions() {
     };
     
     window.logout = logout;
+    
+    // === COMPONENTES CRÍTICOS ===
+    // Disponibilizar DisposicaoInicioModal globalmente
+    window.DisposicaoInicioModal = DisposicaoInicioModal;
+    console.log('[APP] ✅ DisposicaoInicioModal disponibilizado globalmente');
+
+    // === PERSISTÊNCIA DE TREINO ===
+    // workoutPersistence.js foi removido - funcionalidade integrada em workoutExecution.js
     
     // === LOGIN ===
     window.initLogin = async () => {
@@ -260,75 +272,8 @@ function setupGlobalFunctions() {
     };
     
     // === TREINO ===
-    // Redireciona para o fluxo correto de execução do treino
-    window.iniciarTreino = async () => {
-    console.log('[TESTE] Botão Iniciar Treino clicado!');
-        console.log('[app.js] 🏋️ Função iniciarTreino chamada!');
-        
-        const startButton = document.getElementById('start-workout-btn');
-        const originalButtonText = document.getElementById('btn-text')?.textContent || 'Iniciar Treino';
-
-        if (startButton) {
-            const btnTextSpan = startButton.querySelector('#btn-text');
-            if (btnTextSpan) btnTextSpan.textContent = 'Carregando...';
-            startButton.disabled = true;
-            console.log('[app.js] Botão Iniciar Treino: Estado de carregamento ativado.');
-        }
-
-        try {
-            // Verificar se há usuário logado
-            const currentUser = AppState.get('currentUser');
-            if (!currentUser) {
-                throw new Error('Usuário não está logado');
-            }
-            console.log('[app.js] ✅ Usuário logado:', currentUser.nome);
-            
-            // Verificar se há treino configurado
-            const currentWorkout = AppState.get('currentWorkout');
-            console.log('[app.js] Treino atual no estado:', currentWorkout);
-            
-            if (!currentWorkout) {
-                console.log('[app.js] ❌ Nenhum treino configurado.');
-                showNotification('Nenhum treino configurado para hoje. Configure seu planejamento primeiro.', 'warning');
-                return;
-            }
-            
-            // Verificar se treino já está concluído
-            if (currentWorkout.concluido) {
-                console.log('[app.js] ⚠️ Treino já foi concluído hoje.');
-                showNotification('Treino já foi concluído hoje! 🎉', 'info');
-                return;
-            }
-            
-            // Verificar se é dia de folga ou cardio
-            if (currentWorkout.tipo === 'folga') {
-                showNotification('Hoje é dia de descanso! 😴 Aproveite para se recuperar.', 'info');
-                return;
-            }
-            
-            if (currentWorkout.tipo === 'cardio' || currentWorkout.tipo === 'Cardio') {
-                showNotification('Treino de cardio configurado! 🏃‍♂️ Configure seu equipamento.', 'info');
-                return;
-            }
-            console.log('[app.js] ✅ Treino válido, carregando workoutExecutionManager...');
-            const { workoutExecutionManager } = await import('../feature/workoutExecution.js');
-            console.log('[TESTE] Import de workoutExecutionManager realizado:', !!workoutExecutionManager);
-console.log('[app.js] Chamando workoutExecutionManager.iniciarTreino');
-            console.log('[TESTE] Chamando workoutExecutionManager.iniciarTreino:', typeof workoutExecutionManager?.iniciarTreino);
-await workoutExecutionManager.iniciarTreino();
-            console.log('[app.js] workoutExecutionManager.iniciarTreino concluído.');
-        } catch (error) {
-            console.error('[app.js] ❌ Erro ao iniciar treino:', error);
-            showNotification('Erro ao iniciar treino: ' + (error.message || error), 'error');
-        } finally {
-            if (startButton) {
-                const btnTextSpan = startButton.querySelector('#btn-text');
-                if (btnTextSpan) btnTextSpan.textContent = originalButtonText;
-                startButton.disabled = false;
-                console.log('[app.js] Botão Iniciar Treino: Estado de carregamento desativado.');
-            }
-        }
-    };
+    // Note: window.iniciarTreino is now defined in protocolIntegration.js
+    // This allows the proper flow with disposition modal and workout execution
 }
 
 // Função para configurar event listeners da tela home
@@ -380,7 +325,7 @@ function setupBasicHomeElements(user) {
         // Configurar informações básicas do usuário
         updateElement('user-name', user.nome);
         
-        const userImages = { 'Pedro': 'pedro.png', 'Japa': 'japa.png' };
+        const userImages = { 'Pedro': 'pedro.png', 'Japa': 'japa.png', 'Vini': 'vini.png' };
         const avatarEl = document.getElementById('user-avatar');
         if (avatarEl) {
             avatarEl.src = userImages[user.nome] || 'pedro.png';
