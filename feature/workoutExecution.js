@@ -4745,12 +4745,13 @@ window.debugWorkoutCache = async function() {
             });
         }
         
-        return {
-            totalExercicios: exercicios?.length || 0,
-            exercicios: exercicios || []
-        };
+        return { state, hasActive, isValid };
+        
+    } catch (error) {
+        console.error('[DEBUG CACHE] Erro durante verificação:', error);
+        return null;
     }
-}
+};
 
 // Criar instância global
 const workoutExecutionManager = new WorkoutExecutionManager();
