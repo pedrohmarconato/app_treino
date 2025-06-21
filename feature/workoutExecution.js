@@ -1266,7 +1266,6 @@ class WorkoutExecutionManager {
         document.head.appendChild(link);
     }
     
-<<<<<<< HEAD
     // Renderizar informações do treino (função auxiliar mantida para compatibilidade)
     renderizarInfoTreino() {
         const workout = this.currentWorkout;
@@ -2425,8 +2424,6 @@ class WorkoutExecutionManager {
     }
 
     // NOVA FUNÇÃO: Renderizar com segurança (VERSÃO CORRIGIDA)
-=======
->>>>>>> def4e6d7b99aa492f51298f2a03d1a5e939ec6b6
     renderizarComSeguranca() {
         console.log('[WorkoutExecution] 🎨 Renderizando treino com segurança...');
         
