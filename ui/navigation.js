@@ -434,6 +434,9 @@ export function logout() {
     }
 }
 
+// Tornar logout acessível globalmente
+window.logout = logout;
+
 // Obter tipo de treino baseado no dia da semana
 function obterTipoTreino(diaSemana) {
     const tipos = { 1: 'A', 2: 'B', 3: 'C', 4: 'D' };

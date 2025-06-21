@@ -186,9 +186,16 @@ export async function fetchExecucoesExercicio(userId, protocoloTreinoId, exercic
 // Marcar treino como concluído usando planejamento_semanal
 export async function marcarTreinoConcluido(userId) {
     try {
+        // Obter semana do protocolo ao invés da semana do calendário
+        const { data: planoUsuario } = await query('usuario_plano_treino', {
+            select: 'semana_atual',
+            eq: { usuario_id: userId, status: 'ativo' },
+            single: true
+        });
+        
         const hoje = new Date();
         const ano = hoje.getFullYear();
-        const semana = WeeklyPlanService.getWeekNumber(hoje);
+        const semana = planoUsuario?.semana_atual || 1; // CORREÇÃO: usar semana do protocolo
         const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay()); // Converter para formato DB
         
         const { error } = await update('planejamento_semanal', 

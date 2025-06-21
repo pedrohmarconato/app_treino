@@ -331,10 +331,10 @@ function renderizarIndicadoresDoCache(semana) {
                 <div class="${dayClass}" onclick="handleDayClick(${i}, ${isCompleted})">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
                     <div class="day-content">
-                        ${icon ? `<span class="day-icon" style="display: inline-block; width: 24px; height: 24px; margin: 0 auto;">
+                        ${icon ? `<span class="day-icon">
                             ${icon}
                         </span>` : ''}
-                        ${dayType}
+                        <div class="day-type">${dayType}</div>
                     </div>
                 </div>
             `;

@@ -2,7 +2,7 @@ export const workoutTemplate = () => `
     <div id="workout-screen" class="workout-screen">
         <!-- Header Flutuante -->
         <div class="workout-header-float">
-            <button class="back-button-float" onclick="workoutExecutionManager.voltarParaHome()">
+            <button class="back-button-float" onclick="window.workoutExecutionManager?.mostrarModalSaida ? window.workoutExecutionManager.mostrarModalSaida() : (document.getElementById('exit-confirmation-overlay').style.display = 'flex')">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -159,6 +159,127 @@ export const workoutTemplate = () => `
                             <polyline points="9 18 15 12 9 6"/>
                         </svg>
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação de Saída -->
+        <div id="exit-confirmation-overlay" class="exit-confirmation-overlay" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20000;
+            backdrop-filter: blur(8px);
+        ">
+            <div class="exit-confirmation-modal" style="
+                background: var(--bg-secondary, #2a2a2a);
+                border-radius: 12px;
+                padding: 32px;
+                width: 90%;
+                max-width: 450px;
+                text-align: center;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                border: 1px solid var(--border-color, #444);
+            ">
+                <div style="
+                    font-size: 3rem;
+                    margin-bottom: 16px;
+                ">⚠️</div>
+                
+                <h2 style="
+                    margin: 0 0 16px 0;
+                    color: var(--text-primary, #fff);
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                ">Confirmar Saída</h2>
+                
+                <p style="
+                    margin: 0 0 24px 0;
+                    color: var(--text-secondary, #ccc);
+                    font-size: 1rem;
+                    line-height: 1.5;
+                ">Você tem certeza que deseja sair? Todo o progresso do treinamento atual será perdido e você terá que recomeçar novamente.</p>
+                
+                <div class="exit-confirmation-checkbox" style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 32px;
+                    padding: 16px;
+                    background: var(--bg-primary, #1a1a1a);
+                    border-radius: 8px;
+                    border: 1px solid var(--border-color, #444);
+                ">
+                    <input type="checkbox" id="confirm-exit-checkbox" onchange="
+                        const btn = document.getElementById('exit-confirm-btn');
+                        if (this.checked) {
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                            btn.style.cursor = 'pointer';
+                        } else {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.style.cursor = 'not-allowed';
+                        }
+                    " style="
+                        width: 20px;
+                        height: 20px;
+                        accent-color: var(--accent-green, #10b981);
+                        cursor: pointer;
+                    ">
+                    <label for="confirm-exit-checkbox" style="
+                        color: var(--text-primary, #fff);
+                        font-size: 0.9rem;
+                        cursor: pointer;
+                        flex: 1;
+                        text-align: left;
+                    ">Entendo que perderei todo o progresso</label>
+                </div>
+                
+                <div class="exit-confirmation-actions" style="
+                    display: flex;
+                    gap: 16px;
+                    justify-content: center;
+                ">
+                    <button id="exit-cancel-btn" class="btn-cancel" onclick="document.getElementById('exit-confirmation-overlay').style.display='none'" style="
+                        background: var(--bg-primary, #1a1a1a);
+                        color: var(--text-primary, #fff);
+                        border: 2px solid var(--border-color, #444);
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: all 0.2s ease;
+                        font-size: 1rem;
+                    " onmouseover="this.style.background='var(--border-color, #444)'" onmouseout="this.style.background='var(--bg-primary, #1a1a1a)'">Cancelar</button>
+                    
+                    <button id="exit-confirm-btn" class="btn-exit" disabled onclick="
+                        const checkbox = document.getElementById('confirm-exit-checkbox');
+                        if (checkbox && checkbox.checked) {
+                            if (window.workoutExecutionManager && window.workoutExecutionManager.voltarParaHome) {
+                                window.workoutExecutionManager.voltarParaHome();
+                            } else {
+                                window.location.href = '#home';
+                            }
+                        }
+                    " style="
+                        background: #dc2626;
+                        color: #fff;
+                        border: 2px solid #dc2626;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        cursor: not-allowed;
+                        font-weight: 600;
+                        transition: all 0.2s ease;
+                        font-size: 1rem;
+                        opacity: 0.5;
+                    ">Sair mesmo assim</button>
                 </div>
             </div>
         </div>

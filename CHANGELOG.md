@@ -8,10 +8,34 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### 🎨 Adicionado
-- Sistema organizacional GitHub com templates e workflows
-- Documentação completa de contribuição
-- Política de segurança
-- Templates para issues e pull requests
+- Modal de pré-treino para avaliação de energia (Likert 1-5)
+- Card de treino expandível remodelado com design moderno
+- Sistema de carregamento com animação pulsante
+- Estilos para exercícios no card expandível
+- Ícones de grupos musculares customizados
+- README.md completo com documentação do projeto
+
+### 🔧 Melhorado
+- **Interface Home**: Design mais limpo e moderno
+- **Card de Treino**: Visual remodelado com badge tipo e glow effect
+- **Botão Expandir**: Novo design com hover effects
+- **Animações**: Transições suaves com cubic-bezier
+- **Responsividade**: Melhor adaptação para diferentes telas
+
+### 🗑️ Removido
+- Seção de preparação do treino (dicas e preview)
+- Elementos CSS descontinuados (.workout-preparation, .preparation-tips, etc)
+- Código legado não utilizado
+
+### 🚀 Performance
+- Otimização de transições CSS
+- Redução de código desnecessário
+- Melhor organização de componentes
+
+### 📝 Documentação
+- README.md criado com documentação completa
+- CHANGELOG.md atualizado com mudanças recentes
+- Estrutura do projeto documentada
 
 ## [5.6.1] - 2025-01-13
 

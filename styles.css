@@ -3290,123 +3290,7 @@ button:focus-visible {
     }
 }
 
-/* Estilos para a nova seção de preparação do treino */
-.workout-preparation {
-    margin-top: 24px;
-    padding: 20px;
-    background: var(--bg-card);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-}
-
-.preparation-tips {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
-}
-
-.tip-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    padding: 12px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-dark);
-    transition: var(--transition);
-}
-
-.tip-item:hover {
-    background: var(--bg-card-hover);
-    transform: translateY(-1px);
-}
-
-.tip-icon {
-    color: var(--accent-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: var(--accent-primary-bg);
-    border-radius: var(--radius-sm);
-}
-
-.tip-text {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.tip-text strong {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.workout-preview {
-    padding-top: 16px;
-    border-top: 1px solid var(--border-dark);
-}
-
-.preview-header {
-    margin-bottom: 12px;
-}
-
-.preview-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.muscle-groups {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.muscle-chip {
-    padding: 6px 12px;
-    background: var(--accent-secondary-bg);
-    color: var(--accent-secondary);
-    border: 1px solid var(--accent-secondary);
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: capitalize;
-}
-
-/* Responsividade para seção de preparação */
-@media (max-width: 768px) {
-    .preparation-tips {
-        flex-direction: column;
-        gap: 12px;
-    }
-    
-    .tip-item {
-        padding: 10px;
-    }
-    
-    .tip-text {
-        font-size: 0.8rem;
-    }
-    
-    .workout-preparation {
-        margin-top: 16px;
-        padding: 16px;
-    }
-}
-
-@media (max-width: 480px) {
-    .preparation-tips {
-        gap: 8px;
-    }
-    
-    .tip-item {
-        padding: 8px;
+/* Seção de preparação removida - elementos descontinuados */
         gap: 6px;
     }
     
@@ -4257,6 +4141,50 @@ button:focus-visible {
 .icon-pulse { animation: pulse 2s ease-in-out infinite; }
 .icon-rotate { animation: rotate 20s linear infinite; }
 .icon-bounce { animation: bounce 1.5s ease-in-out infinite; }
+
+/* Ícones de Músculos */
+.muscle-icon {
+    stroke: var(--accent-green);
+    fill: none;
+    stroke-width: 2;
+    transition: all 0.3s ease;
+}
+
+.muscle-icon:hover {
+    stroke: var(--accent-green-soft);
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 8px var(--accent-green-glow));
+}
+
+.muscle-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--accent-green-bg);
+    border: 1px solid var(--accent-green-border);
+    border-radius: var(--radius-full);
+    color: var(--accent-green);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.muscle-chip:hover {
+    background: var(--accent-green);
+    color: var(--bg-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--accent-green-glow);
+}
+
+.muscle-chip .muscle-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.muscle-chip:hover .muscle-icon {
+    stroke: var(--bg-primary);
+}
 
 /* Estados */
 .icon-active {

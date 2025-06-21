@@ -323,6 +323,18 @@ export class AvaliacaoTreinoComponent {
                 energia_nivel: avaliacaoEstado.energia,
                 observacoes_finais: avaliacaoEstado.observacoes || null
             };
+
+            // 1) Finalizar sessão no cache com avaliação
+            await TreinoCacheService.finalizarTreinoComAvaliacao({
+                avaliacao_qualidade: avaliacao.qualidade,
+                dificuldade_percebida: avaliacao.dificuldade_percebida,
+                energia_nivel: avaliacao.energia_nivel,
+                observacoes_finais: avaliacao.observacoes_finais
+            });
+
+            // 2) Commitar dados ao banco
+            const commitResultado = await TreinoCacheService.commitarTreinoParaBanco();
+            console.log('[AvaliacaoTreino] Resultado commit:', commitResultado);
             
             // Finalizar treino usando o novo serviço
             const resultado = await TreinoFinalizacaoService.finalizarTreino(userId, {

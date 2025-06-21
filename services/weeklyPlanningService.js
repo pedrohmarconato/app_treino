@@ -1648,6 +1648,21 @@ export async function testarCorrecoesErro406(userId = null) {
     }
 }
 
+// Obter semana do protocolo do usuário (ao invés da semana do calendário)
+async function obterSemanaProtocoloUsuario(userId) {
+    try {
+        const { data: planoUsuario } = await query('usuario_plano_treino', {
+            select: 'semana_atual',
+            eq: { usuario_id: userId, status: 'ativo' },
+            single: true
+        });
+        return planoUsuario?.semana_atual || 1;
+    } catch (error) {
+        console.warn('[obterSemanaProtocoloUsuario] Erro ao buscar semana do protocolo:', error);
+        return 1; // Default para semana 1
+    }
+}
+
 // Verificar se treino de hoje está concluído (com verificação de exercícios executados)
 export async function verificarTreinoConcluido(userId) {
     try {
@@ -1655,9 +1670,11 @@ export async function verificarTreinoConcluido(userId) {
         
         const hoje = new Date();
         const ano = hoje.getFullYear();
-        const semana = getWeekNumber(hoje);
+        const semana = await obterSemanaProtocoloUsuario(userId); // CORREÇÃO: usar semana do protocolo
         const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
         const dataHoje = toSaoPauloDateString(hoje); // YYYY-MM-DD
+        
+        console.log(`[verificarTreinoConcluido] 📊 Parâmetros: userId=${userId}, ano=${ano}, semana=${semana} (protocolo), dia=${diaSemana}`);
         
         // 1. Buscar planejamento de hoje no banco
         const { data: planejamentoHoje, error } = await query('planejamento_semanal', {
@@ -1717,7 +1734,7 @@ export async function resetarTreinoHoje(userId, motivoReset = 'Reset manual') {
         
         const hoje = new Date();
         const ano = hoje.getFullYear();
-        const semana = getWeekNumber(hoje);
+        const semana = await obterSemanaProtocoloUsuario(userId); // CORREÇÃO: usar semana do protocolo
         const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
         const dataHoje = toSaoPauloDateString(hoje);
         

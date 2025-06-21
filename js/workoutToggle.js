@@ -19,11 +19,10 @@ window.toggleWorkoutCard = function() {
         return;
     }
     
-    const isExpanded = expandableContent.style.display !== 'none';
+    const isExpanded = card.classList.contains('expanded');
     
     console.log('[toggleWorkoutCard] Estado atual:', {
         isExpanded,
-        currentDisplay: expandableContent.style.display,
         cardClasses: card.className,
         toggleClasses: toggleBtn.className
     });
@@ -31,7 +30,6 @@ window.toggleWorkoutCard = function() {
     if (isExpanded) {
         // Contrair
         console.log('[toggleWorkoutCard] 📤 Contraindo...');
-        expandableContent.style.display = 'none';
         card.classList.remove('expanded');
         toggleBtn.classList.remove('expanded');
         
@@ -43,7 +41,6 @@ window.toggleWorkoutCard = function() {
     } else {
         // Expandir
         console.log('[toggleWorkoutCard] 📥 Expandindo...');
-        expandableContent.style.display = 'block';
         card.classList.add('expanded');
         toggleBtn.classList.add('expanded');
         
@@ -91,11 +88,15 @@ async function loadTodayWorkoutExercises(userId) {
     const container = document.getElementById('workout-exercises-list');
     if (!container) return;
 
-    // Mostrar loading
+    // Mostrar loading com novo design
     container.innerHTML = `
-        <div class="loading-exercises">
-            <div class="loading-spinner"></div>
-            <p>Carregando exercícios...</p>
+        <div class="exercises-loading-state">
+            <div class="pulse-loader">
+                <div class="pulse-circle"></div>
+                <div class="pulse-circle"></div>
+                <div class="pulse-circle"></div>
+            </div>
+            <p class="loading-text">Carregando exercícios...</p>
         </div>
     `;
 

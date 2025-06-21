@@ -25,10 +25,6 @@ export const homeTemplate = () => `
 </div>
                 </div>
                 <div class="header-actions">
-                    <button class="notification-btn">
-                        ${getNavigationIcon('notification')}
-                        <span class="notification-badge pulse"></span>
-                    </button>
                     <button class="btn-icon logout-btn" onclick="logout()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -99,80 +95,50 @@ export const homeTemplate = () => `
                                     ${getActionIcon('play', 'active')}
                                 </button>
                             </div>
-                            
-                            <!-- Seção de Preparação -->
-                            <div class="workout-preparation">
-                                <div class="preparation-tips">
-                                    <div class="tip-item">
-                                        <div class="tip-icon">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                                            </svg>
-                                        </div>
-                                        <span class="tip-text">Aquecimento <strong>5-10min</strong></span>
-                                    </div>
-                                    <div class="tip-item">
-                                        <div class="tip-icon">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                                                <polyline points="14 2 14 8 20 8"/>
-                                            </svg>
-                                        </div>
-                                        <span class="tip-text">Registre <strong>cada série</strong></span>
-                                    </div>
-                                    <div class="tip-item">
-                                        <div class="tip-icon">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                            </svg>
-                                        </div>
-                                        <span class="tip-text">Foco na <strong>forma</strong></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="workout-preview" id="workout-preview">
-                                    <div class="preview-header">
-                                        <span class="preview-label">Grupos Musculares</span>
-                                    </div>
-                                    <div class="muscle-groups" id="muscle-groups">
-                                        <div class="muscle-chip">Carregando...</div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Conteúdo Expandido do Treino -->
-                <div class="current-workout-card expandable-card" id="current-workout-card">
-                    <div class="workout-header-modern">
-                        <div class="workout-info-section">
-                            <div class="workout-badge-container">
-                                <span class="workout-type-badge" id="workout-type">Detalhes do Treino</span>
+                <!-- Card de Treino Expandível Remodelado -->
+                <div class="workout-expandable-card" id="current-workout-card">
+                    <div class="workout-card-header" onclick="toggleWorkoutCard()">
+                        <div class="workout-header-content">
+                            <div class="workout-type-indicator">
+                                <span class="workout-type-badge" id="workout-type">Treino A</span>
+                                <div class="workout-badge-glow"></div>
                             </div>
-                            <h3 class="workout-title">Exercícios do Treino</h3>
-                            <p class="workout-subtitle">Expandir para ver detalhes</p>
+                            <div class="workout-header-info">
+                                <h3 class="workout-card-title">Exercícios do Treino</h3>
+                                <p class="workout-card-subtitle">
+                                    <span id="total-exercises-count">0</span> exercícios • 
+                                    <span id="estimated-duration">45-60</span> min
+                                </p>
+                            </div>
                         </div>
                         
-                        <button class="expand-toggle-modern" id="workout-toggle" onclick="toggleWorkoutCard()">
-                            <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M6 9l6 6 6-6"/>
-                            </svg>
-                        </button>
+                        <div class="expand-button-wrapper">
+                            <button class="expand-toggle-btn" id="workout-toggle">
+                                <svg class="expand-icon" viewBox="0 0 24 24" fill="none">
+                                    <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Conteúdo Expandido do Treino -->
-                    <div class="expandable-content" id="expandable-content" style="display: none;">
-                        <div class="workout-details">
-                            <div class="workout-exercises-list" id="workout-exercises-list">
-                                <div class="loading-exercises">
-                                    <div class="loading-spinner"></div>
-                                    <p>Carregando exercícios...</p>
+                    <!-- Conteúdo Expandível -->
+                    <div class="workout-expandable-content" id="expandable-content">
+                        <div class="exercises-container" id="workout-exercises-list">
+                            <div class="exercises-loading-state">
+                                <div class="pulse-loader">
+                                    <div class="pulse-circle"></div>
+                                    <div class="pulse-circle"></div>
+                                    <div class="pulse-circle"></div>
                                 </div>
+                                <p class="loading-text">Carregando exercícios...</p>
                             </div>
                         </div>
                     </div>
-                </div> <!-- Fechamento current-workout-card -->
+                </div>
             </div> <!-- Fechamento training-plan -->
 
 
@@ -408,94 +374,216 @@ export const homeStyles = `
         gap: 16px;
     }
 
-    /* Week Selector */
+    /* Week Selector - Design Moderno */
     .week-selector {
         display: flex;
         align-items: center;
-        gap: 12px;
-        background: var(--bg-card);
-        border-radius: var(--radius-md);
-        padding: 8px 16px;
+        gap: 16px;
+        background: linear-gradient(135deg, var(--bg-card) 0%, rgba(255,255,255,0.02) 100%);
+        border-radius: 20px;
+        padding: 20px 24px;
         border: 1px solid var(--border-color);
+        box-shadow: 
+            0 8px 32px rgba(0,0,0,0.12),
+            0 2px 8px rgba(0,0,0,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.05);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(20px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .week-selector::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+        transition: left 0.6s ease;
+    }
+
+    .week-selector:hover::before {
+        left: 100%;
+    }
+
+    .week-selector:hover {
+        border-color: var(--border-light);
+        box-shadow: 
+            0 12px 40px rgba(0,0,0,0.15),
+            0 4px 12px rgba(0,0,0,0.1),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+        transform: translateY(-1px);
     }
 
     .week-nav {
-        width: 32px !important;
-        height: 32px !important;
-        padding: 6px !important;
-        background: transparent !important;
+        width: 48px !important;
+        height: 48px !important;
+        padding: 0 !important;
+        background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255,255,255,0.05) 100%) !important;
         border: 1px solid var(--border-color) !important;
-        border-radius: var(--radius-md) !important;
-        transition: var(--transition) !important;
+        border-radius: 16px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+    }
+
+    .week-nav::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: linear-gradient(135deg, var(--accent-primary), var(--neon-primary));
+        border-radius: 50%;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translate(-50%, -50%);
+        z-index: 0;
+    }
+
+    .week-nav:hover::before {
+        width: 120%;
+        height: 120%;
     }
 
     .week-nav:hover {
-        background: var(--bg-elevated) !important;
-        border-color: var(--border-light) !important;
+        background: transparent !important;
+        border-color: var(--accent-primary) !important;
+        transform: scale(1.08) translateY(-1px);
+        box-shadow: 
+            0 8px 25px rgba(52, 152, 219, 0.4),
+            0 3px 10px rgba(0,0,0,0.1);
     }
 
     .week-nav:hover svg {
-        stroke: var(--accent-green) !important;
+        stroke: white !important;
+        transform: scale(1.1);
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+
+    .week-nav:active {
+        transform: scale(0.96) translateY(0px);
+        transition: all 0.1s ease;
     }
 
     .week-nav svg {
-        width: 16px !important;
-        height: 16px !important;
+        width: 20px !important;
+        height: 20px !important;
         stroke: var(--text-secondary);
-        transition: var(--transition);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
     }
 
     .week-nav:disabled {
         opacity: 0.4;
         cursor: not-allowed;
-        background: transparent !important;
+        background: var(--bg-secondary) !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .week-nav:disabled::before {
+        display: none;
     }
 
     .week-nav:disabled:hover {
-        background: transparent !important;
+        background: var(--bg-secondary) !important;
         border-color: var(--border-color) !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .week-nav:disabled:hover svg {
+        stroke: var(--text-secondary) !important;
+        transform: none !important;
+        filter: none !important;
     }
 
     .current-week-info {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 2px;
-        min-width: 80px;
+        gap: 6px;
+        min-width: 120px;
+        flex: 1;
     }
 
     .week-number {
-        font-size: 0.875rem;
-        font-weight: 600;
+        font-size: 1.2rem;
+        font-weight: 800;
         color: var(--text-primary);
+        letter-spacing: -0.02em;
+        text-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
     }
 
     .week-status {
-        font-size: 0.75rem;
-        font-weight: 500;
-        color: var(--text-secondary);
-        padding: 2px 8px;
-        border-radius: var(--radius-sm);
-        background: var(--accent-green-bg);
+        font-size: 0.8rem;
+        font-weight: 600;
         color: var(--accent-green);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 6px 12px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        backdrop-filter: blur(10px);
+        box-shadow: 
+            0 2px 8px rgba(34, 197, 94, 0.2),
+            inset 0 1px 0 rgba(255,255,255,0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .week-status::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.1), transparent);
+        transition: left 0.6s ease;
+    }
+
+    .week-status:hover::before {
+        left: 100%;
     }
 
     .week-status.programada {
-        background: rgba(0, 255, 0, 0.1);
-        color: #00ff00;
+        background: linear-gradient(135deg, rgba(0, 255, 0, 0.15), rgba(0, 255, 0, 0.05));
+        color: #00ff88;
+        border-color: rgba(0, 255, 0, 0.3);
+        box-shadow: 
+            0 2px 8px rgba(0, 255, 0, 0.2),
+            inset 0 1px 0 rgba(255,255,255,0.1);
     }
 
     .week-status.inativa {
-        background: var(--bg-primary);
-        color: var(--text-secondary);
+        background: linear-gradient(135deg, var(--bg-primary), rgba(255,255,255,0.02));
+        color: var(--text-muted);
+        border-color: var(--border-color);
+        box-shadow: 
+            0 2px 8px rgba(0,0,0,0.1),
+            inset 0 1px 0 rgba(255,255,255,0.02);
     }
 
     .week-status.atual {
-        background: var(--accent-green);
+        background: linear-gradient(135deg, var(--accent-green), rgba(34, 197, 94, 0.8));
         color: var(--bg-primary);
+        border-color: var(--accent-green);
+        box-shadow: 
+            0 4px 16px rgba(34, 197, 94, 0.4),
+            inset 0 1px 0 rgba(255,255,255,0.2);
+        font-weight: 700;
     }
 
     /* Botões reestilizados */
@@ -758,47 +846,195 @@ export const homeStyles = `
         grid-template-columns: repeat(7, 1fr);
         gap: 10px;
         max-width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%);
+        border-radius: 18px;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.05);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
 
     .day-indicator {
-        aspect-ratio: 1.2;
+        aspect-ratio: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        background: var(--bg-secondary);
-        border-radius: 12px;
-        border: 1px solid transparent;
-        transition: all 0.2s ease;
+        justify-content: space-between;
+        background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(255,255,255,0.015) 100%);
+        border-radius: 14px;
+        border: 1px solid var(--border-color);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
         position: relative;
-        padding: 8px 4px;
-        min-height: 72px;
+        padding: 6px 3px 4px;
+        min-height: 68px;
+        overflow: hidden;
+        backdrop-filter: blur(8px);
+        box-shadow: 
+            0 1px 8px rgba(0,0,0,0.06),
+            0 0.5px 2px rgba(0,0,0,0.03),
+            inset 0 0.5px 0 rgba(255,255,255,0.02);
+    }
+
+    .day-indicator::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+        transition: left 0.6s ease;
+    }
+
+    .day-indicator:hover::before {
+        left: 100%;
     }
 
     .day-indicator:hover {
         border-color: var(--border-light);
-        transform: translateY(-1px);
+        transform: translateY(-2px) scale(1.015);
+        box-shadow: 
+            0 4px 20px rgba(0,0,0,0.1),
+            0 2px 8px rgba(0,0,0,0.06),
+            inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .day-indicator:active {
+        transform: translateY(-1px) scale(0.98);
+        transition: all 0.1s ease;
     }
 
     .day-indicator.today {
-        border-color: var(--neon-primary);
-        background: rgba(207, 255, 4, 0.08);
+        border: 2px solid var(--neon-primary);
+        background: linear-gradient(135deg, rgba(207, 255, 4, 0.15) 0%, rgba(207, 255, 4, 0.05) 100%);
+        box-shadow: 
+            0 8px 32px rgba(207, 255, 4, 0.25),
+            0 4px 16px rgba(0,0,0,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.1);
+        animation: todayPulse 3s ease-in-out infinite;
+        transform: scale(1.08);
+        z-index: 10;
+    }
+
+    @keyframes todayPulse {
+        0%, 100% { 
+            box-shadow: 
+                0 8px 32px rgba(207, 255, 4, 0.25),
+                0 4px 16px rgba(0,0,0,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        50% { 
+            box-shadow: 
+                0 12px 40px rgba(207, 255, 4, 0.35),
+                0 6px 20px rgba(0,0,0,0.1),
+                inset 0 1px 0 rgba(255,255,255,0.15);
+        }
     }
 
     .day-indicator.completed {
-        background: rgba(39, 174, 96, 0.12);
-        border-color: var(--neon-success);
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.28) 0%, rgba(34, 197, 94, 0.1) 100%);
+        border: 2px solid var(--neon-success);
+        box-shadow: 
+            0 0 25px rgba(34, 197, 94, 0.9),
+            0 0 45px rgba(34, 197, 94, 0.6),
+            0 0 12px rgba(34, 197, 94, 1),
+            0 4px 20px rgba(34, 197, 94, 0.3),
+            0 2px 8px rgba(0,0,0,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.1);
+        animation: completedGlow 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes completedGlow {
+        0% { 
+            box-shadow: 
+                0 0 25px rgba(34, 197, 94, 0.9),
+                0 0 45px rgba(34, 197, 94, 0.6),
+                0 0 12px rgba(34, 197, 94, 1),
+                0 4px 20px rgba(34, 197, 94, 0.3),
+                0 2px 8px rgba(0,0,0,0.08),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        100% { 
+            box-shadow: 
+                0 0 35px rgba(34, 197, 94, 1),
+                0 0 55px rgba(34, 197, 94, 0.7),
+                0 0 18px rgba(34, 197, 94, 1),
+                0 6px 24px rgba(34, 197, 94, 0.4),
+                0 3px 10px rgba(0,0,0,0.1),
+                inset 0 1px 0 rgba(255,255,255,0.15);
+        }
+    }
+
+    .day-indicator.completed::after {
+        content: '✓';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        background: var(--neon-success);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: white;
+        box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
     }
 
     .day-indicator.cancelled {
-        background: rgba(231, 76, 60, 0.12);
-        border-color: #e74c3c;
+        background: linear-gradient(135deg, rgba(231, 76, 60, 0.15) 0%, rgba(231, 76, 60, 0.05) 100%);
+        border: 2px solid #e74c3c;
+        box-shadow: 
+            0 8px 32px rgba(231, 76, 60, 0.2),
+            0 4px 16px rgba(0,0,0,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.05);
+        opacity: 0.7;
+    }
+
+    .day-indicator.cancelled::after {
+        content: '✕';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        background: #e74c3c;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: white;
+        box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
     }
 
     .day-indicator.folga {
-        background: rgba(52, 152, 219, 0.12);
-        border-color: #3498db;
+        background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(52, 152, 219, 0.05) 100%);
+        border: 2px solid #3498db;
+        box-shadow: 
+            0 8px 32px rgba(52, 152, 219, 0.2),
+            0 4px 16px rgba(0,0,0,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .day-indicator.folga::after {
+        content: '🏖️';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        background: #3498db;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
     }
 
     .day-label {
@@ -812,92 +1048,214 @@ export const homeStyles = `
 
     .day-indicator.today .day-label {
         color: var(--neon-primary);
+        text-shadow: 0 1px 4px rgba(207, 255, 4, 0.3);
     }
 
     .day-name {
-        font-size: 0.7rem;
-        font-weight: 500;
-        color: var(--text-muted);
-        margin-bottom: 6px;
+        font-size: 0.58rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 2px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        opacity: 0.85;
+        line-height: 0.9;
     }
 
     .day-indicator.today .day-name {
-        color: var(--text-secondary);
-        font-weight: 600;
+        color: var(--neon-primary);
+        font-weight: 800;
+        text-shadow: 0 2px 6px rgba(207, 255, 4, 0.4);
     }
 
     .day-indicator.completed .day-name,
     .day-indicator.workout-completed .day-name,
     .day-indicator.folga .day-name {
-        color: var(--text-secondary);
+        color: var(--text-primary);
+        font-weight: 700;
+    }
+
+    .day-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
+        flex: 1;
+        width: 100%;
+        min-height: 0;
+    }
+
+    .day-icon {
+        width: 13px !important;
+        height: 13px !important;
+        margin: 1px 0;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.08));
+        transition: all 0.25s ease;
+        opacity: 0.9;
+        flex-shrink: 0;
+    }
+
+    .day-indicator:hover .day-icon {
+        transform: scale(1.1);
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+    }
+
+    .day-indicator.today .day-icon {
+        filter: drop-shadow(0 2px 8px rgba(207, 255, 4, 0.4));
+    }
+
+    .day-indicator.completed .day-icon {
+        filter: drop-shadow(0 2px 8px rgba(34, 197, 94, 0.4));
     }
 
     .day-type {
-        font-size: 0.7rem;
+        font-size: 0.52rem;
         font-weight: 500;
         color: var(--text-secondary);
         text-align: center;
-        margin-top: 2px;
-        line-height: 1.3;
+        line-height: 0.9;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         max-width: 100%;
+        text-shadow: 0 1px 1px rgba(0,0,0,0.04);
+        opacity: 0.9;
+        margin-top: 1px;
     }
 
     .day-indicator.today .day-type {
         color: var(--text-primary);
-        font-weight: 600;
+        font-weight: 700;
+        text-shadow: 0 1px 4px rgba(207, 255, 4, 0.2);
     }
 
     .day-indicator.completed .day-type,
     .day-indicator.workout-completed .day-type,
     .day-indicator.folga .day-type {
         color: var(--text-primary);
-        font-weight: 500;
+        font-weight: 600;
     }
 
     .day-indicator.cancelled .day-type {
         color: var(--text-muted);
-        font-weight: 400;
+        font-weight: 500;
+        opacity: 0.8;
     }
 
     .empty-day {
-        border: 1px dashed var(--border-color);
-        background: transparent;
+        border: 2px dashed var(--border-color);
+        background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.01) 100%);
+        opacity: 0.6;
     }
 
     .empty-day .day-type {
-        color: var(--text-secondary);
+        color: var(--text-muted);
         font-style: italic;
+        font-weight: 500;
     }
 
-    /* Status visual simplificado */
+    /* Status visual moderno - pequeno indicador no canto */
     .day-status {
-        width: 6px;
-        height: 6px;
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 3px;
         background: var(--border-color);
-        border-radius: 50%;
-        margin: 4px auto 0;
-        transition: all 0.2s ease;
+        border-radius: 2px;
+        transition: all 0.3s ease;
+        opacity: 0.5;
     }
 
     .day-indicator.completed .day-status {
-        background: var(--neon-success);
+        background: linear-gradient(90deg, var(--neon-success), rgba(34, 197, 94, 0.6));
+        box-shadow: 0 1px 4px rgba(34, 197, 94, 0.4);
+        opacity: 1;
     }
 
     .day-indicator.today .day-status {
-        background: var(--neon-primary);
+        background: linear-gradient(90deg, var(--neon-primary), rgba(207, 255, 4, 0.6));
+        box-shadow: 0 1px 4px rgba(207, 255, 4, 0.4);
+        opacity: 1;
+        animation: statusPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes statusPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
     }
 
     .day-indicator.cancelled .day-status {
-        background: #e74c3c;
+        background: linear-gradient(90deg, #e74c3c, rgba(231, 76, 60, 0.6));
+        box-shadow: 0 1px 4px rgba(231, 76, 60, 0.4);
+        opacity: 0.8;
     }
 
     .day-indicator.folga .day-status {
-        background: #3498db;
+        background: linear-gradient(90deg, #3498db, rgba(52, 152, 219, 0.6));
+        box-shadow: 0 1px 4px rgba(52, 152, 219, 0.4);
+        opacity: 1;
+    }
+
+    /* Estilos específicos para ícones otimizados */
+    .workout-icon {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        stroke: var(--text-secondary);
+        fill: none;
+        color: var(--text-secondary);
+    }
+
+    .day-indicator:hover .workout-icon {
+        stroke: var(--text-primary);
+        color: var(--text-primary);
+        transform: scale(1.1);
+    }
+
+    .day-indicator.today .workout-icon {
+        stroke: var(--neon-primary);
+        color: var(--neon-primary);
+        filter: drop-shadow(0 0 8px rgba(207, 255, 4, 0.4));
+    }
+
+    .day-indicator.completed .workout-icon {
+        stroke: var(--neon-success);
+        color: var(--neon-success);
+        filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.4));
+    }
+
+    .day-indicator.folga .workout-icon {
+        stroke: #3498db;
+        color: #3498db;
+        filter: drop-shadow(0 0 8px rgba(52, 152, 219, 0.4));
+    }
+
+    .day-indicator.cancelled .workout-icon {
+        stroke: var(--text-muted);
+        color: var(--text-muted);
+        opacity: 0.6;
+    }
+
+    .rest-icon {
+        opacity: 0.8;
+    }
+
+    .day-indicator.folga .rest-icon {
+        opacity: 1;
+        animation: restPulse 4s ease-in-out infinite;
+    }
+
+    @keyframes restPulse {
+        0%, 100% { 
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% { 
+            opacity: 0.7;
+            transform: scale(0.95);
+        }
     }
 
     /* ===== WORKOUT CARD - Estilo Login ===== */
@@ -918,50 +1276,92 @@ export const homeStyles = `
         box-shadow: var(--shadow-lg);
     }
 
-    .workout-header-modern {
-        display: flex;
-        align-items: center;
-        padding: 28px;
-        gap: 24px;
-        position: relative;
-        z-index: 1;
-        border-bottom: 1px solid var(--border-color);
+    /* Card de Treino Expandível Remodelado */
+    .workout-expandable-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        margin-top: 24px;
+        border: 1px solid var(--border-color);
+        transition: var(--transition);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
 
-    .workout-info-section {
+    .workout-expandable-card:hover {
+        border-color: var(--border-light);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .workout-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24px;
+        cursor: pointer;
+        position: relative;
+        background: linear-gradient(135deg, var(--bg-card) 0%, rgba(42, 42, 42, 0.5) 100%);
+    }
+
+    .workout-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
         flex: 1;
     }
 
-    .workout-badge-container {
-        margin-bottom: 12px;
+    .workout-type-indicator {
+        position: relative;
     }
 
     .workout-type-badge {
-        display: inline-block;
-        background: var(--bg-secondary);
-        color: var(--text-secondary);
-        padding: 6px 12px;
-        border-radius: var(--radius-md);
-        font-size: 0.75rem;
-        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        background: linear-gradient(135deg, var(--accent-green-bg) 0%, rgba(207, 255, 4, 0.05) 100%);
+        color: var(--accent-green);
+        padding: 8px 16px;
+        border-radius: var(--radius-full);
+        font-size: 0.875rem;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border: 1px solid var(--border-color);
+        letter-spacing: 0.1em;
+        border: 1px solid var(--accent-green-border);
+        position: relative;
+        z-index: 2;
     }
 
+    .workout-badge-glow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        height: 100%;
+        background: var(--accent-green);
+        border-radius: var(--radius-full);
+        filter: blur(20px);
+        opacity: 0.2;
+        z-index: 1;
+    }
 
-    .workout-title {
-        font-size: 1.5rem;
+    .workout-header-info {
+        flex: 1;
+    }
+
+    .workout-card-title {
+        font-size: 1.25rem;
         font-weight: 700;
         color: var(--text-primary);
-        margin: 8px 0;
-        text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        margin: 0 0 4px 0;
+        letter-spacing: -0.02em;
     }
 
-    .workout-subtitle {
+    .workout-card-subtitle {
         font-size: 0.875rem;
         color: var(--text-secondary);
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 4px;
     }
 
     .workout-progress-section {
@@ -995,12 +1395,17 @@ export const homeStyles = `
         text-shadow: 0 0 10px var(--accent-green-glow);
     }
 
-    .expand-toggle-modern {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        background: var(--bg-secondary);
-        border: 2px solid var(--border-color);
+    /* Botão de Expansão */
+    .expand-button-wrapper {
+        position: relative;
+    }
+
+    .expand-toggle-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-color);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1010,38 +1415,112 @@ export const homeStyles = `
         overflow: hidden;
     }
 
-    .expand-toggle-modern::before {
+    .expand-toggle-btn::before {
         content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        inset: 0;
         background: radial-gradient(circle at center, var(--accent-green-glow) 0%, transparent 70%);
         opacity: 0;
         transition: opacity 0.3s ease;
     }
 
-    .expand-toggle-modern:hover {
-        border-color: var(--accent-green);
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+    .expand-toggle-btn:hover {
+        background: var(--bg-secondary);
+        border-color: var(--accent-green-border);
+        transform: scale(1.05);
     }
 
-    .expand-toggle-modern:hover::before {
-        opacity: 1;
+    .expand-toggle-btn:hover::before {
+        opacity: 0.3;
     }
 
-    .expand-toggle-modern .expand-icon {
+    .expand-toggle-btn:active {
+        transform: scale(0.95);
+    }
+
+    .expand-icon {
         width: 20px;
         height: 20px;
-        stroke: var(--text-primary);
-        transition: var(--transition);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        color: var(--text-secondary);
     }
 
-    .expand-toggle-modern.expanded .expand-icon {
+    .expand-toggle-btn:hover .expand-icon {
+        color: var(--accent-green);
+    }
+
+    .workout-expandable-card.expanded .expand-icon {
         transform: rotate(180deg);
-        stroke: var(--accent-green);
+    }
+
+    /* Conteúdo Expandível */
+    .workout-expandable-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .workout-expandable-card.expanded .workout-expandable-content {
+        max-height: 2000px;
+    }
+
+    .exercises-container {
+        padding: 24px;
+        border-top: 1px solid var(--border-color);
+        background: rgba(24, 24, 24, 0.3);
+    }
+
+    /* Estado de Carregamento */
+    .exercises-loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        gap: 20px;
+    }
+
+    .pulse-loader {
+        display: flex;
+        gap: 8px;
+    }
+
+    .pulse-circle {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent-green);
+        opacity: 0.3;
+        animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .pulse-circle:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .pulse-circle:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .pulse-circle:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes pulse {
+        0%, 80%, 100% {
+            opacity: 0.3;
+            transform: scale(1);
+        }
+        40% {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+    }
+
+    .loading-text {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin: 0;
     }
 
     .workout-action-section {
@@ -1051,8 +1530,192 @@ export const homeStyles = `
     }
 
 
-    .expandable-card {
-        cursor: pointer;
+    /* Estilos para os exercícios dentro do card expandível */
+    .exercises-header {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .exercises-header h4 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+
+    .exercises-count {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .exercises-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .exercise-card {
+        background: var(--bg-elevated);
+        border-radius: var(--radius-md);
+        padding: 20px;
+        border: 1px solid var(--border-color);
+        transition: var(--transition);
+    }
+
+    .exercise-card:hover {
+        border-color: var(--border-light);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .exercise-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .exercise-number {
+        width: 32px;
+        height: 32px;
+        background: var(--accent-green-bg);
+        color: var(--accent-green);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.875rem;
+        flex-shrink: 0;
+    }
+
+    .exercise-info {
+        flex: 1;
+    }
+
+    .exercise-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+    }
+
+    .exercise-muscle {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .exercise-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .exercise-details > div {
+        background: var(--bg-card);
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+    }
+
+    .exercise-details .label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .exercise-details .value {
+        display: block;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .equipment-tag {
+        display: inline-block;
+        padding: 4px 8px;
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .exercise-notes {
+        background: var(--bg-card);
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        border-left: 3px solid var(--accent-green);
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .exercise-notes strong {
+        color: var(--text-primary);
+    }
+
+    .exercises-footer {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+        text-align: center;
+    }
+
+    .rm-info {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    /* Mensagem quando não há exercícios */
+    .no-exercises-message {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        text-align: center;
+        gap: 16px;
+    }
+
+    .no-exercises-message .message-icon {
+        width: 48px;
+        height: 48px;
+        color: var(--text-secondary);
+        opacity: 0.5;
+    }
+
+    .no-exercises-message .message-icon svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .no-exercises-message.info .message-icon {
+        color: var(--accent-green);
+        opacity: 0.7;
+    }
+
+    .no-exercises-message.warning .message-icon {
+        color: #f59e0b;
+        opacity: 0.7;
+    }
+
+    .no-exercises-message.error .message-icon {
+        color: var(--neon-danger);
+        opacity: 0.7;
+    }
+
+    .message-text {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin: 0;
+        max-width: 300px;
     }
 
     /* ===== FLOATING BOTTOM NAVIGATION ===== */
@@ -2399,33 +3062,97 @@ export const homeStyles = `
 
         .week-indicators {
             gap: 6px;
+            padding: 8px;
         }
 
         .day-indicator {
-            padding: 8px 2px;
-            min-height: 64px;
-            font-size: 0.85rem;
+            padding: 5px 2px 3px;
+            min-height: 58px;
+            border-radius: 11px;
+            aspect-ratio: 1;
+            box-shadow: 
+                0 1px 6px rgba(0,0,0,0.06),
+                0 0.5px 1px rgba(0,0,0,0.03),
+                inset 0 0.5px 0 rgba(255,255,255,0.015);
         }
 
-        .day-label {
-            font-size: 0.7rem;
-            margin-bottom: 2px;
+        .day-indicator:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 
+                0 4px 16px rgba(0,0,0,0.10),
+                0 2px 6px rgba(0,0,0,0.06),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .day-indicator.completed::after,
+        .day-indicator.cancelled::after,
+        .day-indicator.folga::after {
+            width: 12px;
+            height: 12px;
+            top: 4px;
+            right: 4px;
+            font-size: 6px;
         }
 
         .day-name {
-            font-size: 0.65rem;
-            margin-bottom: 4px;
+            font-size: 0.52rem;
+            margin-bottom: 1px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            line-height: 0.85;
+        }
+
+        .day-icon {
+            width: 9px !important;
+            height: 9px !important;
+            margin: 0.5px 0;
         }
 
         .day-type {
-            font-size: 0.65rem;
-            margin-top: 1px;
+            font-size: 0.46rem;
+            font-weight: 500;
+            line-height: 0.85;
+            letter-spacing: 0.02em;
         }
 
         .day-status {
-            width: 5px;
-            height: 5px;
-            margin: 2px auto 0;
+            width: 12px;
+            height: 2px;
+            bottom: 4px;
+        }
+
+        .week-selector {
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+        }
+
+        .week-nav {
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 10px !important;
+        }
+
+        .week-nav svg {
+            width: 14px !important;
+            height: 14px !important;
+        }
+
+        .week-number {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .week-status {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            border-radius: 8px;
+            letter-spacing: 0.04em;
+        }
+
+        .current-week-info {
+            min-width: 100px;
+            gap: 3px;
         }
 
         .quick-actions {
@@ -2468,6 +3195,179 @@ export const homeStyles = `
         .user-comparison span {
             min-width: 50px;
             font-size: 0.75rem;
+        }
+    }
+
+    /* Otimização específica para iPhone 13 e dispositivos similares (390px) */
+    @media (max-width: 390px) {
+        .week-indicators {
+            gap: 4px;
+            padding: 6px;
+        }
+
+        .day-indicator {
+            padding: 4px 2px 2px;
+            min-height: 56px;
+            border-radius: 9px;
+        }
+
+        .day-indicator.today {
+            transform: scale(1.08);
+        }
+
+        .day-indicator.completed::after,
+        .day-indicator.cancelled::after,
+        .day-indicator.folga::after {
+            width: 8px;
+            height: 8px;
+            top: 2px;
+            right: 2px;
+            font-size: 4px;
+        }
+
+        .day-name {
+            font-size: 0.48rem;
+            margin-bottom: 1px;
+            font-weight: 600;
+            line-height: 0.8;
+        }
+
+        .day-icon {
+            width: 8px !important;
+            height: 8px !important;
+            margin: 0.5px 0;
+        }
+
+        .day-type {
+            font-size: 0.42rem;
+            font-weight: 500;
+            line-height: 0.8;
+        }
+
+        .day-status {
+            width: 10px;
+            height: 1.5px;
+            bottom: 3px;
+        }
+
+        .week-selector {
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            gap: 12px;
+        }
+
+        .week-nav {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 8px !important;
+        }
+
+        .week-nav svg {
+            width: 12px !important;
+            height: 12px !important;
+        }
+
+        .week-number {
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .week-status {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .current-week-info {
+            min-width: 90px;
+            gap: 2px;
+        }
+    }
+
+    /* Otimização para iPhone SE e telas extra pequenas (375px e menor) */
+    @media (max-width: 375px) {
+        .week-indicators {
+            gap: 4px;
+        }
+
+        .day-indicator {
+            padding: 3px 1px 2px;
+            min-height: 52px;
+            border-radius: 7px;
+        }
+
+        .day-indicator.today {
+            transform: scale(1.08);
+        }
+
+        .day-indicator.completed::after,
+        .day-indicator.cancelled::after,
+        .day-indicator.folga::after {
+            width: 7px;
+            height: 7px;
+            top: 1px;
+            right: 1px;
+            font-size: 3px;
+        }
+
+        .day-name {
+            font-size: 0.44rem;
+            margin-bottom: 0.5px;
+            font-weight: 600;
+            line-height: 0.75;
+        }
+
+        .day-icon {
+            width: 7px !important;
+            height: 7px !important;
+            margin: 0.5px 0;
+        }
+
+        .day-type {
+            font-size: 0.38rem;
+            font-weight: 500;
+            line-height: 0.75;
+        }
+
+        .day-status {
+            width: 8px;
+            height: 1px;
+            bottom: 2px;
+        }
+
+        .week-selector {
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            gap: 10px;
+        }
+
+        .week-nav {
+            width: 28px !important;
+            height: 28px !important;
+            border-radius: 6px !important;
+        }
+
+        .week-nav svg {
+            width: 10px !important;
+            height: 10px !important;
+        }
+
+        .week-number {
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .week-status {
+            font-size: 0.55rem;
+            padding: 1px 5px;
+            border-radius: 5px;
+        }
+
+        .current-week-info {
+            min-width: 80px;
+            gap: 1px;
         }
     }
     
@@ -2542,6 +3442,153 @@ export const homeStyles = `
         }
     }
 
+    /* Otimizações para telas muito pequenas (iPhone SE, iPhone 13 mini e menores) */
+    @media (max-width: 375px) {
+        .week-indicators {
+            gap: 4px;
+            padding: 0;
+        }
+
+        .day-indicator {
+            padding: 8px 2px 6px;
+            min-height: 60px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+
+        .day-indicator .day-name {
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .day-indicator .day-label {
+            font-size: 0.7rem;
+            margin-bottom: 1px;
+        }
+
+        .day-indicator .day-type {
+            font-size: 0.6rem;
+            line-height: 1.1;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .day-indicator .day-status {
+            font-size: 0.55rem;
+            padding: 1px 4px;
+            border-radius: 6px;
+        }
+
+        .day-indicator .day-icon,
+        .day-indicator .workout-icon,
+        .day-indicator .rest-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .day-indicator.completed::after,
+        .day-indicator.cancelled::after,
+        .day-indicator.folga::after {
+            width: 10px;
+            height: 10px;
+            top: 3px;
+            right: 3px;
+            font-size: 5px;
+        }
+
+        .day-indicator:hover {
+            transform: translateY(-1px) scale(1.005);
+        }
+
+        /* Ajustar containers para telas muito pequenas */
+        .home-content {
+            padding: 8px 12px 16px 12px;
+        }
+
+        .week-overview {
+            padding: 0 12px 16px;
+        }
+
+        .training-plan {
+            padding: 12px 12px 16px 12px;
+        }
+
+        .home-header {
+            padding: 16px 12px;
+        }
+    }
+
+    /* Otimizações para telas extra pequenas (Android antigos, iPhone 5/SE 1ª geração) */
+    @media (max-width: 360px) {
+        .week-indicators {
+            gap: 2px;
+        }
+
+        .day-indicator {
+            padding: 6px 1px 4px;
+            min-height: 56px;
+            border-radius: 8px;
+        }
+
+        .day-indicator .day-name {
+            font-size: 0.6rem;
+            margin-bottom: 1px;
+        }
+
+        .day-indicator .day-label {
+            font-size: 0.65rem;
+            margin-bottom: 0;
+        }
+
+        .day-indicator .day-type {
+            font-size: 0.55rem;
+            line-height: 1.0;
+        }
+
+        .day-indicator .day-status {
+            font-size: 0.5rem;
+            padding: 1px 3px;
+            border-radius: 4px;
+        }
+
+        .day-indicator .day-icon,
+        .day-indicator .workout-icon,
+        .day-indicator .rest-icon {
+            width: 12px;
+            height: 12px;
+        }
+
+        .day-indicator.completed::after,
+        .day-indicator.cancelled::after,
+        .day-indicator.folga::after {
+            width: 8px;
+            height: 8px;
+            top: 2px;
+            right: 2px;
+            font-size: 4px;
+        }
+
+        /* Reduzir ainda mais os paddings dos containers */
+        .home-content {
+            padding: 6px 10px 14px 10px;
+        }
+
+        .week-overview {
+            padding: 0 10px 14px;
+        }
+
+        .training-plan {
+            padding: 10px 10px 14px 10px;
+        }
+
+        .home-header {
+            padding: 14px 10px;
+        }
+    }
+
     /* Adicionar elemento de loading para dados dinâmicos */
     .loading-placeholder {
         background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-primary) 50%, var(--bg-secondary) 75%);
@@ -2555,6 +3602,21 @@ export const homeStyles = `
     @keyframes loading {
         0% { background-position: 200% 0; }
         100% { background-position: -200% 0; }
+    }
+
+    /* ========== MOBILE OPTIMIZATIONS (icons hidden) ========== */
+    @media (max-width: 420px) {
+        .day-indicator .day-icon,
+        .day-indicator .workout-icon,
+        .day-indicator .rest-icon {
+            display: none !important;
+        }
+        .day-content {
+            gap: 2px;
+        }
+        .day-indicator {
+            padding: 5px 2px 4px;
+        }
     }
 
     /* ===== ESTILOS PARA MODAL DE HISTÓRICO ===== */
@@ -3148,3 +4210,28 @@ export async function inicializarHome() {
 // Disponibilizar funções globalmente
 window.inicializarHome = inicializarHome;
 window.initializeHomeAnimations = initializeHomeAnimations;
+
+// Fallback: registrar window.iniciarTreino caso ainda não exista
+if (!window.iniciarTreino) {
+    window.iniciarTreino = async () => {
+        try {
+            // Se já existir o manager carregado, apenas iniciar
+            if (window.workoutExecutionManager?.iniciarTreino) {
+                return window.workoutExecutionManager.iniciarTreino();
+            }
+            // Importar módulo de execução dinamicamente
+            const module = await import('../feature/workoutExecution.js');
+            const manager = module.workoutExecutionManager || module.default || module;
+            if (manager?.iniciarTreino) {
+                window.workoutExecutionManager = manager;
+                return manager.iniciarTreino();
+            }
+            console.error('[home.js] ❌ Não foi possível carregar workoutExecutionManager');
+        } catch (err) {
+            console.error('[home.js] ❌ Erro ao importar workoutExecution.js:', err);
+            if (window.showNotification) {
+                window.showNotification('Erro ao carregar tela de treino', 'error');
+            }
+        }
+    };
+}

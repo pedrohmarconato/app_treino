@@ -45,9 +45,10 @@ export class WorkoutProtocolService {
             });
             
             // 2. Buscar planejamento semanal (qual treino fazer hoje)
-            const { data: planejamentoHoje } = await this.buscarTreinoDeHoje(userId);
+            const resultadoPlanejamento = await this.buscarTreinoDeHoje(userId, semanaAtual);
+            const planejamentoHoje = resultadoPlanejamento.data;
             
-            if (!planejamentoHoje || planejamentoHoje.tipo === 'folga') {
+            if (!planejamentoHoje || planejamentoHoje.tipo_atividade === 'folga') {
                 return {
                     tipo: 'folga',
                     nome: 'Dia de Folga',
@@ -56,7 +57,7 @@ export class WorkoutProtocolService {
                 };
             }
             
-            if (planejamentoHoje.tipo === 'cardio') {
+            if (planejamentoHoje.tipo_atividade === 'cardio') {
                 return {
                     tipo: 'cardio', 
                     nome: 'Treino Cardiovascular',
@@ -124,7 +125,7 @@ export class WorkoutProtocolService {
     /**
      * Buscar qual treino fazer hoje usando JOIN com protocolo do usuário
      */
-    static async buscarTreinoDeHoje(userId) {
+    static async buscarTreinoDeHoje(userId, semanaProtocolo = null) {
         try {
             // Validar userId
             if (!userId) {
@@ -136,9 +137,10 @@ export class WorkoutProtocolService {
             const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda...
             const diaDb = WeeklyPlanService.dayToDb(diaSemana); // Converter para formato DB
             const ano = hoje.getFullYear();
-            const semana = this.getWeekNumber(hoje);
+            // CORREÇÃO: Usar semana do protocolo se fornecida, senão usar semana do calendário
+            const semana = semanaProtocolo || this.getWeekNumber(hoje);
             
-            console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaDb}, ano=${ano}, semana=${semana}`);
+            console.log(`[WorkoutProtocol] Buscando treino para: userId=${userId}, dia=${diaDb}, ano=${ano}, semana=${semana} (protocolo: ${semanaProtocolo ? 'sim' : 'não'})`);
             
             // Usar tabela planejamento_semanal diretamente para evitar múltiplos registros
             const { data: planejamento, error } = await query('planejamento_semanal', {
@@ -390,9 +392,16 @@ export class WorkoutProtocolService {
      * Marcar treino como concluído no planejamento semanal
      */
     static async marcarTreinoComoConcluido(userId) {
+        // Obter semana do protocolo ao invés da semana do calendário
+        const { data: planoUsuario } = await query('usuario_plano_treino', {
+            select: 'semana_atual',
+            eq: { usuario_id: userId, status: 'ativo' },
+            single: true
+        });
+        
         const hoje = new Date();
         const ano = hoje.getFullYear();
-        const semana = this.getWeekNumber(hoje);
+        const semana = planoUsuario?.semana_atual || 1; // CORREÇÃO: usar semana do protocolo
         const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay()); // Converter para formato DB
         
         await update('planejamento_semanal', 
@@ -417,9 +426,16 @@ export class WorkoutProtocolService {
     static async verificarProgressaoSemanal(userId) {
         try {
             // Contar treinos concluídos nesta semana
+            // Obter semana do protocolo ao invés da semana do calendário
+            const { data: planoUsuario } = await query('usuario_plano_treino', {
+                select: 'semana_atual',
+                eq: { usuario_id: userId, status: 'ativo' },
+                single: true
+            });
+            
             const hoje = new Date();
             const ano = hoje.getFullYear();
-            const semana = this.getWeekNumber(hoje);
+            const semana = planoUsuario?.semana_atual || 1; // CORREÇÃO: usar semana do protocolo
             
             const { data: planejamentoSemana } = await query('planejamento_semanal', {
                 eq: {

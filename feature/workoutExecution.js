@@ -4,6 +4,7 @@ import AppState from '../state/appState.js';
 import { showNotification } from '../ui/notifications.js';
 import { workoutTemplate, exerciseCardTemplate } from '../templates/workoutExecution.js';
 import TreinoCacheService from '../services/treinoCacheService.js';
+import { PreWorkoutModal } from '../components/preWorkoutModal.js';
 import { getActionIcon, getAchievementIcon, getWorkoutIcon } from '../utils/icons.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
 
@@ -53,8 +54,27 @@ class WorkoutExecutionManager {
                 return;
             }
 
+            // Avaliação pré-treino: coletar nível de energia do usuário
+            const energiaInicial = await PreWorkoutModal.exibir();
+
             // Carregar treino do protocolo
             this.currentWorkout = await WorkoutProtocolService.carregarTreinoParaExecucao(currentUser.id);
+
+            // Iniciar sessão de treino no cache local, se ainda não existir
+            try {
+                if (!TreinoCacheService.temSessaoAtiva()) {
+                    TreinoCacheService.iniciarSessaoTreino({
+                        usuario_id: currentUser.id,
+                        protocolo_treino_id: this.currentWorkout.protocolo_id,
+                        grupo_muscular: this.currentWorkout.grupo_muscular,
+                        tipo_atividade: this.currentWorkout.tipo || this.currentWorkout.tipo_atividade,
+                        exercicios_planejados: this.currentWorkout.exercicios,
+                        energia_inicial: energiaInicial
+                    });
+                }
+            } catch (cacheError) {
+                console.warn('[WorkoutExecution] Não foi possível iniciar sessão no cache:', cacheError);
+            }
             
             if (!this.currentWorkout) {
                 throw new Error('Nenhum treino encontrado para hoje');
@@ -562,6 +582,167 @@ class WorkoutExecutionManager {
             });
         });
     }
+
+    // Mostrar modal de confirmação de saída
+    mostrarModalSaida() {
+        console.log('[WorkoutExecution] 🚪 Tentando mostrar modal de saída...');
+        
+        let modal = document.getElementById('exit-confirmation-overlay');
+        let checkbox = document.getElementById('confirm-exit-checkbox');
+        let confirmBtn = document.getElementById('exit-confirm-btn');
+        let cancelBtn = document.getElementById('exit-cancel-btn');
+
+        if (!modal) {
+            console.warn('[WorkoutExecution] ⚠️ Modal de saída não encontrado no DOM. Criando dinamicamente...');
+            this._criarModalSaidaDinamico();
+            // tentar novamente
+            modal = document.getElementById('exit-confirmation-overlay');
+            checkbox = document.getElementById('confirm-exit-checkbox');
+            confirmBtn = document.getElementById('exit-confirm-btn');
+            cancelBtn = document.getElementById('exit-cancel-btn');
+        }
+
+        console.log('[WorkoutExecution] 🔍 Elementos encontrados após tentativa de criação:', {
+            modal: !!modal,
+            checkbox: !!checkbox,
+            confirmBtn: !!confirmBtn,
+            cancelBtn: !!cancelBtn
+        });
+
+        if (!modal) {
+            console.error('[WorkoutExecution] ❌ Ainda sem modal de saída. Usando confirm nativo.');
+            const confirmed = confirm('Você tem certeza que deseja sair? Todo o progresso será perdido.');
+            if (confirmed) {
+                this.voltarParaHome();
+            }
+            return;
+        }
+
+
+
+
+        // Resetar estado do modal
+        checkbox.checked = false;
+        confirmBtn.disabled = true;
+        confirmBtn.style.opacity = '0.5';
+        confirmBtn.style.cursor = 'not-allowed';
+
+        // Mostrar modal
+        modal.style.display = 'flex';
+
+        // Event listeners
+        const handleCheckboxChange = () => {
+            if (checkbox.checked) {
+                confirmBtn.disabled = false;
+                confirmBtn.style.opacity = '1';
+                confirmBtn.style.cursor = 'pointer';
+                confirmBtn.style.background = '#dc2626';
+                // Adicionar hover effects
+                confirmBtn.onmouseover = () => {
+                    if (!confirmBtn.disabled) {
+                        confirmBtn.style.background = '#b91c1c';
+                        confirmBtn.style.transform = 'translateY(-1px)';
+                    }
+                };
+                confirmBtn.onmouseout = () => {
+                    if (!confirmBtn.disabled) {
+                        confirmBtn.style.background = '#dc2626';
+                        confirmBtn.style.transform = 'translateY(0)';
+                    }
+                };
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = '0.5';
+                confirmBtn.style.cursor = 'not-allowed';
+                confirmBtn.style.background = '#dc2626';
+                confirmBtn.style.transform = 'translateY(0)';
+                // Remover hover effects
+                confirmBtn.onmouseover = null;
+                confirmBtn.onmouseout = null;
+            }
+        };
+
+        const handleCancel = () => {
+            this.fecharModalSaida();
+        };
+
+        const handleConfirm = () => {
+            if (checkbox.checked) {
+                this.fecharModalSaida();
+                this.voltarParaHome();
+            }
+        };
+
+        // Remover listeners anteriores se existirem
+        checkbox.removeEventListener('change', handleCheckboxChange);
+        cancelBtn.removeEventListener('click', handleCancel);
+        confirmBtn.removeEventListener('click', handleConfirm);
+
+        // Adicionar novos listeners
+        checkbox.addEventListener('change', handleCheckboxChange);
+        cancelBtn.addEventListener('click', handleCancel);
+        confirmBtn.addEventListener('click', handleConfirm);
+
+        // Listener para fechar com ESC
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                this.fecharModalSaida();
+                document.removeEventListener('keydown', handleKeyDown);
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+
+        // Listener para fechar clicando fora do modal
+        const handleOverlayClick = (e) => {
+            if (e.target === modal) {
+                this.fecharModalSaida();
+                modal.removeEventListener('click', handleOverlayClick);
+            }
+        };
+        modal.addEventListener('click', handleOverlayClick);
+        
+        console.log('[WorkoutExecution] ✅ Modal de saída configurado e exibido');
+    }
+
+        /**
+     * Cria o modal de confirmação de saída de forma dinâmica caso ele
+     * não exista no DOM (por falha de template ou renderização).
+     */
+    _criarModalSaidaDinamico() {
+        if (document.getElementById('exit-confirmation-overlay')) {
+            return;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'exit-confirmation-overlay';
+        overlay.className = 'exit-confirmation-overlay';
+        overlay.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;z-index:20000;backdrop-filter:blur(8px);`;
+
+        overlay.innerHTML = `
+            <div class="exit-confirmation-modal" style="background: var(--bg-secondary, #2a2a2a); border-radius: 12px; padding: 32px; width: 90%; max-width: 450px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); border: 1px solid var(--border-color, #444);">
+                <div style="font-size: 3rem; margin-bottom: 16px;">⚠️</div>
+                <h2 style="margin: 0 0 16px 0; color: var(--text-primary, #fff); font-size: 1.5rem; font-weight: 700;">Confirmar Saída</h2>
+                <p style="margin: 0 0 24px 0; color: var(--text-secondary, #ccc); font-size: 1rem; line-height: 1.5;">Você tem certeza que deseja sair? Todo o progresso do treinamento atual será perdido.</p>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 32px; padding: 16px; background: var(--bg-primary, #1a1a1a); border-radius: 8px; border: 1px solid var(--border-color, #444);">
+                    <input type="checkbox" id="confirm-exit-checkbox" style="width: 20px; height: 20px; accent-color: var(--accent-green, #10b981); cursor: pointer;">
+                    <label for="confirm-exit-checkbox" style="color: var(--text-primary, #fff); font-size: 0.9rem; cursor: pointer; flex: 1; text-align: left;">Entendo que perderei todo o progresso</label>
+                </div>
+                <div style="display: flex; gap: 16px; justify-content: center;">
+                    <button id="exit-cancel-btn" style="background: var(--bg-primary, #1a1a1a); color: var(--text-primary, #fff); border: 2px solid var(--border-color, #444); padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;">Cancelar</button>
+                    <button id="exit-confirm-btn" disabled style="background: #dc2626; color: #fff; border: 2px solid #dc2626; padding: 12px 24px; border-radius: 8px; cursor: not-allowed; font-weight: 600; font-size: 1rem; opacity: 0.5;">Sair mesmo assim</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(overlay);
+    }
+
+    // Fechar modal de confirmação de saída
+    fecharModalSaida() {
+        const modal = document.getElementById('exit-confirmation-overlay');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
     
     // Voltar para home
     voltarParaHome() {
@@ -575,9 +756,9 @@ class WorkoutExecutionManager {
             
             // Navegar para home
             if (window.mostrarTela) {
-                window.mostrarTela('dashboard');
+                window.mostrarTela('home-screen'); // ou 'home' dependendo do sistema de templates
             } else if (window.renderTemplate) {
-                window.renderTemplate('dashboard');
+                window.renderTemplate('home');
             } else {
                 // Fallback manual
                 location.reload();
@@ -930,6 +1111,19 @@ class WorkoutExecutionManager {
                 serie_numero: serieNumero,
                 repeticoes_alvo: exercicio.repeticoes_alvo
             };
+
+            // Registrar execução no cache local
+            TreinoCacheService.adicionarExecucaoCache({
+                exercicio_id: exercicioId,
+                exercicio_nome: exercicio.nome || exercicio.titulo || '',
+                peso_utilizado: peso,
+                repeticoes: reps,
+                serie_numero: serieNumero,
+                falhou: false,
+                peso_sugerido: pesoInput?.dataset?.pesoSugerido || null,
+                repeticoes_sugeridas: repsInput?.dataset?.repsAlvo || null,
+                tempo_descanso: exercicio.tempo_descanso
+            });
             
             // Salvar no banco usando o serviço
             const resultado = await WorkoutProtocolService.executarSerie(
@@ -2117,6 +2311,7 @@ const workoutExecutionManager = new WorkoutExecutionManager();
 
 // Exportar para uso global
 window.workoutExecutionManager = workoutExecutionManager;
+window.iniciarTreino = () => workoutExecutionManager.iniciarTreino();
 
 // Funções globais de debug
 window.debugWorkoutTemplate = () => workoutExecutionManager.debugTemplate();
