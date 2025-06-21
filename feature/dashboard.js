@@ -2091,10 +2091,25 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
                 mostrarModalHistorico(historico, dayIndex);
             }
         } else {
-            // Se não há histórico, mostrar informações de debug
-            const debugInfo = await debugTreinoInfo(currentUser.id, dayIndex);
-            console.log('[handleDayClick] Debug info:', debugInfo);
-            showNotification(`Nenhum treino encontrado para este dia. ${debugInfo.data ? debugInfo.data.substring(0, 100) + '...' : 'Verificando dados...'}`, 'warning');
+            // Se não há histórico de execução, mostrar resumo do treino planejado
+            console.log('[handleDayClick] Sem histórico de execução, buscando treino planejado...');
+            
+            try {
+                // Buscar treino planejado para o dia
+                const treinoPlanejado = await buscarTreinoPlanejado(currentUser.id, dayIndex);
+                
+                if (treinoPlanejado) {
+                    console.log('[handleDayClick] 🎯 Mostrando resumo do treino planejado');
+                    mostrarModalResumoPlanejado(treinoPlanejado, dayIndex);
+                } else {
+                    const debugInfo = await debugTreinoInfo(currentUser.id, dayIndex);
+                    console.log('[handleDayClick] Debug info:', debugInfo);
+                    showNotification('Nenhum treino configurado para este dia', 'info');
+                }
+            } catch (error) {
+                console.error('[handleDayClick] Erro ao buscar treino planejado:', error);
+                showNotification('Erro ao carregar informações do treino', 'error');
+            }
         }
     } catch (error) {
         console.error('[handleDayClick] Erro:', error);
@@ -2109,27 +2124,415 @@ async function buscarGrupoMuscularPlanejado(userId, dataAlvo) {
         const semana = WeeklyPlanService.getWeekNumber(dataAlvo);
         const diaSemana = WeeklyPlanService.dayToDb(dataAlvo.getDay());
         
-        const { data: planejamento, error } = await supabase
-            .from('planejamento_semanal')
-            .select('tipo_atividade')
-            .eq('usuario_id', userId)
-            .eq('ano', ano)
-            .eq('semana', semana)
-            .eq('dia_semana', diaSemana)
-            .single();
+        // Usar a função query do supabaseService que já tem autenticação configurada
+        const { query } = await import('../services/supabaseService.js');
+        const { data: planejamentoArray, error } = await query('planejamento_semanal', {
+            select: 'tipo_atividade',
+            eq: {
+                usuario_id: userId,
+                ano: ano,
+                semana: semana,
+                dia_semana: diaSemana
+            }
+        });
             
-        if (error || !planejamento) {
+        if (error || !planejamentoArray || planejamentoArray.length === 0) {
             console.log('[buscarGrupoMuscularPlanejado] Nenhum planejamento encontrado para este dia');
             return null;
         }
         
-        return planejamento.tipo_atividade;
+        return planejamentoArray[0].tipo_atividade;
         
     } catch (error) {
         console.error('[buscarGrupoMuscularPlanejado] Erro:', error);
         return null;
     }
 }
+
+// Buscar treino planejado para um dia específico
+async function buscarTreinoPlanejado(userId, dayIndex) {
+    try {
+        // Usar a semana que está sendo exibida
+        const semanaExibida = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados?.semanaAtual;
+        const anoAtual = new Date().getFullYear();
+        
+        // Calcular data do dia selecionado
+        const hoje = new Date();
+        const semanaAtual = WeeklyPlanService.getWeekNumber(hoje);
+        const diferencaSemanas = semanaExibida - semanaAtual;
+        
+        const dataBase = new Date(hoje.getTime() + (diferencaSemanas * 7 * 24 * 60 * 60 * 1000));
+        const diasParaAjustar = dayIndex - dataBase.getDay();
+        const dataAlvo = new Date(dataBase.getTime() + (diasParaAjustar * 24 * 60 * 60 * 1000));
+        
+        console.log('[buscarTreinoPlanejado] Buscando planejamento:', {
+            userId,
+            dayIndex,
+            semanaExibida,
+            dataAlvo: dataAlvo.toLocaleDateString('pt-BR')
+        });
+        
+        // Buscar planejamento do dia
+        const diaSemana = WeeklyPlanService.dayToDb(dayIndex);
+        
+        const { query } = await import('../services/supabaseService.js');
+        const { data: planejamentoArray, error: planError } = await query('planejamento_semanal', {
+            select: 'tipo_atividade, concluido, data_conclusao',
+            eq: {
+                usuario_id: userId,
+                ano: anoAtual,
+                semana: semanaExibida,
+                dia_semana: diaSemana
+            }
+        });
+        
+        if (planError || !planejamentoArray || planejamentoArray.length === 0) {
+            console.log('[buscarTreinoPlanejado] Nenhum planejamento encontrado');
+            return null;
+        }
+        
+        const planejamento = planejamentoArray[0];
+        
+        // Se for folga ou cardio, retornar informação básica
+        if (planejamento.tipo_atividade === 'folga' || planejamento.tipo_atividade === 'cardio') {
+            return {
+                tipo: planejamento.tipo_atividade,
+                data: dataAlvo,
+                exercicios: []
+            };
+        }
+        
+        // Buscar exercícios do protocolo para este tipo de treino
+        const { WorkoutProtocolService } = await import('../services/workoutProtocolService.js');
+        
+        // Buscar protocolo do usuário
+        const { data: protocoloArray, error: protError } = await query('usuario_plano_treino', {
+            select: 'protocolo_id',
+            eq: {
+                usuario_id: userId,
+                ativo: true
+            }
+        });
+        
+        if (protError || !protocoloArray || protocoloArray.length === 0) {
+            console.log('[buscarTreinoPlanejado] Nenhum protocolo ativo encontrado');
+            return null;
+        }
+        
+        const protocoloId = protocoloArray[0].protocolo_id;
+        
+        // Buscar exercícios do protocolo para o grupo muscular
+        const { data: exercicios, error: exError } = await query('protocolo_treinos', {
+            select: `
+                exercicio_id,
+                exercicios (
+                    nome,
+                    grupo_muscular,
+                    equipamento
+                ),
+                series,
+                repeticoes_min,
+                repeticoes_max,
+                tempo_descanso,
+                observacoes
+            `,
+            eq: {
+                protocolo_id: protocoloId,
+                tipo_atividade: planejamento.tipo_atividade
+            },
+            order: { column: 'ordem', ascending: true }
+        });
+        
+        if (exError) {
+            console.error('[buscarTreinoPlanejado] Erro ao buscar exercícios:', exError);
+            return null;
+        }
+        
+        return {
+            tipo: planejamento.tipo_atividade,
+            data: dataAlvo,
+            exercicios: exercicios || [],
+            protocoloId,
+            planejamento
+        };
+        
+    } catch (error) {
+        console.error('[buscarTreinoPlanejado] Erro:', error);
+        return null;
+    }
+}
+
+// Mostrar modal de resumo do treino planejado
+function mostrarModalResumoPlanejado(treinoPlanejado, dayIndex) {
+    console.log('[mostrarModalResumoPlanejado] Exibindo resumo:', treinoPlanejado);
+    
+    const { tipo, data, exercicios } = treinoPlanejado;
+    const dayName = DIAS_SEMANA[dayIndex];
+    const dataFormatada = data.toLocaleDateString('pt-BR');
+    
+    // Se for folga ou cardio
+    if (tipo === 'folga' || tipo === 'cardio') {
+        const tipoFormatado = tipo === 'folga' ? 'Dia de Descanso' : 'Treino Cardiovascular';
+        const icon = tipo === 'folga' ? '😴' : '🏃‍♂️';
+        
+        const modal = `
+            <div id="modal-resumo" class="modal-overlay-clean" onclick="fecharModalResumo(event)">
+                <div class="modal-content-clean workout-summary-modal" onclick="event.stopPropagation()">
+                    <div class="modal-header-clean">
+                        <div class="workout-history-header-clean">
+                            <div class="history-title-section-clean">
+                                <h2 class="modal-title-clean">${icon} ${tipoFormatado}</h2>
+                                <div class="history-subtitle-clean">
+                                    <span class="day-badge-clean">${dayName}</span>
+                                    <span class="date-clean">${dataFormatada}</span>
+                                </div>
+                            </div>
+                            <button class="btn-close-clean" onclick="fecharModalResumo()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-body-clean">
+                        <div class="empty-state-clean">
+                            <div class="empty-icon">${icon}</div>
+                            <h3>${tipoFormatado}</h3>
+                            <p>${tipo === 'folga' ? 'Aproveite para descansar e se recuperar!' : 'Escolha sua atividade cardiovascular preferida.'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modal);
+        
+        // Importar estilos do cleanModal se ainda não carregados
+        if (!document.querySelector('style[data-modal-styles="clean"]')) {
+            import('../components/cleanModal.js');
+        }
+        return;
+    }
+    
+    // Modal para treino com exercícios
+    const totalExercicios = exercicios.length;
+    const totalSeries = exercicios.reduce((total, ex) => total + (ex.series || 3), 0);
+    
+    const exerciciosHTML = exercicios.map(ex => {
+        const exercicio = ex.exercicios || {};
+        return `
+            <div class="exercise-planned-item">
+                <div class="exercise-header">
+                    <div class="exercise-info">
+                        <h4 class="exercise-name">${exercicio.nome || 'Exercício'}</h4>
+                        <span class="exercise-muscle">${exercicio.grupo_muscular || tipo}${exercicio.equipamento ? ' • ' + exercicio.equipamento : ''}</span>
+                    </div>
+                    <div class="exercise-status planned">
+                        <span>Planejado</span>
+                    </div>
+                </div>
+                
+                <div class="exercise-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Séries:</span>
+                        <span class="detail-value">${ex.series || 3}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Repetições:</span>
+                        <span class="detail-value">${ex.repeticoes_min || 8}-${ex.repeticoes_max || 12}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Descanso:</span>
+                        <span class="detail-value">${ex.tempo_descanso || 60}s</span>
+                    </div>
+                </div>
+                
+                ${ex.observacoes ? `
+                    <div class="exercise-notes">
+                        <span class="notes-icon">💡</span>
+                        <span>${ex.observacoes}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+    
+    const modal = `
+        <div id="modal-resumo" class="modal-overlay-clean" onclick="fecharModalResumo(event)">
+            <div class="modal-content-clean workout-summary-modal" onclick="event.stopPropagation()">
+                <div class="modal-header-clean">
+                    <div class="workout-history-header-clean">
+                        <div class="history-title-section-clean">
+                            <h2 class="modal-title-clean">📋 Treino Planejado</h2>
+                            <div class="history-subtitle-clean">
+                                <span class="day-badge-clean">${dayName}</span>
+                                <span class="date-clean">${dataFormatada}</span>
+                                <span class="muscle-badge-clean">${tipo}</span>
+                            </div>
+                        </div>
+                        <button class="btn-close-clean" onclick="fecharModalResumo()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="modal-body-clean">
+                    <div class="workout-summary-stats">
+                        <div class="stat-card">
+                            <span class="stat-value">${totalExercicios}</span>
+                            <span class="stat-label">Exercícios</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value">${totalSeries}</span>
+                            <span class="stat-label">Séries Totais</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value">${Math.round(totalSeries * 2.5)}</span>
+                            <span class="stat-label">Min. Estimado</span>
+                        </div>
+                    </div>
+                    
+                    <div class="exercises-planned-list">
+                        ${exerciciosHTML}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <style>
+            .muscle-badge-clean {
+                background: var(--accent-primary-bg);
+                color: var(--accent-primary);
+                padding: 4px 12px;
+                border-radius: var(--radius-sm);
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            
+            .workout-summary-stats {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+                margin-bottom: 24px;
+            }
+            
+            .stat-card {
+                background: var(--bg-secondary);
+                padding: 20px;
+                border-radius: var(--radius-md);
+                text-align: center;
+                border: 1px solid var(--border-color);
+            }
+            
+            .stat-value {
+                display: block;
+                font-size: 2rem;
+                font-weight: 700;
+                color: var(--accent-primary);
+                margin-bottom: 4px;
+            }
+            
+            .stat-label {
+                font-size: 0.875rem;
+                color: var(--text-secondary);
+            }
+            
+            .exercises-planned-list {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .exercise-planned-item {
+                background: var(--bg-secondary);
+                border-radius: var(--radius-md);
+                padding: 20px;
+                border: 1px solid var(--border-color);
+                transition: var(--transition);
+            }
+            
+            .exercise-planned-item:hover {
+                border-color: var(--accent-primary-glow);
+                transform: translateY(-1px);
+            }
+            
+            .exercise-details {
+                display: flex;
+                gap: 24px;
+                margin-top: 16px;
+                padding-top: 16px;
+                border-top: 1px solid var(--border-color);
+            }
+            
+            .detail-item {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            
+            .detail-label {
+                font-size: 0.75rem;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            
+            .detail-value {
+                font-size: 1.125rem;
+                font-weight: 600;
+                color: var(--text-primary);
+            }
+            
+            .exercise-notes {
+                margin-top: 16px;
+                padding: 12px;
+                background: var(--bg-primary);
+                border-radius: var(--radius-sm);
+                display: flex;
+                gap: 8px;
+                align-items: flex-start;
+                font-size: 0.875rem;
+                color: var(--text-secondary);
+            }
+            
+            .notes-icon {
+                flex-shrink: 0;
+            }
+            
+            .exercise-status.planned {
+                background: var(--bg-secondary);
+                color: var(--text-secondary);
+            }
+        </style>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modal);
+    
+    // Importar estilos do cleanModal se ainda não carregados
+    if (!document.querySelector('style[data-modal-styles="clean"]')) {
+        import('../components/cleanModal.js');
+    }
+}
+
+// Fechar modal de resumo
+window.fecharModalResumo = function(event) {
+    if (event && event.target !== event.currentTarget) return;
+    
+    const modal = document.getElementById('modal-resumo');
+    if (modal) {
+        modal.classList.add('fade-out');
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+};
 
 // Função auxiliar para obter número da semana
 function getWeekNumber(date) {
