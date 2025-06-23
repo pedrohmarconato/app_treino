@@ -364,8 +364,9 @@ export class ProtocolIntegration {
         
         // Funções auxiliares
         window.voltarParaHome = function() {
-            if (window.workoutExecutionManager) {
-                window.workoutExecutionManager.resetarEstado();
+            // Resetar estado do treino usando AppState
+            if (window.AppState) {
+                window.AppState.resetWorkout();
             }
             if (window.renderTemplate) {
                 window.renderTemplate('home');
@@ -400,12 +401,14 @@ export class ProtocolIntegration {
         // Listener para teclas de atalho
         document.addEventListener('keydown', (e) => {
             // ESC para voltar da tela de treino
-            if (e.key === 'Escape' && window.workoutExecutionManager.currentWorkout) {
+            const currentWorkout = window.AppState?.get('currentWorkout');
+            if (e.key === 'Escape' && currentWorkout) {
                 window.voltarParaHome();
             }
             
             // Espaço para pular descanso
-            if (e.code === 'Space' && window.workoutExecutionManager.restTimerInterval) {
+            const timerInterval = window.AppState?.get('timerInterval');
+            if (e.code === 'Space' && timerInterval) {
                 e.preventDefault();
                 window.pularDescanso();
             }

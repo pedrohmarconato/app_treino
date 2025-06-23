@@ -4218,20 +4218,20 @@ window.initializeHomeAnimations = initializeHomeAnimations;
 if (!window.iniciarTreino) {
     window.iniciarTreino = async () => {
         try {
-            // Se já existir o manager carregado, apenas iniciar
-            if (window.workoutExecutionManager?.iniciarTreino) {
-                return window.workoutExecutionManager.iniciarTreino();
+            console.log('[home.js] 🏋️ Iniciando treino...');
+            
+            // IMPORTANTE: Usar workout.js original ao invés do bugado workoutExecution.js
+            const module = await import('../feature/workout.js');
+            
+            // O workout.js exporta a função iniciarTreino e também a coloca no window
+            if (module.iniciarTreino) {
+                console.log('[home.js] ✅ Usando workout.js original');
+                return module.iniciarTreino();
             }
-            // Importar módulo de execução dinamicamente
-            const module = await import('../feature/workoutExecution.js');
-            const manager = module.workoutExecutionManager || module.default || module;
-            if (manager?.iniciarTreino) {
-                window.workoutExecutionManager = manager;
-                return manager.iniciarTreino();
-            }
-            console.error('[home.js] ❌ Não foi possível carregar workoutExecutionManager');
+            
+            console.error('[home.js] ❌ Não foi possível carregar função iniciarTreino');
         } catch (err) {
-            console.error('[home.js] ❌ Erro ao importar workoutExecution.js:', err);
+            console.error('[home.js] ❌ Erro ao importar workout.js:', err);
             if (window.showNotification) {
                 window.showNotification('Erro ao carregar tela de treino', 'error');
             }
