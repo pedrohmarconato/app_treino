@@ -2907,7 +2907,7 @@ button:focus-visible {
 .day-indicator.rest-day {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    box-shadow: 0 0 10px rgba(255, 229, 0, 0.3);
+    box-shadow: none;
 }
 
 .day-indicator.folga .day-name,

@@ -256,12 +256,16 @@ function initializeHomeScreen() {
         // 2. Carregar dashboard
         setTimeout(async () => {
             try {
-                if (window.carregarDashboard) {
-                    console.log('[initializeHomeScreen] Carregando dashboard...');
+                if (window.initializeHomePage) {
+                    console.log('[initializeHomeScreen] Inicializando página home...');
+                    await window.initializeHomePage();
+                    console.log('[initializeHomeScreen] Página home inicializada com sucesso');
+                } else if (window.carregarDashboard) {
+                    console.log('[initializeHomeScreen] Usando carregarDashboard (fallback)...');
                     await window.carregarDashboard();
                     console.log('[initializeHomeScreen] Dashboard carregado com sucesso');
                 } else {
-                    console.warn('[initializeHomeScreen] window.carregarDashboard não disponível');
+                    console.warn('[initializeHomeScreen] Nenhuma função de inicialização disponível');
                     
                     // Fallback: configurar elementos básicos
                     setupBasicHomeElements(currentUser);

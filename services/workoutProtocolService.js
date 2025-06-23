@@ -497,6 +497,63 @@ export class WorkoutProtocolService {
     }
     
     /**
+     * Verificar se existe planejamento para a próxima semana e atualizar semana_atual
+     * Nova regra: Se já planejou a semana seguinte no domingo, deve mostrar a nova semana
+     */
+    static async verificarEAtualizarSemanaPorPlanejamento(userId) {
+        try {
+            const hoje = new Date();
+            const isDomingo = hoje.getDay() === 0;
+            
+            if (!isDomingo) {
+                return false; // Só aplica a regra no domingo
+            }
+            
+            // Buscar protocolo ativo
+            const { data: planoAtual } = await query('usuario_plano_treino', {
+                eq: { usuario_id: userId, status: 'ativo' },
+                single: true
+            });
+            
+            if (!planoAtual) return false;
+            
+            const semanaAtual = planoAtual.semana_atual || 1;
+            const proximaSemana = semanaAtual + 1;
+            
+            // Verificar se existe planejamento para a próxima semana do protocolo
+            const { data: planejamentoFuturo } = await query('planejamento_semanal', {
+                eq: { 
+                    usuario_id: userId,
+                    semana_treino: proximaSemana // Usando semana do protocolo
+                },
+                limit: 1
+            });
+            
+            if (planejamentoFuturo && planejamentoFuturo.length > 0) {
+                console.log(`[WorkoutProtocol] 📅 Planejamento futuro detectado para semana ${proximaSemana}`);
+                
+                // Atualizar semana_atual para a próxima semana
+                await update('usuario_plano_treino',
+                    { 
+                        semana_atual: proximaSemana,
+                        updated_at: new Date().toISOString()
+                    },
+                    { eq: { id: planoAtual.id } }
+                );
+                
+                console.log(`[WorkoutProtocol] ✅ Semana atualizada para ${proximaSemana} devido ao planejamento futuro`);
+                return true;
+            }
+            
+            return false;
+            
+        } catch (error) {
+            console.error('[WorkoutProtocol] Erro ao verificar planejamento futuro:', error);
+            return false;
+        }
+    }
+    
+    /**
      * Obter número da semana ISO
      */
     static getWeekNumber(date) {
@@ -512,11 +569,14 @@ export class WorkoutProtocolService {
      */
     static async obterEstatisticasUsuario(userId) {
         try {
-            // Buscar da view existente
+            // Temporariamente desabilitado - view não implementada
+            /*
             const { data: stats } = await query('v_estatisticas_usuarios', {
                 eq: { usuario_id: userId },
                 single: true
             });
+            */
+            const stats = null; // Retornar null temporariamente
             
             // Buscar semana atual
             const { data: plano } = await query('usuario_plano_treino', {

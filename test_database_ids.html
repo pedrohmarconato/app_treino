@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Database IDs</title>
+</head>
+<body>
+    <h1>Debug Database IDs</h1>
+    <p>Abra o console do navegador para ver os resultados.</p>
+    <button onclick="debugDatabaseIds()">Executar Debug</button>
+
+    <script type="module">
+        import debugDatabaseIds from './debug_database_ids.js';
+        
+        // Disponibilizar globalmente
+        window.debugDatabaseIds = debugDatabaseIds;
+        
+        // Executar automaticamente
+        console.log('🚀 Executando debug automaticamente...');
+        setTimeout(() => {
+            debugDatabaseIds();
+        }, 1000);
+    </script>
+</body>
+</html>

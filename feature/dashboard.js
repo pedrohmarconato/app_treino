@@ -148,7 +148,16 @@ async function carregarDadosCompletos(semanaTarget = null) {
         
         // Buscar semana ativa do protocolo do usuário PRIMEIRO
         const semanaAtiva = await obterSemanaAtivaUsuario(currentUser.id);
-        const semanaProtocolo = semanaAtiva?.semana_treino || semanaAtual;
+        
+        // Buscar também a semana_atual diretamente do usuario_plano_treino
+        const { data: planoUsuario } = await supabase
+            .from('usuario_plano_treino')
+            .select('semana_atual')
+            .eq('usuario_id', currentUser.id)
+            .eq('status', 'ativo')
+            .single();
+        
+        const semanaProtocolo = planoUsuario?.semana_atual || semanaAtiva?.semana_treino || 1;
         
         console.log('[carregarDadosCompletos] 🔄 NOVA LÓGICA: Semana civil:', semanaAtual, '| Semana protocolo:', semanaProtocolo);
         
@@ -160,14 +169,15 @@ async function carregarDadosCompletos(semanaTarget = null) {
         console.log(`[carregarDadosCompletos] Carregando semanas ${semanaMin} a ${semanaMax} (target PROTOCOLO: ${semanareferencia})`);
 
         // Fazer UMA consulta para buscar dados de múltiplas semanas (range expandido)
+        // IMPORTANTE: Usar semana_treino (protocolo) ao invés de semana (calendário)
         const { data: planejamentos, error } = await supabase
             .from('planejamento_semanal')
             .select('*')
             .eq('usuario_id', currentUser.id)
             .eq('ano', anoAtual)
-            .gte('semana', semanaMin)
-            .lte('semana', semanaMax)
-            .order('semana', { ascending: true })
+            .gte('semana_treino', semanaMin)
+            .lte('semana_treino', semanaMax)
+            .order('semana_treino', { ascending: true })
             .order('dia_semana', { ascending: true });
 
         if (error) {
@@ -175,20 +185,24 @@ async function carregarDadosCompletos(semanaTarget = null) {
             return null;
         }
 
-        // Organizar dados por semana
+        // Organizar dados por semana do protocolo
         const dadosPorSemana = {};
         if (planejamentos && planejamentos.length > 0) {
             planejamentos.forEach(p => {
-                if (!dadosPorSemana[p.semana]) {
-                    dadosPorSemana[p.semana] = {};
+                // IMPORTANTE: Usar semana_treino como chave ao invés de semana
+                const semanaChave = p.semana_treino || p.semana;
+                if (!dadosPorSemana[semanaChave]) {
+                    dadosPorSemana[semanaChave] = {};
                 }
                 // Converter dia_semana (1-7) para índice JS (0-6) usando WeeklyPlanService
                 const diaJS = WeeklyPlanService.dbToDay(p.dia_semana);
-                dadosPorSemana[p.semana][diaJS] = {
+                dadosPorSemana[semanaChave][diaJS] = {
                     tipo: p.tipo_atividade,
                     tipo_atividade: p.tipo_atividade,
                     concluido: p.concluido,
                     semana_referencia: p.semana_referencia,
+                    semana_calendario: p.semana,
+                    semana_protocolo: p.semana_treino,
                     id: p.id
                 };
             });
@@ -199,6 +213,7 @@ async function carregarDadosCompletos(semanaTarget = null) {
             planejamentos: dadosPorSemana,
             semanaAtual: semanaAtual, // semana civil para referência
             semanaAtiva: semanaProtocolo, // semana do protocolo como fonte de verdade
+            semanaProtocolo: semanaProtocolo, // adicionando explicitamente
             anoAtual: anoAtual,
             usuario_id: currentUser.id
         };
@@ -287,53 +302,91 @@ function renderizarIndicadoresDoCache(semana) {
         const diaAtual = hoje.getDay();
         
         console.log(`[renderizarIndicadoresDoCache] ⚡ Renderizando semana ${semana} do cache`);
+        console.log(`[renderizarIndicadoresDoCache] 📅 Hoje é: ${hoje.toLocaleDateString('pt-BR')} - Dia da semana: ${diaAtual} (0=Dom, 1=Seg, 2=Ter...)`);
+        
+        // Verificar se há múltiplos dias sendo marcados como "hoje"
+        let diasMarcadosComoHoje = 0;
         
         let html = '';
         for (let i = 0; i < 7; i++) {
             const diaPlan = weekPlan[i];
-            const isToday = i === diaAtual && semana === dadosGlobaisCache.dados.semanaAtual;
+            // Marcar como "hoje" apenas se estamos visualizando a semana do protocolo atual
+            // CORREÇÃO TEMPORÁRIA: Forçar apenas domingo (0) como hoje se detectarmos problema
+            let isToday = i === diaAtual && semana === dadosGlobaisCache.dados.semanaProtocolo;
+            
+            // Se hoje é domingo (0) mas terça (2) também está sendo marcada, corrigir
+            if (diaAtual === 0 && i === 2 && isToday) {
+                console.warn(`[renderizarIndicadoresDoCache] ⚠️ Corrigindo: Terça estava sendo marcada como hoje, mas hoje é domingo`);
+                isToday = false;
+            }
+            
             const isCompleted = diaPlan?.concluido || false;
+            
+            if (isToday) {
+                diasMarcadosComoHoje++;
+                console.log(`[renderizarIndicadoresDoCache] 🔍 Dia ${i} (${DIAS_SEMANA[i]}) marcado como HOJE`);
+            }
             
             // Determinar tipo e classe do dia
             let dayType = 'Configure';
             let dayClass = 'day-indicator';
-            let icon = '';
+            let muscleIcon = '';
+            let muscleGroup = '';
             
             if (diaPlan && diaPlan.tipo) {
-                const tipoTreino = diaPlan.tipo.toLowerCase();
+                const tipoTreino = diaPlan.tipo;
+                muscleGroup = tipoTreino;
                 
-                switch(tipoTreino) {
+                switch(tipoTreino.toLowerCase()) {
                     case 'folga':
                     case 'descanso':
                         dayType = 'Folga';
                         dayClass += ' rest-day';
-                        icon = getWorkoutIcon('descanso', 'small');
+                        muscleIcon = getMuscleGroupSVG('folga');
                         break;
                     case 'cardio':
                     case 'cardiovascular':
                         dayType = 'Cardio';
                         dayClass += ' cardio-day';
-                        icon = getWorkoutIcon('cardio', 'small');
+                        muscleIcon = getMuscleGroupSVG('cardio');
                         break;
                     default:
+                        // Treino de força - usar SVG do grupo muscular
                         dayType = diaPlan.tipo;
                         dayClass += ' workout-day';
-                        icon = getWorkoutIcon(TREINO_ICONS[diaPlan.tipo] || 'peito', 'small');
+                        muscleIcon = getMuscleGroupSVG(diaPlan.tipo);
                         break;
                 }
             }
             
-            // Classes adicionais
-            if (isToday) dayClass += ' today';
-            if (isCompleted) dayClass += ' completed';
+            // Classes adicionais baseadas no estado
+            if (!diaPlan || dayType === 'Configure') {
+                // Sem treino planejado - CINZA
+                dayClass += ' no-plan';
+            } else if (isCompleted) {
+                // Treino executado - VERDE NEON
+                dayClass += ' completed';
+            } else {
+                // Treino programado - AMARELO NEON
+                dayClass += ' planned';
+            }
+            
+            // Dia atual sempre tem destaque especial
+            // CORREÇÃO: Garantir que apenas o dia correto tenha a classe today
+            if (isToday && i === diaAtual) {
+                dayClass += ' today';
+            } else if (dayClass.includes('today')) {
+                // Remover classe today se foi adicionada incorretamente
+                dayClass = dayClass.replace(' today', '');
+            }
             
             html += `
                 <div class="${dayClass}" onclick="handleDayClick(${i}, ${isCompleted})">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
                     <div class="day-content">
-                        ${icon ? `<span class="day-icon">
-                            ${icon}
-                        </span>` : ''}
+                        <div class="muscle-icon-wrapper">
+                            ${muscleIcon}
+                        </div>
                         <div class="day-type">${dayType}</div>
                     </div>
                 </div>
@@ -343,9 +396,61 @@ function renderizarIndicadoresDoCache(semana) {
         container.innerHTML = html;
         console.log(`[renderizarIndicadoresDoCache] ✅ Semana ${semana} renderizada instantaneamente`);
         
+        if (diasMarcadosComoHoje > 1) {
+            console.error(`[renderizarIndicadoresDoCache] ⚠️ PROBLEMA: ${diasMarcadosComoHoje} dias marcados como HOJE!`);
+        }
+        
     } catch (error) {
         console.error('[renderizarIndicadoresDoCache] ❌ Erro:', error);
     }
+}
+
+// Função auxiliar para obter SVG do grupo muscular
+function getMuscleGroupSVG(grupo) {
+    const muscleGroups = {
+        'Peito': {
+            svg: '/assets/muscle-groups/peito/chest-full.svg'
+        },
+        'Costas': {
+            svg: '/assets/muscle-groups/costas/lats.svg'
+        },
+        'Pernas': {
+            svg: '/assets/muscle-groups/pernas/quads.svg'
+        },
+        'Ombro': {
+            svg: '/assets/muscle-groups/costas/traps.svg'
+        },
+        'Braço': {
+            svg: '/assets/muscle-groups/braco/biceps.svg'
+        },
+        'Ombro e Braço': {
+            svg: '/assets/muscle-groups/braco/biceps.svg'
+        },
+        'Cardio': {
+            svg: '/SVG_MUSCLE/cardio.svg'
+        },
+        'cardio': {
+            svg: '/SVG_MUSCLE/cardio.svg'
+        },
+        'folga': {
+            svg: '/SVG_MUSCLE/folga.svg'
+        },
+        'descanso': {
+            svg: '/SVG_MUSCLE/folga.svg'
+        }
+    };
+    
+    const config = muscleGroups[grupo];
+    if (!config) {
+        return `<span class="default-icon">${getWorkoutIcon(TREINO_ICONS[grupo] || 'peito', 'small')}</span>`;
+    }
+    
+    return `<img 
+        src="${config.svg}" 
+        alt="${grupo}" 
+        class="muscle-svg-icon"
+        onerror="this.style.display='none';"
+    />`;
 }
 
 // Atualizar interface do seletor de semanas
@@ -353,7 +458,8 @@ function atualizarSeletorSemanas() {
     try {
         if (!dadosGlobaisCache.dados) return;
 
-        const semanaExibida = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados.semanaAtual;
+        // Usar semana do protocolo, não semana do calendário
+        const semanaExibida = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados.semanaProtocolo || dadosGlobaisCache.dados.semanaAtiva;
         const weekNumber = document.getElementById('week-number');
         const weekStatus = document.getElementById('week-status');
 
@@ -362,14 +468,15 @@ function atualizarSeletorSemanas() {
         }
 
         if (weekStatus) {
-            let statusText = 'Inativa';
-            let statusClass = 'inativa';
-            let statusIcon = getWorkoutIcon('navigation.calendar');
+            let statusText = 'Ativa';
+            let statusClass = 'atual';
+            let statusIcon = getWorkoutIcon('achievements.star');
 
-            if (semanaExibida === dadosGlobaisCache.dados.semanaAtual) {
-                statusText = 'Atual';
-                statusClass = 'atual';
-                statusIcon = getWorkoutIcon('achievements.star');
+            // Semana do protocolo é sempre a semana atual para o usuário
+            if (semanaExibida !== dadosGlobaisCache.dados.semanaProtocolo) {
+                statusText = 'Inativa';
+                statusClass = 'inativa';
+                statusIcon = getWorkoutIcon('navigation.calendar');
             }
 
             weekStatus.innerHTML = `${statusIcon} ${statusText}`;
@@ -395,9 +502,9 @@ function atualizarSeletorSemanas() {
             weekNext.title = temProximaSemana ? 'Próxima semana' : 'Não há próxima semana';
         }
         
-        // Botão "Hoje" - mostrar apenas se não estiver na semana atual
+        // Botão "Hoje" - mostrar apenas se não estiver na semana atual do protocolo
         if (weekToday) {
-            const isCurrentWeek = semanaExibida === dadosGlobaisCache.dados.semanaAtual;
+            const isCurrentWeek = semanaExibida === dadosGlobaisCache.dados.semanaProtocolo;
             weekToday.style.display = isCurrentWeek ? 'none' : 'inline-block';
             weekToday.innerHTML = `${getWorkoutIcon('navigation.home')}`;
             weekToday.title = 'Voltar para semana atual';
@@ -490,9 +597,9 @@ function voltarParaSemanaAtual() {
             return;
         }
 
-        const semanaAUsar = dadosGlobaisCache.dados.semanaAtiva || dadosGlobaisCache.dados.semanaAtual;
-        console.log('[carregarTreinoAtualDoCache] 🎯 Usando semana:', semanaAUsar);
-        console.log(`[voltarParaSemanaAtual] ⚡ Voltando para semana atual: ${semanaAtual}`);
+        // Usar semana do protocolo como padrão
+        const semanaAtual = dadosGlobaisCache.dados.semanaProtocolo || dadosGlobaisCache.dados.semanaAtiva || dadosGlobaisCache.dados.semanaAtual;
+        console.log(`[voltarParaSemanaAtual] ⚡ Voltando para semana atual do protocolo: ${semanaAtual}`);
 
         // Atualizar semana exibida
         dadosGlobaisCache.semanaExibida = semanaAtual;
@@ -520,6 +627,80 @@ window.limparCachesDashboard = limparCachesDashboard;
 window.carregarDadosCompletos = carregarDadosCompletos;
 window.atualizarMetricasTempoReal = atualizarMetricasTempoReal;
 window.recarregarDashboardLegacy = recarregarDashboardLegacy;
+window.atualizarSeletorSemanas = atualizarSeletorSemanas;
+
+// Função para iniciar treino (fallback)
+window.iniciarTreinoSimples = async function() {
+    console.log('[iniciarTreinoSimples] Verificando treino do dia...');
+    
+    const currentUser = AppState.get('currentUser');
+    if (!currentUser) {
+        showNotification('Faça login primeiro', 'error');
+        return;
+    }
+    
+    // Verificar se há treino para hoje
+    const hoje = new Date().getDay();
+    const semanaAtual = dadosGlobaisCache?.dados?.semanaProtocolo || 1;
+    const treinoHoje = dadosGlobaisCache?.dados?.planejamentos?.[semanaAtual]?.[hoje];
+    
+    if (!treinoHoje) {
+        showNotification('Nenhum treino planejado para hoje', 'info');
+        return;
+    }
+    
+    if (treinoHoje.tipo === 'folga') {
+        showNotification('Hoje é dia de descanso!', 'info');
+        return;
+    }
+    
+    if (treinoHoje.tipo === 'cardio') {
+        showNotification('Treino de cardio - Em desenvolvimento', 'info');
+        return;
+    }
+    
+    showNotification(`Iniciando treino de ${treinoHoje.tipo}`, 'success');
+    
+    // Tentar navegar para tela de treino
+    if (window.mostrarTela) {
+        window.mostrarTela('workout-screen');
+    } else {
+        console.error('Função mostrarTela não encontrada');
+    }
+};
+
+// Se não existe iniciarTreino, usar nossa versão simples
+if (!window.iniciarTreino) {
+    window.iniciarTreino = window.iniciarTreinoSimples;
+}
+
+// Função para inicializar a página home
+window.initializeHomePage = async function() {
+    console.log('[initializeHomePage] Inicializando página home...');
+    
+    try {
+        // Carregar dados completos
+        const dados = await carregarDadosCompletos();
+        
+        if (dados) {
+            // Renderizar indicadores da semana
+            const semanaExibir = dados.semanaAtiva || dados.semanaAtual;
+            renderizarIndicadoresDoCache(semanaExibir);
+            
+            // Atualizar seletor de semanas
+            atualizarSeletorSemanas();
+            
+            console.log('[initializeHomePage] ✅ Página home inicializada com sucesso!');
+            return true;
+        } else {
+            console.error('[initializeHomePage] ❌ Falha ao carregar dados');
+            return false;
+        }
+    } catch (error) {
+        console.error('[initializeHomePage] ❌ Erro ao inicializar:', error);
+        return false;
+    }
+};
 
 // Função de teste completo do sistema
 window.testeCompletoSistema = async function() {
@@ -1955,6 +2136,7 @@ window.recarregarDashboard = carregarDashboard;
 window.carregarIndicadoresSemana = carregarIndicadoresSemana;
 window.limparEventListeners = limparEventListeners;
 window.fetchWorkouts = fetchWorkouts;
+window.buscarResumoTreinoCompleto = buscarResumoTreinoCompleto;
 
 // Função global para navegação de semanas
 window.navegarSemana = navegarSemana;
@@ -2040,11 +2222,24 @@ async function sincronizarConclusaoTreino(userId, dayIndex) {
         const ano = hoje.getFullYear();
         const semana = WeeklyPlanService.getWeekNumber(hoje);
         
+        // Buscar semana_treino da d_calendario para a data atual
+        const dataAtual = hoje.toISOString().split('T')[0];
+        const { data: calendarioHoje, error: calendarioError } = await supabase
+            .from('d_calendario')
+            .select('semana_treino')
+            .eq('data_completa', dataAtual)
+            .single();
+        
+        if (calendarioError) {
+            console.error('[sincronizarConclusaoTreino] Erro ao buscar semana_treino:', calendarioError);
+        }
+        
         await supabase
             .from('planejamento_semanal')
             .update({ 
                 concluido: true, 
-                data_conclusao: new Date().toISOString() 
+                data_conclusao: new Date().toISOString(),
+                semana_treino: calendarioHoje?.semana_treino || null
             })
             .eq('usuario_id', userId)
             .eq('ano', ano)
@@ -2071,44 +2266,58 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
         return;
     }
     
-    // Sempre tentar buscar histórico, mesmo se não marcado como concluído
-    // pois pode haver execuções que não foram sincronizadas
-    
     try {
-        showNotification('Carregando histórico do treino...', 'info');
+        showNotification('Carregando informações do treino...', 'info');
         
-        // Buscar dados do treino histórico
-        const historico = await buscarHistoricoTreino(currentUser.id, dayIndex);
+        // Usar a nova função com as views
+        // Obter a semana atual sendo exibida
+        // Obter a semana "ativa" (protocolo) que deve ser usada nas views
+        const semanaAUsar = dadosGlobaisCache?.dados?.semanaAtiva || window.weekCarousel?.currentWeek || WeeklyPlanService.getWeekNumber(new Date());
         
-        if (historico) {
-            console.log('[handleDayClick] ✅ Histórico encontrado:', historico);
-            // Verificar se há múltiplos grupos musculares
-            if (historico.multiplos_grupos) {
-                console.log('[handleDayClick] 🎯 Mostrando seletor de grupo muscular');
-                mostrarSeletorGrupoMuscular(historico, dayIndex);
+        const resumoCompleto = await buscarResumoTreinoCompleto(
+            currentUser.id, 
+            dayIndex, 
+            semanaAUsar
+        );
+        
+        if (resumoCompleto) {
+            console.log('[handleDayClick] ✅ Resumo encontrado:', resumoCompleto);
+            
+            // Se for folga ou cardio, usar modal específico
+            if (resumoCompleto.resumo.tipo_atividade === 'folga' || 
+                resumoCompleto.resumo.tipo_atividade === 'cardio') {
+                mostrarModalResumoPlanejado({
+                    tipo: resumoCompleto.resumo.tipo_atividade,
+                    data: new Date(),
+                    exercicios: []
+                }, dayIndex);
             } else {
-                console.log('[handleDayClick] 🎯 Mostrando modal de histórico');
-                mostrarModalHistorico(historico, dayIndex);
+                // Usar o novo modal unificado
+                mostrarModalResumoUnificado(resumoCompleto);
             }
         } else {
-            // Se não há histórico de execução, mostrar resumo do treino planejado
-            console.log('[handleDayClick] Sem histórico de execução, buscando treino planejado...');
+            // Fallback para buscar histórico antigo (compatibilidade)
+            console.log('[handleDayClick] Sem dados nas views, tentando busca antiga...');
             
-            try {
-                // Buscar treino planejado para o dia
+            const historico = await buscarHistoricoTreino(currentUser.id, dayIndex);
+            
+            if (historico) {
+                console.log('[handleDayClick] ✅ Histórico antigo encontrado:', historico);
+                if (historico.multiplos_grupos) {
+                    mostrarSeletorGrupoMuscular(historico, dayIndex);
+                } else {
+                    mostrarModalHistorico(historico, dayIndex);
+                }
+            } else {
+                // Tentar buscar treino planejado (compatibilidade)
                 const treinoPlanejado = await buscarTreinoPlanejado(currentUser.id, dayIndex);
                 
                 if (treinoPlanejado) {
-                    console.log('[handleDayClick] 🎯 Mostrando resumo do treino planejado');
+                    console.log('[handleDayClick] 🎯 Mostrando resumo do treino planejado (fallback)');
                     mostrarModalResumoPlanejado(treinoPlanejado, dayIndex);
                 } else {
-                    const debugInfo = await debugTreinoInfo(currentUser.id, dayIndex);
-                    console.log('[handleDayClick] Debug info:', debugInfo);
                     showNotification('Nenhum treino configurado para este dia', 'info');
                 }
-            } catch (error) {
-                console.error('[handleDayClick] Erro ao buscar treino planejado:', error);
-                showNotification('Erro ao carregar informações do treino', 'error');
             }
         }
     } catch (error) {
@@ -2207,7 +2416,7 @@ async function buscarTreinoPlanejado(userId, dayIndex) {
         
         // Buscar protocolo do usuário
         const { data: protocoloArray, error: protError } = await query('usuario_plano_treino', {
-            select: 'protocolo_id',
+            select: 'protocolo_treinamento_id',
             eq: {
                 usuario_id: userId,
                 ativo: true
@@ -2219,7 +2428,7 @@ async function buscarTreinoPlanejado(userId, dayIndex) {
             return null;
         }
         
-        const protocoloId = protocoloArray[0].protocolo_id;
+        const protocoloId = protocoloArray[0].protocolo_treinamento_id;
         
         // Buscar exercícios do protocolo para o grupo muscular
         const { data: exercicios, error: exError } = await query('protocolo_treinos', {
@@ -2231,16 +2440,15 @@ async function buscarTreinoPlanejado(userId, dayIndex) {
                     equipamento
                 ),
                 series,
-                repeticoes_min,
-                repeticoes_max,
+                repeticoes_alvo,
                 tempo_descanso,
                 observacoes
             `,
             eq: {
-                protocolo_id: protocoloId,
-                tipo_atividade: planejamento.tipo_atividade
+                protocolo_id: protocoloId
             },
-            order: { column: 'ordem', ascending: true }
+            // Filtrar por grupo muscular através do JOIN com exercicios
+            order: { column: 'ordem_exercicio', ascending: true }
         });
         
         if (exError) {
@@ -2248,10 +2456,15 @@ async function buscarTreinoPlanejado(userId, dayIndex) {
             return null;
         }
         
+        // Filtrar exercícios pelo grupo muscular correto
+        const exerciciosFiltrados = exercicios ? exercicios.filter(ex => 
+            ex.exercicios && ex.exercicios.grupo_muscular === planejamento.tipo_atividade
+        ) : [];
+        
         return {
             tipo: planejamento.tipo_atividade,
             data: dataAlvo,
-            exercicios: exercicios || [],
+            exercicios: exerciciosFiltrados,
             protocoloId,
             planejamento
         };
@@ -2259,6 +2472,550 @@ async function buscarTreinoPlanejado(userId, dayIndex) {
     } catch (error) {
         console.error('[buscarTreinoPlanejado] Erro:', error);
         return null;
+    }
+}
+
+// Nova função para buscar resumo do treino usando as views
+async function buscarResumoTreinoCompleto(userId, dayIndex, semanaExibida) {
+    try {
+        const anoAtual = new Date().getFullYear();
+        const diaSemana = WeeklyPlanService.dayToDb(dayIndex);
+        
+        console.log('[buscarResumoTreinoCompleto] Buscando resumo:', {
+            userId,
+            ano: anoAtual,
+            semana: semanaExibida,
+            dia_semana: diaSemana
+        });
+        
+        // Buscar resumo do dia
+        const { data: resumoDia, error: resumoError } = await supabase
+            .from('v_resumo_dia_semana')
+            .select('*')
+            .eq('usuario_id', userId)
+            .eq('ano', anoAtual)
+            .eq('semana', semanaExibida)
+            .eq('dia_semana', diaSemana)
+            .limit(1)
+            .maybeSingle(); // evita erro 406 quando múltiplas linhas
+        
+        if (resumoError && resumoError.code !== 'PGRST116') {
+            console.error('[buscarResumoTreinoCompleto] Erro ao buscar resumo:', resumoError);
+            return null;
+        }
+        
+        if (!resumoDia) {
+            console.log('[buscarResumoTreinoCompleto] Nenhum treino encontrado para o dia');
+            return null;
+        }
+        
+        // Buscar detalhes dos exercícios
+        const { data: exercicios, error: exerciciosError } = await supabase
+            .from('v_resumo_treino_dia')
+            .select('*')
+            .eq('usuario_id', userId)
+            .eq('ano', anoAtual)
+            .eq('semana', semanaExibida)
+            .eq('dia_semana', diaSemana)
+            .order('ordem_exercicio');
+        
+        if (exerciciosError) {
+            console.error('[buscarResumoTreinoCompleto] Erro ao buscar exercícios:', exerciciosError);
+            return null;
+        }
+        
+        return {
+            resumo: resumoDia,
+            exercicios: exercicios || [],
+            dayIndex
+        };
+        
+    } catch (error) {
+        console.error('[buscarResumoTreinoCompleto] Erro:', error);
+        return null;
+    }
+}
+
+// Mostrar modal unificado de resumo do treino
+function mostrarModalResumoUnificado(resumoCompleto) {
+    console.log('[mostrarModalResumoUnificado] Exibindo resumo:', resumoCompleto);
+    
+    const { resumo, exercicios, dayIndex } = resumoCompleto;
+    const dayName = DIAS_SEMANA[dayIndex];
+    const isExecutado = resumo.status_treino === 'executado';
+    
+    // Formatar tempo
+    const tempoFormatado = resumo.tempo_formatado || '0h 0min';
+    
+    // Criar HTML dos exercícios
+    let exerciciosHtml = '';
+    exercicios.forEach((ex, index) => {
+        const isExecutadoClass = ex.status_treino === 'executado' ? 'exercicio-executado' : 'exercicio-planejado';
+        
+        let detalhesHtml = '';
+        if (ex.status_treino === 'executado') {
+            // Treino executado - mostrar séries detalhadas
+            detalhesHtml = `
+                <div class="exercise-details-clean">
+                    <div class="detail-item-clean">
+                        <span class="detail-label-clean">Executado:</span>
+                        <span class="detail-value-clean ${isExecutadoClass}">${ex.series_detalhadas || `${ex.series_total} séries`}</span>
+                    </div>
+                    <div class="detail-item-clean">
+                        <span class="detail-label-clean">Volume:</span>
+                        <span class="detail-value-clean">${Math.round(ex.volume_total_kg)} kg</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Treino planejado - mostrar sugestões
+            detalhesHtml = `
+                <div class="exercise-details-clean">
+                    <div class="detail-item-clean">
+                        <span class="detail-label-clean">Séries:</span>
+                        <span class="detail-value-clean">${ex.series_total}</span>
+                    </div>
+                    <div class="detail-item-clean">
+                        <span class="detail-label-clean">Repetições:</span>
+                        <span class="detail-value-clean">${ex.repeticoes_total}</span>
+                    </div>
+                    <div class="detail-item-clean">
+                        <span class="detail-label-clean">Peso sugerido:</span>
+                        <span class="detail-value-clean">${ex.peso_planejado?.toFixed(1) || '0'} kg</span>
+                    </div>
+                    <div class="detail-item-clean">
+                        <span class="detail-label-clean">Descanso:</span>
+                        <span class="detail-value-clean">${ex.tempo_descanso}s</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        exerciciosHtml += `
+            <div class="exercise-card-clean ${isExecutadoClass}">
+                <div class="exercise-header-clean">
+                    <h4 class="exercise-name-clean">${index + 1}. ${ex.exercicio_nome}</h4>
+                    <span class="exercise-equipment-clean">${ex.equipamento || ''}</span>
+                </div>
+                ${detalhesHtml}
+            </div>
+        `;
+    });
+    
+    // Criar estatísticas baseadas no status
+    let estatisticasHtml = '';
+    if (isExecutado) {
+        estatisticasHtml = `
+            <div class="history-stats-grid-clean">
+                <div class="stat-item-clean">
+                    <div class="stat-label-clean">Total de Exercícios</div>
+                    <div class="stat-value-clean">${resumo.total_exercicios}</div>
+                </div>
+                <div class="stat-item-clean">
+                    <div class="stat-label-clean">Volume Total</div>
+                    <div class="stat-value-clean">${resumo.volume_total_kg} kg</div>
+                </div>
+                <div class="stat-item-clean">
+                    <div class="stat-label-clean">Tempo de Treino</div>
+                    <div class="stat-value-clean">${tempoFormatado}</div>
+                </div>
+                <div class="stat-item-clean">
+                    <div class="stat-label-clean">Total de Repetições</div>
+                    <div class="stat-value-clean">${resumo.total_repeticoes}</div>
+                </div>
+            </div>
+        `;
+    } else {
+        estatisticasHtml = `
+            <div class="info-banner-clean">
+                <span class="info-icon-clean">📋</span>
+                <span>Treino planejado - ${resumo.total_exercicios} exercícios programados</span>
+            </div>
+        `;
+    }
+    
+    const statusBadge = isExecutado 
+        ? '<span class="status-badge-executado">✅ Executado</span>' 
+        : '<span class="status-badge-planejado">📅 Planejado</span>';
+    
+    const modal = `
+        <div id="modal-resumo-unificado" class="modal-overlay-clean" onclick="fecharModalResumoUnificado(event)">
+            <div class="modal-content-clean workout-summary-modal" onclick="event.stopPropagation()">
+                <div class="modal-header-clean">
+                    <div class="workout-history-header-clean">
+                        <div class="history-title-section-clean">
+                            <h2 class="modal-title-clean">💪 ${resumo.tipo_atividade}</h2>
+                            <div class="history-subtitle-clean">
+                                <span class="day-badge-clean">${dayName}</span>
+                                ${statusBadge}
+                            </div>
+                        </div>
+                        <button class="close-btn-clean" onclick="fecharModalResumoUnificado()">×</button>
+                    </div>
+                </div>
+                <div class="modal-body-clean">
+                    ${estatisticasHtml}
+                    <div class="history-exercises-section-clean">
+                        <h3 class="section-title-clean">Exercícios ${isExecutado ? 'Realizados' : 'Programados'}</h3>
+                        <div class="exercises-list-clean">
+                            ${exerciciosHtml}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Adicionar estilos específicos
+    const styles = `
+        <style>
+            /* Modal Overlay com Glassmorphism */
+            #modal-resumo-unificado.modal-overlay-clean {
+                animation: fadeInOverlay 0.3s ease-out;
+                background: rgba(0, 0, 0, 0.85);
+                backdrop-filter: blur(10px);
+            }
+            
+            /* Modal Content com design moderno */
+            #modal-resumo-unificado .modal-content-clean {
+                background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 100%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 
+                    0 20px 60px rgba(0, 0, 0, 0.5),
+                    0 0 100px rgba(168, 255, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                animation: slideInModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            
+            /* Header aprimorado */
+            #modal-resumo-unificado .modal-header-clean {
+                background: linear-gradient(135deg, rgba(168, 255, 0, 0.08) 0%, transparent 70%);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            #modal-resumo-unificado .modal-header-clean::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(168, 255, 0, 0.03) 0%, transparent 70%);
+                animation: pulse 4s ease-in-out infinite;
+            }
+            
+            /* Título com efeito de gradiente */
+            #modal-resumo-unificado .modal-title-clean {
+                background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                text-shadow: 0 2px 20px rgba(255, 255, 255, 0.1);
+            }
+            
+            /* Badges aprimorados */
+            #modal-resumo-unificado .day-badge-clean {
+                background: linear-gradient(135deg, #a8ff00 0%, #7acc00 100%);
+                box-shadow: 
+                    0 4px 15px rgba(168, 255, 0, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                transition: all 0.3s ease;
+            }
+            
+            #modal-resumo-unificado .day-badge-clean:hover {
+                transform: translateY(-2px);
+                box-shadow: 
+                    0 6px 20px rgba(168, 255, 0, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            }
+            
+            /* Cards de exercícios com glassmorphism */
+            .exercise-card-clean {
+                background: rgba(255, 255, 255, 0.03);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 16px;
+                padding: 20px;
+                margin-bottom: 16px;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .exercise-card-clean::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, transparent, #a8ff00, transparent);
+                transform: translateX(-100%);
+                transition: transform 0.6s ease;
+            }
+            
+            .exercise-card-clean:hover {
+                transform: translateY(-4px);
+                border-color: rgba(168, 255, 0, 0.3);
+                box-shadow: 
+                    0 10px 30px rgba(0, 0, 0, 0.3),
+                    0 0 30px rgba(168, 255, 0, 0.1);
+            }
+            
+            .exercise-card-clean:hover::before {
+                transform: translateX(100%);
+            }
+            
+            /* Estados específicos dos exercícios */
+            .exercicio-executado {
+                background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+                border: 1px solid rgba(76, 175, 80, 0.3);
+            }
+            
+            .exercicio-executado::before {
+                background: linear-gradient(90deg, transparent, #4caf50, transparent);
+            }
+            
+            .exercicio-planejado {
+                background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%);
+                border: 1px solid rgba(255, 152, 0, 0.3);
+            }
+            
+            .exercicio-planejado::before {
+                background: linear-gradient(90deg, transparent, #ff9800, transparent);
+            }
+            
+            /* Badges de status aprimorados */
+            .status-badge-executado {
+                background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+                color: white;
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 0.85em;
+                font-weight: 600;
+                box-shadow: 
+                    0 4px 15px rgba(76, 175, 80, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                transition: all 0.3s ease;
+            }
+            
+            .status-badge-planejado {
+                background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+                color: white;
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 0.85em;
+                font-weight: 600;
+                box-shadow: 
+                    0 4px 15px rgba(255, 152, 0, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                transition: all 0.3s ease;
+            }
+            
+            /* Grid de estatísticas aprimorado */
+            .history-stats-grid-clean {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 16px;
+                margin-bottom: 24px;
+            }
+            
+            .stat-item-clean {
+                background: rgba(255, 255, 255, 0.03);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                padding: 20px;
+                text-align: center;
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .stat-item-clean::after {
+                content: '';
+                position: absolute;
+                top: -2px;
+                left: -2px;
+                right: -2px;
+                bottom: -2px;
+                background: linear-gradient(45deg, #a8ff00, #4caf50, #2196f3, #a8ff00);
+                border-radius: 12px;
+                opacity: 0;
+                z-index: -1;
+                transition: opacity 0.3s ease;
+            }
+            
+            .stat-item-clean:hover {
+                transform: translateY(-4px);
+                border-color: rgba(168, 255, 0, 0.3);
+            }
+            
+            .stat-item-clean:hover::after {
+                opacity: 0.3;
+                animation: gradientRotate 3s linear infinite;
+            }
+            
+            .stat-label-clean {
+                color: #999;
+                font-size: 0.85rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 8px;
+            }
+            
+            .stat-value-clean {
+                color: #fff;
+                font-size: 1.8rem;
+                font-weight: 700;
+                background: linear-gradient(135deg, #a8ff00 0%, #7acc00 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            
+            /* Info banner aprimorado */
+            .info-banner-clean {
+                background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.05) 100%);
+                border: 1px solid rgba(33, 150, 243, 0.3);
+                padding: 16px 20px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 24px;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            }
+            
+            .info-banner-clean:hover {
+                border-color: rgba(33, 150, 243, 0.5);
+                box-shadow: 0 4px 20px rgba(33, 150, 243, 0.2);
+            }
+            
+            .info-icon-clean {
+                font-size: 1.4em;
+                filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            }
+            
+            /* Detalhes dos exercícios aprimorados */
+            .exercise-details-clean {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 12px;
+                margin-top: 16px;
+            }
+            
+            .detail-item-clean {
+                background: rgba(255, 255, 255, 0.02);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 8px;
+                padding: 12px;
+                transition: all 0.2s ease;
+            }
+            
+            .detail-item-clean:hover {
+                background: rgba(255, 255, 255, 0.04);
+                border-color: rgba(168, 255, 0, 0.2);
+            }
+            
+            .detail-label-clean {
+                color: #888;
+                font-size: 0.75rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                display: block;
+                margin-bottom: 4px;
+            }
+            
+            .detail-value-clean {
+                color: #fff;
+                font-size: 0.95rem;
+                font-weight: 600;
+                display: block;
+            }
+            
+            /* Botão de fechar aprimorado */
+            #modal-resumo-unificado .close-btn-clean {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: #ccc;
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: pointer;
+            }
+            
+            #modal-resumo-unificado .close-btn-clean:hover {
+                background: rgba(255, 71, 87, 0.2);
+                border-color: rgba(255, 71, 87, 0.4);
+                color: #ff4757;
+                transform: rotate(90deg) scale(1.1);
+            }
+            
+            /* Animações */
+            @keyframes fadeInOverlay {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            @keyframes slideInModal {
+                from { 
+                    opacity: 0;
+                    transform: translateY(30px) scale(0.95);
+                }
+                to { 
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+            
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 0.3; }
+                50% { transform: scale(1.5); opacity: 0.1; }
+            }
+            
+            @keyframes gradientRotate {
+                0% { filter: hue-rotate(0deg); }
+                100% { filter: hue-rotate(360deg); }
+            }
+            
+            /* Responsividade */
+            @media (max-width: 768px) {
+                .history-stats-grid-clean {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+                
+                .exercise-details-clean {
+                    grid-template-columns: 1fr;
+                }
+                
+                .stat-value-clean {
+                    font-size: 1.5rem;
+                }
+            }
+        </style>
+    `;
+    
+    // Inserir modal e estilos
+    document.body.insertAdjacentHTML('beforeend', modal);
+    document.body.insertAdjacentHTML('beforeend', styles);
+}
+
+// Fechar modal unificado
+window.fecharModalResumoUnificado = function(event) {
+    if (!event || event.target.classList.contains('modal-overlay-clean')) {
+        const modal = document.getElementById('modal-resumo-unificado');
+        if (modal) {
+            modal.remove();
+        }
     }
 }
 
@@ -2270,20 +3027,36 @@ function mostrarModalResumoPlanejado(treinoPlanejado, dayIndex) {
     const dayName = DIAS_SEMANA[dayIndex];
     const dataFormatada = data.toLocaleDateString('pt-BR');
     
+    // Carregar CSS do modal enhanced se não estiver carregado
+    if (!document.querySelector('link[href*="modal-enhanced.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'modal-enhanced.css';
+        document.head.appendChild(link);
+    }
+    
     // Se for folga ou cardio
     if (tipo === 'folga' || tipo === 'cardio') {
         const tipoFormatado = tipo === 'folga' ? 'Dia de Descanso' : 'Treino Cardiovascular';
-        const icon = tipo === 'folga' ? '😴' : '🏃‍♂️';
+        const tipoClass = tipo === 'folga' ? 'rest' : 'cardio';
+        
+        // Usar SVG para cardio
+        const iconHTML = tipo === 'cardio' 
+            ? `<div class="modal-muscle-icon-wrapper">
+                  <img src="/SVG_MUSCLE/cardio.svg" class="modal-muscle-icon" alt="Cardio">
+               </div>`
+            : '<div class="empty-icon">😴</div>';
         
         const modal = `
             <div id="modal-resumo" class="modal-overlay-clean" onclick="fecharModalResumo(event)">
                 <div class="modal-content-clean workout-summary-modal" onclick="event.stopPropagation()">
-                    <div class="modal-header-clean">
+                    <div class="modal-header-clean ${tipoClass}">
                         <div class="workout-history-header-clean">
                             <div class="history-title-section-clean">
-                                <h2 class="modal-title-clean">${icon} ${tipoFormatado}</h2>
+                                <h2 class="modal-title-clean" data-text="${tipoFormatado}">${tipoFormatado}</h2>
                                 <div class="history-subtitle-clean">
                                     <span class="day-badge-clean">${dayName}</span>
+                                    <span class="separator" style="color: #666;">•</span>
                                     <span class="date-clean">${dataFormatada}</span>
                                 </div>
                             </div>
@@ -2298,7 +3071,7 @@ function mostrarModalResumoPlanejado(treinoPlanejado, dayIndex) {
                     
                     <div class="modal-body-clean">
                         <div class="empty-state-clean">
-                            <div class="empty-icon">${icon}</div>
+                            ${iconHTML}
                             <h3>${tipoFormatado}</h3>
                             <p>${tipo === 'folga' ? 'Aproveite para descansar e se recuperar!' : 'Escolha sua atividade cardiovascular preferida.'}</p>
                         </div>
@@ -2341,7 +3114,7 @@ function mostrarModalResumoPlanejado(treinoPlanejado, dayIndex) {
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Repetições:</span>
-                        <span class="detail-value">${ex.repeticoes_min || 8}-${ex.repeticoes_max || 12}</span>
+                        <span class="detail-value">${ex.repeticoes_alvo || 10}</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Descanso:</span>
@@ -2359,16 +3132,21 @@ function mostrarModalResumoPlanejado(treinoPlanejado, dayIndex) {
         `;
     }).join('');
     
+    // Obter SVG do grupo muscular
+    const muscleIconHTML = getMuscleGroupSVG(tipo);
+    
     const modal = `
         <div id="modal-resumo" class="modal-overlay-clean" onclick="fecharModalResumo(event)">
             <div class="modal-content-clean workout-summary-modal" onclick="event.stopPropagation()">
                 <div class="modal-header-clean">
                     <div class="workout-history-header-clean">
                         <div class="history-title-section-clean">
-                            <h2 class="modal-title-clean">📋 Treino Planejado</h2>
+                            <h2 class="modal-title-clean" data-text="Treino ${tipo}">Treino ${tipo}</h2>
                             <div class="history-subtitle-clean">
                                 <span class="day-badge-clean">${dayName}</span>
+                                <span class="separator" style="color: #666;">•</span>
                                 <span class="date-clean">${dataFormatada}</span>
+                                <span class="separator" style="color: #666;">•</span>
                                 <span class="muscle-badge-clean">${tipo}</span>
                             </div>
                         </div>
@@ -2382,6 +3160,11 @@ function mostrarModalResumoPlanejado(treinoPlanejado, dayIndex) {
                 </div>
                 
                 <div class="modal-body-clean">
+                    <!-- Ícone do grupo muscular -->
+                    <div class="modal-muscle-icon-wrapper">
+                        ${muscleIconHTML}
+                    </div>
+                    
                     <div class="workout-summary-stats">
                         <div class="stat-card">
                             <span class="stat-value">${totalExercicios}</span>
@@ -2405,62 +3188,336 @@ function mostrarModalResumoPlanejado(treinoPlanejado, dayIndex) {
         </div>
         
         <style>
+            /* Modal overlay e conteúdo com glassmorphism */
+            #modal-resumo.modal-overlay-clean {
+                animation: fadeInOverlay 0.3s ease-out;
+                background: rgba(0, 0, 0, 0.85);
+                backdrop-filter: blur(10px);
+            }
+            
+            #modal-resumo .modal-content-clean {
+                background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 100%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 
+                    0 20px 60px rgba(0, 0, 0, 0.5),
+                    0 0 100px rgba(33, 150, 243, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                animation: slideInModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            
+            /* Empty state aprimorado */
+            .empty-state-clean {
+                text-align: center;
+                padding: 60px 20px;
+                animation: fadeIn 0.6s ease-out;
+            }
+            
+            .empty-icon {
+                font-size: 5rem;
+                margin-bottom: 20px;
+                filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+                animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            }
+            
+            .empty-state-clean h3 {
+                color: #fff;
+                font-size: 1.8rem;
+                font-weight: 700;
+                margin-bottom: 12px;
+                background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+            
+            .empty-state-clean p {
+                color: #999;
+                font-size: 1.1rem;
+                line-height: 1.6;
+            }
+            
+            /* Badge de músculo aprimorado */
             .muscle-badge-clean {
-                background: var(--accent-primary-bg);
-                color: var(--accent-primary);
-                padding: 4px 12px;
-                border-radius: var(--radius-sm);
+                background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+                color: white;
+                padding: 6px 16px;
+                border-radius: 20px;
                 font-size: 0.75rem;
                 font-weight: 600;
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
+                letter-spacing: 0.5px;
+                box-shadow: 
+                    0 4px 15px rgba(33, 150, 243, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                transition: all 0.3s ease;
             }
             
+            .muscle-badge-clean:hover {
+                transform: translateY(-2px);
+                box-shadow: 
+                    0 6px 20px rgba(33, 150, 243, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            }
+            
+            /* Grid de estatísticas aprimorado */
             .workout-summary-stats {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
-                gap: 16px;
-                margin-bottom: 24px;
+                gap: 20px;
+                margin-bottom: 32px;
             }
             
             .stat-card {
-                background: var(--bg-secondary);
-                padding: 20px;
-                border-radius: var(--radius-md);
+                background: rgba(255, 255, 255, 0.03);
+                backdrop-filter: blur(10px);
+                padding: 24px;
+                border-radius: 16px;
                 text-align: center;
-                border: 1px solid var(--border-color);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .stat-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, transparent, #2196f3, transparent);
+                transform: translateX(-100%);
+                transition: transform 0.6s ease;
+            }
+            
+            .stat-card:hover {
+                transform: translateY(-6px);
+                border-color: rgba(33, 150, 243, 0.3);
+                box-shadow: 
+                    0 16px 40px rgba(0, 0, 0, 0.3),
+                    0 0 30px rgba(33, 150, 243, 0.1);
+            }
+            
+            .stat-card:hover::before {
+                transform: translateX(100%);
             }
             
             .stat-value {
                 display: block;
-                font-size: 2rem;
-                font-weight: 700;
-                color: var(--accent-primary);
-                margin-bottom: 4px;
+                font-size: 2.2rem;
+                font-weight: 800;
+                background: linear-gradient(135deg, #2196f3 0%, #64b5f6 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-bottom: 8px;
+                letter-spacing: -1px;
             }
             
             .stat-label {
-                font-size: 0.875rem;
-                color: var(--text-secondary);
+                font-size: 0.85rem;
+                color: #888;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                font-weight: 600;
             }
             
+            /* Lista de exercícios planejados */
             .exercises-planned-list {
                 display: flex;
                 flex-direction: column;
-                gap: 16px;
+                gap: 20px;
             }
             
             .exercise-planned-item {
-                background: var(--bg-secondary);
-                border-radius: var(--radius-md);
-                padding: 20px;
-                border: 1px solid var(--border-color);
-                transition: var(--transition);
+                background: rgba(255, 255, 255, 0.03);
+                backdrop-filter: blur(10px);
+                border-radius: 16px;
+                padding: 24px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .exercise-planned-item::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 0;
+                height: 0;
+                background: radial-gradient(circle, rgba(33, 150, 243, 0.1) 0%, transparent 70%);
+                transition: all 0.5s ease;
+                transform: translate(-50%, -50%);
             }
             
             .exercise-planned-item:hover {
-                border-color: var(--accent-primary-glow);
-                transform: translateY(-1px);
+                border-color: rgba(33, 150, 243, 0.3);
+                transform: translateY(-4px);
+                box-shadow: 
+                    0 12px 32px rgba(0, 0, 0, 0.3),
+                    0 0 40px rgba(33, 150, 243, 0.08);
+            }
+            
+            .exercise-planned-item:hover::after {
+                width: 300px;
+                height: 300px;
+            }
+            
+            /* Cabeçalho do exercício */
+            .exercise-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 20px;
+                gap: 16px;
+            }
+            
+            .exercise-info {
+                flex: 1;
+            }
+            
+            .exercise-name {
+                color: #fff;
+                font-size: 1.2rem;
+                font-weight: 700;
+                margin: 0 0 8px 0;
+                letter-spacing: -0.3px;
+            }
+            
+            .exercise-muscle {
+                color: #888;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+            
+            .exercise-status {
+                background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+                color: white;
+                padding: 6px 14px;
+                border-radius: 16px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+            }
+            
+            /* Detalhes do exercício */
+            .exercise-details {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+                margin-bottom: 16px;
+            }
+            
+            .detail-item {
+                background: rgba(255, 255, 255, 0.02);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 12px;
+                padding: 16px;
+                text-align: center;
+                transition: all 0.2s ease;
+            }
+            
+            .detail-item:hover {
+                background: rgba(255, 255, 255, 0.04);
+                border-color: rgba(33, 150, 243, 0.2);
+                transform: translateY(-2px);
+            }
+            
+            .detail-label {
+                color: #888;
+                font-size: 0.75rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                display: block;
+                margin-bottom: 6px;
+            }
+            
+            .detail-value {
+                color: #fff;
+                font-size: 1.3rem;
+                font-weight: 700;
+                display: block;
+            }
+            
+            /* Notas do exercício */
+            .exercise-notes {
+                background: rgba(255, 193, 7, 0.1);
+                border: 1px solid rgba(255, 193, 7, 0.2);
+                border-radius: 12px;
+                padding: 12px 16px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                color: #ffc107;
+                font-size: 0.9rem;
+                line-height: 1.5;
+            }
+            
+            .notes-icon {
+                font-size: 1.2rem;
+                filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            }
+            
+            /* Botão de fechar aprimorado */
+            #modal-resumo .btn-close-clean {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: #ccc;
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: pointer;
+            }
+            
+            #modal-resumo .btn-close-clean:hover {
+                background: rgba(255, 71, 87, 0.2);
+                border-color: rgba(255, 71, 87, 0.4);
+                color: #ff4757;
+                transform: rotate(90deg) scale(1.1);
+            }
+            
+            /* Animações */
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            @keyframes bounceIn {
+                0% { transform: scale(0.3); opacity: 0; }
+                50% { transform: scale(1.05); }
+                70% { transform: scale(0.9); }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            
+            /* Responsividade */
+            @media (max-width: 768px) {
+                .workout-summary-stats {
+                    grid-template-columns: 1fr;
+                    gap: 16px;
+                }
+                
+                .exercise-details {
+                    grid-template-columns: 1fr;
+                    gap: 12px;
+                }
+                
+                .stat-value {
+                    font-size: 1.8rem;
+                }
+                
+                .exercise-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
             }
             
             .exercise-details {
@@ -2527,12 +3584,25 @@ window.fecharModalResumo = function(event) {
     
     const modal = document.getElementById('modal-resumo');
     if (modal) {
-        modal.classList.add('fade-out');
+        modal.style.animation = 'fadeOut 0.3s ease-out forwards';
         setTimeout(() => {
             modal.remove();
         }, 300);
     }
 };
+
+// Adicionar animação de fadeOut se não existir
+if (!document.querySelector('style[data-fadeout-animation]')) {
+    const fadeOutStyle = `
+        <style data-fadeout-animation>
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        </style>
+    `;
+    document.head.insertAdjacentHTML('beforeend', fadeOutStyle);
+}
 
 // Função auxiliar para obter número da semana
 function getWeekNumber(date) {
@@ -2722,8 +3792,8 @@ async function buscarHistoricoTreino(userId, dayIndex) {
             // Buscar exercícios sugeridos do protocolo para este dia
             let exerciciosSugeridosProtocolo = [];
             try {
-                const exerciciosResult = await WeeklyPlanService.buscarExerciciosTreinoDia(userId, dataAlvo);
-                if (exerciciosResult?.success && exerciciosResult?.data) {
+                const exerciciosResult = await buscarExerciciosTreinoDia(userId, dataAlvo);
+                if (exerciciosResult?.data && exerciciosResult.data.length > 0) {
                     exerciciosSugeridosProtocolo = exerciciosResult.data;
                     console.log('[buscarHistoricoTreino] ✅ Exercícios sugeridos encontrados:', exerciciosSugeridosProtocolo.length);
                 }
@@ -2761,29 +3831,146 @@ function mostrarSeletorGrupoMuscular(historico, dayIndex) {
     const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
     
     const modalHTML = `
-        <div id="modal-seletor-grupo" class="modal-overlay" onclick="fecharModalSeletorGrupo(event)">
-            <div class="modal-content" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <h3>Múltiplos Treinos - ${dayName}</h3>
-                    <span class="modal-date">${dataFormatada}</span>
-                    <button class="modal-close" onclick="fecharModalSeletorGrupo()">&times;</button>
+        <div id="modal-seletor-grupo" class="modal-overlay" onclick="fecharModalSeletorGrupo(event)" style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease-out;
+        ">
+            <div class="modal-content" onclick="event.stopPropagation()" style="
+                background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 100%);
+                border-radius: 24px;
+                max-width: 600px;
+                width: 90%;
+                box-shadow: 
+                    0 25px 60px rgba(0, 0, 0, 0.6),
+                    0 0 100px rgba(168, 255, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            ">
+                <div class="modal-header" style="
+                    padding: 28px;
+                    background: linear-gradient(135deg, rgba(168, 255, 0, 0.08) 0%, transparent 70%);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                    position: relative;
+                ">
+                    <h3 style="
+                        margin: 0 0 8px 0;
+                        font-size: 1.6rem;
+                        font-weight: 700;
+                        background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        letter-spacing: -0.5px;
+                    ">🏋️ Múltiplos Treinos - ${dayName}</h3>
+                    <span class="modal-date" style="
+                        color: #999;
+                        font-size: 0.95rem;
+                        font-weight: 500;
+                    ">${dataFormatada}</span>
+                    <button class="modal-close" onclick="fecharModalSeletorGrupo()" style="
+                        position: absolute;
+                        top: 20px;
+                        right: 20px;
+                        background: rgba(255, 255, 255, 0.08);
+                        border: 1px solid rgba(255, 255, 255, 0.15);
+                        color: #ccc;
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 12px;
+                        font-size: 24px;
+                        cursor: pointer;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    ">&times;</button>
                 </div>
                 
-                <div class="modal-body">
-                    <p class="selector-message">
+                <div class="modal-body" style="
+                    padding: 32px;
+                ">
+                    <p class="selector-message" style="
+                        color: #ccc;
+                        font-size: 1.05rem;
+                        line-height: 1.6;
+                        margin-bottom: 28px;
+                        text-align: center;
+                    ">
                         Foram encontrados treinos de múltiplos grupos musculares neste dia. 
                         Selecione qual grupo você deseja visualizar:
                     </p>
                     
-                    <div class="grupos-selector">
+                    <div class="grupos-selector" style="
+                        display: grid;
+                        gap: 16px;
+                    ">
                         ${historico.grupos_disponiveis.map(grupo => `
-                            <button class="grupo-btn" onclick="selecionarGrupoMuscular('${grupo.grupo_muscular}', ${dayIndex})">
+                            <button class="grupo-btn" onclick="selecionarGrupoMuscular('${grupo.grupo_muscular}', ${dayIndex})" style="
+                                background: rgba(255, 255, 255, 0.03);
+                                backdrop-filter: blur(10px);
+                                border: 1px solid rgba(255, 255, 255, 0.1);
+                                border-radius: 16px;
+                                padding: 20px;
+                                cursor: pointer;
+                                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                                text-align: left;
+                                width: 100%;
+                                position: relative;
+                                overflow: hidden;
+                            ">
                                 <div class="grupo-info">
-                                    <span class="grupo-nome">${grupo.grupo_muscular}</span>
-                                    <div class="grupo-stats">
-                                        <span>${grupo.total_execucoes} séries</span>
-                                        <span>${grupo.exercicios.length} exercícios</span>
-                                        <span>${Math.round(grupo.metricas.volume_total)}kg volume</span>
+                                    <span class="grupo-nome" style="
+                                        display: block;
+                                        font-size: 1.3rem;
+                                        font-weight: 700;
+                                        color: #fff;
+                                        margin-bottom: 12px;
+                                        background: linear-gradient(135deg, #a8ff00 0%, #7acc00 100%);
+                                        -webkit-background-clip: text;
+                                        -webkit-text-fill-color: transparent;
+                                    ">${grupo.grupo_muscular}</span>
+                                    <div class="grupo-stats" style="
+                                        display: flex;
+                                        gap: 20px;
+                                        flex-wrap: wrap;
+                                    ">
+                                        <span style="
+                                            background: rgba(168, 255, 0, 0.1);
+                                            border: 1px solid rgba(168, 255, 0, 0.2);
+                                            padding: 6px 12px;
+                                            border-radius: 8px;
+                                            font-size: 0.9rem;
+                                            color: #a8ff00;
+                                            font-weight: 600;
+                                        ">${grupo.total_execucoes} séries</span>
+                                        <span style="
+                                            background: rgba(33, 150, 243, 0.1);
+                                            border: 1px solid rgba(33, 150, 243, 0.2);
+                                            padding: 6px 12px;
+                                            border-radius: 8px;
+                                            font-size: 0.9rem;
+                                            color: #2196f3;
+                                            font-weight: 600;
+                                        ">${grupo.exercicios.length} exercícios</span>
+                                        <span style="
+                                            background: rgba(255, 152, 0, 0.1);
+                                            border: 1px solid rgba(255, 152, 0, 0.2);
+                                            padding: 6px 12px;
+                                            border-radius: 8px;
+                                            font-size: 0.9rem;
+                                            color: #ff9800;
+                                            font-weight: 600;
+                                        ">${Math.round(grupo.metricas.volume_total)}kg volume</span>
                                     </div>
                                 </div>
                             </button>
@@ -2792,6 +3979,39 @@ function mostrarSeletorGrupoMuscular(historico, dayIndex) {
                 </div>
             </div>
         </div>
+        
+        <style>
+            #modal-seletor-grupo .modal-close:hover {
+                background: rgba(255, 71, 87, 0.2) !important;
+                border-color: rgba(255, 71, 87, 0.4) !important;
+                color: #ff4757 !important;
+                transform: rotate(90deg) scale(1.1) !important;
+            }
+            
+            #modal-seletor-grupo .grupo-btn:hover {
+                transform: translateY(-4px) !important;
+                border-color: rgba(168, 255, 0, 0.3) !important;
+                box-shadow: 
+                    0 12px 32px rgba(0, 0, 0, 0.3),
+                    0 0 40px rgba(168, 255, 0, 0.08) !important;
+            }
+            
+            #modal-seletor-grupo .grupo-btn::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, transparent, #a8ff00, transparent);
+                transform: translateX(-100%);
+                transition: transform 0.6s ease;
+            }
+            
+            #modal-seletor-grupo .grupo-btn:hover::before {
+                transform: translateX(100%);
+            }
+        </style>
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
@@ -2870,6 +4090,25 @@ function mostrarModalHistorico(historico, dayIndex) {
     const somenteplanejamento = historico.semExecucoes || (historico.execucoes && historico.execucoes.length === 0);
     console.log('[mostrarModalHistorico] 📊 Somente planejamento:', somenteplanejamento);
     
+    // Log detalhado dos exercícios sugeridos
+    if (historico.exerciciosSugeridos) {
+        console.log('[mostrarModalHistorico] 📋 Exercícios sugeridos encontrados:', historico.exerciciosSugeridos.length);
+        historico.exerciciosSugeridos.forEach((ex, index) => {
+            console.log(`[mostrarModalHistorico] Exercício ${index + 1}:`, {
+                nome: ex.nome || ex.exercicio_nome,
+                series: ex.series,
+                repeticoes: ex.repeticoes || ex.repeticoes_alvo,
+                peso_base: ex.peso_base,
+                peso_calculado: ex.peso_calculado,
+                tempo_descanso: ex.tempo_descanso,
+                descanso_sugerido: ex.descanso_sugerido,
+                equipamento: ex.equipamento || ex.exercicio_equipamento
+            });
+        });
+    } else {
+        console.log('[mostrarModalHistorico] ⚠️ Nenhum exercício sugerido no histórico');
+    }
+    
     // Calcular estatísticas
     const stats = somenteplanejamento ? null : calcularEstatisticasTreino(historico);
     console.log('[mostrarModalHistorico] 📈 Stats:', stats);
@@ -2882,28 +4121,89 @@ function mostrarModalHistorico(historico, dayIndex) {
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            background: rgba(0, 0, 0, 0.8) !important;
+            background: rgba(0, 0, 0, 0.9) !important;
             display: flex !important;
             align-items: flex-start !important;
             justify-content: center !important;
             z-index: 10000 !important;
-            backdrop-filter: blur(4px) !important;
+            backdrop-filter: blur(10px) !important;
             padding: 20px !important;
             box-sizing: border-box !important;
             overflow-y: auto !important;
+            animation: fadeIn 0.3s ease-out !important;
         ">
-            <div class="modal-content workout-history-modal" onclick="event.stopPropagation()">
-                <div class="modal-header">
-                    <div class="workout-history-header">
+            <div class="modal-content workout-history-modal" onclick="event.stopPropagation()" style="
+                background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+                border-radius: 24px !important;
+                box-shadow: 
+                    0 25px 60px rgba(0, 0, 0, 0.6),
+                    0 0 100px rgba(168, 255, 0, 0.05),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                max-width: 800px !important;
+                width: 100% !important;
+                margin: 20px auto !important;
+                animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            ">
+                <div class="modal-header" style="
+                    padding: 32px !important;
+                    background: linear-gradient(135deg, rgba(168, 255, 0, 0.08) 0%, transparent 70%) !important;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    position: relative !important;
+                    overflow: hidden !important;
+                ">
+                    <div class="workout-history-header" style="
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: flex-start !important;
+                    ">
                         <div class="history-title-section">
-                            <h2>${somenteplanejamento ? 'Treino Planejado' : 'Histórico do Treino'}</h2>
-                            <div class="history-subtitle">
-                                <span class="day-name">${dayName}</span>
-                                <span class="separator">•</span>
-                                <span class="date">${dataFormatada}</span>
+                            <h2 style="
+                                margin: 0 0 16px 0 !important;
+                                font-size: 2rem !important;
+                                font-weight: 700 !important;
+                                background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%) !important;
+                                -webkit-background-clip: text !important;
+                                -webkit-text-fill-color: transparent !important;
+                                letter-spacing: -0.5px !important;
+                            ">${somenteplanejamento ? '📋 Treino Planejado' : '🏆 Histórico do Treino'}</h2>
+                            <div class="history-subtitle" style="
+                                display: flex !important;
+                                align-items: center !important;
+                                gap: 16px !important;
+                            ">
+                                <span class="day-name" style="
+                                    background: linear-gradient(135deg, #a8ff00 0%, #7acc00 100%) !important;
+                                    color: #000 !important;
+                                    padding: 8px 16px !important;
+                                    border-radius: 20px !important;
+                                    font-weight: 700 !important;
+                                    font-size: 0.9rem !important;
+                                    text-transform: uppercase !important;
+                                    letter-spacing: 0.5px !important;
+                                    box-shadow: 0 4px 12px rgba(168, 255, 0, 0.3) !important;
+                                ">${dayName}</span>
+                                <span class="separator" style="color: #666 !important;">•</span>
+                                <span class="date" style="
+                                    color: #999 !important;
+                                    font-size: 1rem !important;
+                                    font-weight: 500 !important;
+                                ">${dataFormatada}</span>
                             </div>
                         </div>
-                        <button class="btn-close" onclick="fecharModalHistorico()">
+                        <button class="btn-close" onclick="fecharModalHistorico()" style="
+                            background: rgba(255, 255, 255, 0.08) !important;
+                            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                            color: #ccc !important;
+                            width: 48px !important;
+                            height: 48px !important;
+                            border-radius: 12px !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: center !important;
+                            cursor: pointer !important;
+                            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                        ">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"/>
                                 <line x1="6" y1="6" x2="18" y2="18"/>
@@ -2912,52 +4212,98 @@ function mostrarModalHistorico(historico, dayIndex) {
                     </div>
                 </div>
                 
-                <div class="modal-body">
+                <div class="modal-body" style="
+                    padding: 32px !important;
+                    overflow-y: auto !important;
+                    max-height: calc(90vh - 200px) !important;
+                ">
                     ${somenteplanejamento ? `
                     <!-- Informações do Planejamento -->
                     <div class="planning-info">
                         <div class="planning-card" style="
-                            background: #2a2a2a;
-                            border-radius: 8px;
-                            padding: 20px;
-                            margin-bottom: 20px;
-                            border-left: 4px solid #a8ff00;
+                            background: linear-gradient(135deg, rgba(168, 255, 0, 0.08) 0%, rgba(168, 255, 0, 0.03) 100%);
+                            border-radius: 16px;
+                            padding: 28px;
+                            margin-bottom: 24px;
+                            border: 1px solid rgba(168, 255, 0, 0.2);
+                            position: relative;
+                            overflow: hidden;
+                            backdrop-filter: blur(10px);
                         ">
+                            <div style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 4px;
+                                height: 100%;
+                                background: linear-gradient(to bottom, #a8ff00, #7acc00);
+                            "></div>
                             <div class="planning-header" style="
                                 display: flex;
                                 justify-content: space-between;
                                 align-items: center;
-                                margin-bottom: 16px;
+                                margin-bottom: 24px;
+                                flex-wrap: wrap;
+                                gap: 12px;
                             ">
-                                <h3 style="margin: 0; color: #a8ff00;">Treino Planejado</h3>
+                                <h3 style="
+                                    margin: 0;
+                                    color: #a8ff00;
+                                    font-size: 1.4rem;
+                                    font-weight: 700;
+                                    letter-spacing: -0.3px;
+                                ">📋 Treino Planejado</h3>
                                 <span class="planning-status" style="
-                                    background: #ff6b35;
+                                    background: linear-gradient(135deg, #ff6b35 0%, #e55730 100%);
                                     color: white;
-                                    padding: 4px 12px;
-                                    border-radius: 20px;
+                                    padding: 8px 16px;
+                                    border-radius: 25px;
                                     font-size: 0.85rem;
-                                    font-weight: 500;
+                                    font-weight: 600;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.5px;
+                                    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
                                 ">Não Executado</span>
                             </div>
                             <div class="planning-details" style="
-                                display: grid;
-                                gap: 12px;
+                                display: flex;
+                                flex-direction: column;
+                                gap: 16px;
                             ">
                                 <div class="detail-item" style="
                                     display: flex;
                                     justify-content: space-between;
                                     align-items: center;
+                                    padding: 16px 0;
+                                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                                 ">
-                                    <span class="detail-label" style="color: #ccc; font-weight: 500;">Grupo Muscular:</span>
-                                    <span class="detail-value" style="color: #a8ff00; font-weight: 600;">${historico.planejamento.tipo_atividade}</span>
+                                    <span class="detail-label" style="
+                                        color: #999;
+                                        font-weight: 500;
+                                        font-size: 1rem;
+                                    ">Grupo Muscular:</span>
+                                    <span class="detail-value" style="
+                                        color: #a8ff00;
+                                        font-weight: 700;
+                                        font-size: 1.1rem;
+                                    ">${historico.planejamento.tipo_atividade}</span>
                                 </div>
                                 <div class="detail-item" style="
                                     display: flex;
                                     justify-content: space-between;
                                     align-items: center;
+                                    padding: 16px 0;
                                 ">
-                                    <span class="detail-label" style="color: #ccc; font-weight: 500;">Status:</span>
-                                    <span class="detail-value" style="color: #ff6b35; font-weight: 600;">Aguardando Execução</span>
+                                    <span class="detail-label" style="
+                                        color: #999;
+                                        font-weight: 500;
+                                        font-size: 1rem;
+                                    ">Status:</span>
+                                    <span class="detail-value" style="
+                                        color: #ff6b35;
+                                        font-weight: 700;
+                                        font-size: 1.1rem;
+                                    ">Aguardando Execução</span>
                                 </div>
                             </div>
                         </div>
@@ -2965,65 +4311,167 @@ function mostrarModalHistorico(historico, dayIndex) {
                         ${historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0 ? `
                         <!-- Exercícios Sugeridos -->
                         <div class="suggested-exercises" style="
-                            background: #2a2a2a;
-                            border-radius: 8px;
-                            padding: 20px;
-                            border-left: 4px solid #4A90E2;
+                            background: linear-gradient(135deg, rgba(33, 150, 243, 0.08) 0%, rgba(33, 150, 243, 0.03) 100%);
+                            border-radius: 16px;
+                            padding: 28px;
+                            border: 1px solid rgba(33, 150, 243, 0.2);
+                            position: relative;
+                            overflow: hidden;
+                            backdrop-filter: blur(10px);
                         ">
-                            <h3 style="margin: 0 0 16px 0; color: #4A90E2;">Exercícios Sugeridos</h3>
-                            <div class="exercises-list">
+                            <div style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 4px;
+                                height: 100%;
+                                background: linear-gradient(to bottom, #2196f3, #1976d2);
+                            "></div>
+                            <h3 style="
+                                margin: 0 0 24px 0;
+                                color: #2196f3;
+                                font-size: 1.4rem;
+                                font-weight: 700;
+                                letter-spacing: -0.3px;
+                            ">💪 Exercícios Sugeridos (${historico.exerciciosSugeridos.length})</h3>
+                            <div class="exercises-list" style="
+                                display: grid;
+                                gap: 20px;
+                                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                            ">
                                 ${historico.exerciciosSugeridos.map(ex => `
                                     <div class="exercise-item" style="
-                                        background: #333;
-                                        border-radius: 6px;
-                                        padding: 16px;
-                                        margin-bottom: 12px;
-                                        border: 1px solid #444;
+                                        background: rgba(255, 255, 255, 0.03);
+                                        backdrop-filter: blur(10px);
+                                        border-radius: 12px;
+                                        padding: 20px;
+                                        border: 1px solid rgba(255, 255, 255, 0.1);
+                                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                                        position: relative;
+                                        overflow: hidden;
                                     ">
                                         <div class="exercise-header" style="
                                             display: flex;
                                             justify-content: space-between;
                                             align-items: flex-start;
-                                            margin-bottom: 8px;
+                                            margin-bottom: 16px;
+                                            gap: 12px;
                                         ">
-                                            <h4 style="margin: 0; color: #fff; font-size: 1rem;">${ex.nome}</h4>
+                                            <h4 style="
+                                                margin: 0;
+                                                color: #fff;
+                                                font-size: 1.1rem;
+                                                font-weight: 600;
+                                                line-height: 1.3;
+                                            ">${ex.nome || ex.exercicio_nome || 'Exercício'}</h4>
                                             <span style="
-                                                background: #4A90E2;
+                                                background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
                                                 color: white;
-                                                padding: 2px 8px;
-                                                border-radius: 12px;
+                                                padding: 4px 12px;
+                                                border-radius: 15px;
                                                 font-size: 0.75rem;
-                                                font-weight: 500;
-                                            ">${ex.equipamento || 'Livre'}</span>
+                                                font-weight: 600;
+                                                text-transform: uppercase;
+                                                letter-spacing: 0.5px;
+                                                white-space: nowrap;
+                                                box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+                                            ">${ex.equipamento || ex.exercicio_equipamento || 'Livre'}</span>
                                         </div>
                                         <div class="exercise-details" style="
                                             display: grid;
-                                            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                                            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
                                             gap: 12px;
-                                            margin-top: 12px;
                                         ">
                                             ${ex.series ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${ex.series}</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Séries</div>
+                                                <div class="detail" style="
+                                                    text-align: center;
+                                                    background: rgba(168, 255, 0, 0.05);
+                                                    border: 1px solid rgba(168, 255, 0, 0.1);
+                                                    border-radius: 8px;
+                                                    padding: 12px 8px;
+                                                ">
+                                                    <div style="
+                                                        color: #a8ff00;
+                                                        font-weight: 700;
+                                                        font-size: 1.3rem;
+                                                        margin-bottom: 4px;
+                                                    ">${ex.series}</div>
+                                                    <div style="
+                                                        color: #888;
+                                                        font-size: 0.75rem;
+                                                        text-transform: uppercase;
+                                                        letter-spacing: 0.5px;
+                                                        font-weight: 500;
+                                                    ">Séries</div>
                                                 </div>
                                             ` : ''}
-                                            ${ex.repeticoes ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${ex.repeticoes}</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Repetições</div>
+                                            ${(ex.repeticoes || ex.repeticoes_alvo) ? `
+                                                <div class="detail" style="
+                                                    text-align: center;
+                                                    background: rgba(168, 255, 0, 0.05);
+                                                    border: 1px solid rgba(168, 255, 0, 0.1);
+                                                    border-radius: 8px;
+                                                    padding: 12px 8px;
+                                                ">
+                                                    <div style="
+                                                        color: #a8ff00;
+                                                        font-weight: 700;
+                                                        font-size: 1.3rem;
+                                                        margin-bottom: 4px;
+                                                    ">${ex.repeticoes || ex.repeticoes_alvo}</div>
+                                                    <div style="
+                                                        color: #888;
+                                                        font-size: 0.75rem;
+                                                        text-transform: uppercase;
+                                                        letter-spacing: 0.5px;
+                                                        font-weight: 500;
+                                                    ">Reps</div>
                                                 </div>
                                             ` : ''}
-                                            ${ex.peso_calculado ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${Math.round(ex.peso_calculado)}kg</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Peso Sugerido</div>
+                                            ${(ex.peso_calculado || ex.peso_base) ? `
+                                                <div class="detail" style="
+                                                    text-align: center;
+                                                    background: rgba(168, 255, 0, 0.05);
+                                                    border: 1px solid rgba(168, 255, 0, 0.1);
+                                                    border-radius: 8px;
+                                                    padding: 12px 8px;
+                                                ">
+                                                    <div style="
+                                                        color: #a8ff00;
+                                                        font-weight: 700;
+                                                        font-size: 1.3rem;
+                                                        margin-bottom: 4px;
+                                                    ">${Math.round(ex.peso_calculado || ex.peso_base)}kg</div>
+                                                    <div style="
+                                                        color: #888;
+                                                        font-size: 0.75rem;
+                                                        text-transform: uppercase;
+                                                        letter-spacing: 0.5px;
+                                                        font-weight: 500;
+                                                    ">Peso</div>
                                                 </div>
                                             ` : ''}
-                                            ${ex.descanso_sugerido ? `
-                                                <div class="detail" style="text-align: center;">
-                                                    <div style="color: #a8ff00; font-weight: 600; font-size: 1.1rem;">${ex.descanso_sugerido}s</div>
-                                                    <div style="color: #ccc; font-size: 0.85rem;">Descanso</div>
+                                            ${(ex.descanso_sugerido || ex.tempo_descanso) ? `
+                                                <div class="detail" style="
+                                                    text-align: center;
+                                                    background: rgba(168, 255, 0, 0.05);
+                                                    border: 1px solid rgba(168, 255, 0, 0.1);
+                                                    border-radius: 8px;
+                                                    padding: 12px 8px;
+                                                ">
+                                                    <div style="
+                                                        color: #a8ff00;
+                                                        font-weight: 700;
+                                                        font-size: 1.3rem;
+                                                        margin-bottom: 4px;
+                                                    ">${ex.descanso_sugerido || ex.tempo_descanso}s</div>
+                                                    <div style="
+                                                        color: #888;
+                                                        font-size: 0.75rem;
+                                                        text-transform: uppercase;
+                                                        letter-spacing: 0.5px;
+                                                        font-weight: 500;
+                                                    ">Descanso</div>
                                                 </div>
                                             ` : ''}
                                         </div>
@@ -3031,7 +4479,38 @@ function mostrarModalHistorico(historico, dayIndex) {
                                 `).join('')}
                             </div>
                         </div>
-                        ` : ''}
+                        ` : `
+                        <!-- Nenhum exercício encontrado -->
+                        <div class="no-exercises-planned" style="
+                            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+                            border-radius: 16px;
+                            padding: 60px 40px;
+                            text-align: center;
+                            border: 2px dashed rgba(255, 255, 255, 0.2);
+                            backdrop-filter: blur(10px);
+                        ">
+                            <div style="
+                                font-size: 4rem;
+                                margin-bottom: 20px;
+                                filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+                                animation: bounce 2s ease-in-out infinite;
+                            ">🏋️‍♂️</div>
+                            <h3 style="
+                                margin: 0 0 12px 0;
+                                color: #fff;
+                                font-size: 1.5rem;
+                                font-weight: 700;
+                            ">Nenhum exercício configurado</h3>
+                            <p style="
+                                margin: 0;
+                                color: #999;
+                                font-size: 1rem;
+                                line-height: 1.6;
+                            ">
+                                Configure os exercícios no protocolo de treino para este grupo muscular.
+                            </p>
+                        </div>
+                        `}
                     </div>
                     ` : `
                     <!-- Estatísticas Gerais -->
@@ -3109,8 +4588,185 @@ function mostrarModalHistorico(historico, dayIndex) {
     
     // Adicionar modal ao DOM
     console.log('[mostrarModalHistorico] 📝 HTML do modal criado, adicionando ao DOM');
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    console.log('[mostrarModalHistorico] ✅ Modal adicionado ao DOM');
+    
+    try {
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        console.log('[mostrarModalHistorico] ✅ Modal adicionado ao DOM');
+    } catch (error) {
+        console.error('[mostrarModalHistorico] ❌ Erro ao adicionar modal ao DOM:', error);
+        // Tentar método alternativo
+        const div = document.createElement('div');
+        div.innerHTML = modalHTML;
+        document.body.appendChild(div.firstElementChild);
+        console.log('[mostrarModalHistorico] ✅ Modal adicionado via método alternativo');
+    }
+    
+    // Adicionar estilos CSS aprimorados
+    if (!document.querySelector('style[data-modal-historico-styles]')) {
+        const styles = `
+            <style data-modal-historico-styles>
+                /* Animações */
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                
+                @keyframes slideUp {
+                    from { 
+                        opacity: 0;
+                        transform: translateY(30px) scale(0.95);
+                    }
+                    to { 
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+                
+                @keyframes bounce {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-10px); }
+                }
+                
+                /* Hover effects para botão de fechar */
+                #modal-historico .btn-close:hover {
+                    background: rgba(255, 71, 87, 0.2) !important;
+                    border-color: rgba(255, 71, 87, 0.4) !important;
+                    color: #ff4757 !important;
+                    transform: rotate(90deg) scale(1.1) !important;
+                }
+                
+                /* Hover effects para cards de exercício */
+                #modal-historico .exercise-item:hover {
+                    transform: translateY(-4px) !important;
+                    border-color: rgba(33, 150, 243, 0.3) !important;
+                    box-shadow: 
+                        0 12px 32px rgba(0, 0, 0, 0.3),
+                        0 0 40px rgba(33, 150, 243, 0.08) !important;
+                }
+                
+                /* Stats cards aprimorados */
+                #modal-historico .stats-overview {
+                    display: grid !important;
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+                    gap: 20px !important;
+                    margin-bottom: 32px !important;
+                }
+                
+                #modal-historico .stat-card {
+                    background: rgba(255, 255, 255, 0.03) !important;
+                    backdrop-filter: blur(10px) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    border-radius: 16px !important;
+                    padding: 24px !important;
+                    text-align: center !important;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    position: relative !important;
+                    overflow: hidden !important;
+                }
+                
+                #modal-historico .stat-card::before {
+                    content: '' !important;
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    height: 3px !important;
+                    background: linear-gradient(90deg, transparent, #a8ff00, transparent) !important;
+                    transform: translateX(-100%) !important;
+                    transition: transform 0.6s ease !important;
+                }
+                
+                #modal-historico .stat-card:hover {
+                    transform: translateY(-6px) !important;
+                    border-color: rgba(168, 255, 0, 0.3) !important;
+                    box-shadow: 
+                        0 16px 40px rgba(0, 0, 0, 0.3),
+                        0 0 30px rgba(168, 255, 0, 0.1) !important;
+                }
+                
+                #modal-historico .stat-card:hover::before {
+                    transform: translateX(100%) !important;
+                }
+                
+                #modal-historico .stat-icon {
+                    width: 48px !important;
+                    height: 48px !important;
+                    margin: 0 auto 16px !important;
+                    background: rgba(168, 255, 0, 0.1) !important;
+                    border-radius: 50% !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    color: #a8ff00 !important;
+                    border: 2px solid rgba(168, 255, 0, 0.2) !important;
+                }
+                
+                #modal-historico .stat-value {
+                    font-size: 1.8rem !important;
+                    font-weight: 800 !important;
+                    color: #fff !important;
+                    margin-bottom: 6px !important;
+                    background: linear-gradient(135deg, #a8ff00 0%, #7acc00 100%) !important;
+                    -webkit-background-clip: text !important;
+                    -webkit-text-fill-color: transparent !important;
+                }
+                
+                #modal-historico .stat-label {
+                    font-size: 0.8rem !important;
+                    color: #888 !important;
+                    text-transform: uppercase !important;
+                    font-weight: 600 !important;
+                    letter-spacing: 0.5px !important;
+                }
+                
+                /* Exercises history section */
+                #modal-historico .exercises-history {
+                    background: rgba(255, 255, 255, 0.03) !important;
+                    backdrop-filter: blur(10px) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    border-radius: 16px !important;
+                    padding: 28px !important;
+                }
+                
+                #modal-historico .exercises-history h3 {
+                    margin: 0 0 24px 0 !important;
+                    color: #fff !important;
+                    font-size: 1.4rem !important;
+                    font-weight: 700 !important;
+                    letter-spacing: -0.5px !important;
+                }
+                
+                /* Responsividade aprimorada */
+                @media (max-width: 768px) {
+                    #modal-historico .modal-content {
+                        margin: 10px !important;
+                        border-radius: 20px !important;
+                    }
+                    
+                    #modal-historico .modal-header {
+                        padding: 24px !important;
+                    }
+                    
+                    #modal-historico .modal-body {
+                        padding: 24px !important;
+                    }
+                    
+                    #modal-historico h2 {
+                        font-size: 1.6rem !important;
+                    }
+                    
+                    #modal-historico .stats-overview {
+                        grid-template-columns: repeat(2, 1fr) !important;
+                    }
+                    
+                    #modal-historico .exercises-list {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
+            </style>
+        `;
+        document.head.insertAdjacentHTML('beforeend', styles);
+    }
     // Garantir que o botão de fechar funcione mesmo se o atributo inline estiver bloqueado
     const btnClose = document.querySelector('#modal-historico .btn-close');
     if (btnClose) {

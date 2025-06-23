@@ -277,12 +277,25 @@ export class TreinoExecutadoService {
                 return { success: false, error: 'Dados insuficientes para sincronização' };
             }
             
+            // Buscar semana_treino da d_calendario para a data atual
+            const dataAtual = toSaoPauloDateString(nowInSaoPaulo());
+            const { data: calendarioHoje, error: calendarioError } = await supabase
+                .from('d_calendario')
+                .select('semana_treino')
+                .eq('data_completa', dataAtual)
+                .single();
+            
+            if (calendarioError) {
+                console.error('[TreinoExecutladoService] Erro ao buscar semana_treino:', calendarioError);
+            }
+            
             await supabase
                 .from('planejamento_semanal')
                 .update({
                     concluido: true,
                     data_conclusao: sessao.data_fim || nowInSaoPaulo(),
-                    protocolo_treino_id: sessao.protocolo_treino_id
+                    protocolo_treino_id: sessao.protocolo_treino_id,
+                    semana_treino: calendarioHoje?.semana_treino || null
                 })
                 .eq('usuario_id', sessao.usuario_id)
                 .eq('ano', sessao.ano)

@@ -1035,21 +1035,34 @@ async function selecionarTreinoParaDia(treino, dia) {
         showNotification(`${treino.nome} adicionado para ${nomeDiaAtual}`, 'success');
     }
     
-    planejamentoAtual[dia] = {
+    // GARANTIR QUE O DIA SEJA SALVO COMO NÚMERO
+    const diaNumerico = parseInt(dia);
+    
+    planejamentoAtual[diaNumerico] = {
         id: treino.id,
         nome: treino.nome,
         tipo: treino.tipo,
-        categoria: treino.categoria
+        categoria: treino.categoria,
+        semana_referencia: treino.semana_referencia
     };
     
     console.log('[selecionarTreinoParaDia] 🎯 TREINO ADICIONADO:');
-    console.log('[selecionarTreinoParaDia] Dia:', dia, typeof dia);
-    console.log('[selecionarTreinoParaDia] Treino:', planejamentoAtual[dia]);
+    console.log('[selecionarTreinoParaDia] Dia original:', dia, typeof dia);
+    console.log('[selecionarTreinoParaDia] Dia numérico:', diaNumerico, typeof diaNumerico);
+    console.log('[selecionarTreinoParaDia] Treino:', planejamentoAtual[diaNumerico]);
     console.log('[selecionarTreinoParaDia] Planejamento completo atual:', planejamentoAtual);
     console.log('[selecionarTreinoParaDia] Object.keys(planejamentoAtual):', Object.keys(planejamentoAtual));
     console.log('[selecionarTreinoParaDia] Total de dias planejados:', Object.keys(planejamentoAtual).length);
     
-    atualizarVisualizacaoDia(dia, treino);
+    // DEBUG ESPECIAL PARA DOMINGO
+    if (diaNumerico === 0) {
+        console.log('[selecionarTreinoParaDia] 🔍 DEBUG DOMINGO APÓS SALVAR:');
+        console.log('[selecionarTreinoParaDia] - planejamentoAtual[0]:', planejamentoAtual[0]);
+        console.log('[selecionarTreinoParaDia] - planejamentoAtual["0"]:', planejamentoAtual["0"]);
+        console.log('[selecionarTreinoParaDia] - Keys:', Object.keys(planejamentoAtual));
+    }
+    
+    atualizarVisualizacaoDia(diaNumerico, treino);
     fecharSeletorTreino();
     
     // Aguardar DOM atualizar antes de validar para evitar conflitos
@@ -1076,15 +1089,15 @@ function atualizarVisualizacaoDia(dia, treino) {
     
     // Optimized template rendering with single template
     const treinoData = {
-        icon: getWorkoutIcon(treinoIcons[treino.tipo] || 'peito'),
         nome: treino.nome,
         tipo: treino.categoria === 'cardio' ? 'Cardiovascular' : 'Muscular'
     };
     
-    // Single template with conditional data
-    dayContent.innerHTML = `
+    // Render card com SVG apenas (sem emoji)
+    const iconSVG = getWorkoutIcon(treino.tipo || 'peito');
+    const htmlContent = `
         <div class="treino-assigned ${statusClass}">
-            <span class="treino-icon">${treinoData.icon}</span>
+            <span class="treino-icon">${iconSVG}</span>
             <div class="treino-info">
                 <div class="treino-name">${treinoData.nome}</div>
                 <div class="treino-type">${treinoData.tipo}</div>
@@ -1092,24 +1105,31 @@ function atualizarVisualizacaoDia(dia, treino) {
             ${botaoRemover}
         </div>
     `;
+    
+    dayContent.innerHTML = htmlContent;
 }
 
 // Remover treino do dia - VERSÃO MELHORADA
 window.removerTreinoDoDia = function(dia) {
+    // GARANTIR QUE O DIA SEJA NÚMERO
+    const diaNumerico = parseInt(dia);
+    
     console.log(`[removerTreinoDoDia] Removendo treino do dia ${dia}`);
+    console.log(`[removerTreinoDoDia] Dia numérico: ${diaNumerico}`);
     console.log(`[removerTreinoDoDia] Estado antes da remoção:`, planejamentoAtual);
     
     // CORREÇÃO: Garantir limpeza completa do estado - VERSÃO MELHORADA
-    const treinoRemovido = planejamentoAtual[dia];
+    const treinoRemovido = planejamentoAtual[diaNumerico];
     
     // Limpar todas as possíveis referências
     delete planejamentoAtual[dia];
     delete planejamentoAtual[String(dia)];
     delete planejamentoAtual[parseInt(dia)];
+    delete planejamentoAtual[diaNumerico];
     
     // Forçar limpeza de qualquer referência residual
     Object.keys(planejamentoAtual).forEach(key => {
-        if (key == dia || key === String(dia) || key === parseInt(dia)) {
+        if (key == dia || key === String(dia) || key === parseInt(dia) || parseInt(key) === diaNumerico) {
             delete planejamentoAtual[key];
         }
     });
@@ -1137,7 +1157,7 @@ window.removerTreinoDoDia = function(dia) {
             if (window.abrirSeletorTreino) {
                 // Aguardar um pouco para garantir que o estado foi limpo
                 setTimeout(() => {
-                    window.abrirSeletorTreino(dia, nomesDiasSemana[dia]);
+                    window.abrirSeletorTreino(diaNumerico, nomesDiasSemana[diaNumerico]);
                 }, 100);
             } else {
                 console.error('[removerTreinoDoDia] A função abrirSeletorTreino não foi encontrada no window.');
@@ -1160,7 +1180,7 @@ window.removerTreinoDoDia = function(dia) {
     
     if (window.showNotification) {
         const nomeRemovido = treinoRemovido ? treinoRemovido.nome : 'Treino';
-        window.showNotification(`${nomeRemovido} removido de ${nomesDiasSemana[dia]}`, 'info');
+        window.showNotification(`${nomeRemovido} removido de ${nomesDiasSemana[diaNumerico]}`, 'info');
     }
     
     console.log(`[removerTreinoDoDia] Remoção concluída para dia ${dia}`);
@@ -1221,9 +1241,18 @@ async function salvarPlanejamentoSemanal() {
         for (let dia = 0; dia < 7; dia++) {
             let treino = null;
             
-            // PRIMEIRO: Tentar busca direta por índice numérico
-            if (planejamentoAtual[dia]) {
-                treino = planejamentoAtual[dia];
+            // DEBUG ESPECIAL PARA DOMINGO
+            if (dia === 0) {
+                console.log('[salvarPlanejamentoSemanal] 🔍 DEBUG DOMINGO:');
+                console.log('[salvarPlanejamentoSemanal] - planejamentoAtual[0]:', planejamentoAtual[0]);
+                console.log('[salvarPlanejamentoSemanal] - planejamentoAtual["0"]:', planejamentoAtual["0"]);
+                console.log('[salvarPlanejamentoSemanal] - planejamentoAtual.domingo:', planejamentoAtual.domingo);
+                console.log('[salvarPlanejamentoSemanal] - planejamentoAtual["domingo"]:', planejamentoAtual["domingo"]);
+            }
+            
+            // PRIMEIRO: Tentar busca direta por índice numérico (tanto number quanto string)
+            if (planejamentoAtual[dia] || planejamentoAtual[String(dia)]) {
+                treino = planejamentoAtual[dia] || planejamentoAtual[String(dia)];
                 console.log(`[salvarPlanejamentoSemanal] 🎯 DIA ${dia} - Encontrado por índice direto:`, treino);
             } else {
                 // SEGUNDO: Procurar o treino correspondente ao dia via diasMap

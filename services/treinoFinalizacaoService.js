@@ -38,13 +38,27 @@ class TreinoFinalizacaoService {
                 };
             }
             
+            // Buscar semana_treino da d_calendario para a data atual
+            const dataAtual = toSaoPauloDateString(nowInSaoPaulo());
+            const { data: calendarioHoje, error: calendarioError } = await supabase
+                .from('d_calendario')
+                .select('semana_treino')
+                .eq('data_completa', dataAtual)
+                .single();
+            
+            if (calendarioError) {
+                console.error('[TreinoFinalizacao] Erro ao buscar semana_treino:', calendarioError);
+                // Continuar sem a semana_treino se houver erro
+            }
+            
             // Preparar dados da atualização
             const dadosAtualizacao = {
                 concluido: true,
                 data_conclusao: toSaoPauloISOString(nowInSaoPaulo()),
                 pre_workout,
                 post_workout,
-                observacoes_finalizacao: observacoes
+                observacoes_finalizacao: observacoes,
+                semana_treino: calendarioHoje?.semana_treino || null
             };
             
             // Remover campos nulos para não sobrescrever dados existentes desnecessariamente

@@ -14,7 +14,7 @@ export async function iniciarTreino() {
     const exercises = AppState.get('currentExercises');
     
     if (!workout || !exercises || exercises.length === 0) {
-        showNotification('Nenhum treino disponível', 'error');
+        showNotification('Nenhum treino disponível para hoje', 'warning');
         return;
     }
     
@@ -29,6 +29,9 @@ export async function iniciarTreino() {
     // Mostrar primeiro exercício
     await mostrarExercicioAtual();
 }
+
+// Expor no window
+window.iniciarTreino = iniciarTreino;
 
 // Mostrar exercício atual
 async function mostrarExercicioAtual() {

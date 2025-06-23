@@ -118,9 +118,9 @@ class WeeklyPlanService {
     
     // Salvar plano completo - REFATORADO PARA USAR SEMANA DO PROTOCOLO
     static async savePlan(userId, plan) {
-        // MUDANÇA: Buscar semana do protocolo diretamente
         let ano = new Date().getFullYear();
-        let semana = 1;
+        let semana = this.getWeekNumber(new Date()); // Semana do ANO (calendário)
+        let semana_treino = 1; // Semana do PROTOCOLO
         
         try {
             const { data: protocolosAtivos } = await query('usuario_plano_treino', {
@@ -132,10 +132,10 @@ class WeeklyPlanService {
             });
             
             if (protocolosAtivos && protocolosAtivos.length > 0) {
-                semana = protocolosAtivos[0].semana_atual || 1;
-                console.log('[WeeklyPlanService.savePlan] 🔄 NOVA LÓGICA: Salvando para semana do protocolo:', { semana, protocoloId: protocolosAtivos[0].protocolo_treinamento_id });
+                semana_treino = protocolosAtivos[0].semana_atual || 1;
+                console.log('[WeeklyPlanService.savePlan] 📅 Salvando com semana ANO:', semana, '| Semana PROTOCOLO:', semana_treino);
             } else {
-                console.warn('[WeeklyPlanService.savePlan] ⚠️ Protocolo não encontrado, usando semana 1');
+                console.warn('[WeeklyPlanService.savePlan] ⚠️ Protocolo não encontrado, usando semana_treino = 1');
             }
         } catch (error) {
             console.error('[WeeklyPlanService.savePlan] ❌ Erro ao buscar protocolo:', error);
@@ -174,7 +174,8 @@ class WeeklyPlanService {
                 const registro = {
                     usuario_id: userId,
                     ano,
-                    semana,
+                    semana, // Semana do ANO
+                    semana_treino, // Semana do PROTOCOLO
                     dia_semana: this.dayToDb(parseInt(dia)),
                     tipo_atividade: mapTipoAtividade(config.tipo || config.categoria),
                     concluido: false
@@ -206,6 +207,18 @@ class WeeklyPlanService {
             this.saveToLocal(userId, plan);
             console.log('[WeeklyPlanService.savePlan] ✅ Backup salvo no localStorage');
             
+            // Nova regra: Se é domingo e planejou a próxima semana, atualizar semana_atual
+            const hoje = new Date();
+            if (hoje.getDay() === 0 && semana_treino > (protocoloAtivo.semana_atual || 1)) {
+                console.log('[WeeklyPlanService.savePlan] 🔄 Domingo com planejamento futuro detectado');
+                try {
+                    const { WorkoutProtocolService } = await import('./workoutProtocolService.js');
+                    await WorkoutProtocolService.verificarEAtualizarSemanaPorPlanejamento(userId);
+                } catch (err) {
+                    console.error('[WeeklyPlanService.savePlan] Erro ao verificar planejamento futuro:', err);
+                }
+            }
+            
             console.log('[WeeklyPlanService.savePlan] 🎉 SALVAMENTO COMPLETAMENTE FINALIZADO!');
             return { success: true, data };
             
@@ -215,7 +228,7 @@ class WeeklyPlanService {
         }
     }
     
-    // Buscar plano atual com fallback robusto - REFATORADO PARA USAR SEMANA DO PROTOCOLO
+    // Buscar plano atual com fallback robusto
     static async getPlan(userId, useCache = true, ano = null, semana = null) {
         console.log('[WeeklyPlanService.getPlan] 🔍 INICIANDO busca do plano para usuário:', userId);
         
@@ -224,40 +237,15 @@ class WeeklyPlanService {
             return null;
         }
         
-        // MUDANÇA: Se não especificado, usar semana do protocolo do usuário
+        // Se não especificado, usar semana atual do ANO
         if (!ano || !semana) {
-            // Buscar protocolo ativo do usuário diretamente aqui
-            try {
-                const { data: protocolosAtivos } = await query('usuario_plano_treino', {
-                    eq: { 
-                        usuario_id: userId,
-                        status: 'ativo'
-                    },
-                    limit: 1
-                });
-                
-                if (protocolosAtivos && protocolosAtivos.length > 0) {
-                    ano = new Date().getFullYear();
-                    semana = protocolosAtivos[0].semana_atual || 1;
-                    console.log('[WeeklyPlanService.getPlan] 🔄 NOVA LÓGICA: Usando semana do protocolo:', { semana, protocoloId: protocolosAtivos[0].protocolo_treinamento_id });
-                } else {
-                    // Fallback para semana atual do calendário
-                    const current = this.getCurrentWeek();
-                    ano = current.ano;
-                    semana = current.semana;
-                    console.log('[WeeklyPlanService.getPlan] ⚠️ FALLBACK: Protocolo não encontrado, usando semana do calendário:', { ano, semana });
-                }
-            } catch (error) {
-                console.error('[WeeklyPlanService.getPlan] ❌ Erro ao buscar protocolo:', error);
-                // Fallback para semana atual do calendário
-                const current = this.getCurrentWeek();
-                ano = current.ano;
-                semana = current.semana;
-                console.log('[WeeklyPlanService.getPlan] ⚠️ FALLBACK: Erro, usando semana do calendário:', { ano, semana });
-            }
+            const current = this.getCurrentWeek();
+            ano = current.ano;
+            semana = current.semana; // Semana do ANO
+            console.log('[WeeklyPlanService.getPlan] 📅 Usando semana do ANO:', { ano, semana });
         }
         
-        console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana do protocolo:', { ano, semana });
+        console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana:', { ano, semana });
         
         // 1. Tentar cache local primeiro (se habilitado)
         const cacheKey = `${userId}-${ano}-${semana}`;
@@ -350,16 +338,28 @@ class WeeklyPlanService {
         try {
             console.log('[needsPlanning] Verificando se usuário precisa de planejamento:', userId);
             
-            // 1. Verificar se semana atual já foi programada
-            const { data: status, error } = await query('v_status_semanas_usuario', {
-                eq: { 
-                    usuario_id: userId,
-                    eh_semana_atual: true 
+            // 1. Verificar se a view v_status_semanas_usuario está disponível
+            let status = null;
+            let error = null;
+            try {
+                const { data, error: viewErr } = await query('v_status_semanas_usuario', {
+                    eq: {
+                        usuario_id: userId,
+                        eh_semana_atual: true
+                    }
+                });
+                if (viewErr) {
+                    throw viewErr;
                 }
-            });
+                status = data;
+            } catch (viewError) {
+                // A view pode estar desativada temporariamente – seguir com fallback
+                console.warn('[needsPlanning] View v_status_semanas_usuario indisponível, usando fallback:', viewError?.message || viewError);
+                error = viewError;
+            }
             
             if (error) {
-                console.error('[needsPlanning] Erro na consulta v_status_semanas_usuario:', error);
+                console.warn('[needsPlanning] View indisponível - usando fallback:', error);
                 // Fallback: verificar plano existente diretamente
                 const plan = await this.getPlan(userId, false);
                 const needsPlanning = !plan;
@@ -463,6 +463,7 @@ class WeeklyPlanService {
                 { 
                     concluido: true,
                     data_conclusao: nowInSaoPaulo()
+                    // semana_treino já foi gravada no momento do planejamento
                 },
                 {
                     eq: {
@@ -1102,11 +1103,11 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         
         // Se não for dia de treino (folga/cardio), retornar informação
         if (planejamento.tipo_atividade === 'folga') {
-            return { data: [], message: 'Dia de descanso 😴' };
+            return { data: [], message: 'Dia de descanso' };
         }
         
         if (planejamento.tipo_atividade === 'cardio') {
-            return { data: [], message: 'Dia de cardio 🏃‍♂️' };
+            return { data: [], message: 'Dia de cardio' };
         }
         
         // 2. Buscar protocolo do usuário E semana atual do calendário
@@ -1206,9 +1207,12 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
                 peso_base: Math.round(rmCalculado * (protocolo.percentual_1rm_base / 100) * 100) / 100,
                 peso_min: Math.round(rmCalculado * (protocolo.percentual_1rm_min / 100) * 100) / 100,
                 peso_max: Math.round(rmCalculado * (protocolo.percentual_1rm_max / 100) * 100) / 100,
+                peso_calculado: Math.round(rmCalculado * (protocolo.percentual_1rm_base / 100) * 100) / 100, // Adicionar peso_calculado
                 series: protocolo.series,
                 repeticoes: protocolo.repeticoes_alvo,
+                repeticoes_alvo: protocolo.repeticoes_alvo, // Adicionar repeticoes_alvo também
                 tempo_descanso: protocolo.tempo_descanso,
+                descanso_sugerido: protocolo.tempo_descanso, // Adicionar descanso_sugerido
                 ordem: protocolo.ordem_exercicio,
                 rm_calculado: rmCalculado,
                 observacoes: protocolo.observacoes
@@ -1634,6 +1638,7 @@ if (typeof window !== 'undefined') {
     window.WeeklyPlanService.obterSemanaAtivaUsuario = obterSemanaAtivaUsuario;
     window.WeeklyPlanService.verificarTreinoConcluido = verificarTreinoConcluido;
     window.WeeklyPlanService.resetarTreinoHoje = resetarTreinoHoje;
+    window.WeeklyPlanService.buscarExerciciosTreinoDia = buscarExerciciosTreinoDia;
     // Adicione aqui outras funções utilitárias exportadas que precisar acessar globalmente
 }
 // Exportação principal do serviço (browser global)

@@ -165,18 +165,18 @@
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: 12px 4px;
+    padding: 16px 8px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-    min-height: 80px;
+    min-height: 110px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 12px;
 }
 
 /* Day Indicator Hover */
@@ -188,8 +188,8 @@
 
 /* Day Name */
 .day-indicator .day-name {
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
@@ -221,42 +221,74 @@
 
 /* Day Type Text */
 .day-indicator .day-content {
-    font-size: 0.75rem;
-    font-weight: 500;
+    font-size: 0.98rem; /* Aumentado em 15% */
+    font-weight: 600;
     color: var(--text-secondary);
     line-height: 1.2;
 }
 
-/* Today State */
-.day-indicator.today {
-    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(139, 92, 246, 0.05) 100%);
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+/* Garantir que o texto do tipo de treino também seja maior */
+.day-indicator .day-type {
+    font-size: 0.98rem; /* Aumentado em 15% */
 }
 
-.day-indicator.today .day-name {
-    color: var(--accent-primary);
+/* Estado: Sem Plano - CINZA */
+.day-indicator.no-plan {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
 }
 
-.day-indicator.today .day-icon {
-    color: var(--accent-primary);
+.day-indicator.no-plan .day-name {
+    color: #666666; /* Cinza */
 }
 
-.day-indicator.today::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
-    animation: shimmer 2s ease-in-out infinite;
+.day-indicator.no-plan .day-type {
+    color: var(--text-muted);
 }
 
-/* Completed State */
+.day-indicator.no-plan .muscle-svg-icon {
+    opacity: 0.5;
+    filter: grayscale(1) opacity(0.5);
+}
+
+/* Estado: Treino Planejado */
+.day-indicator.planned {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+}
+
+.day-indicator.planned .day-name {
+    color: #FFE500; /* Amarelo neon */
+    text-shadow: 0 0 8px rgba(255, 229, 0, 0.6);
+}
+
+.day-indicator.planned .day-type {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.day-indicator.planned .muscle-svg-icon {
+    opacity: 1;
+}
+
+/* Estado: Treino Executado - VERDE NEON */
 .day-indicator.completed {
-    background: linear-gradient(135deg, var(--bg-primary) 0%, rgba(16, 185, 129, 0.05) 100%);
-    border-color: #10b981;
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+}
+
+.day-indicator.completed .day-name {
+    color: #00FF88;
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+}
+
+.day-indicator.completed .day-type {
+    color: #00FF88;
+    font-weight: 600;
+}
+
+.day-indicator.completed .muscle-svg-icon {
+    opacity: 1;
 }
 
 .day-indicator.completed::after {
@@ -266,14 +298,32 @@
     right: 4px;
     width: 16px;
     height: 16px;
-    background: #10b981;
-    color: white;
+    background: #00FF88;
+    color: var(--bg-primary);
     border-radius: 50%;
     font-size: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
+}
+
+/* Today State - Sobrepõe outros estados com borda especial */
+.day-indicator.today {
+    position: relative;
+    transform: none;
+}
+
+.day-indicator.today::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 0, 0.25), transparent);
+    /* shimmer removed for subtle effect */
+    border-radius: 12px 12px 0 0;
 }
 
 /* Workout Day Types */
@@ -292,6 +342,28 @@
 
 .day-indicator.rest-day .day-icon {
     color: var(--text-muted);
+}
+
+/* Hover States por tipo */
+.day-indicator:hover {
+    transform: translateY(-2px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.day-indicator.no-plan:hover {
+    opacity: 0.8;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.day-indicator.planned:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.day-indicator.completed:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
 }
 
 /* Shimmer Animation */
@@ -338,8 +410,8 @@
     }
     
     .day-indicator {
-        min-height: 70px;
-        padding: 8px 2px;
+        min-height: 90px;
+        padding: 12px 4px;
     }
     
     .day-indicator .day-name {
@@ -382,11 +454,87 @@
     }
     
     .day-indicator {
-        min-height: 65px;
+        min-height: 80px;
     }
     
     .day-indicator .day-name {
         font-size: 0.6rem;
         letter-spacing: 0;
+    }
+}
+
+/* Muscle SVG Icons Styles */
+.muscle-icon-wrapper {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.muscle-svg-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.2));
+}
+
+/* Reduzir cardio e folga em 20% */
+.cardio-day .muscle-svg-icon,
+.day-indicator[data-type="cardio"] .muscle-svg-icon,
+.rest-day .muscle-svg-icon,
+.day-indicator[data-type="folga"] .muscle-svg-icon,
+.day-indicator[data-type="descanso"] .muscle-svg-icon {
+    width: 80%;
+    height: 80%;
+}
+
+.day-indicator:hover .muscle-svg-icon {
+    transform: scale(1.15);
+}
+
+.rest-icon, .cardio-icon {
+    font-size: 24px;
+    display: block;
+    line-height: 1;
+}
+
+.day-indicator.completed .muscle-svg-icon {
+    opacity: 0.9;
+}
+
+.day-indicator.today .muscle-svg-icon {
+    animation: muscle-pulse 2s infinite;
+}
+
+@keyframes muscle-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+/* Responsive adjustments for muscle icons */
+@media (max-width: 768px) {
+    .muscle-icon-wrapper {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    .muscle-icon-wrapper {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .rest-icon, .cardio-icon {
+        font-size: 24px;
     }
 }

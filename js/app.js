@@ -229,6 +229,14 @@ function setupGlobalFunctions() {
                 console.warn('[app.js] ⚠️ Home screen inicializada com funcionalidade limitada');
                 setupBasicHomeElements(currentUser);
             }
+            // Carregar card de progressão da semana
+            try {
+                const { mostrarProgressaoSemana } = await import('../feature/progressaoSemana.js');
+                mostrarProgressaoSemana(currentUser.id);
+            } catch(progressErr) {
+                console.warn('[app.js] Não foi possível carregar progressão da semana:', progressErr);
+            }
+            
             setupHomeEventListeners(); // Adiciona listeners após a inicialização da home
             
         } catch (error) {

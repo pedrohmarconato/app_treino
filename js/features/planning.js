@@ -381,7 +381,8 @@ function criarOpcaoTreino(treino, diaDestino) {
     }
     
     option.innerHTML = `
-        <span class="option-emoji">${treino.emoji}</span>
+        <span class="treino-icon">${treino.icon}</span>
+        <span class="treino-emoji">${treinoEmojis[treino.tipo] || '🏋️'}</span>
         <div class="option-info">
             <div class="option-name">${treino.nome}</div>
             <div class="option-description">${treino.descricao}</div>
@@ -414,10 +415,13 @@ function selecionarTreinoParaDia(treino, dia) {
     }
 }
 
+/*
 // Atualizar visualização do dia
 function atualizarVisualizacaoDia(dia, treino) {
     const dayContent = document.getElementById(`dia-${dia}-content`);
     if (!dayContent) return;
+    // Deprecado: usar a versão otimizada mais abaixo
+    return;
     
     if (treino.categoria === '') {
             </div>
@@ -436,6 +440,7 @@ function atualizarVisualizacaoDia(dia, treino) {
         `;
     }
 }
+*/
 
 // ✅ CORRIGIDO: Remover treino do dia
 window.removerTreinoDoDia = function(dia) {
