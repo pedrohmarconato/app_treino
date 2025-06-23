@@ -598,7 +598,7 @@ class WeeklyPlanService {
                 .select('*')
                 .eq('usuario_id', userId)
                 .eq('ano', new Date().getFullYear())
-                .eq('semana', protocolosAtivos[0].semana_atual || 1)
+                .eq('semana_treino', protocolosAtivos[0].semana_atual || 1)
                 .eq('dia_semana', diaDb)
                 .single();
             
@@ -1090,7 +1090,7 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
             .select('*')
             .eq('usuario_id', userId)
             .eq('ano', ano)
-            .eq('semana', numeroSemana)
+            .eq('semana_treino', numeroSemana)
             .eq('dia_semana', diaSemana)
             .single();
             
@@ -1528,7 +1528,7 @@ export async function verificarTreinoConcluido(userId) {
             eq: {
                 usuario_id: userId,
                 ano: ano,
-                semana: semana,
+                semana_treino: semana,
                 dia_semana: diaSemana
             },
             maybeSingle: true
@@ -1598,7 +1598,7 @@ export async function resetarTreinoHoje(userId, motivoReset = 'Reset manual') {
             {
                 usuario_id: userId,
                 ano: ano,
-                semana: semana,
+                semana_treino: semana,
                 dia_semana: diaSemana
             }
         );

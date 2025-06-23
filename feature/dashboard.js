@@ -2340,7 +2340,7 @@ async function buscarGrupoMuscularPlanejado(userId, dataAlvo) {
             eq: {
                 usuario_id: userId,
                 ano: ano,
-                semana: semana,
+                semana_treino: semana,
                 dia_semana: diaSemana
             }
         });

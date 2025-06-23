@@ -4,9 +4,19 @@
 
 /* Modal Overlay com blur de fundo */
 .modal-overlay-clean {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    z-index: 9999;
+    overflow-y: auto;
 }
 
 /* Modal Content Principal */
