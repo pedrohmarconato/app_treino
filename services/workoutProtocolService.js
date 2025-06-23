@@ -146,7 +146,7 @@ export class WorkoutProtocolService {
                 eq: {
                     usuario_id: parseInt(userId),
                     ano: ano,
-                    semana: semana,
+                    semana_treino: semana,
                     dia_semana: diaDb
                 },
                 single: true
@@ -412,7 +412,7 @@ export class WorkoutProtocolService {
                 eq: {
                     usuario_id: userId,
                     ano: ano,
-                    semana: semana,
+                    semana_treino: semana,
                     dia_semana: diaSemana
                 }
             }

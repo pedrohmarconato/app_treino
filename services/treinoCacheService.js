@@ -311,7 +311,7 @@ export class TreinoCacheService {
                 })
                 .eq('usuario_id', sessao.usuario_id)
                 .eq('ano', ano)
-                .eq('semana', semana)
+                .eq('semana_treino', semana)
                 .eq('dia_semana', diaSemana);
             
             if (planejamentoError) {

@@ -2178,7 +2178,7 @@ async function verificarTreinoConcluido(userId, dayIndex, ano = null, semana = n
             eq: {
                 usuario_id: validatedUserId,
                 ano: validatedAno,
-                semana: validatedSemana,
+                semana_treino: validatedSemana,
                 dia_semana: validatedDiaSemana
             }
         });
@@ -5168,7 +5168,7 @@ async function debugTreinoInfo(userId, dayIndex) {
             .select('*')
             .eq('usuario_id', validatedUserId)
             .eq('ano', validatedAno)
-            .eq('semana', validatedSemana)
+            .eq('semana_treino', validatedSemana)
             .eq('dia_semana', validatedDiaSemana)
             .single();
             

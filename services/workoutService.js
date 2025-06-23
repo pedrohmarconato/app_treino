@@ -9,7 +9,7 @@ import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../uti
 // Buscar próximo treino do usuário
 export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
     // Primeiro verificar o plano semanal do usuário
-    const weekPlan = await WeeklyPlanService.obterPlanejamento(userId);
+    const weekPlan = await WeeklyPlanService.getPlan(userId);
     const today = new Date().getDay();
     
     if (weekPlan && weekPlan[today] && 
@@ -207,7 +207,7 @@ export async function marcarTreinoConcluido(userId) {
                 eq: { 
                     usuario_id: userId, 
                     ano, 
-                    semana, 
+                    semana_treino: semana, 
                     dia_semana: diaSemana 
                 }
             }

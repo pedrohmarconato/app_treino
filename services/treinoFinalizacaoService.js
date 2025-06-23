@@ -76,7 +76,7 @@ class TreinoFinalizacaoService {
                 .update(dadosAtualizacao)
                 .eq('usuario_id', userId)
                 .eq('ano', ano)
-                .eq('semana', semana)
+                .eq('semana_treino', semana)
                 .eq('dia_semana', diaSemana)
                 .select()
                 .single();
@@ -129,7 +129,7 @@ class TreinoFinalizacaoService {
                 .select('*')
                 .eq('usuario_id', userId)
                 .eq('ano', ano)
-                .eq('semana', semana)
+                .eq('semana_treino', semana)
                 .eq('dia_semana', diaSemana)
                 .single();
             

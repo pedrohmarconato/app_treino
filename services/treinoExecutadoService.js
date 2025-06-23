@@ -299,7 +299,7 @@ export class TreinoExecutadoService {
                 })
                 .eq('usuario_id', sessao.usuario_id)
                 .eq('ano', sessao.ano)
-                .eq('semana', sessao.semana)
+                .eq('semana_treino', sessao.semana)
                 .eq('dia_semana', sessao.dia_semana);
                 
             console.log('[TreinoExecutladoService] Planejamento sincronizado');
