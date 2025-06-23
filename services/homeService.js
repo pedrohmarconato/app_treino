@@ -36,7 +36,7 @@ export async function carregarDadosHome(userId) {
                 eq: { 
                     usuario_id: userId,
                     ano: ano,
-                    semana: semana
+                    semana_treino: semana
                 },
                 order: { column: 'dia_semana', ascending: true }
             });

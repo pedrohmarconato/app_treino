@@ -960,6 +960,7 @@ async function carregarTreinoAtualDoCache() {
             console.warn('[carregarTreinoAtualDoCache] Nenhum treino encontrado para hoje');
             atualizarUITreinoAtual(null);
             AppState.set('currentWorkout', null);
+            AppState.set('currentExercises', []); // Limpar exercícios quando não há treino
             
             // MUDANÇA: Garantir que o card expandível sempre existe, mesmo sem treino
             garantirCardExpandivelExiste();
@@ -971,7 +972,9 @@ async function carregarTreinoAtualDoCache() {
             tipo: treinoHoje.tipo_atividade || treinoHoje.tipo,
             nome: formatarNomeTreino(treinoHoje),
             grupo_muscular: treinoHoje.tipo_atividade || treinoHoje.tipo,
-            concluido: treinoHoje.concluido
+            concluido: treinoHoje.concluido,
+            id: treinoHoje.protocolo_treinamento_id || treinoHoje.id, // Adicionar ID do protocolo para o workout
+            protocolo_treinamento_id: treinoHoje.protocolo_treinamento_id
         };
 
         // Atualizar UI e AppState
@@ -987,6 +990,7 @@ async function carregarTreinoAtualDoCache() {
         console.error('[carregarTreinoAtualDoCache] ❌ Erro:', error);
         atualizarUITreinoAtual(null);
         AppState.set('currentWorkout', null);
+        AppState.set('currentExercises', []); // Limpar exercícios em caso de erro
     }
 }
 
@@ -1378,17 +1382,23 @@ async function carregarExerciciosDoDia() {
         if (resultado.error) {
             console.log('[carregarExerciciosDoDia] ⚠️', resultado.error);
             mostrarMensagemExercicios(resultado.error, 'warning', container);
+            AppState.set('currentExercises', []); // Limpar exercícios em caso de erro
             return;
         }
         
         if (resultado.message) {
             console.log('[carregarExerciciosDoDia] 📝', resultado.message);
             mostrarMensagemExercicios(resultado.message, 'info', container);
+            AppState.set('currentExercises', []); // Limpar exercícios quando há mensagem
             return;
         }
         
         if (resultado.data && resultado.data.length > 0) {
             console.log('[carregarExerciciosDoDia] ✅ Exercícios encontrados:', resultado.data.length);
+            
+            // IMPORTANTE: Salvar exercícios no AppState para o iniciarTreino
+            AppState.set('currentExercises', resultado.data);
+            console.log('[carregarExerciciosDoDia] 💾 Exercícios salvos no AppState');
             
             // Expandir automaticamente o card quando há exercícios
             const expandableContent = document.getElementById('expandable-content');
@@ -1412,11 +1422,15 @@ async function carregarExerciciosDoDia() {
         // Fallback: mostrar mensagem de nenhum exercício encontrado
         mostrarMensagemExercicios('Nenhum exercício encontrado para hoje', 'info', container);
         
+        // Limpar exercícios do AppState quando não há exercícios
+        AppState.set('currentExercises', []);
+        
     } catch (error) {
         console.error('[carregarExerciciosDoDia] ❌ ERRO:', error);
         if (container) {
             mostrarMensagemExercicios('Erro ao carregar exercícios', 'error', container);
         }
+        AppState.set('currentExercises', []); // Limpar exercícios em caso de erro
     }
 }
 
