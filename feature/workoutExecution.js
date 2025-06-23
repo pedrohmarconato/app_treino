@@ -1023,8 +1023,16 @@ class WorkoutExecutionManager {
     async criarEPrepararTelaWorkout() {
         const appContainer = document.getElementById('app') || document.body;
         
-        // Verificar se já existe
-        let workoutScreen = document.querySelector('#workout-screen');
+        // Verificar se já existe e remover duplicatas se necessário
+        const workoutScreens = document.querySelectorAll('#workout-screen');
+        if (workoutScreens.length > 1) {
+            console.warn('[WorkoutExecution] ⚠️ Múltiplas telas de workout detectadas. Removendo duplicatas...');
+            workoutScreens.forEach((el, idx) => {
+                if (idx > 0) el.remove();
+            });
+        }
+
+        let workoutScreen = workoutScreens[0];
         if (workoutScreen) {
             return workoutScreen;
         }
@@ -4598,6 +4606,12 @@ window.startWorkout = () => window.workoutExecutionManager.startWorkout();
 window.resumeWorkout = (cacheData) => window.workoutExecutionManager.resumeFromCache(cacheData);
 window.handleWorkoutExit = () => window.workoutExecutionManager.handleExit();
 
+// Compatibilidade: alguns templates ainda chamam window.iniciarTreino
+if (!window.iniciarTreino || window.iniciarTreino.name === 'iniciarTreinoSimples') {
+    console.log('[WorkoutExecution] 🔄 Mapeando window.iniciarTreino para startWorkout (fluxo novo)');
+    window.iniciarTreino = window.startWorkout;
+}
+
 // Funções usadas no HTML
 window.confirmarSerie = (exerciseIndex, seriesIndex) => window.workoutExecutionManager.confirmarSerie(exerciseIndex, seriesIndex);
 window.voltarParaHome = () => window.workoutExecutionManager.voltarParaHome();
@@ -4754,13 +4768,18 @@ window.debugWorkoutCache = async function() {
     }
 };
 
-// DESABILITADO - Usar workout.js original ao invés deste
 // Criar instância global
-// const workoutExecutionManager = new WorkoutExecutionManager();
+const workoutExecutionManager = new WorkoutExecutionManager();
 
 // Exportar para uso global
-// window.workoutExecutionManager = workoutExecutionManager;
-// window.iniciarTreino = () => workoutExecutionManager.iniciarTreino();
+window.workoutExecutionManager = workoutExecutionManager;
+window.startWorkout = () => workoutExecutionManager.iniciarTreino();
+
+// Manter compatibilidade com nome antigo mas redirecionar para o novo
+window.iniciarTreino = () => {
+    console.log('[iniciarTreino] Redirecionando para WorkoutExecutionManager.iniciarTreino()');
+    return workoutExecutionManager.iniciarTreino();
+};
 
 // Funções globais de debug - DESABILITADAS
 // window.debugWorkoutTemplate = () => workoutExecutionManager.debugTemplate();

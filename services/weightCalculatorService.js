@@ -18,13 +18,17 @@ export class WeightCalculatorService {
             // 1. Buscar 1RM do usuário para o exercício
             const rm1 = await fetch1RMUsuario(userId, exercicioId);
             if (!rm1 || rm1 <= 0) {
-                console.warn(`[WeightCalculator] 1RM não encontrado para exercício ${exercicioId}`);
+                console.log(`[WeightCalculator] 1RM não encontrado para exercício ${exercicioId}, usando valores padrão`);
+                
+                // Retornar valores padrão mais apropriados baseados no gênero/experiência
+                // TODO: Implementar lógica para determinar valores baseados no perfil do usuário
                 return {
                     peso_base: 20,
                     peso_minimo: 15,
                     peso_maximo: 25,
                     repeticoes_alvo: 10,
-                    fonte: 'default'
+                    fonte: 'default',
+                    mensagem: '1RM não cadastrado - usando valores padrão'
                 };
             }
             

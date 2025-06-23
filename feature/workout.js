@@ -48,8 +48,11 @@ export async function iniciarTreino() {
     await mostrarExercicioAtual();
 }
 
-// Expor no window
-window.iniciarTreino = iniciarTreino;
+// Expor no window apenas se não existir (evitar sobrescrever WorkoutExecutionManager)
+if (!window.iniciarTreino) {
+    console.log('[workout.js] Registrando iniciarTreino legacy');
+    window.iniciarTreino = iniciarTreino;
+}
 
 // Mostrar exercício atual
 async function mostrarExercicioAtual() {

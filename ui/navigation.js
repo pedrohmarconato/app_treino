@@ -15,6 +15,18 @@ const screenTemplateMap = {
 export function mostrarTela(telaId) {
     console.log('[mostrarTela] Navegando para:', telaId);
     
+    // IMPORTANTE: Remover duplicatas de workout-screen antes de criar nova
+    if (telaId === 'workout-screen') {
+        const existingScreens = document.querySelectorAll('#workout-screen');
+        if (existingScreens.length > 0) {
+            console.log(`[mostrarTela] Removendo ${existingScreens.length} duplicata(s) de #workout-screen`);
+            existingScreens.forEach((screen, index) => {
+                console.log(`[mostrarTela] Removendo duplicata ${index + 1}`);
+                screen.remove();
+            });
+        }
+    }
+    
     // Cleanup da tela anterior antes de navegar
     onScreenLeave();
     
