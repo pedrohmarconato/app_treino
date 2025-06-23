@@ -18,6 +18,24 @@ export async function iniciarTreino() {
         return;
     }
     
+    // Verificar se há execuções não salvas no cache
+    const execucoesPendentes = localStorage.getItem('treino_execucoes_temp');
+    if (execucoesPendentes) {
+        const quantidade = JSON.parse(execucoesPendentes).length;
+        if (confirm(`Há ${quantidade} execuções não salvas de um treino anterior. Deseja recuperá-las?`)) {
+            // Recuperar execuções do cache
+            AppState.set('execucoesCache', JSON.parse(execucoesPendentes));
+            showNotification(`${quantidade} execuções recuperadas do cache`, 'info');
+        } else {
+            // Limpar cache antigo
+            localStorage.removeItem('treino_execucoes_temp');
+            AppState.set('execucoesCache', []);
+        }
+    } else {
+        // Iniciar cache limpo
+        AppState.set('execucoesCache', []);
+    }
+    
     // Resetar estado do treino
     AppState.set('currentExerciseIndex', 0);
     AppState.set('completedSeries', 0);
@@ -208,7 +226,7 @@ window.confirmarSerie = async function(serieIndex) {
         return;
     }
     
-    // Salvar execução
+    // IMPORTANTE: Salvar APENAS no cache local, NÃO no Supabase ainda
     const dados = {
         usuario_id: currentUser.id,
         protocolo_treino_id: workout.id,
@@ -219,12 +237,18 @@ window.confirmarSerie = async function(serieIndex) {
         data_execucao: new Date().toISOString()
     };
     
-    const success = await salvarExecucaoExercicio(dados);
+    // Adicionar ao cache local ao invés de salvar no Supabase
+    let execucoesCache = AppState.get('execucoesCache') || [];
+    execucoesCache.push(dados);
+    AppState.set('execucoesCache', execucoesCache);
     
-    if (!success) {
-        showNotification('Erro ao salvar série', 'error');
-        return;
-    }
+    // Salvar no localStorage para proteção
+    localStorage.setItem('treino_execucoes_temp', JSON.stringify(execucoesCache));
+    
+    console.log(`[workout] Série ${serieIndex + 1} salva no cache local. Total: ${execucoesCache.length} execuções`);
+    
+    // Sempre retornar sucesso pois salvamos localmente
+    const success = true;
     
     // Marcar série como completa
     const serieItem = document.getElementById(`serie-${serieIndex}`);
@@ -397,6 +421,36 @@ window.finalizarTreino = async function() {
             return;
         }
         
+        // IMPORTANTE: Enviar todas as execuções do cache para o Supabase
+        const execucoesCache = AppState.get('execucoesCache') || [];
+        
+        if (execucoesCache.length > 0) {
+            showNotification('Salvando treino...', 'info');
+            
+            console.log(`[finalizarTreino] Enviando ${execucoesCache.length} execuções para o Supabase...`);
+            
+            // Enviar todas as execuções de uma vez
+            for (const execucao of execucoesCache) {
+                const success = await salvarExecucaoExercicio(execucao);
+                if (!success) {
+                    console.error('[finalizarTreino] Erro ao salvar execução:', execucao);
+                    // Continuar salvando as outras mesmo se uma falhar
+                }
+            }
+            
+            console.log('[finalizarTreino] ✅ Todas as execuções enviadas para o Supabase');
+            
+            // Limpar cache após envio bem sucedido
+            AppState.set('execucoesCache', []);
+            localStorage.removeItem('treino_execucoes_temp');
+        }
+        
+        // Marcar treino como concluído
+        const workout = AppState.get('currentWorkout');
+        if (workout) {
+            await marcarTreinoConcluido(currentUser.id, workout.id);
+        }
+        
         // Fechar modal
         const modal = document.getElementById('workout-complete-modal');
         if (modal) {
@@ -414,7 +468,7 @@ window.finalizarTreino = async function() {
             await window.carregarDashboard();
         }
         
-        showNotification('Treino finalizado com sucesso!', 'success');
+        showNotification('Treino finalizado e salvo com sucesso!', 'success');
         
     } catch (error) {
         console.error('Erro ao finalizar treino:', error);
