@@ -4562,7 +4562,8 @@ class WorkoutExecutionManager {
 }
 
 // ===== GLOBAL BINDINGS =====
-window.workoutExecutionManager = new WorkoutExecutionManager();
+// DESABILITADO - Usar workout.js original ao invés deste
+// window.workoutExecutionManager = new WorkoutExecutionManager();
 
 // Garantir que templates estejam disponíveis globalmente
 (async function ensureGlobalTemplates() {
@@ -4753,62 +4754,63 @@ window.debugWorkoutCache = async function() {
     }
 };
 
+// DESABILITADO - Usar workout.js original ao invés deste
 // Criar instância global
-const workoutExecutionManager = new WorkoutExecutionManager();
+// const workoutExecutionManager = new WorkoutExecutionManager();
 
 // Exportar para uso global
-window.workoutExecutionManager = workoutExecutionManager;
-window.iniciarTreino = () => workoutExecutionManager.iniciarTreino();
+// window.workoutExecutionManager = workoutExecutionManager;
+// window.iniciarTreino = () => workoutExecutionManager.iniciarTreino();
 
-// Funções globais de debug
-window.debugWorkoutTemplate = () => workoutExecutionManager.debugTemplate();
-window.debugWorkoutExercicios = () => workoutExecutionManager.debugExercicios();
-window.forceRenderWorkout = () => {
-    if (workoutExecutionManager.currentWorkout) {
-        workoutExecutionManager.renderizarComSeguranca();
-    } else {
-        console.log('❌ Nenhum workout carregado para renderizar');
-    }
-};
+// Funções globais de debug - DESABILITADAS
+// window.debugWorkoutTemplate = () => workoutExecutionManager.debugTemplate();
+// window.debugWorkoutExercicios = () => workoutExecutionManager.debugExercicios();
+// window.forceRenderWorkout = () => {
+//     if (workoutExecutionManager.currentWorkout) {
+//         workoutExecutionManager.renderizarComSeguranca();
+//     } else {
+//         console.log('❌ Nenhum workout carregado para renderizar');
+//     }
+// };
 
-// Função para testar recuperação manual
-window.testResumeWorkout = async function() {
-    console.log('[TEST RESUME] 🧪 Testando recuperação manual do treino...');
-    
-    try {
-        const state = await TreinoCacheService.getWorkoutState();
-        
-        if (!state) {
-            console.error('[TEST RESUME] ❌ Nenhum estado encontrado no cache');
-            return false;
-        }
-        
-        console.log('[TEST RESUME] ✅ Estado encontrado:', state);
-        
-        // Testar resumeFromCache diretamente
-        const result = await window.workoutExecutionManager.resumeFromCache(state);
-        
-        console.log('[TEST RESUME] Resultado:', result);
-        return result;
-        
-    } catch (error) {
-        console.error('[TEST RESUME] ❌ Erro:', error);
-        return false;
-    }
-};
+// Funções DESABILITADAS - usar workout.js
+// window.testResumeWorkout = async function() {
+//     console.log('[TEST RESUME] 🧪 Testando recuperação manual do treino...');
+//     
+//     try {
+//         const state = await TreinoCacheService.getWorkoutState();
+//         
+//         if (!state) {
+//             console.error('[TEST RESUME] ❌ Nenhum estado encontrado no cache');
+//             return false;
+//         }
+//         
+//         console.log('[TEST RESUME] ✅ Estado encontrado:', state);
+//         
+//         // Testar resumeFromCache diretamente
+//         const result = await window.workoutExecutionManager.resumeFromCache(state);
+//         
+//         console.log('[TEST RESUME] Resultado:', result);
+//         return result;
+//         
+//     } catch (error) {
+//         console.error('[TEST RESUME] ❌ Erro:', error);
+//         return false;
+//     }
+// };
 
-window.adicionarSerie = (exercicioId) => {
-    return window.workoutExecutionManager.adicionarSerie(exercicioId);
-};
+// window.adicionarSerie = (exercicioId) => {
+//     return window.workoutExecutionManager.adicionarSerie(exercicioId);
+// };
 
-window.ajustarValor = (inputId, delta) => {
-    return window.workoutExecutionManager.ajustarValor(inputId, delta);
-};
+// window.ajustarValor = (inputId, delta) => {
+//     return window.workoutExecutionManager.ajustarValor(inputId, delta);
+// };
 
-window.mostrarHistorico = (exercicioId) => {
-    return window.workoutExecutionManager.mostrarHistorico(exercicioId);
-};
+// window.mostrarHistorico = (exercicioId) => {
+//     return window.workoutExecutionManager.mostrarHistorico(exercicioId);
+// };
 
-window.concluirExercicio = (exercicioId) => {
-    return window.workoutExecutionManager.concluirExercicio(exercicioId);
-};
+// window.concluirExercicio = (exercicioId) => {
+//     return window.workoutExecutionManager.concluirExercicio(exercicioId);
+// };
