@@ -2390,7 +2390,7 @@ async function buscarTreinoPlanejado(userId, dayIndex) {
             eq: {
                 usuario_id: userId,
                 ano: anoAtual,
-                semana: semanaExibida,
+                semana_treino: semanaExibida,
                 dia_semana: diaSemana
             }
         });

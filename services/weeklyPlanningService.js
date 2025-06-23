@@ -10,7 +10,7 @@ import { CalendarioService } from './calendarioService.js';
 // Verifica se a semana já está programada para o usuário e semana_treino
 function verificarSemanaJaProgramada(userId, semanaTreino) {
     return query('planejamento_semanal', {
-        eq: { usuario_id: userId, semana: semanaTreino }
+        eq: { usuario_id: userId, semana_treino: semanaTreino }
     }).then(({ data }) => !!(data && data.length > 0));
 }
 
