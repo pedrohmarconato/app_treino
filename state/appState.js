@@ -6,6 +6,10 @@ class AppStateManager {
         this.state = {
             currentUser: null,
             currentWorkout: null,
+            currentExercises: [],
+            currentExerciseIndex: 0,
+            completedSeries: 0,
+            execucoesCache: [],
             weekPlan: null,
             userMetrics: null,
             weekNavigation: {
@@ -18,7 +22,10 @@ class AppStateManager {
             hasUnsavedData: false,
             workoutStartTime: null,
             lastWorkoutSave: null,
-            workoutSessionId: null
+            workoutSessionId: null,
+            workoutTimerInterval: null,
+            timerInterval: null,
+            restTime: 0
         };
         
         this.listeners = new Map();
@@ -43,6 +50,11 @@ class AppStateManager {
         } else {
             this.set(key, updates);
         }
+    }
+    
+    // Método para debug - retorna todo o estado
+    getAll() {
+        return { ...this.state };
     }
     
     // Sistema de observadores

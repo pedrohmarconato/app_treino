@@ -39,7 +39,7 @@ export async function buscarTreinoCompleto(userId) {
             eq: {
                 usuario_id: userId,
                 ano: ano,
-                semana: semanaProtocolo,
+                semana_treino: semanaProtocolo,
                 dia_semana: diaDB
             },
             limit: 1
@@ -141,7 +141,7 @@ export async function buscarEstatisticasUsuario(userId) {
             eq: {
                 usuario_id: userId,
                 ano: ano,
-                semana: semanaAtiva?.semana_treino || 1
+                semana_treino: semanaAtiva?.semana_treino || 1
             }
         });
         

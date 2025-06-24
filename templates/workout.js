@@ -2,7 +2,7 @@ export const workoutTemplate = () => `
     <div id="workout-screen" class="workout-screen">
         <!-- Header Flutuante -->
         <div class="workout-header-float">
-            <button class="back-button-float" onclick="window.workoutExecutionManager?.mostrarModalSaida ? window.workoutExecutionManager.mostrarModalSaida() : (document.getElementById('exit-confirmation-overlay').style.display = 'flex')">
+            <button class="back-button-float" onclick="document.getElementById('exit-confirmation-overlay').style.display = 'flex'">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -153,7 +153,7 @@ export const workoutTemplate = () => `
                 </div>
 
                 <div class="completion-actions">
-                    <button onclick="workoutExecutionManager.voltarParaHome()" class="btn-primary btn-finish">
+                    <button onclick="window.finalizarTreino()" class="btn-primary btn-finish">
                         <span>Finalizar</span>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="9 18 15 12 9 6"/>
@@ -262,8 +262,8 @@ export const workoutTemplate = () => `
                     <button id="exit-confirm-btn" class="btn-exit" disabled onclick="
                         const checkbox = document.getElementById('confirm-exit-checkbox');
                         if (checkbox && checkbox.checked) {
-                            if (window.workoutExecutionManager && window.workoutExecutionManager.voltarParaHome) {
-                                window.workoutExecutionManager.voltarParaHome();
+                            if (window.voltarParaHome) {
+                                window.voltarParaHome();
                             } else {
                                 window.location.href = '#home';
                             }
@@ -368,7 +368,7 @@ function generateSeriesHTML(exercise) {
                         </div>
                     </div>
                 </div>
-                <button class="series-confirm-btn" onclick="workoutExecutionManager.confirmarSerie(${i})">
+                <button class="series-confirm-btn" onclick="window.confirmarSerie(${i})">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"/>
                     </svg>

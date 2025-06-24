@@ -2,7 +2,7 @@
 import { modalPlanejamentoTemplate, modalPlanejamentoStyles } from './modals.js';
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';
-import { workoutTemplate, exerciseCardTemplate } from './workoutExecution.js';
+import { workoutTemplate } from './workout.js';
 import { workoutStyles } from './workout.js';
 import { planejamentoSemanalPageTemplate } from './planejamentoSemanalPage.js';
 import { MetricsWidget, metricsWidgetStyles } from '../components/MetricsWidget.js';
@@ -597,7 +597,6 @@ export {
     loginTemplate,
     homeTemplate,
     workoutTemplate,
-    exerciseCardTemplate,
     workoutStyles,
     planejamentoSemanalPageTemplate,
 };

@@ -4,8 +4,9 @@ import AppState from '../state/appState.js';
 import '../feature/planning.js';
 import { mostrarTela, logout } from '../ui/navigation.js';
 import { showNotification } from '../ui/notifications.js';
-// Importar workoutExecution ANTES do protocolIntegration para garantir que workoutExecutionManager esteja disponível
-import '../feature/workoutExecution.js';
+// DESABILITADO - workoutExecution.js estava bugado, usando workout.js
+// import '../feature/workoutExecution.js';
+import '../feature/workout.js';
 import { initializeProtocol } from '../integration/protocolIntegration.js';
 import { integrationService } from '../services/integrationService.js';
 // Importar funções de localStorage para disponibilizar globalmente

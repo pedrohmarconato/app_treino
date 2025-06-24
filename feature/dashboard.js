@@ -67,6 +67,20 @@ function limparCacheGlobal() {
         semanaAtual: null,
         semanaExibida: null
     };
+    
+    // IMPORTANTE: Limpar também o localStorage para forçar nova busca
+    try {
+        // Limpar todos os caches relacionados ao planejamento
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+            if (key.includes('weekly-plan') || key.includes('planejamento') || key.includes('cache')) {
+                localStorage.removeItem(key);
+                console.log('[limparCacheGlobal] Removido do localStorage:', key);
+            }
+        });
+    } catch (e) {
+        console.warn('[limparCacheGlobal] Erro ao limpar localStorage:', e);
+    }
 }
 
 // Disponibilizar globalmente para debug
@@ -894,19 +908,22 @@ export async function carregarDashboard() {
         // 3. CARREGAR TREINO ATUAL
         await carregarTreinoAtualDoCache();
 
-        // 4. CONFIGURAR FUNCIONALIDADES
+        // 4. CARREGAR EXERCÍCIOS IMEDIATAMENTE (CRÍTICO!)
+        await carregarExerciciosDoDia();
+        
+        // 5. CONFIGURAR FUNCIONALIDADES
         configurarBotaoIniciar();
         configurarEventListeners();
         configurarNavegacaoSemanas();
         
-        // 5. CARREGAR DADOS USANDO NOVO CONTROLLER CENTRALIZADO
+        // 6. CARREGAR DADOS ADICIONAIS (PODE SER ASYNC)
         setTimeout(async () => {
             try {
-                console.log('[carregarDashboard] 🎮 Usando novo controller centralizado...');
+                console.log('[carregarDashboard] 🎮 Carregando dados adicionais...');
                 
-                // Importar e usar o novo controller
-                const { atualizarTodoTreinoUI } = await import('../controllers/workoutController.js');
-                await atualizarTodoTreinoUI(currentUser.id);
+                // DESABILITADO: workoutController estava sobrescrevendo os dados já carregados
+                // const { atualizarTodoTreinoUI } = await import('../controllers/workoutController.js');
+                // await atualizarTodoTreinoUI(currentUser.id);
                 
                 // Carregar outros dados se necessário
                 await Promise.all([
@@ -914,16 +931,16 @@ export async function carregarDashboard() {
                     carregarDadosDinamicosHome()
                 ]);
                 
-                console.log('[carregarDashboard] ✅ Controller centralizado executado com sucesso');
+                console.log('[carregarDashboard] ✅ Dados adicionais carregados com sucesso');
             } catch (error) {
                 console.warn('[carregarDashboard] Erro em carregamentos secundários:', error);
                 
                 // Fallback para sistema antigo se houver erro
                 console.log('[carregarDashboard] 🔄 Usando fallback...');
                 await Promise.all([
-                    carregarMetricasUsuario(),
-                    carregarExerciciosDoDia(),
-                    carregarTreinoAtualDoCache()
+                    carregarMetricasUsuario()
+                    // carregarExerciciosDoDia() já foi chamado antes
+                    // carregarTreinoAtualDoCache() já foi chamado antes
                 ]);
             }
         }, 100);
@@ -953,8 +970,20 @@ async function carregarTreinoAtualDoCache() {
         const planejamentoSemana = dadosGlobaisCache.dados.planejamentos[semanaProtocolo];
         const treinoHoje = planejamentoSemana?.[diaAtual];
         
-        console.log("[carregarTreinoAtualDoCache] Planejamento da semana:", planejamentoSemana);
-        console.log("[carregarTreinoAtualDoCache] Treino de hoje (dia", diaAtual + "):", treinoHoje);
+        console.log("[carregarTreinoAtualDoCache] 🔍 DEBUG COMPLETO:");
+        console.log("  - Dia atual (JS):", diaAtual, "(0=Dom, 1=Seg...)");
+        console.log("  - Semana protocolo:", semanaProtocolo);
+        console.log("  - Planejamentos disponíveis:", Object.keys(dadosGlobaisCache.dados.planejamentos));
+        console.log("  - Planejamento da semana:", planejamentoSemana);
+        console.log("  - Treino de hoje:", treinoHoje);
+        
+        // Debug extra: mostrar todos os treinos da semana
+        if (planejamentoSemana) {
+            console.log("  - Treinos da semana completa:");
+            Object.keys(planejamentoSemana).forEach(dia => {
+                console.log(`    Dia ${dia}: ${planejamentoSemana[dia]?.tipo_atividade || 'vazio'}`);
+            });
+        }
         
         if (!treinoHoje) {
             console.warn('[carregarTreinoAtualDoCache] Nenhum treino encontrado para hoje');
@@ -2257,7 +2286,7 @@ async function sincronizarConclusaoTreino(userId, dayIndex) {
             })
             .eq('usuario_id', userId)
             .eq('ano', ano)
-            .eq('semana', semana)
+            .eq('semana_treino', calendarioHoje?.semana_treino || semana)  // MUDANÇA: usar semana_treino
             .eq('dia_semana', WeeklyPlanService.dayToDb(dayIndex));
         
         console.log(`[sincronizarConclusaoTreino] Treino do dia ${dayIndex} marcado como concluído`);
@@ -4093,6 +4122,105 @@ function fecharModalSeletorGrupo(event) {
     if (modal) modal.remove();
 }
 
+// Calcular métricas principais para o header do modal
+function calcularMetricasHeader(historico, somenteplanejamento) {
+    const grupoMuscular = historico.planejamento?.tipo_atividade || 'Treino';
+    let percentualRM = 0;
+    let pesoTotal = 0;
+    let status = somenteplanejamento ? 'planejado' : 'executado';
+    
+    if (somenteplanejamento) {
+        // Para treino planejado, usar dados sugeridos
+        if (historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0) {
+            historico.exerciciosSugeridos.forEach(ex => {
+                const peso = ex.peso_calculado || ex.peso_base || 0;
+                const series = ex.series || 3;
+                const reps = ex.repeticoes || ex.repeticoes_alvo || 10;
+                pesoTotal += peso * series * reps;
+                
+                // Calcular %RM médio (assumindo que peso calculado é baseado em 70-85% do 1RM)
+                const rmEstimado = peso / 0.75; // Assumindo 75% como média
+                percentualRM = Math.max(percentualRM, 75); // Usar o maior valor encontrado
+            });
+        }
+    } else {
+        // Para treino executado, usar dados reais
+        if (historico.execucoes && historico.execucoes.length > 0) {
+            const exerciciosUnicos = new Map();
+            
+            historico.execucoes.forEach(exec => {
+                const peso = exec.peso_utilizado || 0;
+                const reps = exec.repeticoes || 0;
+                pesoTotal += peso * reps;
+                
+                // Agrupar por exercício para calcular %RM
+                const exercicioId = exec.exercicio_id;
+                if (!exerciciosUnicos.has(exercicioId)) {
+                    exerciciosUnicos.set(exercicioId, {
+                        pesoMax: peso,
+                        repsMin: reps
+                    });
+                } else {
+                    const atual = exerciciosUnicos.get(exercicioId);
+                    if (peso > atual.pesoMax) {
+                        atual.pesoMax = peso;
+                        atual.repsMin = reps;
+                    }
+                }
+            });
+            
+            // Calcular %RM médio baseado no peso máximo e repetições
+            let somaRM = 0;
+            exerciciosUnicos.forEach(dados => {
+                // Fórmula de Epley: 1RM = peso × (1 + reps/30)
+                const rm1Estimado = dados.pesoMax * (1 + dados.repsMin / 30);
+                const percentual = (dados.pesoMax / rm1Estimado) * 100;
+                somaRM += percentual;
+            });
+            
+            percentualRM = exerciciosUnicos.size > 0 ? Math.round(somaRM / exerciciosUnicos.size) : 0;
+        }
+    }
+    
+    // Adicionar variações para treino executado
+    let variacaoPeso = 0;
+    let preWorkout = null;
+    let posWorkout = null;
+    
+    if (!somenteplanejamento && historico.exerciciosSugeridos && historico.execucoes) {
+        // Calcular variação entre sugerido e executado
+        let pesoSugerido = 0;
+        let pesoExecutado = 0;
+        
+        historico.exerciciosSugeridos.forEach(sug => {
+            const peso = sug.peso_calculado || sug.peso_base || 0;
+            const series = sug.series || 3;
+            const reps = sug.repeticoes || sug.repeticoes_alvo || 10;
+            pesoSugerido += peso * series * reps;
+        });
+        
+        pesoExecutado = pesoTotal;
+        
+        if (pesoSugerido > 0) {
+            variacaoPeso = ((pesoExecutado - pesoSugerido) / pesoSugerido) * 100;
+        }
+        
+        // Buscar dados de pre/pos workout se disponíveis
+        preWorkout = historico.preWorkout || null;
+        posWorkout = historico.posWorkout || null;
+    }
+    
+    return {
+        grupoMuscular,
+        percentualRM: Math.round(percentualRM),
+        pesoTotal: Math.round(pesoTotal),
+        status,
+        variacaoPeso: Math.round(variacaoPeso),
+        preWorkout,
+        posWorkout
+    };
+}
+
 // Mostrar modal com histórico do treino
 function mostrarModalHistorico(historico, dayIndex) {
     console.log('[mostrarModalHistorico] 🚀 Iniciando função com:', { historico, dayIndex });
@@ -4103,6 +4231,9 @@ function mostrarModalHistorico(historico, dayIndex) {
     // Verificar se é apenas planejamento (sem execuções)
     const somenteplanejamento = historico.semExecucoes || (historico.execucoes && historico.execucoes.length === 0);
     console.log('[mostrarModalHistorico] 📊 Somente planejamento:', somenteplanejamento);
+    
+    // Calcular métricas principais para o header
+    const metricas = calcularMetricasHeader(historico, somenteplanejamento);
     
     // Log detalhado dos exercícios sugeridos
     if (historico.exerciciosSugeridos) {
@@ -4123,471 +4254,112 @@ function mostrarModalHistorico(historico, dayIndex) {
         console.log('[mostrarModalHistorico] ⚠️ Nenhum exercício sugerido no histórico');
     }
     
-    // Calcular estatísticas
+    // Calcular estatísticas detalhadas
     const stats = somenteplanejamento ? null : calcularEstatisticasTreino(historico);
     console.log('[mostrarModalHistorico] 📈 Stats:', stats);
     
+    // Detectar se é dispositivo móvel iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isMobile = window.innerWidth <= 428 || 'ontouchstart' in window;
+    
     // Criar HTML do modal
     const modalHTML = `
-        <div id="modal-historico" class="modal-overlay" onclick="fecharModalHistorico(event)" style="
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            background: rgba(0, 0, 0, 0.9) !important;
-            display: flex !important;
-            align-items: flex-start !important;
-            justify-content: center !important;
-            z-index: 10000 !important;
-            backdrop-filter: blur(10px) !important;
-            padding: 20px !important;
-            box-sizing: border-box !important;
-            overflow-y: auto !important;
-            animation: fadeIn 0.3s ease-out !important;
-        ">
-            <div class="modal-content workout-history-modal" onclick="event.stopPropagation()" style="
-                background: linear-gradient(145deg, #1a1a1a 0%, #2d2d2d 100%) !important;
-                border-radius: 24px !important;
-                box-shadow: 
-                    0 25px 60px rgba(0, 0, 0, 0.6),
-                    0 0 100px rgba(168, 255, 0, 0.05),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-                border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                max-width: 800px !important;
-                width: 100% !important;
-                margin: 20px auto !important;
-                animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-            ">
-                <div class="modal-header" style="
-                    padding: 32px !important;
-                    background: linear-gradient(135deg, rgba(168, 255, 0, 0.08) 0%, transparent 70%) !important;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-                    position: relative !important;
-                    overflow: hidden !important;
-                ">
-                    <div class="workout-history-header" style="
-                        display: flex !important;
-                        justify-content: space-between !important;
-                        align-items: flex-start !important;
-                    ">
-                        <div class="history-title-section">
-                            <h2 style="
-                                margin: 0 0 16px 0 !important;
-                                font-size: 2rem !important;
-                                font-weight: 700 !important;
-                                background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%) !important;
-                                -webkit-background-clip: text !important;
-                                -webkit-text-fill-color: transparent !important;
-                                letter-spacing: -0.5px !important;
-                            ">${somenteplanejamento ? '📋 Treino Planejado' : '🏆 Histórico do Treino'}</h2>
-                            <div class="history-subtitle" style="
-                                display: flex !important;
-                                align-items: center !important;
-                                gap: 16px !important;
-                            ">
-                                <span class="day-name" style="
-                                    background: linear-gradient(135deg, #a8ff00 0%, #7acc00 100%) !important;
-                                    color: #000 !important;
-                                    padding: 8px 16px !important;
-                                    border-radius: 20px !important;
-                                    font-weight: 700 !important;
-                                    font-size: 0.9rem !important;
-                                    text-transform: uppercase !important;
-                                    letter-spacing: 0.5px !important;
-                                    box-shadow: 0 4px 12px rgba(168, 255, 0, 0.3) !important;
-                                ">${dayName}</span>
-                                <span class="separator" style="color: #666 !important;">•</span>
-                                <span class="date" style="
-                                    color: #999 !important;
-                                    font-size: 1rem !important;
-                                    font-weight: 500 !important;
-                                ">${dataFormatada}</span>
+        <div id="modal-historico" class="modal-overlay-enhanced ${isMobile ? 'mobile' : ''}" onclick="fecharModalHistorico(event)">
+            <div class="modal-content-enhanced" onclick="event.stopPropagation()">
+                <!-- Header Compacto e Informativo -->
+                <div class="modal-header-compact">
+                    <div class="header-main">
+                        <div class="header-left">
+                            <h3 class="grupo-muscular">${metricas.grupoMuscular}</h3>
+                            <div class="header-tags">
+                                <span class="tag tag-rm" style="background: ${metricas.percentualRM >= 80 ? 'var(--accent-red)' : metricas.percentualRM >= 70 ? 'var(--accent-primary)' : 'var(--accent-green)'}">
+                                    ${metricas.percentualRM}% RM
+                                </span>
+                                <span class="tag tag-status ${metricas.status}">
+                                    ${metricas.status === 'planejado' ? '📅 Planejado' : '✅ Executado'}
+                                </span>
+                                <span class="tag tag-peso">
+                                    🏋️ ${(metricas.pesoTotal / 1000).toFixed(1)}t
+                                </span>
                             </div>
                         </div>
-                        <button class="btn-close" onclick="fecharModalHistorico()" style="
-                            background: rgba(255, 255, 255, 0.08) !important;
-                            border: 1px solid rgba(255, 255, 255, 0.15) !important;
-                            color: #ccc !important;
-                            width: 48px !important;
-                            height: 48px !important;
-                            border-radius: 12px !important;
-                            display: flex !important;
-                            align-items: center !important;
-                            justify-content: center !important;
-                            cursor: pointer !important;
-                            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-                        ">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button class="btn-close-compact" onclick="fecharModalHistorico()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"/>
                                 <line x1="6" y1="6" x2="18" y2="18"/>
                             </svg>
                         </button>
                     </div>
+                    <div class="header-info">
+                        <span class="info-date">${dayName} • ${dataFormatada}</span>
+                        ${!somenteplanejamento && metricas.variacaoPeso !== 0 ? `
+                            <span class="info-variation ${metricas.variacaoPeso > 0 ? 'positive' : 'negative'}">
+                                ${metricas.variacaoPeso > 0 ? '↑' : '↓'} ${Math.abs(metricas.variacaoPeso)}% vs planejado
+                            </span>
+                        ` : ''}
+                    </div>
                 </div>
                 
-                <div class="modal-body" style="
-                    padding: 32px !important;
-                    overflow-y: auto !important;
-                    max-height: calc(90vh - 200px) !important;
-                ">
-                    ${somenteplanejamento ? `
-                    <!-- Informações do Planejamento -->
-                    <div class="planning-info">
-                        <div class="planning-card" style="
-                            background: linear-gradient(135deg, rgba(168, 255, 0, 0.08) 0%, rgba(168, 255, 0, 0.03) 100%);
-                            border-radius: 16px;
-                            padding: 28px;
-                            margin-bottom: 24px;
-                            border: 1px solid rgba(168, 255, 0, 0.2);
-                            position: relative;
-                            overflow: hidden;
-                            backdrop-filter: blur(10px);
-                        ">
-                            <div style="
-                                position: absolute;
-                                top: 0;
-                                left: 0;
-                                width: 4px;
-                                height: 100%;
-                                background: linear-gradient(to bottom, #a8ff00, #7acc00);
-                            "></div>
-                            <div class="planning-header" style="
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                                margin-bottom: 24px;
-                                flex-wrap: wrap;
-                                gap: 12px;
-                            ">
-                                <h3 style="
-                                    margin: 0;
-                                    color: #a8ff00;
-                                    font-size: 1.4rem;
-                                    font-weight: 700;
-                                    letter-spacing: -0.3px;
-                                ">📋 Treino Planejado</h3>
-                                <span class="planning-status" style="
-                                    background: linear-gradient(135deg, #ff6b35 0%, #e55730 100%);
-                                    color: white;
-                                    padding: 8px 16px;
-                                    border-radius: 25px;
-                                    font-size: 0.85rem;
-                                    font-weight: 600;
-                                    text-transform: uppercase;
-                                    letter-spacing: 0.5px;
-                                    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-                                ">Não Executado</span>
-                            </div>
-                            <div class="planning-details" style="
-                                display: flex;
-                                flex-direction: column;
-                                gap: 16px;
-                            ">
-                                <div class="detail-item" style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                    padding: 16px 0;
-                                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                                ">
-                                    <span class="detail-label" style="
-                                        color: #999;
-                                        font-weight: 500;
-                                        font-size: 1rem;
-                                    ">Grupo Muscular:</span>
-                                    <span class="detail-value" style="
-                                        color: #a8ff00;
-                                        font-weight: 700;
-                                        font-size: 1.1rem;
-                                    ">${historico.planejamento.tipo_atividade}</span>
-                                </div>
-                                <div class="detail-item" style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                    padding: 16px 0;
-                                ">
-                                    <span class="detail-label" style="
-                                        color: #999;
-                                        font-weight: 500;
-                                        font-size: 1rem;
-                                    ">Status:</span>
-                                    <span class="detail-value" style="
-                                        color: #ff6b35;
-                                        font-weight: 700;
-                                        font-size: 1.1rem;
-                                    ">Aguardando Execução</span>
-                                </div>
-                            </div>
+                <!-- Corpo do Modal -->
+                <div class="modal-body-enhanced">
+                    ${!somenteplanejamento && metricas.preWorkout ? `
+                        <!-- Pre-Workout Info -->
+                        <div class="workout-info-bar pre-workout">
+                            <span class="info-label">Pré-treino:</span>
+                            <span class="info-value">${metricas.preWorkout.energia || 'N/A'}/10 energia</span>
+                            <span class="info-value">${metricas.preWorkout.disposicao || 'N/A'}/10 disposição</span>
                         </div>
-                        
-                        ${historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0 ? `
-                        <!-- Exercícios Sugeridos -->
-                        <div class="suggested-exercises" style="
-                            background: linear-gradient(135deg, rgba(33, 150, 243, 0.08) 0%, rgba(33, 150, 243, 0.03) 100%);
-                            border-radius: 16px;
-                            padding: 28px;
-                            border: 1px solid rgba(33, 150, 243, 0.2);
-                            position: relative;
-                            overflow: hidden;
-                            backdrop-filter: blur(10px);
-                        ">
-                            <div style="
-                                position: absolute;
-                                top: 0;
-                                left: 0;
-                                width: 4px;
-                                height: 100%;
-                                background: linear-gradient(to bottom, #2196f3, #1976d2);
-                            "></div>
-                            <h3 style="
-                                margin: 0 0 24px 0;
-                                color: #2196f3;
-                                font-size: 1.4rem;
-                                font-weight: 700;
-                                letter-spacing: -0.3px;
-                            ">💪 Exercícios Sugeridos (${historico.exerciciosSugeridos.length})</h3>
-                            <div class="exercises-list" style="
-                                display: grid;
-                                gap: 20px;
-                                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                            ">
-                                ${historico.exerciciosSugeridos.map(ex => `
-                                    <div class="exercise-item" style="
-                                        background: rgba(255, 255, 255, 0.03);
-                                        backdrop-filter: blur(10px);
-                                        border-radius: 12px;
-                                        padding: 20px;
-                                        border: 1px solid rgba(255, 255, 255, 0.1);
-                                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                                        position: relative;
-                                        overflow: hidden;
-                                    ">
-                                        <div class="exercise-header" style="
-                                            display: flex;
-                                            justify-content: space-between;
-                                            align-items: flex-start;
-                                            margin-bottom: 16px;
-                                            gap: 12px;
-                                        ">
-                                            <h4 style="
-                                                margin: 0;
-                                                color: #fff;
-                                                font-size: 1.1rem;
-                                                font-weight: 600;
-                                                line-height: 1.3;
-                                            ">${ex.nome || ex.exercicio_nome || 'Exercício'}</h4>
-                                            <span style="
-                                                background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
-                                                color: white;
-                                                padding: 4px 12px;
-                                                border-radius: 15px;
-                                                font-size: 0.75rem;
-                                                font-weight: 600;
-                                                text-transform: uppercase;
-                                                letter-spacing: 0.5px;
-                                                white-space: nowrap;
-                                                box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-                                            ">${ex.equipamento || ex.exercicio_equipamento || 'Livre'}</span>
-                                        </div>
-                                        <div class="exercise-details" style="
-                                            display: grid;
-                                            grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-                                            gap: 12px;
-                                        ">
-                                            ${ex.series ? `
-                                                <div class="detail" style="
-                                                    text-align: center;
-                                                    background: rgba(168, 255, 0, 0.05);
-                                                    border: 1px solid rgba(168, 255, 0, 0.1);
-                                                    border-radius: 8px;
-                                                    padding: 12px 8px;
-                                                ">
-                                                    <div style="
-                                                        color: #a8ff00;
-                                                        font-weight: 700;
-                                                        font-size: 1.3rem;
-                                                        margin-bottom: 4px;
-                                                    ">${ex.series}</div>
-                                                    <div style="
-                                                        color: #888;
-                                                        font-size: 0.75rem;
-                                                        text-transform: uppercase;
-                                                        letter-spacing: 0.5px;
-                                                        font-weight: 500;
-                                                    ">Séries</div>
-                                                </div>
-                                            ` : ''}
-                                            ${(ex.repeticoes || ex.repeticoes_alvo) ? `
-                                                <div class="detail" style="
-                                                    text-align: center;
-                                                    background: rgba(168, 255, 0, 0.05);
-                                                    border: 1px solid rgba(168, 255, 0, 0.1);
-                                                    border-radius: 8px;
-                                                    padding: 12px 8px;
-                                                ">
-                                                    <div style="
-                                                        color: #a8ff00;
-                                                        font-weight: 700;
-                                                        font-size: 1.3rem;
-                                                        margin-bottom: 4px;
-                                                    ">${ex.repeticoes || ex.repeticoes_alvo}</div>
-                                                    <div style="
-                                                        color: #888;
-                                                        font-size: 0.75rem;
-                                                        text-transform: uppercase;
-                                                        letter-spacing: 0.5px;
-                                                        font-weight: 500;
-                                                    ">Reps</div>
-                                                </div>
-                                            ` : ''}
-                                            ${(ex.peso_calculado || ex.peso_base) ? `
-                                                <div class="detail" style="
-                                                    text-align: center;
-                                                    background: rgba(168, 255, 0, 0.05);
-                                                    border: 1px solid rgba(168, 255, 0, 0.1);
-                                                    border-radius: 8px;
-                                                    padding: 12px 8px;
-                                                ">
-                                                    <div style="
-                                                        color: #a8ff00;
-                                                        font-weight: 700;
-                                                        font-size: 1.3rem;
-                                                        margin-bottom: 4px;
-                                                    ">${Math.round(ex.peso_calculado || ex.peso_base)}kg</div>
-                                                    <div style="
-                                                        color: #888;
-                                                        font-size: 0.75rem;
-                                                        text-transform: uppercase;
-                                                        letter-spacing: 0.5px;
-                                                        font-weight: 500;
-                                                    ">Peso</div>
-                                                </div>
-                                            ` : ''}
-                                            ${(ex.descanso_sugerido || ex.tempo_descanso) ? `
-                                                <div class="detail" style="
-                                                    text-align: center;
-                                                    background: rgba(168, 255, 0, 0.05);
-                                                    border: 1px solid rgba(168, 255, 0, 0.1);
-                                                    border-radius: 8px;
-                                                    padding: 12px 8px;
-                                                ">
-                                                    <div style="
-                                                        color: #a8ff00;
-                                                        font-weight: 700;
-                                                        font-size: 1.3rem;
-                                                        margin-bottom: 4px;
-                                                    ">${ex.descanso_sugerido || ex.tempo_descanso}s</div>
-                                                    <div style="
-                                                        color: #888;
-                                                        font-size: 0.75rem;
-                                                        text-transform: uppercase;
-                                                        letter-spacing: 0.5px;
-                                                        font-weight: 500;
-                                                    ">Descanso</div>
-                                                </div>
-                                            ` : ''}
+                    ` : ''}
+                    
+                    <!-- Lista de Exercícios Compacta -->
+                    <div class="exercises-container">
+                        ${historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0 ? 
+                            historico.exerciciosSugeridos.map((ex, index) => `
+                                <div class="exercise-row ${somenteplanejamento ? 'planned' : 'executed'}">
+                                    <div class="exercise-main">
+                                        <span class="exercise-number">${index + 1}</span>
+                                        <div class="exercise-name-equipment">
+                                            <h4 class="exercise-name">${ex.nome || ex.exercicio_nome || 'Exercício'}</h4>
+                                            <span class="exercise-equipment">${ex.equipamento || ex.exercicio_equipamento || 'Livre'}</span>
                                         </div>
                                     </div>
-                                `).join('')}
+                                    <div class="exercise-metrics">
+                                        <div class="metric-item">
+                                            <span class="metric-value">${ex.peso_calculado || ex.peso_base || 0}kg</span>
+                                            <span class="metric-label">Peso</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-value">${ex.repeticoes || ex.repeticoes_alvo || 0}</span>
+                                            <span class="metric-label">Reps</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-value">${ex.series || 3}</span>
+                                            <span class="metric-label">Séries</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-value">${ex.descanso_sugerido || ex.tempo_descanso || 60}s</span>
+                                            <span class="metric-label">Desc.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')
+                        : historico.execucoes && historico.execucoes.length > 0 ? 
+                            renderizarExerciciosExecutados(historico)
+                        : `
+                            <div class="no-exercises">
+                                <p>Nenhum exercício configurado</p>
                             </div>
-                        </div>
-                        ` : `
-                        <!-- Nenhum exercício encontrado -->
-                        <div class="no-exercises-planned" style="
-                            background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-                            border-radius: 16px;
-                            padding: 60px 40px;
-                            text-align: center;
-                            border: 2px dashed rgba(255, 255, 255, 0.2);
-                            backdrop-filter: blur(10px);
-                        ">
-                            <div style="
-                                font-size: 4rem;
-                                margin-bottom: 20px;
-                                filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
-                                animation: bounce 2s ease-in-out infinite;
-                            ">🏋️‍♂️</div>
-                            <h3 style="
-                                margin: 0 0 12px 0;
-                                color: #fff;
-                                font-size: 1.5rem;
-                                font-weight: 700;
-                            ">Nenhum exercício configurado</h3>
-                            <p style="
-                                margin: 0;
-                                color: #999;
-                                font-size: 1rem;
-                                line-height: 1.6;
-                            ">
-                                Configure os exercícios no protocolo de treino para este grupo muscular.
-                            </p>
-                        </div>
                         `}
                     </div>
-                    ` : `
-                    <!-- Estatísticas Gerais -->
-                    <div class="stats-overview">
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value">${stats.totalPeso}kg</div>
-                                <div class="stat-label">Total Levantado</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                                    <polyline points="14 2 14 8 20 8"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value">${stats.totalExercicios}</div>
-                                <div class="stat-label">Exercícios</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polyline points="12 6 12 12 16 14"/>
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value">${stats.duracaoEstimada}min</div>
-                                <div class="stat-label">Duração</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card performance-stat">
-                            <div class="stat-icon ${stats.performance.class}">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    ${stats.performance.icon}
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value ${stats.performance.class}">${stats.performance.percentual}%</div>
-                                <div class="stat-label">Performance</div>
-                            </div>
-                        </div>
-                    </div>
                     
-                    <!-- Lista de Exercícios -->
-                    <div class="exercises-history">
-                        <h3>Exercícios Realizados</h3>
-                        <div class="exercises-list">
-                            ${renderizarExerciciosHistorico(historico)}
+                    ${!somenteplanejamento && metricas.posWorkout ? `
+                        <!-- Pós-Workout Info -->
+                        <div class="workout-info-bar pos-workout">
+                            <span class="info-label">Pós-treino:</span>
+                            <span class="info-value">${metricas.posWorkout.satisfacao || 'N/A'}/10 satisfação</span>
+                            <span class="info-value">${metricas.posWorkout.dificuldade || 'N/A'}/10 dificuldade</span>
                         </div>
-                    </div>
-                    `}
+                    ` : ''}
                 </div>
             </div>
         </div>
@@ -4620,19 +4392,20 @@ function mostrarModalHistorico(historico, dayIndex) {
         const styles = `
             <style data-modal-historico-styles>
                 /* Animações */
+                /* Animações otimizadas para mobile */
                 @keyframes fadeIn {
                     from { opacity: 0; }
                     to { opacity: 1; }
                 }
                 
-                @keyframes slideUp {
+                @keyframes slideUpMobile {
                     from { 
                         opacity: 0;
-                        transform: translateY(30px) scale(0.95);
+                        transform: translate3d(0, 20px, 0);
                     }
                     to { 
                         opacity: 1;
-                        transform: translateY(0) scale(1);
+                        transform: translate3d(0, 0, 0);
                     }
                 }
                 
@@ -4641,12 +4414,118 @@ function mostrarModalHistorico(historico, dayIndex) {
                     50% { transform: translateY(-10px); }
                 }
                 
-                /* Hover effects para botão de fechar */
-                #modal-historico .btn-close:hover {
-                    background: rgba(255, 71, 87, 0.2) !important;
-                    border-color: rgba(255, 71, 87, 0.4) !important;
-                    color: #ff4757 !important;
-                    transform: rotate(90deg) scale(1.1) !important;
+                /* Modal Enhanced Base */
+                .modal-overlay-enhanced {
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    background: rgba(0, 0, 0, 0.95) !important;
+                    backdrop-filter: blur(10px) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    z-index: 10000 !important;
+                    padding: 20px !important;
+                    box-sizing: border-box !important;
+                    overflow-y: auto !important;
+                    animation: fadeIn 0.3s ease-out !important;
+                }
+                
+                .modal-content-enhanced {
+                    background: var(--bg-card) !important;
+                    border-radius: var(--radius-lg) !important;
+                    width: 100% !important;
+                    max-width: 600px !important;
+                    max-height: 90vh !important;
+                    overflow: hidden !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    border: 1px solid var(--border-color) !important;
+                    box-shadow: var(--shadow-lg) !important;
+                    animation: slideUp 0.4s ease-out !important;
+                }
+                
+                /* Header Compacto */
+                .modal-header-compact {
+                    background: var(--bg-secondary) !important;
+                    padding: 16px 20px !important;
+                    border-bottom: 1px solid var(--border-color) !important;
+                }
+                
+                .header-main {
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: flex-start !important;
+                    margin-bottom: 8px !important;
+                }
+                
+                .header-left h3 {
+                    margin: 0 0 8px 0 !important;
+                    font-size: 1.5rem !important;
+                    font-weight: 700 !important;
+                    color: var(--text-primary) !important;
+                }
+                
+                .header-tags {
+                    display: flex !important;
+                    gap: 8px !important;
+                    flex-wrap: wrap !important;
+                }
+                
+                .tag {
+                    padding: 4px 12px !important;
+                    border-radius: var(--radius-full) !important;
+                    font-size: 0.75rem !important;
+                    font-weight: 600 !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    gap: 4px !important;
+                }
+                
+                .tag-rm {
+                    color: #000 !important;
+                    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
+                }
+                
+                .tag-status {
+                    background: var(--bg-card) !important;
+                    color: var(--text-secondary) !important;
+                    border: 1px solid var(--border-color) !important;
+                }
+                
+                .tag-status.executado {
+                    background: var(--accent-green) !important;
+                    color: #000 !important;
+                    border-color: var(--accent-green) !important;
+                }
+                
+                .tag-peso {
+                    background: var(--bg-primary) !important;
+                    color: var(--accent-primary) !important;
+                    border: 1px solid var(--accent-primary) !important;
+                }
+                
+                .btn-close-compact {
+                    background: var(--bg-card) !important;
+                    border: 1px solid var(--border-color) !important;
+                    color: var(--text-secondary) !important;
+                    width: 36px !important;
+                    height: 36px !important;
+                    border-radius: var(--radius-md) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    cursor: pointer !important;
+                    transition: var(--transition) !important;
+                }
+                
+                .btn-close-compact:hover {
+                    background: #ef4444 !important;
+                    border-color: #ef4444 !important;
+                    color: white !important;
+                    transform: rotate(90deg) !important;
                 }
                 
                 /* Hover effects para cards de exercício */
@@ -4750,31 +4629,230 @@ function mostrarModalHistorico(historico, dayIndex) {
                     letter-spacing: -0.5px !important;
                 }
                 
+                
+                .header-info {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 12px !important;
+                    font-size: 0.875rem !important;
+                    color: var(--text-secondary) !important;
+                }
+                
+                .info-variation {
+                    font-weight: 600 !important;
+                }
+                
+                .info-variation.positive {
+                    color: var(--accent-green) !important;
+                }
+                
+                .info-variation.negative {
+                    color: #ef4444 !important;
+                }
+                
+                /* Body */
+                .modal-body-enhanced {
+                    flex: 1 !important;
+                    overflow-y: auto !important;
+                    padding: 20px !important;
+                }
+                
+                /* Workout Info Bars */
+                .workout-info-bar {
+                    background: var(--bg-secondary) !important;
+                    border-radius: var(--radius-md) !important;
+                    padding: 12px 16px !important;
+                    margin-bottom: 16px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 16px !important;
+                    font-size: 0.875rem !important;
+                }
+                
+                .workout-info-bar.pre-workout {
+                    border-left: 3px solid var(--accent-primary) !important;
+                }
+                
+                .workout-info-bar.pos-workout {
+                    border-left: 3px solid var(--accent-green) !important;
+                }
+                
+                .info-label {
+                    font-weight: 600 !important;
+                    color: var(--text-primary) !important;
+                }
+                
+                .info-value {
+                    color: var(--text-secondary) !important;
+                }
+                
+                /* Exercises Container */
+                .exercises-container {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 12px !important;
+                }
+                
+                .exercise-row {
+                    background: var(--bg-secondary) !important;
+                    border-radius: var(--radius-md) !important;
+                    padding: 16px !important;
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    border: 1px solid var(--border-color) !important;
+                    transition: var(--transition) !important;
+                }
+                
+                .exercise-row.planned {
+                    border-color: var(--accent-primary) !important;
+                    background: var(--accent-primary-bg) !important;
+                }
+                
+                .exercise-row.executed {
+                    border-color: var(--accent-green) !important;
+                }
+                
+                .exercise-row:hover {
+                    transform: translateX(4px) !important;
+                    box-shadow: var(--shadow-md) !important;
+                }
+                
+                .exercise-main {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 12px !important;
+                    flex: 1 !important;
+                }
+                
+                .exercise-number {
+                    width: 32px !important;
+                    height: 32px !important;
+                    background: var(--bg-primary) !important;
+                    border-radius: var(--radius-full) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    font-weight: 700 !important;
+                    font-size: 0.875rem !important;
+                    color: var(--accent-primary) !important;
+                }
+                
+                .exercise-name-equipment {
+                    flex: 1 !important;
+                }
+                
+                .exercise-name {
+                    margin: 0 0 2px 0 !important;
+                    font-size: 1rem !important;
+                    font-weight: 600 !important;
+                    color: var(--text-primary) !important;
+                }
+                
+                .exercise-equipment {
+                    font-size: 0.75rem !important;
+                    color: var(--text-secondary) !important;
+                }
+                
+                .exercise-metrics {
+                    display: flex !important;
+                    gap: 20px !important;
+                }
+                
+                .metric-item {
+                    text-align: center !important;
+                }
+                
+                .metric-value {
+                    display: block !important;
+                    font-size: 1rem !important;
+                    font-weight: 700 !important;
+                    color: var(--text-primary) !important;
+                    margin-bottom: 2px !important;
+                }
+                
+                .metric-label {
+                    font-size: 0.7rem !important;
+                    color: var(--text-muted) !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.5px !important;
+                }
+                
+                .no-exercises {
+                    text-align: center !important;
+                    padding: 40px 20px !important;
+                    color: var(--text-secondary) !important;
+                }
+                
                 /* Responsividade aprimorada */
                 @media (max-width: 768px) {
-                    #modal-historico .modal-content {
+                    .modal-content-enhanced {
+                        max-width: 100% !important;
                         margin: 10px !important;
-                        border-radius: 20px !important;
+                        max-height: calc(100vh - 20px) !important;
                     }
                     
-                    #modal-historico .modal-header {
-                        padding: 24px !important;
+                    .header-main {
+                        flex-direction: column !important;
+                        gap: 12px !important;
                     }
                     
-                    #modal-historico .modal-body {
-                        padding: 24px !important;
+                    .exercise-row {
+                        flex-direction: column !important;
+                        gap: 12px !important;
+                        align-items: stretch !important;
                     }
                     
-                    #modal-historico h2 {
-                        font-size: 1.6rem !important;
+                    .exercise-metrics {
+                        justify-content: space-between !important;
                     }
                     
-                    #modal-historico .stats-overview {
-                        grid-template-columns: repeat(2, 1fr) !important;
+                    .metric-item {
+                        flex: 1 !important;
+                    }
+                }
+                
+                /* Otimizações de performance para mobile */
+                .mobile .modal-content-enhanced {
+                    box-shadow: none !important;
+                }
+                
+                .mobile .exercise-row {
+                    transition: transform 0.1s ease !important;
+                }
+                
+                .mobile .tag,
+                .mobile .btn-close-compact,
+                .mobile .metric-item {
+                    transition: none !important;
+                }
+                
+                /* Touch feedback otimizado */
+                @media (hover: none) {
+                    .exercise-row:active {
+                        transform: scale(0.98) !important;
+                        transition: transform 0.1s ease !important;
                     }
                     
-                    #modal-historico .exercises-list {
-                        grid-template-columns: 1fr !important;
+                    .btn-close-compact:active,
+                    .tag:active {
+                        opacity: 0.7 !important;
+                    }
+                }
+                
+                /* Prevenir seleção de texto em mobile */
+                .mobile * {
+                    -webkit-user-select: none !important;
+                    -webkit-touch-callout: none !important;
+                    user-select: none !important;
+                }
+                
+                /* Desabilitar animações complexas em mobile e reduced motion */
+                @media (prefers-reduced-motion: reduce) {
+                    * {
+                        animation-duration: 0.01ms !important;
+                        animation-iteration-count: 1 !important;
+                        transition-duration: 0.01ms !important;
                     }
                 }
             </style>
@@ -4833,38 +4911,33 @@ function mostrarModalHistorico(historico, dayIndex) {
     const allModals = document.querySelectorAll('[class*="modal"], [id*="modal"]');
     console.log('[mostrarModalHistorico] 🔍 Todos os modais no DOM:', allModals.length, Array.from(allModals).map(m => m.id || m.className));
     
-    // Mostrar modal com animação
-    setTimeout(() => {
-        console.log('[mostrarModalHistorico] ⏰ Timeout executado, procurando modal');
+    // Mostrar modal com animação otimizada
+    requestAnimationFrame(() => {
         const modal = document.getElementById('modal-historico');
         if (modal) {
-            console.log('[mostrarModalHistorico] 🎯 Modal encontrado, mostrando');
-            console.log('[mostrarModalHistorico] 📏 Modal atual:', modal.style.display, modal.classList.toString());
-            console.log('[mostrarModalHistorico] 🔍 Estilos calculados:', window.getComputedStyle(modal).display, window.getComputedStyle(modal).visibility, window.getComputedStyle(modal).opacity);
-            console.log('[mostrarModalHistorico] 📐 Posição modal:', modal.getBoundingClientRect());
-            console.log('[mostrarModalHistorico] 📏 Viewport:', window.innerWidth, window.innerHeight);
-            console.log('[mostrarModalHistorico] 📄 Body scroll:', document.body.scrollTop, document.documentElement.scrollTop);
             modal.classList.add('show');
-            modal.style.display = 'flex'; // Garantir que está visível
-            modal.style.opacity = '1'; // Garantir opacidade
-            modal.style.visibility = 'visible'; // Garantir visibilidade
-            modal.style.zIndex = '10000'; // Garantir que está na frente
+            modal.style.display = 'flex';
             
-            // Garantir que o modal está na posição correta independente do scroll
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100vw';
-            modal.style.height = '100vh';
-            
-            // Desabilitar scroll do body enquanto modal está aberto
+            // Desabilitar scroll do body
             document.body.style.overflow = 'hidden';
             
-            console.log('[mostrarModalHistorico] ✨ Modal deve estar visível agora');
-        } else {
-            console.error('[mostrarModalHistorico] ❌ Modal não encontrado no DOM!');
+            // Para iOS, prevenir bounce scroll
+            if (isIOS) {
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+                document.body.style.top = `-${window.scrollY}px`;
+            }
+            
+            // Focar no modal para acessibilidade
+            const modalContent = modal.querySelector('.modal-content-enhanced');
+            if (modalContent) {
+                modalContent.setAttribute('tabindex', '-1');
+                modalContent.focus();
+            }
+            
+            console.log('[mostrarModalHistorico] ✨ Modal visível');
         }
-    }, 10);
+    });
 }
 
 // Calcular estatísticas do treino
@@ -4928,6 +5001,102 @@ function calcularEstatisticasTreino(historico) {
         duracaoEstimada,
         performance
     };
+}
+
+// Fechar modal de histórico com otimizações para mobile
+function fecharModalHistorico(event) {
+    if (event && event.target !== event.currentTarget) return;
+    
+    const modal = document.getElementById('modal-historico');
+    if (modal) {
+        modal.classList.remove('show');
+        
+        // Restaurar scroll do body
+        document.body.style.overflow = '';
+        
+        // Para iOS, restaurar posição do scroll
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            const scrollY = document.body.style.top;
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            if (scrollY) {
+                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+            }
+        }
+        
+        // Remover modal após animação
+        setTimeout(() => {
+            modal.remove();
+        }, 200);
+    }
+}
+
+// Tornar função global
+window.fecharModalHistorico = fecharModalHistorico;
+
+// Renderizar exercícios executados de forma compacta
+function renderizarExerciciosExecutados(historico) {
+    const { execucoes = [], exerciciosSugeridos = [] } = historico;
+    
+    if (!execucoes || execucoes.length === 0) {
+        return '<div class="no-exercises"><p>Nenhum exercício executado</p></div>';
+    }
+    
+    // Agrupar por exercício
+    const exerciciosAgrupados = {};
+    execucoes.forEach(exec => {
+        const id = exec.exercicio_id;
+        if (!exerciciosAgrupados[id]) {
+            exerciciosAgrupados[id] = {
+                nome: exec.exercicios?.nome || 'Exercício',
+                equipamento: exec.exercicios?.equipamento || 'Livre',
+                series: []
+            };
+        }
+        exerciciosAgrupados[id].series.push({
+            peso: exec.peso_utilizado || 0,
+            reps: exec.repeticoes || 0,
+            falhou: exec.falhou || false
+        });
+    });
+    
+    return Object.entries(exerciciosAgrupados).map(([id, exercicio], index) => {
+        const pesoMedio = exercicio.series.reduce((sum, s) => sum + s.peso, 0) / exercicio.series.length;
+        const repsMedio = exercicio.series.reduce((sum, s) => sum + s.reps, 0) / exercicio.series.length;
+        const seriesCompletas = exercicio.series.filter(s => !s.falhou).length;
+        
+        return `
+            <div class="exercise-row executed">
+                <div class="exercise-main">
+                    <span class="exercise-number">${index + 1}</span>
+                    <div class="exercise-name-equipment">
+                        <h4 class="exercise-name">${exercicio.nome}</h4>
+                        <span class="exercise-equipment">${exercicio.equipamento}</span>
+                    </div>
+                </div>
+                <div class="exercise-metrics">
+                    <div class="metric-item">
+                        <span class="metric-value">${Math.round(pesoMedio)}kg</span>
+                        <span class="metric-label">Peso médio</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-value">${Math.round(repsMedio)}</span>
+                        <span class="metric-label">Reps médio</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-value">${seriesCompletas}/${exercicio.series.length}</span>
+                        <span class="metric-label">Séries OK</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-value">${exercicio.series.length > seriesCompletas ? '⚠️' : '✅'}</span>
+                        <span class="metric-label">Status</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Renderizar exercícios do histórico com resumo avançado

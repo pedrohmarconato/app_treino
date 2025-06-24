@@ -237,15 +237,27 @@ class WeeklyPlanService {
             return null;
         }
         
-        // Se não especificado, usar semana atual do ANO
+        // Se não especificado, usar semana do PROTOCOLO
         if (!ano || !semana) {
-            const current = this.getCurrentWeek();
-            ano = current.ano;
-            semana = current.semana; // Semana do ANO
-            console.log('[WeeklyPlanService.getPlan] 📅 Usando semana do ANO:', { ano, semana });
+            // Buscar semana do protocolo do usuário
+            const semanaAtiva = await obterSemanaAtivaUsuario(userId);
+            if (semanaAtiva && semanaAtiva.semana_treino) {
+                semana = semanaAtiva.semana_treino;
+                console.log('[WeeklyPlanService.getPlan] 📅 Usando semana do PROTOCOLO:', semana);
+            } else {
+                // Fallback para semana do ano se não houver protocolo ativo
+                const current = this.getCurrentWeek();
+                ano = current.ano;
+                semana = current.semana;
+                console.log('[WeeklyPlanService.getPlan] ⚠️ Sem protocolo ativo, usando semana do ANO como fallback:', { ano, semana });
+            }
+            
+            if (!ano) {
+                ano = new Date().getFullYear();
+            }
         }
         
-        console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana:', { ano, semana });
+        console.log('[WeeklyPlanService.getPlan] 📅 Buscando plano para semana_treino:', { ano, semana });
         
         // 1. Tentar cache local primeiro (se habilitado)
         const cacheKey = `${userId}-${ano}-${semana}`;
@@ -258,14 +270,14 @@ class WeeklyPlanService {
         }
         
         try {
-            // 2. Buscar dados da tabela planejamento_semanal diretamente
-            console.log('[WeeklyPlanService.getPlan] 🔄 Buscando dados do planejamento_semanal...');
+            // 2. Buscar dados da tabela planejamento_semanal usando semana_treino
+            console.log('[WeeklyPlanService.getPlan] 🔄 Buscando dados do planejamento_semanal usando semana_treino...');
             let { data, error } = await supabase
                 .from('planejamento_semanal')
                 .select('*')
                 .eq('usuario_id', userId)
                 .eq('ano', ano)
-                .eq('semana', semana)
+                .eq('semana_treino', semana)  // MUDANÇA: usar semana_treino ao invés de semana
                 .order('dia_semana', { ascending: true });
             
             // 3. Se houver erro, retornar null
@@ -1071,6 +1083,8 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay()); // Converter para formato DB
         
         console.log('[buscarExerciciosTreinoDia] 📅 Dia da semana (DB):', diaSemana);
+        console.log('[buscarExerciciosTreinoDia] 📅 Data de hoje:', hoje.toISOString());
+        console.log('[buscarExerciciosTreinoDia] 📅 Dia JS:', hoje.getDay(), '(0=Dom, 1=Seg...)');
         
         // 1. CORRIGIDO: Buscar planejamento usando semana do protocolo do usuário
         const ano = hoje.getFullYear();
@@ -1084,6 +1098,12 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         
         const numeroSemana = semanaAtiva.semana_treino;
         console.log('[buscarExerciciosTreinoDia] 🔄 NOVA LÓGICA: Usando semana do protocolo:', numeroSemana);
+        console.log('[buscarExerciciosTreinoDia] 🔍 Buscando planejamento:', {
+            usuario_id: userId,
+            ano: ano,
+            semana_treino: numeroSemana,
+            dia_semana: diaSemana
+        });
         
         const { data: planejamento, error: planejamentoError } = await supabase
             .from('planejamento_semanal')
@@ -1100,6 +1120,7 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         }
         
         console.log('[buscarExerciciosTreinoDia] 📋 Planejamento encontrado:', planejamento);
+        console.log('[buscarExerciciosTreinoDia] 🏋️ Tipo de atividade:', planejamento.tipo_atividade);
         
         // Se não for dia de treino (folga/cardio), retornar informação
         if (planejamento.tipo_atividade === 'folga') {
@@ -1133,6 +1154,13 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         console.log('[buscarExerciciosTreinoDia] 🔍 DEBUG - Data formatada para consulta:', toSaoPauloDateString(hoje));
         
         // 3. Buscar exercícios do protocolo usando semana de referência do protocolo
+        console.log('[buscarExerciciosTreinoDia] 🎯 Buscando exercícios para:', {
+            protocolo_id: usuarioPlano.protocolo_treinamento_id,
+            semana_referencia: semanaReferencia,
+            dia_semana: diaSemana,
+            tipo_atividade: planejamento.tipo_atividade
+        });
+        
         const { data: protocoloTreinos, error: protocoloError } = await supabase
             .from('protocolo_treinos')
             .select(`
@@ -1146,7 +1174,7 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
             `)
             .eq('protocolo_id', usuarioPlano.protocolo_treinamento_id)
             .eq('semana_referencia', semanaReferencia)
-            .eq('exercicios.grupo_muscular', planejamento.tipo_atividade)
+            .ilike('exercicios.grupo_muscular', `${planejamento.tipo_atividade}%`)
             .order('ordem_exercicio', { ascending: true });
             
         if (protocoloError || !protocoloTreinos?.length) {
@@ -1184,15 +1212,25 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         
         // 5. Formatar dados dos exercícios com cálculos de peso
         const exerciciosFormatados = protocoloTreinos.map(protocolo => {
-            // Encontrar dados do exercício
-            const exercicio = exercicios.find(ex => ex.id === protocolo.exercicio_id);
+            // Com o join, os dados do exercício vêm em protocolo.exercicios (array) ou protocolo.exercicio (objeto)
+            // Supabase retorna como array quando usa !inner join
+            const exercicioData = Array.isArray(protocolo.exercicios) ? protocolo.exercicios[0] : protocolo.exercicios;
+            
+            // Debug: verificar estrutura dos dados
+            if (!exercicioData) {
+                console.error('[buscarExerciciosTreinoDia] ⚠️ exercicioData é undefined para protocolo:', protocolo);
+                console.error('[buscarExerciciosTreinoDia] Estrutura do protocolo:', JSON.stringify(protocolo, null, 2));
+            }
+            
             // Encontrar dados de 1RM
             const dadoRM = dadosRM.find(rm => rm.exercicio_id === protocolo.exercicio_id);
             
             const rmCalculado = dadoRM?.rm_calculado || 0;
             
             console.log(`[buscarExerciciosTreinoDia] 🔍 DEBUG Exercício ${protocolo.exercicio_id}:`, {
-                nome: exercicio?.nome,
+                protocolo: protocolo,
+                exercicioData: exercicioData,
+                nome: exercicioData?.nome || exercicioData?.exercicio_nome,
                 rm_calculado: rmCalculado,
                 percentual_base: protocolo.percentual_1rm_base,
                 peso_calculado: rmCalculado * (protocolo.percentual_1rm_base / 100),
@@ -1200,22 +1238,47 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
             });
             
             return {
-                id: protocolo.exercicio_id,
-                nome: exercicio?.nome || 'Exercício não encontrado',
-                grupo_muscular: exercicio?.grupo_muscular || 'N/A',
-                equipamento: exercicio?.equipamento || 'N/A',
+                // IDs
+                id: protocolo.id,
+                exercicio_id: protocolo.exercicio_id,
+                protocolo_id: protocolo.protocolo_id,
+                protocolo_treino_id: protocolo.id,
+                
+                // Dados do exercício
+                exercicio_nome: exercicioData?.nome || 'Exercício não encontrado',
+                nome: exercicioData?.nome || 'Exercício não encontrado',
+                exercicio_grupo: exercicioData?.grupo_muscular || 'N/A',
+                grupo_muscular: exercicioData?.grupo_muscular || 'N/A',
+                exercicio_equipamento: exercicioData?.equipamento || 'N/A',
+                equipamento: exercicioData?.equipamento || 'N/A',
+                
+                // Pesos calculados
                 peso_base: Math.round(rmCalculado * (protocolo.percentual_1rm_base / 100) * 100) / 100,
+                peso_minimo: Math.round(rmCalculado * (protocolo.percentual_1rm_min / 100) * 100) / 100,
+                peso_maximo: Math.round(rmCalculado * (protocolo.percentual_1rm_max / 100) * 100) / 100,
                 peso_min: Math.round(rmCalculado * (protocolo.percentual_1rm_min / 100) * 100) / 100,
                 peso_max: Math.round(rmCalculado * (protocolo.percentual_1rm_max / 100) * 100) / 100,
-                peso_calculado: Math.round(rmCalculado * (protocolo.percentual_1rm_base / 100) * 100) / 100, // Adicionar peso_calculado
+                peso_calculado: Math.round(rmCalculado * (protocolo.percentual_1rm_base / 100) * 100) / 100,
+                
+                // Séries e repetições
                 series: protocolo.series,
                 repeticoes: protocolo.repeticoes_alvo,
-                repeticoes_alvo: protocolo.repeticoes_alvo, // Adicionar repeticoes_alvo também
+                repeticoes_alvo: protocolo.repeticoes_alvo,
+                
+                // Descanso
                 tempo_descanso: protocolo.tempo_descanso,
-                descanso_sugerido: protocolo.tempo_descanso, // Adicionar descanso_sugerido
+                descanso_sugerido: protocolo.tempo_descanso,
+                
+                // Outros
                 ordem: protocolo.ordem_exercicio,
+                ordem_exercicio: protocolo.ordem_exercicio,
                 rm_calculado: rmCalculado,
-                observacoes: protocolo.observacoes
+                observacoes: protocolo.observacoes,
+                
+                // Percentuais
+                percentual_1rm_base: protocolo.percentual_1rm_base,
+                percentual_1rm_min: protocolo.percentual_1rm_min,
+                percentual_1rm_max: protocolo.percentual_1rm_max
             };
         });
         
