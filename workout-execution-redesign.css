@@ -530,9 +530,38 @@
 }
 
 .series-item.completed {
-    opacity: 0.7;
     background: rgba(34, 197, 94, 0.05);
-    border-color: var(--success-color);
+    border-color: rgba(34, 197, 94, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.series-item.completed::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.8), transparent);
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.series-item.completed .series-number {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: rgb(34, 197, 94);
+}
+
+.series-item.completed .series-input {
+    background: rgba(34, 197, 94, 0.05);
+    border-color: rgba(34, 197, 94, 0.2);
+    color: var(--text-primary);
 }
 
 .series-number {
@@ -668,6 +697,58 @@
 .btn-series-rest:hover {
     border-color: var(--accent-primary);
     color: var(--accent-primary);
+}
+
+/* Botão de Confirmar Série */
+.btn-confirm-series {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-confirm-series:hover:not(:disabled) {
+    transform: scale(1.1);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+}
+
+.btn-confirm-series:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.btn-confirm-series:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.btn-confirm-series svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+}
+
+/* Check de série completa */
+.series-check {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+}
+
+.series-item.completed .btn-confirm-series {
+    background: rgb(34, 197, 94);
+    cursor: default;
+}
+
+.series-item.completed .btn-confirm-series:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 /* Timer de Descanso Overlay */

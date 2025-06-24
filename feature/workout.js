@@ -519,13 +519,15 @@ window.confirmarSerie = async function(serieIndex) {
     // IMPORTANTE: Salvar APENAS no cache local, NÃO no Supabase ainda
     const dados = {
         usuario_id: currentUser.id,
-        protocolo_treino_id: workout.id,
+        protocolo_treino_id: exercicio.protocolo_treino_id || workout.id,
         exercicio_id: exercicio.exercicio_id,
         serie_numero: serieIndex + 1,
         peso_utilizado: peso,
         repeticoes_realizadas: reps,
         data_execucao: new Date().toISOString()
     };
+    
+    console.log('[confirmarSerie] Salvando série:', dados);
     
     // Adicionar ao cache local ao invés de salvar no Supabase
     let execucoesCache = AppState.get('execucoesCache') || [];
