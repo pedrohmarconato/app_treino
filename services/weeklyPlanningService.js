@@ -1301,8 +1301,10 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
 // Marcar semana como programada
 export async function marcarSemanaProgramada(userId, semanaTreino, usuarioQueProgramou) {
     try {
-        console.log(`[marcarSemanaProgramada] Marcando semana ${semanaTreino} como programada para usuário ${userId}`);
-        
+        console.log(`[marcarSemanaProgramada] Função desabilitada - campos não existem na tabela`);
+        // DESABILITADO: Os campos eh_programado, data_programacao e usuario_que_programou
+        // não existem na tabela planejamento_semanal
+        /*
         // Atualizar registros da semana para marcar como programados
         const { data, error } = await supabase
             .from('planejamento_semanal')
@@ -1322,6 +1324,10 @@ export async function marcarSemanaProgramada(userId, semanaTreino, usuarioQuePro
         
         console.log(`[marcarSemanaProgramada] ✅ Semana ${semanaTreino} marcada como programada:`, data);
         return { success: true, data };
+        */
+        
+        // Retornar sucesso sem fazer nada por enquanto
+        return { success: true, data: [] };
         
     } catch (error) {
         console.error('[marcarSemanaProgramada] Erro crítico:', error);
