@@ -306,7 +306,7 @@ function renderizarSeries(exercicio, pesosSugeridos) {
         ${exerciseData.observacoes || (pesosSugeridos && (pesosSugeridos.peso_base || pesosSugeridos.peso_minimo)) ? `
         <div class="exercise-notes">
             ${exerciseData.observacoes ? `<p>${exerciseData.observacoes}</p>` : ''}
-            ${pesosSugeridos ? `
+            ${pesosSugeridos && pesosSugeridos.peso_base > 0 ? `
                 <div class="suggested-weights">
                     <strong>💪 Pesos Sugeridos:</strong>
                     <span>Base: ${pesosSugeridos.peso_base}kg</span>
@@ -382,8 +382,8 @@ function renderizarSeries(exercicio, pesosSugeridos) {
                     <button class="input-btn" onclick="ajustarValor('peso-${i}', -2.5)">-</button>
                     <input type="number" 
                            id="peso-${i}" 
-                           class="series-input" 
-                           placeholder="0" 
+                           class="series-input ${pesoInicial > 0 ? 'suggested-value' : ''}" 
+                           placeholder="${pesoInicial > 0 ? pesoInicial : '0'}" 
                            value="${pesoInicial}"
                            step="2.5">
                     <button class="input-btn" onclick="ajustarValor('peso-${i}', 2.5)">+</button>
@@ -396,8 +396,8 @@ function renderizarSeries(exercicio, pesosSugeridos) {
                     <button class="input-btn" onclick="ajustarValor('rep-${i}', -1)">-</button>
                     <input type="number" 
                            id="rep-${i}" 
-                           class="series-input" 
-                           placeholder="0" 
+                           class="series-input suggested-value" 
+                           placeholder="${exercicio.repeticoes_alvo}" 
                            value="${exercicio.repeticoes_alvo}"
                            step="1">
                     <button class="input-btn" onclick="ajustarValor('rep-${i}', 1)">+</button>
@@ -414,6 +414,19 @@ function renderizarSeries(exercicio, pesosSugeridos) {
         
         seriesContainer.appendChild(serieDiv);
     }
+    
+    // Adicionar event listeners para remover estilo de sugestão ao interagir
+    const allInputs = seriesContainer.querySelectorAll('.series-input');
+    allInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            this.classList.remove('suggested-value');
+        });
+        input.addEventListener('focus', function() {
+            if (this.classList.contains('suggested-value')) {
+                this.select(); // Selecionar todo o texto ao focar em campo sugerido
+            }
+        });
+    });
 }
 
 // Ajustar valor dos inputs
@@ -424,6 +437,9 @@ window.ajustarValor = function(inputId, delta) {
     const currentValue = parseFloat(input.value) || 0;
     const newValue = Math.max(0, currentValue + delta);
     input.value = newValue;
+    
+    // Remover classe de sugestão quando o usuário interagir
+    input.classList.remove('suggested-value');
 };
 
 // Confirmar série
