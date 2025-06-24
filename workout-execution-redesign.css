@@ -1220,3 +1220,131 @@
 .workout-screen::-webkit-scrollbar-thumb:hover {
     background: var(--accent-primary);
 }
+
+/* =============================================================================
+   CRONÔMETRO DE DESCANSO
+   ============================================================================= */
+
+.rest-timer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.rest-timer-modal {
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    padding: 48px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+}
+
+.rest-timer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+}
+
+.rest-timer-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.rest-timer-circle {
+    position: relative;
+    width: 200px;
+    height: 200px;
+}
+
+.rest-timer-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.rest-timer-circle-bg {
+    fill: none;
+    stroke: var(--bg-secondary);
+    stroke-width: 8;
+}
+
+.rest-timer-circle-progress {
+    fill: none;
+    stroke: var(--accent-primary);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+}
+
+.rest-timer-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+#rest-timer-seconds {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.rest-timer-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.btn-skip-rest {
+    background: transparent;
+    border: 2px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 12px 32px;
+    border-radius: var(--radius-full);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-skip-rest:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* Responsivo para cronômetro */
+@media (max-width: 768px) {
+    .rest-timer-modal {
+        padding: 32px;
+    }
+    
+    .rest-timer-circle {
+        width: 160px;
+        height: 160px;
+    }
+    
+    #rest-timer-seconds {
+        font-size: 2.5rem;
+    }
+}
