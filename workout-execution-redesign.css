@@ -607,24 +607,22 @@
 
 /* Estilo para valores sugeridos */
 .series-input.suggested-value {
-    color: var(--text-tertiary);
-    opacity: 0.7;
-    font-style: italic;
-    background: rgba(255, 255, 255, 0.02);
-    border-style: dashed;
+    color: rgba(255, 255, 255, 0.5);
+    opacity: 0.85;
+    font-style: normal;
+    background: var(--bg-card);
+    border-color: rgba(255, 255, 255, 0.08);
 }
 
 .series-input.suggested-value:focus {
     color: var(--text-primary);
     opacity: 1;
-    font-style: normal;
-    background: var(--bg-card);
-    border-style: solid;
+    border-color: var(--accent-primary);
 }
 
 .series-input.suggested-value::placeholder {
-    color: var(--text-tertiary);
-    opacity: 0.8;
+    color: rgba(255, 255, 255, 0.3);
+    opacity: 1;
 }
 
 /* Botão de Ação da Série */
