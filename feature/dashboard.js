@@ -1860,6 +1860,8 @@ let debounceTimer = null;
 let supabaseChannel = null;
 
 // Configurar listener do Supabase para mudanças em tempo real
+// DESABILITADO: Realtime do Supabase foi desativado para evitar erros de WebSocket
+/*
 async function configurarSupabaseListener() {
     try {
         const currentUser = AppState.get('currentUser');
@@ -1910,6 +1912,7 @@ async function configurarSupabaseListener() {
         console.error('[configurarSupabaseListener] ❌ Erro ao configurar listener:', error);
     }
 }
+*/
 
 // Função para buscar workouts (adaptada para o contexto atual)
 async function fetchWorkouts() {
@@ -1960,12 +1963,15 @@ async function fetchWorkouts() {
 // Função para limpar listeners (para uso em cleanup)
 async function limparEventListeners() {
     try {
+        // DESABILITADO: Realtime do Supabase foi desativado
+        /*
         if (supabaseChannel) {
             console.log('[limparEventListeners] 🗑️ Removendo canal Supabase...');
             const { supabase } = await import('../services/supabaseService.js');
             supabase.removeChannel(supabaseChannel);
             supabaseChannel = null;
         }
+        */
         
         if (debounceTimer) {
             clearTimeout(debounceTimer);
@@ -2061,7 +2067,8 @@ function configurarEventListeners() {
     });
 
     // Configurar listener Supabase para mudanças na weekly_plan
-    configurarSupabaseListener();
+    // DESABILITADO: Realtime do Supabase foi desativado para evitar erros de WebSocket
+    // configurarSupabaseListener();
     
     // Configurar listener para quando a página volta ao foco (equivalente ao useFocusEffect)
     configurarVisibilityListener();
