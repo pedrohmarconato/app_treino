@@ -152,6 +152,13 @@ export async function iniciarTreino() {
     // Iniciar timer do treino
     startWorkoutTimer();
     
+    // Recuperar execuções do cache se houver
+    const execucoesCache = AppState.get('execucoesCache') || [];
+    if (execucoesCache.length > 0) {
+        console.log(`[iniciarTreino] Recuperando ${execucoesCache.length} execuções do cache`);
+        showNotification(`Recuperadas ${execucoesCache.length} séries executadas`, 'info');
+    }
+    
     // Mostrar primeiro exercício
     await mostrarExercicioAtual();
     
@@ -369,12 +376,58 @@ function renderizarSeries(exercicio, pesosSugeridos) {
     
     const pesoInicial = pesosSugeridos ? pesosSugeridos.peso_base : 0;
     
+    // Buscar execuções do cache para este exercício
+    const execucoesCache = AppState.get('execucoesCache') || [];
+    const execucoesDoExercicio = execucoesCache.filter(e => 
+        e.exercicio_id === exercicio.exercicio_id && 
+        e.protocolo_treino_id === exercicio.protocolo_treino_id
+    );
+    
     for (let i = 0; i < exercicio.series; i++) {
+        // Verificar se esta série já foi executada
+        const serieExecutada = execucoesDoExercicio.find(e => e.serie_numero === i + 1);
         const serieDiv = document.createElement('div');
-        serieDiv.className = 'series-item';
+        serieDiv.className = `series-item ${serieExecutada ? 'completed' : ''}`;
         serieDiv.id = `serie-${i}`;
         
-        serieDiv.innerHTML = `
+        if (serieExecutada) {
+            // Série já executada - mostrar dados salvos
+            serieDiv.innerHTML = `
+                <div class="series-number">${i + 1}</div>
+                
+                <div class="series-input-group">
+                    <div class="input-wrapper">
+                        <button class="input-btn" disabled>-</button>
+                        <input type="number" 
+                               id="peso-${i}" 
+                               class="series-input" 
+                               value="${serieExecutada.peso_utilizado}"
+                               disabled>
+                        <button class="input-btn" disabled>+</button>
+                    </div>
+                    <span class="input-label">kg</span>
+                </div>
+                
+                <div class="series-input-group">
+                    <div class="input-wrapper">
+                        <button class="input-btn" disabled>-</button>
+                        <input type="number" 
+                               id="rep-${i}" 
+                               class="series-input" 
+                               value="${serieExecutada.repeticoes_realizadas}"
+                               disabled>
+                        <button class="input-btn" disabled>+</button>
+                    </div>
+                    <span class="input-label">reps</span>
+                </div>
+                
+                <button class="btn-confirm-series" disabled>
+                    <div class="series-check">✓</div>
+                </button>
+            `;
+        } else {
+            // Série não executada - mostrar inputs normais
+            serieDiv.innerHTML = `
             <div class="series-number">${i + 1}</div>
             
             <div class="series-input-group">
@@ -410,13 +463,14 @@ function renderizarSeries(exercicio, pesosSugeridos) {
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                 </svg>
             </button>
-        `;
+            `;
+        }
         
         seriesContainer.appendChild(serieDiv);
     }
     
     // Adicionar event listeners para remover estilo de sugestão ao interagir
-    const allInputs = seriesContainer.querySelectorAll('.series-input');
+    const allInputs = seriesContainer.querySelectorAll('.series-input:not(:disabled)');
     allInputs.forEach(input => {
         input.addEventListener('input', function() {
             this.classList.remove('suggested-value');
@@ -427,6 +481,10 @@ function renderizarSeries(exercicio, pesosSugeridos) {
             }
         });
     });
+    
+    // Atualizar contador de séries completadas
+    const seriesCompletadas = execucoesDoExercicio.length;
+    AppState.set('completedSeries', seriesCompletadas);
 }
 
 // Ajustar valor dos inputs
