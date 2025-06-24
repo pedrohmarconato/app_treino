@@ -146,18 +146,18 @@ export async function carregarPesosSugeridos(userId, protocoloTreinoId) {
         }
         
         // Buscar 1RM do usuário para o exercício
-        const { data: rm1Data } = await query('exercicio_1rm_usuario', {
-            select: 'rm_calculado',
+        const { data: rm1Data } = await query('usuario_1rm', {
+            select: 'valor_1rm',
             eq: { 
                 usuario_id: userId,
                 exercicio_id: protocoloTreino.exercicio_id
             },
-            order: { column: 'data_execucao', ascending: false },
+            order: { column: 'data_calculo', ascending: false },
             limit: 1,
             single: true
         });
         
-        const rm1 = rm1Data?.rm_calculado || 0;
+        const rm1 = rm1Data?.valor_1rm || 0;
         
         // Calcular pesos sugeridos baseados no 1RM e percentuais
         const peso_base = rm1 > 0 ? Math.round(rm1 * (protocoloTreino.percentual_1rm_base || 75) / 100) : 0;
