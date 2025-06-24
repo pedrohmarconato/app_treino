@@ -748,76 +748,93 @@ window.finalizarTreino = async function() {
 
 // Mostrar cronômetro de descanso
 function mostrarCronometroDescanso(tempoDescanso) {
-    // Criar overlay se não existir
-    let overlay = document.getElementById('rest-timer-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'rest-timer-overlay';
-        overlay.className = 'rest-timer-overlay';
-        overlay.innerHTML = `
-            <div class="rest-timer-modal">
-                <div class="rest-timer-content">
-                    <h3 class="rest-timer-title">Tempo de Descanso</h3>
-                    <div class="rest-timer-circle">
-                        <svg class="rest-timer-svg" viewBox="0 0 120 120">
-                            <circle class="rest-timer-circle-bg" cx="60" cy="60" r="54" />
-                            <circle class="rest-timer-circle-progress" cx="60" cy="60" r="54" />
-                        </svg>
-                        <div class="rest-timer-display">
-                            <span id="rest-timer-seconds">${tempoDescanso}</span>
-                            <span class="rest-timer-label">segundos</span>
-                        </div>
+    // Remover overlay existente se houver
+    let existingOverlay = document.getElementById('rest-timer-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+    
+    // Criar novo overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'rest-timer-overlay';
+    overlay.className = 'rest-timer-overlay';
+    overlay.innerHTML = `
+        <div class="rest-timer-modal">
+            <div class="rest-timer-content">
+                <h3 class="rest-timer-title">Tempo de Descanso</h3>
+                <div class="rest-timer-circle">
+                    <svg class="rest-timer-svg" viewBox="0 0 120 120">
+                        <circle class="rest-timer-circle-bg" cx="60" cy="60" r="54" />
+                        <circle class="rest-timer-circle-progress" cx="60" cy="60" r="54" />
+                    </svg>
+                    <div class="rest-timer-display">
+                        <span id="rest-timer-seconds">${tempoDescanso}</span>
+                        <span class="rest-timer-label">segundos</span>
                     </div>
-                    <button class="btn-skip-rest" onclick="pularDescanso()">
-                        Pular Descanso
-                    </button>
                 </div>
+                <button class="btn-skip-rest" onclick="pularDescanso()">
+                    Pular Descanso
+                </button>
             </div>
-        `;
-        document.body.appendChild(overlay);
-    }
+        </div>
+    `;
+    document.body.appendChild(overlay);
     
-    // Mostrar overlay
-    overlay.style.display = 'flex';
+    // Mostrar overlay com pequeno delay para garantir que foi adicionado ao DOM
+    setTimeout(() => {
+        overlay.style.display = 'flex';
+    }, 10);
     
-    // Configurar timer
-    let tempoRestante = tempoDescanso;
-    const timerDisplay = document.getElementById('rest-timer-seconds');
-    const progressCircle = overlay.querySelector('.rest-timer-circle-progress');
-    
-    // Calcular circunferência do círculo
-    const radius = 54;
-    const circumference = 2 * Math.PI * radius;
-    progressCircle.style.strokeDasharray = circumference;
-    
-    // Função para atualizar o progresso
-    function updateProgress() {
-        const progress = tempoRestante / tempoDescanso;
-        const offset = circumference * (1 - progress);
-        progressCircle.style.strokeDashoffset = offset;
-    }
-    
-    // Iniciar animação
-    updateProgress();
-    
-    // Intervalo do timer
-    const timerInterval = setInterval(() => {
-        tempoRestante--;
-        timerDisplay.textContent = tempoRestante;
+    // Aguardar DOM estar pronto e então configurar timer
+    setTimeout(() => {
+        const timerDisplay = document.getElementById('rest-timer-seconds');
+        const progressCircle = overlay.querySelector('.rest-timer-circle-progress');
+        
+        // Verificar se os elementos foram encontrados
+        if (!timerDisplay || !progressCircle) {
+            console.error('[mostrarCronometroDescanso] Elementos do timer não encontrados');
+            return;
+        }
+        
+        // Configurar timer
+        let tempoRestante = tempoDescanso;
+        
+        // Calcular circunferência do círculo
+        const radius = 54;
+        const circumference = 2 * Math.PI * radius;
+        progressCircle.style.strokeDasharray = circumference;
+        
+        // Função para atualizar o progresso
+        function updateProgress() {
+            const progress = tempoRestante / tempoDescanso;
+            const offset = circumference * (1 - progress);
+            progressCircle.style.strokeDashoffset = offset;
+        }
+        
+        // Iniciar animação
         updateProgress();
         
-        if (tempoRestante <= 0) {
-            clearInterval(timerInterval);
-            fecharCronometroDescanso();
-            // Tocar som ou vibrar se disponível
-            if ('vibrate' in navigator) {
-                navigator.vibrate(200);
+        // Intervalo do timer
+        const timerInterval = setInterval(() => {
+            tempoRestante--;
+            if (timerDisplay) {
+                timerDisplay.textContent = tempoRestante;
             }
-        }
-    }, 1000);
-    
-    // Salvar intervalo para poder cancelar
-    AppState.set('restTimerInterval', timerInterval);
+            updateProgress();
+            
+            if (tempoRestante <= 0) {
+                clearInterval(timerInterval);
+                fecharCronometroDescanso();
+                // Tocar som ou vibrar se disponível
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(200);
+                }
+            }
+        }, 1000);
+        
+        // Salvar intervalo para poder cancelar
+        AppState.set('restTimerInterval', timerInterval);
+    }, 50); // Aguardar 50ms para garantir que o DOM está pronto
 }
 
 // Pular descanso
