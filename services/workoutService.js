@@ -126,25 +126,63 @@ export async function fetchExerciciosTreino(grupoMuscular, protocoloId) {
 // Buscar pesos sugeridos para o usuário usando cálculo dinâmico
 export async function carregarPesosSugeridos(userId, protocoloTreinoId) {
     try {
-        console.log('[workoutService] carregarPesosSugeridos chamado (usando cálculo dinâmico)');
+        console.log('[workoutService] carregarPesosSugeridos chamado com:', { userId, protocoloTreinoId });
         
-        // NOTA: A tabela pesos_usuario foi substituída por cálculo dinâmico
-        // Os pesos são calculados em tempo real pelo WeightCalculatorService
-        // Esta função mantém compatibilidade com a interface existente
+        // Buscar dados do protocolo de treino
+        const { data: protocoloTreino, error: protocoloError } = await query('protocolo_treinos', {
+            select: `
+                exercicio_id,
+                percentual_1rm_base,
+                percentual_1rm_min,
+                percentual_1rm_max
+            `,
+            eq: { id: protocoloTreinoId },
+            single: true
+        });
+        
+        if (protocoloError || !protocoloTreino) {
+            console.error('[workoutService] Erro ao buscar protocolo:', protocoloError);
+            return { data: null, error: protocoloError };
+        }
+        
+        // Buscar 1RM do usuário para o exercício
+        const { data: rm1Data } = await query('exercicio_1rm_usuario', {
+            select: 'rm_calculado',
+            eq: { 
+                usuario_id: userId,
+                exercicio_id: protocoloTreino.exercicio_id
+            },
+            order: { column: 'data_execucao', ascending: false },
+            limit: 1,
+            single: true
+        });
+        
+        const rm1 = rm1Data?.rm_calculado || 0;
+        
+        // Calcular pesos sugeridos baseados no 1RM e percentuais
+        const peso_base = rm1 > 0 ? Math.round(rm1 * (protocoloTreino.percentual_1rm_base || 75) / 100) : 0;
+        const peso_minimo = rm1 > 0 ? Math.round(rm1 * (protocoloTreino.percentual_1rm_min || 70) / 100) : 0;
+        const peso_maximo = rm1 > 0 ? Math.round(rm1 * (protocoloTreino.percentual_1rm_max || 80) / 100) : 0;
+        
+        console.log('[workoutService] Pesos calculados:', { rm1, peso_base, peso_minimo, peso_maximo });
         
         return { 
             data: {
                 usuario_id: userId,
                 protocolo_treino_id: protocoloTreinoId,
+                peso_base,
+                peso_minimo,
+                peso_maximo,
+                rm_usado: rm1,
                 status: 'ativo',
                 fonte: 'calculo_dinamico',
-                observacao: 'Pesos calculados dinamicamente baseados em 1RM'
+                observacao: `Calculado com ${protocoloTreino.percentual_1rm_base}% do 1RM (${rm1}kg)`
             }, 
             error: null 
         };
         
     } catch (error) {
-        console.error('[workoutService] Erro ao buscar pesos sugeridos:', error);
+        console.error('[workoutService] Erro ao calcular pesos sugeridos:', error);
         return { data: null, error: error.message };
     }
 }

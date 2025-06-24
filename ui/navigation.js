@@ -15,6 +15,10 @@ const screenTemplateMap = {
 export function mostrarTela(telaId) {
     console.log('[mostrarTela] Navegando para:', telaId);
     
+    // Prevenir scroll issues no mobile
+    window.scrollTo(0, 0);
+    document.body.style.overflow = 'auto';
+    
     // IMPORTANTE: Remover duplicatas de workout-screen antes de criar nova
     if (telaId === 'workout-screen') {
         const existingScreens = document.querySelectorAll('#workout-screen');
@@ -41,6 +45,15 @@ export function mostrarTela(telaId) {
             // Executar callbacks pós-renderização
             setTimeout(() => {
                 onScreenRendered(telaId, templateName);
+                
+                // Garantir que a tela esteja visível no mobile
+                const newScreen = document.getElementById(telaId);
+                if (newScreen) {
+                    newScreen.style.display = 'block';
+                    newScreen.style.position = 'relative';
+                    newScreen.style.minHeight = '100vh';
+                    newScreen.classList.add('active');
+                }
             }, 100);
         } catch (error) {
             console.error('[mostrarTela] Erro ao renderizar template:', error);

@@ -14,7 +14,12 @@ console.log('Configuração Supabase:', {
 
 const supabase = window.supabase.createClient(
     window.SUPABASE_CONFIG.url, 
-    window.SUPABASE_CONFIG.key
+    window.SUPABASE_CONFIG.key,
+    {
+        realtime: {
+            enabled: false
+        }
+    }
 );
 
 export { supabase };

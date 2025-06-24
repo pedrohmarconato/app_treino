@@ -1,0 +1,319 @@
+/* =============================================================================
+   MOBILE FIXES - Correções para iPhone 13 e dispositivos móveis
+   ============================================================================= */
+
+/* Correções gerais para mobile */
+@media (max-width: 428px) {
+    /* Prevenir scroll horizontal */
+    body {
+        overflow-x: hidden !important;
+        width: 100vw !important;
+    }
+    
+    .app-container,
+    .screen {
+        width: 100% !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* Header da Home */
+    .home-header {
+        padding: 16px !important;
+        padding-top: calc(16px + env(safe-area-inset-top)) !important;
+    }
+    
+    .header-content {
+        gap: 12px !important;
+        flex-wrap: nowrap !important;
+    }
+    
+    .user-info {
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+    }
+    
+    .user-greeting h4,
+    .user-greeting p {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 120px !important;
+    }
+    
+    /* Logo no header */
+    .app-logo-secondary {
+        flex: 1 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        min-width: 0 !important;
+    }
+    
+    .brand-logos-mini {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+    
+    .secondary-logo {
+        height: 50px !important;
+        width: auto !important;
+        max-width: 120px !important;
+    }
+    
+    /* Botão de logout */
+    .header-actions {
+        flex: 0 0 auto !important;
+    }
+    
+    .logout-btn {
+        width: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+    }
+    
+    /* Conteúdo principal */
+    .home-content {
+        padding: 16px !important;
+        padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    }
+    
+    /* Section header */
+    .section-header {
+        flex-direction: column !important;
+        gap: 12px !important;
+        align-items: stretch !important;
+        margin-bottom: 16px !important;
+    }
+    
+    .section-header h2 {
+        font-size: 1.5rem !important;
+        text-align: center !important;
+    }
+    
+    .header-actions {
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+    
+    /* Week selector */
+    .week-selector {
+        flex: 1 !important;
+        max-width: none !important;
+        justify-content: space-between !important;
+        padding: 4px !important;
+    }
+    
+    .week-nav {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    .current-week-info {
+        flex: 1 !important;
+        text-align: center !important;
+        min-width: 0 !important;
+    }
+    
+    .week-number {
+        font-size: 0.9rem !important;
+    }
+    
+    .week-status {
+        font-size: 0.7rem !important;
+        padding: 2px 6px !important;
+    }
+    
+    /* Botão editar */
+    .btn-edit {
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .btn-edit .btn-text {
+        display: none !important;
+    }
+    
+    /* Week indicators */
+    .week-indicators {
+        grid-template-columns: repeat(7, 1fr) !important;
+        gap: 4px !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .day-indicator {
+        padding: 12px 4px !important;
+        min-height: 80px !important;
+    }
+    
+    .day-indicator .day-name {
+        font-size: 0.7rem !important;
+    }
+    
+    .day-indicator .day-type {
+        font-size: 0.8rem !important;
+    }
+    
+    /* Workout card */
+    .workout-card-wrapper {
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
+    }
+    
+    .workout-card {
+        padding: 20px !important;
+        min-height: auto !important;
+    }
+    
+    .workout-header {
+        flex-direction: column !important;
+        gap: 16px !important;
+    }
+    
+    .workout-info {
+        width: 100% !important;
+    }
+    
+    #workout-name {
+        font-size: 1.3rem !important;
+    }
+    
+    .workout-meta {
+        flex-direction: column !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+    }
+    
+    .meta-item {
+        font-size: 0.85rem !important;
+    }
+    
+    /* Botão iniciar treino */
+    .btn-primary {
+        width: 100% !important;
+        padding: 14px 20px !important;
+        font-size: 1rem !important;
+    }
+    
+    /* Card expandível */
+    .workout-expandable-card {
+        margin-top: 20px !important;
+    }
+    
+    .workout-card-header {
+        padding: 16px !important;
+    }
+    
+    .workout-header-content {
+        gap: 12px !important;
+    }
+    
+    .workout-type-badge {
+        font-size: 0.8rem !important;
+        padding: 6px 12px !important;
+    }
+    
+    .workout-card-title {
+        font-size: 1.1rem !important;
+    }
+    
+    .workout-card-subtitle {
+        font-size: 0.8rem !important;
+    }
+    
+    /* Lista de exercícios */
+    .exercise-item {
+        padding: 12px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .exercise-name {
+        font-size: 0.95rem !important;
+    }
+    
+    .exercise-details {
+        font-size: 0.75rem !important;
+    }
+    
+    .exercise-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+    
+    .stat-item {
+        padding: 8px !important;
+    }
+    
+    .stat-value {
+        font-size: 0.9rem !important;
+    }
+    
+    .stat-label {
+        font-size: 0.65rem !important;
+    }
+    
+    /* Prevenir sobreposição do modal */
+    .modal-overlay,
+    .modal-overlay-enhanced {
+        padding: 0 !important;
+        align-items: flex-start !important;
+    }
+    
+    .modal-content,
+    .modal-content-enhanced {
+        margin: 0 !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+    }
+}
+
+/* Correções específicas para navegação */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 100vh;
+    display: none;
+}
+
+.screen.active {
+    display: block !important;
+    position: relative !important;
+}
+
+/* Correções para scroll em iOS */
+@supports (-webkit-touch-callout: none) {
+    .screen {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .home-content,
+    .modal-body-enhanced {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Garantir que elementos não se sobreponham */
+.training-plan > * {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Fix para botões muito próximos */
+.header-actions > * + * {
+    margin-left: 8px !important;
+}
+
+/* Garantir que modais fiquem acima de tudo */
+[id*="modal"] {
+    z-index: 9999 !important;
+}
+
+/* Animações reduzidas para performance */
+@media (max-width: 428px) {
+    * {
+        animation-duration: 0.2s !important;
+        transition-duration: 0.2s !important;
+    }
+}
