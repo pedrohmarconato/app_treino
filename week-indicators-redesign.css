@@ -413,11 +413,11 @@
         padding-bottom: 32px; /* Espaço para dots */
     }
     
-    /* Carrossel Premium */
+    /* Carrossel Premium - iOS Optimized */
     .week-indicators {
         display: flex;
         gap: 12px;
-        overflow-x: auto;
+        overflow-x: scroll;
         overflow-y: hidden;
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
@@ -426,10 +426,19 @@
         margin-bottom: 0;
         position: relative;
         
-        /* Melhor performance de scroll */
+        /* iOS scroll fix */
+        -webkit-scroll-snap-type: x mandatory;
+        scroll-snap-stop: always;
+        -webkit-scroll-snap-stop: always;
+        
+        /* Performance */
         will-change: scroll-position;
         -webkit-transform: translateZ(0);
         transform: translateZ(0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        -webkit-perspective: 1000;
+        perspective: 1000;
     }
     
     /* Scrollbar invisível mas funcional */
@@ -443,18 +452,26 @@
         scrollbar-width: none;
     }
     
-    /* Cards dos dias com design premium */
+    /* Cards dos dias - iOS Fix */
     .day-indicator {
-        flex: 0 0 calc(30% - 8px);
-        min-width: calc(30% - 8px);
+        flex: 0 0 calc(33.333% - 8px);
+        min-width: calc(33.333% - 8px);
         scroll-snap-align: center;
+        -webkit-scroll-snap-align: center;
         scroll-snap-stop: always;
+        -webkit-scroll-snap-stop: always;
         min-height: 110px;
         padding: 16px 10px;
         transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         transform: scale(0.95);
         opacity: 0.8;
         border: 2px solid transparent;
+        
+        /* iOS touch optimization */
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
     }
     
     /* Estado focado/central */
@@ -623,9 +640,11 @@
     
     /* Carrossel ajustado para telas pequenas */
     .day-indicator {
-        flex: 0 0 calc(38% - 6px);
-        min-width: calc(38% - 6px);
+        flex: 0 0 calc(40% - 6px);
+        min-width: calc(40% - 6px);
         min-height: 100px;
+        scroll-snap-align: center;
+        -webkit-scroll-snap-align: center;
     }
     
     /* Mostrar apenas dots centrais em telas muito pequenas */
@@ -776,11 +795,35 @@
     /* Indicador de scroll velocity */
     .week-indicators.scrolling {
         scroll-snap-type: none;
+        -webkit-scroll-snap-type: none;
     }
     
     .week-indicators.scrolling .day-indicator {
         transform: scale(0.9);
         opacity: 0.7;
+    }
+    
+    /* iOS Specific Fixes */
+    @supports (-webkit-touch-callout: none) {
+        .week-indicators {
+            scroll-snap-type: x mandatory;
+            -webkit-scroll-snap-type: x mandatory;
+            scroll-padding: 0 20px;
+            -webkit-scroll-padding: 0 20px;
+        }
+        
+        .day-indicator {
+            scroll-snap-align: center;
+            -webkit-scroll-snap-align: center;
+            scroll-snap-stop: always;
+            -webkit-scroll-snap-stop: always;
+        }
+        
+        /* Forçar hardware acceleration no iOS */
+        .week-carousel-container {
+            -webkit-transform: translate3d(0, 0, 0);
+            transform: translate3d(0, 0, 0);
+        }
     }
 }
 

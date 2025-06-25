@@ -2381,7 +2381,7 @@ async function sincronizarConclusaoTreino(userId, dayIndex) {
 
 // ===== FUNÇÕES DO CARROSSEL PREMIUM =====
 
-// Função para centralizar o dia no carrossel mobile
+// Função para centralizar o dia no carrossel mobile - iOS Optimized
 function centralizarDiaNoCarrossel(dayIndex) {
     if (window.innerWidth > 768) return; // Só no mobile
     
@@ -2398,11 +2398,43 @@ function centralizarDiaNoCarrossel(dayIndex) {
     // Calcular posição para centralizar o dia
     const scrollPosition = dayLeft - (containerWidth / 2) + (dayWidth / 2);
     
-    // Fazer scroll suave
-    container.scrollTo({
-        left: scrollPosition,
-        behavior: 'smooth'
-    });
+    // iOS fix - usar scrollLeft diretamente se scrollTo não funcionar bem
+    if ('scrollBehavior' in document.documentElement.style) {
+        container.scrollTo({
+            left: scrollPosition,
+            behavior: 'smooth'
+        });
+    } else {
+        // Fallback para iOS antigo
+        smoothScrollTo(container, scrollPosition, 300);
+    }
+}
+
+// Smooth scroll polyfill para iOS
+function smoothScrollTo(element, target, duration) {
+    const start = element.scrollLeft;
+    const change = target - start;
+    const startTime = performance.now();
+    
+    function animateScroll(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function
+        const easeInOutCubic = progress => {
+            return progress < 0.5
+                ? 4 * progress * progress * progress
+                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        };
+        
+        element.scrollLeft = start + change * easeInOutCubic(progress);
+        
+        if (progress < 1) {
+            requestAnimationFrame(animateScroll);
+        }
+    }
+    
+    requestAnimationFrame(animateScroll);
 }
 
 // Atualizar indicadores dots
@@ -2456,28 +2488,66 @@ window.goToDay = function(dayIndex) {
     updateCarouselDots(dayIndex);
 };
 
-// Observador de scroll para atualizar dots
+// Observador de scroll para atualizar dots - iOS Optimized
 function initializeCarouselObserver() {
     const container = document.querySelector('.week-indicators');
     if (!container) return;
     
     let scrollTimeout;
     let isScrolling = false;
+    let scrollEndTimer;
     
+    // Função para forçar snap no iOS
+    function forceSnapToClosest() {
+        const containerWidth = container.offsetWidth;
+        const scrollLeft = container.scrollLeft;
+        const dayElements = container.querySelectorAll('.day-indicator');
+        
+        let closestIndex = 0;
+        let closestDistance = Infinity;
+        
+        // Encontrar o dia mais próximo do centro
+        dayElements.forEach((day, index) => {
+            const dayLeft = day.offsetLeft;
+            const dayWidth = day.offsetWidth;
+            const dayCenter = dayLeft + (dayWidth / 2);
+            const containerCenter = scrollLeft + (containerWidth / 2);
+            const distance = Math.abs(dayCenter - containerCenter);
+            
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestIndex = index;
+            }
+        });
+        
+        // Centralizar no dia mais próximo
+        centralizarDiaNoCarrossel(closestIndex);
+        updateCarouselDots(closestIndex);
+    }
+    
+    // Scroll listener otimizado para iOS
     container.addEventListener('scroll', () => {
-        // Adicionar classe durante scroll
         if (!isScrolling) {
             container.classList.add('scrolling');
             isScrolling = true;
         }
         
         clearTimeout(scrollTimeout);
+        clearTimeout(scrollEndTimer);
+        
         scrollTimeout = setTimeout(() => {
             container.classList.remove('scrolling');
             isScrolling = false;
             updateActiveDay();
-        }, 100);
-    });
+        }, 150);
+        
+        // iOS fix - forçar snap após parar de scrollar
+        scrollEndTimer = setTimeout(() => {
+            if (!isScrolling) {
+                forceSnapToClosest();
+            }
+        }, 200);
+    }, { passive: true });
     
     // IntersectionObserver para detectar dia central
     const observer = new IntersectionObserver((entries) => {
@@ -2490,7 +2560,7 @@ function initializeCarouselObserver() {
         });
     }, {
         root: container,
-        rootMargin: '0px -35%',
+        rootMargin: '0px -33.333%',
         threshold: [0.5]
     });
     
@@ -2504,28 +2574,45 @@ function initializeCarouselObserver() {
         }
     });
     
-    // Touch events para melhor responsividade
+    // Touch events melhorados para iOS
     let touchStartX = 0;
     let touchEndX = 0;
+    let touchStartTime = 0;
+    let isTouching = false;
     
     container.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
+        touchStartTime = Date.now();
+        isTouching = true;
     }, { passive: true });
+    
+    container.addEventListener('touchmove', (e) => {
+        // Prevenir scroll vertical durante swipe horizontal
+        if (isTouching) {
+            const touchX = e.changedTouches[0].screenX;
+            const diffX = Math.abs(touchX - touchStartX);
+            if (diffX > 10) {
+                e.preventDefault();
+            }
+        }
+    }, { passive: false });
     
     container.addEventListener('touchend', (e) => {
         touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    }, { passive: true });
-    
-    function handleSwipe() {
-        const swipeThreshold = 50;
-        const diff = touchStartX - touchEndX;
+        const touchEndTime = Date.now();
+        const timeDiff = touchEndTime - touchStartTime;
+        isTouching = false;
         
-        if (Math.abs(diff) > swipeThreshold) {
-            // Swipe detectado mas deixar o scroll natural fazer o trabalho
-            // Apenas adicionar feedback visual se necessário
+        // Se foi um toque rápido (tap), não fazer nada
+        if (timeDiff < 150 && Math.abs(touchEndX - touchStartX) < 10) {
+            return;
         }
-    }
+        
+        // Após soltar, forçar snap
+        setTimeout(() => {
+            forceSnapToClosest();
+        }, 100);
+    }, { passive: true });
 }
 
 // Atualizar dia ativo baseado no scroll
