@@ -450,7 +450,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 200;
+    z-index: 9999;
     animation: fadeIn 0.3s ease;
 }
 
@@ -463,6 +463,8 @@
     text-align: center;
     padding: 40px;
     position: relative;
+    max-width: 400px;
+    width: 90%;
 }
 
 .rest-timer-bg {
@@ -480,20 +482,27 @@
 .rest-timer-title {
     font-size: 1.5rem;
     font-weight: 700;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
     position: relative;
     z-index: 1;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .rest-timer-circle {
     position: relative;
-    width: 200px;
-    height: 200px;
+    width: 240px;
+    height: 240px;
     margin: 0 auto 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .rest-progress-ring {
     transform: rotate(-90deg);
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .rest-progress-bg {
@@ -502,26 +511,31 @@
 
 .rest-progress-fill {
     stroke: var(--neon-primary);
-    stroke-dasharray: 565.486;
-    stroke-dashoffset: 565.486;
+    stroke-dasharray: 691.15;  /* 2 * PI * 110 */
+    stroke-dashoffset: 691.15;
     transition: stroke-dashoffset 1s linear;
     filter: drop-shadow(0 0 10px var(--neon-primary));
 }
 
 .rest-timer-text {
     position: absolute;
-    inset: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    width: 100%;
 }
 
 .rest-time {
-    font-size: 3rem;
+    font-size: 2.5rem;
     font-weight: 800;
     color: var(--neon-primary);
     text-shadow: 0 0 30px rgba(19, 241, 252, 0.5);
+    line-height: 1;
+    margin-bottom: 8px;
 }
 
 .rest-label {
@@ -815,12 +829,28 @@
     }
 
     .rest-timer-circle {
-        width: 160px;
-        height: 160px;
+        width: 180px;
+        height: 180px;
+    }
+
+    .rest-timer-circle svg {
+        width: 180px;
+        height: 180px;
+    }
+
+    .rest-timer-circle circle {
+        cx: 90;
+        cy: 90;
+        r: 80;
+    }
+
+    .rest-progress-fill {
+        stroke-dasharray: 502.65;  /* 2 * PI * 80 */
+        stroke-dashoffset: 502.65;
     }
 
     .rest-time {
-        font-size: 2.5rem;
+        font-size: 2rem;
     }
 }
 

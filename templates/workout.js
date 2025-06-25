@@ -74,9 +74,9 @@ export const workoutTemplate = () => `
                 <div class="rest-timer-bg"></div>
                 <h2 class="rest-timer-title">Tempo de Descanso</h2>
                 <div class="rest-timer-circle">
-                    <svg class="rest-progress-ring" width="200" height="200">
-                        <circle class="rest-progress-bg" cx="100" cy="100" r="90" stroke-width="8" fill="none"/>
-                        <circle class="rest-progress-fill" cx="100" cy="100" r="90" stroke-width="8" fill="none"/>
+                    <svg class="rest-progress-ring" width="240" height="240">
+                        <circle class="rest-progress-bg" cx="120" cy="120" r="110" stroke-width="10" fill="none"/>
+                        <circle class="rest-progress-fill" cx="120" cy="120" r="110" stroke-width="10" fill="none"/>
                     </svg>
                     <div class="rest-timer-text">
                         <span id="rest-timer-display" class="rest-time">00:00</span>

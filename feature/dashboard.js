@@ -45,6 +45,7 @@ function formatarNomeTreino(treino) {
     }
 }
 
+
 // Função principal para carregar dashboard
 // SISTEMA DE CACHE GLOBAL - CARREGA UMA VEZ E USA SEMPRE
 let dadosGlobaisCache = {
@@ -396,7 +397,7 @@ function renderizarIndicadoresDoCache(semana) {
             }
             
             html += `
-                <div class="${dayClass}" onclick="handleDayClick(${i}, ${isCompleted})">
+                <div class="${dayClass}" data-day="${i}" onclick="handleDayClick(${i}, ${isCompleted})">
                     <div class="day-name">${DIAS_SEMANA[i]}</div>
                     <div class="day-content">
                         <div class="muscle-icon-wrapper">
@@ -408,11 +409,77 @@ function renderizarIndicadoresDoCache(semana) {
             `;
         }
         
+        // Renderizar conteúdo dos dias
         container.innerHTML = html;
+        
+        // Adicionar estrutura do carrossel para mobile
+        if (window.innerWidth <= 768) {
+            // Verificar se já existe wrapper
+            if (!container.parentElement.classList.contains('week-carousel-container')) {
+                // Criar wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'week-carousel-container';
+                
+                // Mover o container para dentro do wrapper
+                container.parentNode.insertBefore(wrapper, container);
+                wrapper.appendChild(container);
+                
+                // Adicionar botões de navegação
+                const prevButton = document.createElement('button');
+                prevButton.className = 'carousel-nav prev';
+                prevButton.setAttribute('onclick', 'navigateCarousel("prev")');
+                prevButton.setAttribute('aria-label', 'Dia anterior');
+                prevButton.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                `;
+                wrapper.appendChild(prevButton);
+                
+                const nextButton = document.createElement('button');
+                nextButton.className = 'carousel-nav next';
+                nextButton.setAttribute('onclick', 'navigateCarousel("next")');
+                nextButton.setAttribute('aria-label', 'Próximo dia');
+                nextButton.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                `;
+                wrapper.appendChild(nextButton);
+                
+                // Adicionar dots
+                const dotsContainer = document.createElement('div');
+                dotsContainer.className = 'carousel-dots';
+                dotsContainer.id = 'carousel-dots';
+                
+                for (let i = 0; i < 7; i++) {
+                    const dot = document.createElement('button');
+                    dot.className = i === 0 ? 'carousel-dot active' : 'carousel-dot';
+                    dot.setAttribute('onclick', `goToDay(${i})`);
+                    dot.setAttribute('aria-label', `Ir para ${DIAS_SEMANA[i]}`);
+                    dotsContainer.appendChild(dot);
+                }
+                wrapper.appendChild(dotsContainer);
+            }
+            
+            // Inicializar observador de scroll
+            setTimeout(() => {
+                initializeCarouselObserver();
+            }, 50);
+        }
+        
         console.log(`[renderizarIndicadoresDoCache] ✅ Semana ${semana} renderizada instantaneamente`);
         
         if (diasMarcadosComoHoje > 1) {
             console.error(`[renderizarIndicadoresDoCache] ⚠️ PROBLEMA: ${diasMarcadosComoHoje} dias marcados como HOJE!`);
+        }
+        
+        // Auto-scroll para o dia atual no mobile
+        if (window.innerWidth <= 768 && semana === dadosGlobaisCache.dados.semanaProtocolo) {
+            setTimeout(() => {
+                centralizarDiaNoCarrossel(diaAtual);
+                updateCarouselDots(diaAtual);
+            }, 100);
         }
         
     } catch (error) {
@@ -2312,9 +2379,203 @@ async function sincronizarConclusaoTreino(userId, dayIndex) {
 
 // ===== HISTÓRICO DE TREINOS =====
 
+// ===== FUNÇÕES DO CARROSSEL PREMIUM =====
+
+// Função para centralizar o dia no carrossel mobile
+function centralizarDiaNoCarrossel(dayIndex) {
+    if (window.innerWidth > 768) return; // Só no mobile
+    
+    const container = document.querySelector('.week-indicators');
+    const dayElements = container?.querySelectorAll('.day-indicator');
+    
+    if (!container || !dayElements || !dayElements[dayIndex]) return;
+    
+    const dayElement = dayElements[dayIndex];
+    const containerWidth = container.offsetWidth;
+    const dayWidth = dayElement.offsetWidth;
+    const dayLeft = dayElement.offsetLeft;
+    
+    // Calcular posição para centralizar o dia
+    const scrollPosition = dayLeft - (containerWidth / 2) + (dayWidth / 2);
+    
+    // Fazer scroll suave
+    container.scrollTo({
+        left: scrollPosition,
+        behavior: 'smooth'
+    });
+}
+
+// Atualizar indicadores dots
+function updateCarouselDots(activeIndex) {
+    const dots = document.querySelectorAll('.carousel-dot');
+    dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === activeIndex);
+    });
+}
+
+// Navegar no carrossel com botões
+window.navigateCarousel = function(direction) {
+    const container = document.querySelector('.week-indicators');
+    if (!container) return;
+    
+    const dayElements = container.querySelectorAll('.day-indicator');
+    const containerWidth = container.offsetWidth;
+    const scrollLeft = container.scrollLeft;
+    
+    // Encontrar o dia mais próximo do centro
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+    
+    dayElements.forEach((day, index) => {
+        const dayCenter = day.offsetLeft + (day.offsetWidth / 2);
+        const containerCenter = scrollLeft + (containerWidth / 2);
+        const distance = Math.abs(dayCenter - containerCenter);
+        
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = index;
+        }
+    });
+    
+    // Calcular próximo índice
+    let targetIndex = closestIndex;
+    if (direction === 'next' && closestIndex < 6) {
+        targetIndex = closestIndex + 1;
+    } else if (direction === 'prev' && closestIndex > 0) {
+        targetIndex = closestIndex - 1;
+    }
+    
+    // Centralizar no dia alvo
+    centralizarDiaNoCarrossel(targetIndex);
+    updateCarouselDots(targetIndex);
+};
+
+// Ir direto para um dia específico
+window.goToDay = function(dayIndex) {
+    centralizarDiaNoCarrossel(dayIndex);
+    updateCarouselDots(dayIndex);
+};
+
+// Observador de scroll para atualizar dots
+function initializeCarouselObserver() {
+    const container = document.querySelector('.week-indicators');
+    if (!container) return;
+    
+    let scrollTimeout;
+    let isScrolling = false;
+    
+    container.addEventListener('scroll', () => {
+        // Adicionar classe durante scroll
+        if (!isScrolling) {
+            container.classList.add('scrolling');
+            isScrolling = true;
+        }
+        
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            container.classList.remove('scrolling');
+            isScrolling = false;
+            updateActiveDay();
+        }, 100);
+    });
+    
+    // IntersectionObserver para detectar dia central
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+                entry.target.classList.add('in-view');
+            } else {
+                entry.target.classList.remove('in-view');
+            }
+        });
+    }, {
+        root: container,
+        rootMargin: '0px -35%',
+        threshold: [0.5]
+    });
+    
+    const dayElements = container.querySelectorAll('.day-indicator');
+    dayElements.forEach((day, index) => {
+        observer.observe(day);
+        // Adicionar índice para animação dos dots
+        const dot = document.querySelectorAll('.carousel-dot')[index];
+        if (dot) {
+            dot.style.setProperty('--dot-index', index);
+        }
+    });
+    
+    // Touch events para melhor responsividade
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    container.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    container.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+    
+    function handleSwipe() {
+        const swipeThreshold = 50;
+        const diff = touchStartX - touchEndX;
+        
+        if (Math.abs(diff) > swipeThreshold) {
+            // Swipe detectado mas deixar o scroll natural fazer o trabalho
+            // Apenas adicionar feedback visual se necessário
+        }
+    }
+}
+
+// Atualizar dia ativo baseado no scroll
+function updateActiveDay() {
+    const container = document.querySelector('.week-indicators');
+    if (!container) return;
+    
+    const dayElements = container.querySelectorAll('.day-indicator');
+    const containerWidth = container.offsetWidth;
+    const scrollLeft = container.scrollLeft;
+    
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+    
+    dayElements.forEach((day, index) => {
+        const dayCenter = day.offsetLeft + (day.offsetWidth / 2);
+        const containerCenter = scrollLeft + (containerWidth / 2);
+        const distance = Math.abs(dayCenter - containerCenter);
+        
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = index;
+        }
+    });
+    
+    updateCarouselDots(closestIndex);
+}
+
+// Suporte a teclado
+document.addEventListener('keydown', (e) => {
+    if (window.innerWidth > 768) return;
+    
+    const container = document.querySelector('.week-indicators');
+    if (!container || !container.contains(document.activeElement)) return;
+    
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateCarousel('prev');
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateCarousel('next');
+    }
+});
+
 // Handler para clique nos dias da semana
 window.handleDayClick = async function(dayIndex, isCompleted) {
     console.log(`[handleDayClick] Clicou no dia ${dayIndex}, concluído: ${isCompleted}`);
+    
+    // Centralizar o dia clicado no carrossel mobile
+    centralizarDiaNoCarrossel(dayIndex);
     
     const currentUser = AppState.get('currentUser');
     if (!currentUser?.id) {
@@ -5569,3 +5830,88 @@ function mostrarMensagemExercicios(mensagem, tipo = 'info', container) {
 // Usando handleDayClick existente para mostrar modal de histórico do treino
 
 // Modal de histórico já existe no arquivo - todas as funções estão implementadas ✅
+
+// ============================================
+// EFEITO DE SCROLL DO HEADER
+// ============================================
+
+// Variáveis para controle do scroll
+let lastScrollTop = 0;
+let scrollThreshold = 50; // Pixels de scroll para ativar o efeito
+
+// Função para gerenciar o efeito de scroll do header
+function initHeaderScrollEffect() {
+    const header = document.querySelector('.home-header');
+    
+    if (!header) {
+        console.warn('[initHeaderScrollEffect] Header não encontrado');
+        return;
+    }
+    
+    // Função de scroll otimizada com throttle
+    let isScrolling = false;
+    
+    function handleScroll() {
+        if (!isScrolling) {
+            window.requestAnimationFrame(() => {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                
+                // Adiciona ou remove a classe 'scrolled' baseado na posição do scroll
+                if (scrollTop > scrollThreshold) {
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+                
+                // Detecta direção do scroll para efeitos adicionais (opcional)
+                if (scrollTop > lastScrollTop && scrollTop > 100) {
+                    // Scrolling down - pode adicionar classe para esconder header
+                    header.classList.add('scrolling-down');
+                } else {
+                    // Scrolling up
+                    header.classList.remove('scrolling-down');
+                }
+                
+                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // Evita valores negativos
+                isScrolling = false;
+            });
+            
+            isScrolling = true;
+        }
+    }
+    
+    // Armazena referência da função para poder remover depois
+    handleScrollReference = handleScroll;
+    
+    // Adiciona listener de scroll
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Verifica posição inicial do scroll
+    handleScroll();
+    
+    console.log('[initHeaderScrollEffect] ✅ Efeito de scroll do header inicializado');
+}
+
+// Armazenar referência da função handleScroll para poder remover depois
+let handleScrollReference = null;
+
+// Função para limpar o listener de scroll quando necessário
+function cleanupHeaderScrollEffect() {
+    if (handleScrollReference) {
+        window.removeEventListener('scroll', handleScrollReference);
+        handleScrollReference = null;
+        console.log('[cleanupHeaderScrollEffect] 🗑️ Listener de scroll removido');
+    }
+}
+
+// Inicializar o efeito quando o dashboard for carregado
+document.addEventListener('DOMContentLoaded', () => {
+    // Aguarda um pequeno delay para garantir que o DOM esteja completamente carregado
+    setTimeout(() => {
+        initHeaderScrollEffect();
+    }, 100);
+});
+
+// Exportar para uso externo se necessário
+window.initHeaderScrollEffect = initHeaderScrollEffect;
+window.cleanupHeaderScrollEffect = cleanupHeaderScrollEffect;

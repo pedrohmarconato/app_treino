@@ -372,15 +372,17 @@
     100% { transform: translateX(100%); }
 }
 
-/* Mobile Responsiveness */
+/* Mobile Responsiveness - Premium Carousel Design */
 @media (max-width: 768px) {
     .training-plan {
         padding: 16px;
         margin-bottom: 16px;
+        overflow: visible; /* Changed para permitir sombras */
+        position: relative;
     }
     
     .section-header {
-        margin-bottom: 16px;
+        margin-bottom: 20px;
     }
     
     .section-header h2 {
@@ -404,36 +406,202 @@
         display: none;
     }
     
+    /* Container do carrossel com indicadores */
+    .week-carousel-container {
+        position: relative;
+        margin: 0 -16px;
+        padding-bottom: 32px; /* Espaço para dots */
+    }
+    
+    /* Carrossel Premium */
     .week-indicators {
-        gap: 4px;
-        margin-bottom: 16px;
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        padding: 8px 20px;
+        margin-bottom: 0;
+        position: relative;
+        
+        /* Melhor performance de scroll */
+        will-change: scroll-position;
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
     }
     
+    /* Scrollbar invisível mas funcional */
+    .week-indicators::-webkit-scrollbar {
+        height: 0;
+        display: none;
+    }
+    
+    .week-indicators {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    
+    /* Cards dos dias com design premium */
     .day-indicator {
-        min-height: 90px;
-        padding: 12px 4px;
+        flex: 0 0 calc(30% - 8px);
+        min-width: calc(30% - 8px);
+        scroll-snap-align: center;
+        scroll-snap-stop: always;
+        min-height: 110px;
+        padding: 16px 10px;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        transform: scale(0.95);
+        opacity: 0.8;
+        border: 2px solid transparent;
     }
     
+    /* Estado focado/central */
+    .day-indicator:focus-within,
+    .day-indicator.in-view {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Touch feedback */
+    .day-indicator:active {
+        transform: scale(0.98);
+        transition: transform 0.1s ease;
+    }
+    
+    /* Gradientes de fade nas bordas */
+    .week-carousel-container::before,
+    .week-carousel-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 32px; /* Não cobrir dots */
+        width: 20px;
+        z-index: 2;
+        pointer-events: none;
+    }
+    
+    .week-carousel-container::before {
+        left: 0;
+        background: linear-gradient(to right, var(--bg-card), transparent);
+    }
+    
+    .week-carousel-container::after {
+        right: 0;
+        background: linear-gradient(to left, var(--bg-card), transparent);
+    }
+    
+    /* Indicadores de progresso (dots) */
+    .carousel-dots {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px;
+        z-index: 3;
+    }
+    
+    .carousel-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: none;
+        padding: 0;
+    }
+    
+    .carousel-dot.active {
+        width: 20px;
+        border-radius: 3px;
+        background: var(--accent-primary);
+    }
+    
+    .carousel-dot:hover {
+        background: rgba(255, 255, 255, 0.4);
+    }
+    
+    /* Botões de navegação opcionais */
+    .carousel-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 32px;
+        height: 32px;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: 3;
+    }
+    
+    .week-carousel-container:hover .carousel-nav {
+        opacity: 1;
+    }
+    
+    .carousel-nav.prev {
+        left: 4px;
+    }
+    
+    .carousel-nav.next {
+        right: 4px;
+    }
+    
+    .carousel-nav:active {
+        transform: translateY(-50%) scale(0.9);
+    }
+    
+    /* Ajustes de tamanho do conteúdo */
     .day-indicator .day-name {
-        font-size: 0.65rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-bottom: 8px;
     }
     
     .day-indicator .day-content {
-        font-size: 0.7rem;
+        font-size: 0.85rem;
     }
     
     .day-indicator .day-icon {
-        width: 20px;
-        height: 20px;
+        width: 28px;
+        height: 28px;
+        margin-bottom: 4px;
     }
     
     .day-indicator .day-icon svg {
-        width: 16px;
-        height: 16px;
+        width: 24px;
+        height: 24px;
+    }
+    
+    /* Estados visuais melhorados no mobile */
+    .day-indicator.today {
+        border-color: var(--neon-primary);
+        box-shadow: 0 0 0 2px rgba(19, 241, 252, 0.2);
+    }
+    
+    .day-indicator.completed {
+        background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 255, 136, 0.05));
+    }
+    
+    .day-indicator.planned {
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
     }
 }
 
-/* Extra Small Devices */
+/* Extra Small Devices - Enhanced Mobile Experience */
 @media (max-width: 480px) {
     .section-header h2 {
         font-size: 1.1rem;
@@ -453,13 +621,166 @@
         padding: 2px 6px;
     }
     
+    /* Carrossel ajustado para telas pequenas */
     .day-indicator {
-        min-height: 80px;
+        flex: 0 0 calc(38% - 6px);
+        min-width: calc(38% - 6px);
+        min-height: 100px;
+    }
+    
+    /* Mostrar apenas dots centrais em telas muito pequenas */
+    .carousel-dots {
+        gap: 4px;
+    }
+    
+    .carousel-dot {
+        width: 5px;
+        height: 5px;
+    }
+    
+    .carousel-dot.active {
+        width: 16px;
+    }
+    
+    /* Navegação sempre visível em mobile pequeno */
+    .carousel-nav {
+        opacity: 0.7;
+        width: 28px;
+        height: 28px;
+        font-size: 0.75rem;
+    }
+    
+    .week-carousel-container:hover .carousel-nav {
+        opacity: 1;
     }
     
     .day-indicator .day-name {
-        font-size: 0.6rem;
+        font-size: 0.7rem;
         letter-spacing: 0;
+    }
+    
+    .day-indicator .day-content {
+        font-size: 0.8rem;
+    }
+    
+    .day-indicator .day-icon {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .day-indicator .day-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Acessibilidade e animações reduzidas */
+@media (prefers-reduced-motion: reduce) {
+    .week-indicators {
+        scroll-behavior: auto;
+    }
+    
+    .day-indicator,
+    .carousel-dot,
+    .carousel-nav {
+        transition: none;
+    }
+}
+
+/* Suporte para toque e gestos */
+@media (hover: none) and (pointer: coarse) {
+    .carousel-nav {
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.6);
+    }
+    
+    .day-indicator:hover {
+        transform: scale(0.95);
+    }
+}
+
+/* Animações adicionais para o carrossel */
+@keyframes slideInDot {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulseDay {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+/* Melhorias de performance */
+@media (max-width: 768px) {
+    .week-indicators {
+        contain: layout style paint;
+    }
+    
+    .day-indicator {
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+    }
+    
+    /* Animação inicial dos dots */
+    .carousel-dot {
+        animation: slideInDot 0.3s ease-out forwards;
+        animation-delay: calc(var(--dot-index, 0) * 0.05s);
+    }
+    
+    /* Pulse suave no dia atual */
+    .day-indicator.today.in-view {
+        animation: pulseDay 2s ease-in-out infinite;
+    }
+    
+    /* Melhoria no feedback de toque */
+    @media (hover: none) {
+        .day-indicator {
+            -webkit-tap-highlight-color: rgba(19, 241, 252, 0.1);
+            tap-highlight-color: rgba(19, 241, 252, 0.1);
+        }
+    }
+    
+    /* Sombra dinâmica baseada no estado */
+    .day-indicator.in-view.planned {
+        box-shadow: 
+            0 4px 20px rgba(255, 215, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    
+    .day-indicator.in-view.completed {
+        box-shadow: 
+            0 4px 20px rgba(0, 255, 136, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Melhor contraste nos botões de navegação */
+    .carousel-nav {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .carousel-nav:hover {
+        background: rgba(0, 0, 0, 0.7);
+        transform: translateY(-50%) scale(1.1);
+    }
+    
+    /* Indicador de scroll velocity */
+    .week-indicators.scrolling {
+        scroll-snap-type: none;
+    }
+    
+    .week-indicators.scrolling .day-indicator {
+        transform: scale(0.9);
+        opacity: 0.7;
     }
 }
 

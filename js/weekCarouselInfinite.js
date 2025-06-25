@@ -12,6 +12,22 @@ class WeekCarouselInfinite {
     }
 
     init() {
+        // Adiciona classe de snapping e smooth scroll caso não exista
+        if (!document.getElementById('week-carousel-style-enhanced')) {
+            const styleTag = document.createElement('style');
+            styleTag.id = 'week-carousel-style-enhanced';
+            styleTag.textContent = `
+                #week-carousel {
+                    scroll-snap-type: x mandatory;
+                    scroll-behavior: smooth;
+                    overflow-x: auto;
+                }
+                #week-carousel .carousel-day {
+                    scroll-snap-align: center;
+                }
+            `;
+            document.head.appendChild(styleTag);
+        }
         console.log('[WeekCarousel] Iniciando carrossel...');
         this.carousel = document.getElementById('week-carousel');
         if (!this.carousel) {
@@ -43,6 +59,9 @@ class WeekCarouselInfinite {
         this.centerOnToday();
         
         console.log('[WeekCarousel] Atualizando dots...');
+
+        // Escuta scroll para detectar dia central após interação manual
+        this.setupScrollListener();
         // Atualiza os dots
         this.updateDots();
         
@@ -159,30 +178,66 @@ class WeekCarouselInfinite {
 
     scrollToIndex(index, animate = true) {
         if (!this.carousel) return;
-        
+
         const items = this.carousel.querySelectorAll('.carousel-day');
         if (!items[index]) return;
         const dayElement = items[index];
-        const containerWidth = this.carousel.offsetWidth;
-        const elementWidth = dayElement.offsetWidth;
-        const elementLeft = dayElement.offsetLeft;
-        
-        // Calcula a posição para centralizar o elemento
-        const scrollPosition = elementLeft - (containerWidth / 2) + (elementWidth / 2);
-        
+        const containerRect = this.carousel.getBoundingClientRect();
+        const dayRect = dayElement.getBoundingClientRect();
+
+        // Calcula deslocamento necessário para centralizar
+        const scrollPosition = this.carousel.scrollLeft + dayRect.left - containerRect.left - (containerRect.width / 2) + (dayRect.width / 2);
+
         if (animate) {
             this.isAnimating = true;
-            this.carousel.style.scrollBehavior = 'smooth';
-            setTimeout(() => {
-                this.isAnimating = false;
-            }, 500);
+            this.carousel.scrollTo({ left: scrollPosition, behavior: 'smooth' });
+            // Libera flag após animação aproximada (depende do device)
+            setTimeout(() => { this.isAnimating = false; }, 600);
         } else {
-            this.carousel.style.scrollBehavior = 'auto';
+            this.carousel.scrollLeft = scrollPosition;
         }
-        
-        this.carousel.scrollLeft = scrollPosition;
+
         this.currentIndex = index;
         this.updateDots();
+    }
+
+    /**
+     * Adiciona listener de scroll para identificar o item mais próximo do centro
+     * e marcá-lo como current, garantindo consistência mesmo quando o usuário
+     * rola manualmente.
+     */
+    setupScrollListener() {
+        if (!this.carousel) return;
+        // Evita múltiplos listeners
+        if (this._scrollListenerAttached) return;
+        this._scrollListenerAttached = true;
+        let debounce;
+        this.carousel.addEventListener('scroll', () => {
+            if (this.isAnimating) return;
+            if (debounce) clearTimeout(debounce);
+            debounce = setTimeout(() => {
+                const center = this.carousel.scrollLeft + (this.carousel.offsetWidth / 2);
+                const items = Array.from(this.carousel.querySelectorAll('.carousel-day'));
+                let closestIdx = 0;
+                let minDist = Infinity;
+                items.forEach((el, idx) => {
+                    const elCenter = el.offsetLeft + (el.offsetWidth / 2);
+                    const dist = Math.abs(center - elCenter);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestIdx = idx;
+                    }
+                });
+                if (closestIdx !== this.currentIndex) {
+                    // Não chama scrollToIndex para evitar recursão, apenas atualiza estado
+                    this.currentIndex = closestIdx;
+                    // Atualiza classe visual
+                    items.forEach(el => el.classList.remove('current'));
+                    if (items[closestIdx]) items[closestIdx].classList.add('current');
+                    this.updateDots();
+                }
+            }, 100);
+        }, { passive: true });
     }
 
     updateDots() {

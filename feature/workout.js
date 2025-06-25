@@ -964,18 +964,7 @@ function atualizarTimer() {
     AppState.set('restTime', restTime - 1);
 }
 
-// Pular descanso
-window.pularDescanso = function() {
-    const interval = AppState.get('timerInterval');
-    if (interval) {
-        clearInterval(interval);
-        AppState.set('timerInterval', null);
-    }
-    
-    const timerModal = document.getElementById('rest-timer-overlay');
-    if (timerModal) timerModal.style.display = 'none';
-    proximoExercicio();
-};
+// REMOVIDO: Função pularDescanso duplicada - usar a versão correta mais abaixo
 
 // Próximo exercício
 function proximoExercicio() {
@@ -1362,47 +1351,20 @@ window.tentarNovamenteSalvar = async function() {
 
 // Mostrar cronômetro de descanso
 function mostrarCronometroDescanso(tempoDescanso) {
-    // Remover overlay existente se houver
-    const existingOverlay = document.getElementById('rest-timer-overlay');
-    if (existingOverlay) {
-        existingOverlay.remove();
+    // Usar o overlay existente no template
+    const overlay = document.getElementById('rest-timer-overlay');
+    if (!overlay) {
+        console.error('[mostrarCronometroDescanso] Overlay não encontrado no DOM');
+        return;
     }
     
-    // Criar novo overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'rest-timer-overlay';
-    overlay.className = 'rest-timer-overlay';
-    overlay.innerHTML = `
-        <div class="rest-timer-modal">
-            <div class="rest-timer-content">
-                <h3 class="rest-timer-title">Tempo de Descanso</h3>
-                <div class="rest-timer-circle">
-                    <svg class="rest-timer-svg" viewBox="0 0 120 120">
-                        <circle class="rest-timer-circle-bg" cx="60" cy="60" r="54" />
-                        <circle class="rest-timer-circle-progress" cx="60" cy="60" r="54" />
-                    </svg>
-                    <div class="rest-timer-display">
-                        <span id="rest-timer-seconds">${tempoDescanso}</span>
-                        <span class="rest-timer-label">segundos</span>
-                    </div>
-                </div>
-                <button class="btn-skip-rest" onclick="pularDescanso()">
-                    Pular Descanso
-                </button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-    
-    // Mostrar overlay com pequeno delay para garantir que foi adicionado ao DOM
-    setTimeout(() => {
-        overlay.style.display = 'flex';
-    }, 10);
+    // Mostrar overlay
+    overlay.style.display = 'flex';
     
     // Aguardar DOM estar pronto e então configurar timer
     setTimeout(() => {
-        const timerDisplay = document.getElementById('rest-timer-seconds');
-        const progressCircle = overlay.querySelector('.rest-timer-circle-progress');
+        const timerDisplay = document.getElementById('rest-timer-display');
+        const progressCircle = overlay.querySelector('.rest-progress-fill');
         
         // Verificar se os elementos foram encontrados
         if (!timerDisplay || !progressCircle) {
@@ -1417,8 +1379,8 @@ function mostrarCronometroDescanso(tempoDescanso) {
         AppState.set('restTime', tempoRestante);
         workoutStateManager.onCronometroIniciado(tempoRestante);
         
-        // Calcular circunferência do círculo
-        const radius = 54;
+        // Calcular circunferência do círculo (raio 110 para o novo tamanho)
+        const radius = 110;
         const circumference = 2 * Math.PI * radius;
         progressCircle.style.strokeDasharray = circumference;
         
@@ -1432,11 +1394,21 @@ function mostrarCronometroDescanso(tempoDescanso) {
         // Iniciar animação
         updateProgress();
         
+        // Função para formatar tempo
+        function formatarTempo(segundos) {
+            const mins = Math.floor(segundos / 60);
+            const secs = segundos % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Exibir tempo inicial
+        timerDisplay.textContent = formatarTempo(tempoRestante);
+        
         // Intervalo do timer
         const timerInterval = setInterval(() => {
             tempoRestante--;
             if (timerDisplay) {
-                timerDisplay.textContent = tempoRestante;
+                timerDisplay.textContent = formatarTempo(tempoRestante);
             }
             updateProgress();
             
@@ -1452,6 +1424,12 @@ function mostrarCronometroDescanso(tempoDescanso) {
         
         // Salvar intervalo para poder cancelar
         AppState.set('restTimerInterval', timerInterval);
+        
+        // Adicionar event listener ao botão de pular
+        const skipButton = document.getElementById('skip-rest');
+        if (skipButton) {
+            skipButton.onclick = window.pularDescanso;
+        }
     }, 50); // Aguardar 50ms para garantir que o DOM está pronto
 }
 
