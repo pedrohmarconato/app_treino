@@ -150,8 +150,9 @@ function criarModalHistoricoClean(historico, dayIndex) {
             }
             
             .modal-body-clean {
-                padding: 32px !important;
+                padding: 24px !important;
                 overflow-y: auto !important;
+                overflow-x: hidden !impor       tant;
                 max-height: calc(90vh - 140px) !important;
             }
             
@@ -184,7 +185,7 @@ function criarModalHistoricoClean(historico, dayIndex) {
                 }
                 
                 .modal-body-clean {
-                    padding: 24px !important;
+                    padding: 16px !important;
                 }
                 
                 .modal-title-clean {
@@ -392,7 +393,15 @@ function criarExerciciosSugeridos(exercicios) {
             .exercises-grid-clean {
                 display: grid !important;
                 gap: 20px !important;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Ajuste para detalhes dos exercícios */
+            .exercise-details-clean {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important;
+                gap: 12px !important;
             }
             
             .exercise-card-clean {
@@ -424,6 +433,8 @@ function criarExerciciosSugeridos(exercicios) {
                 font-size: 1.1rem !important;
                 font-weight: 600 !important;
                 line-height: 1.3 !important;
+                word-break: break-word !important;
+                white-space: normal !important;
             }
             
             .exercise-equipment-clean {

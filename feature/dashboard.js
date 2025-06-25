@@ -85,6 +85,7 @@ function limparCacheGlobal() {
 
 // Disponibilizar globalmente para debug
 window.limparCacheGlobal = limparCacheGlobal;
+window.dadosGlobaisCache = dadosGlobaisCache;
 
 // Função para garantir que o card expandível sempre existe (fallback)
 function garantirCardExpandivelExiste() {
@@ -645,7 +646,8 @@ window.atualizarSeletorSemanas = atualizarSeletorSemanas;
 
 // Função para iniciar treino (fallback)
 window.iniciarTreinoSimples = async function() {
-    console.log('[iniciarTreinoSimples] Verificando treino do dia...');
+    console.log('[iniciarTreinoSimples] ⚠️ ATENÇÃO: Versão SIMPLIFICADA sendo chamada!');
+    console.log('[iniciarTreinoSimples] Isso indica que workout.js não foi carregado corretamente');
     
     const currentUser = AppState.get('currentUser');
     if (!currentUser) {
@@ -684,8 +686,12 @@ window.iniciarTreinoSimples = async function() {
 };
 
 // Se não existe iniciarTreino, usar nossa versão simples
+// IMPORTANTE: Não sobrescrever se já existe uma versão completa (ex: do workout.js)
 if (!window.iniciarTreino) {
+    console.log('[dashboard.js] Registrando iniciarTreinoSimples como fallback');
     window.iniciarTreino = window.iniciarTreinoSimples;
+} else {
+    console.log('[dashboard.js] window.iniciarTreino já existe, mantendo versão atual');
 }
 
 // Função para inicializar a página home
@@ -1820,9 +1826,9 @@ function atualizarAtividadeRecente(execucoesRecentes) {
 
 // Configurar botão de iniciar treino
 function configurarBotaoIniciar() {
-    const startBtn = document.getElementById('contextual-workout-btn');
+    const startBtn = document.getElementById('contextual-workout-btn') || document.getElementById('start-workout-btn');
     if (!startBtn) {
-        console.warn('[configurarBotaoIniciar] Botão contextual não encontrado');
+        console.warn('[configurarBotaoIniciar] Nenhum botão de treino encontrado (#contextual-workout-btn ou #start-workout-btn)');
         return;
     }
     
@@ -2321,8 +2327,8 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
         
         // Usar a nova função com as views
         // Obter a semana atual sendo exibida
-        // Obter a semana "ativa" (protocolo) que deve ser usada nas views
-        const semanaAUsar = dadosGlobaisCache?.dados?.semanaAtiva || window.weekCarousel?.currentWeek || WeeklyPlanService.getWeekNumber(new Date());
+        // IMPORTANTE: Usar semanaExibida quando navegando entre semanas
+        const semanaAUsar = dadosGlobaisCache?.semanaExibida || dadosGlobaisCache?.dados?.semanaAtiva || WeeklyPlanService.getWeekNumber(new Date());
         
         const resumoCompleto = await buscarResumoTreinoCompleto(
             currentUser.id, 
@@ -2359,15 +2365,8 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
                     mostrarModalHistorico(historico, dayIndex);
                 }
             } else {
-                // Tentar buscar treino planejado (compatibilidade)
-                const treinoPlanejado = await buscarTreinoPlanejado(currentUser.id, dayIndex);
-                
-                if (treinoPlanejado) {
-                    console.log('[handleDayClick] 🎯 Mostrando resumo do treino planejado (fallback)');
-                    mostrarModalResumoPlanejado(treinoPlanejado, dayIndex);
-                } else {
-                    showNotification('Nenhum treino configurado para este dia', 'info');
-                }
+                // Fallback removido a pedido: não mostrar resumo planejado
+                showNotification('Nenhum treino configurado para este dia', 'info');
             }
         }
     } catch (error) {
@@ -3842,7 +3841,8 @@ async function buscarHistoricoTreino(userId, dayIndex) {
             // Buscar exercícios sugeridos do protocolo para este dia
             let exerciciosSugeridosProtocolo = [];
             try {
-                const exerciciosResult = await buscarExerciciosTreinoDia(userId, dataAlvo);
+                // Passar a semana exibida para buscar exercícios corretos
+                const exerciciosResult = await buscarExerciciosTreinoDia(userId, dataAlvo, semanaExibida);
                 if (exerciciosResult?.data && exerciciosResult.data.length > 0) {
                     exerciciosSugeridosProtocolo = exerciciosResult.data;
                     console.log('[buscarHistoricoTreino] ✅ Exercícios sugeridos encontrados:', exerciciosSugeridosProtocolo.length);

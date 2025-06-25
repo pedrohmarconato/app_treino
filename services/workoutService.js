@@ -187,21 +187,164 @@ export async function carregarPesosSugeridos(userId, protocoloTreinoId) {
     }
 }
 
-// Salvar execução de exercício
+// Salvar execução de exercício (individual - mantida para compatibilidade)
 export async function salvarExecucaoExercicio(dados) {
-    const { data, error } = await insert('execucao_exercicio_usuario', {
-        usuario_id: dados.usuario_id,
-        protocolo_treino_id: dados.protocolo_treino_id,
-        exercicio_id: dados.exercicio_id,
-        data_execucao: dados.data_execucao || nowInSaoPaulo(),
-        peso_utilizado: dados.peso_utilizado,
-        repeticoes: dados.repeticoes_realizadas,
-        serie_numero: dados.serie_numero,
-        falhou: dados.falhou || false,
-        observacoes: dados.observacoes || null
-    });
-    
-    return !error;
+    try {
+        console.log('[salvarExecucaoExercicio] Dados recebidos:', dados);
+        
+        // Validar dados obrigatórios
+        if (!dados.usuario_id || !dados.exercicio_id) {
+            console.error('[salvarExecucaoExercicio] Dados obrigatórios faltando:', {
+                usuario_id: dados.usuario_id,
+                exercicio_id: dados.exercicio_id
+            });
+            return false;
+        }
+        
+        const dadosParaSalvar = {
+            usuario_id: dados.usuario_id,
+            protocolo_treino_id: dados.protocolo_treino_id || null,
+            exercicio_id: dados.exercicio_id,
+            data_execucao: dados.data_execucao || toSaoPauloISOString(nowInSaoPaulo()),
+            peso_utilizado: dados.peso_utilizado,
+            repeticoes: dados.repeticoes || dados.repeticoes_realizadas,
+            serie_numero: dados.serie_numero,
+            falhou: dados.falhou || false,
+            observacoes: dados.observacoes || null,
+            tempo_descanso: dados.tempo_descanso || null
+        };
+        
+        console.log('[salvarExecucaoExercicio] Salvando no banco:', dadosParaSalvar);
+        
+        const { data, error } = await insert('execucao_exercicio_usuario', dadosParaSalvar);
+        
+        if (error) {
+            console.error('[salvarExecucaoExercicio] Erro do Supabase:', error);
+            return false;
+        }
+        
+        console.log('[salvarExecucaoExercicio] Salvo com sucesso:', data);
+        return true;
+        
+    } catch (error) {
+        console.error('[salvarExecucaoExercicio] Erro geral:', error);
+        return false;
+    }
+}
+
+// Salvar múltiplas execuções em lote (otimizado com chunking)
+export async function salvarExecucoesEmLote(execucoes) {
+    try {
+        console.log('[salvarExecucoesEmLote] Salvando', execucoes.length, 'execuções em lote');
+        
+        // Validar que temos execuções para salvar
+        if (!execucoes || execucoes.length === 0) {
+            console.log('[salvarExecucoesEmLote] Nenhuma execução para salvar');
+            return { sucesso: true, salvos: 0, erros: [] };
+        }
+        
+        // Configurar tamanho do chunk (PostgreSQL suporta até 1000 por vez)
+        const CHUNK_SIZE = 1000;
+        const chunks = [];
+        
+        // Dividir em chunks
+        for (let i = 0; i < execucoes.length; i += CHUNK_SIZE) {
+            chunks.push(execucoes.slice(i, i + CHUNK_SIZE));
+        }
+        
+        console.log(`[salvarExecucoesEmLote] Dividido em ${chunks.length} chunks`);
+        
+        let totalSalvos = 0;
+        const errosDetalhados = [];
+        const dadosNaoSalvos = [];
+        
+        // Processar cada chunk
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            console.log(`[salvarExecucoesEmLote] Processando chunk ${i + 1}/${chunks.length} com ${chunk.length} itens`);
+            
+            // Preparar dados do chunk
+            const dadosParaSalvar = chunk.map(dados => ({
+                usuario_id: dados.usuario_id,
+                protocolo_treino_id: dados.protocolo_treino_id || null,
+                exercicio_id: dados.exercicio_id,
+                data_execucao: dados.data_execucao || toSaoPauloISOString(nowInSaoPaulo()),
+                peso_utilizado: dados.peso_utilizado,
+                repeticoes: dados.repeticoes || dados.repeticoes_realizadas,
+                serie_numero: dados.serie_numero,
+                falhou: dados.falhou || false,
+                observacoes: dados.observacoes || null
+                // REMOVIDO: tempo_descanso - esta coluna não existe na tabela execucao_exercicio_usuario
+            }));
+            
+            // Tentar inserir o chunk
+            const { data, error, status } = await insert('execucao_exercicio_usuario', dadosParaSalvar);
+            
+            if (error) {
+                console.error(`[salvarExecucoesEmLote] Erro no chunk ${i + 1}:`, error);
+                
+                // Verificar se é erro parcial (status 207)
+                if (status === 207 && error.details?.failed_rows) {
+                    // Alguns registros falharam
+                    const falhas = error.details.failed_rows;
+                    const sucessos = chunk.length - falhas.length;
+                    totalSalvos += sucessos;
+                    
+                    errosDetalhados.push({
+                        chunk: i + 1,
+                        tipo: 'parcial',
+                        mensagem: `${falhas.length} registros falharam no chunk ${i + 1}`,
+                        detalhes: falhas
+                    });
+                    
+                    // Adicionar falhas aos dados não salvos
+                    dadosNaoSalvos.push(...falhas);
+                } else {
+                    // Falha total do chunk
+                    errosDetalhados.push({
+                        chunk: i + 1,
+                        tipo: 'total',
+                        mensagem: error.message || `Erro ao salvar chunk ${i + 1}`
+                    });
+                    
+                    // Todo o chunk falhou
+                    dadosNaoSalvos.push(...chunk);
+                }
+            } else {
+                // Sucesso total do chunk
+                totalSalvos += data?.length || chunk.length;
+            }
+        }
+        
+        // Determinar status geral
+        const sucessoParcial = totalSalvos > 0 && totalSalvos < execucoes.length;
+        const sucessoTotal = totalSalvos === execucoes.length;
+        
+        console.log('[salvarExecucoesEmLote] Resultado final:', {
+            total: execucoes.length,
+            salvos: totalSalvos,
+            falhas: dadosNaoSalvos.length,
+            chunks: chunks.length
+        });
+        
+        return {
+            sucesso: sucessoTotal,
+            sucessoParcial,
+            salvos: totalSalvos,
+            erros: errosDetalhados.map(e => e.mensagem),
+            errosDetalhados,
+            dadosNaoSalvos: dadosNaoSalvos.length > 0 ? dadosNaoSalvos : null
+        };
+        
+    } catch (error) {
+        console.error('[salvarExecucoesEmLote] Erro geral:', error);
+        return { 
+            sucesso: false, 
+            salvos: 0, 
+            erros: [error.message || 'Erro inesperado ao salvar execuções'],
+            dadosNaoSalvos: execucoes
+        };
+    }
 }
 
 // Buscar execuções de um exercício

@@ -4,13 +4,98 @@ import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 
 import AppState from '../state/appState.js';
 import { fetch1RMUsuario } from '../services/userService.js';
-import { carregarPesosSugeridos, salvarExecucaoExercicio, marcarTreinoConcluido } from '../services/workoutService.js';
+import { carregarPesosSugeridos, salvarExecucaoExercicio, salvarExecucoesEmLote, marcarTreinoConcluido } from '../services/workoutService.js';
 import { showNotification } from '../ui/notifications.js';
 import { mostrarTela, voltarParaHome } from '../ui/navigation.js';
+import { workoutStateManager } from '../services/workoutStateManager.js';
+import { offlineSyncService } from '../services/offlineSyncService.js';
+import { workoutAnalytics } from '../services/workoutAnalytics.js';
+import { criarModalRecuperacaoTreino } from '../components/workoutRecoveryModal.js';
+import { timerManager } from '../services/timerManager.js';
+import { cleanCorruptedTimerData } from '../utils/cleanCorruptedTimer.js';
 
 // Iniciar treino
 export async function iniciarTreino() {
-    console.log('[iniciarTreino] Verificando dados do treino...');
+    console.log('[iniciarTreino] Iniciando função iniciarTreino...');
+    console.log('[iniciarTreino] Esta é a versão COMPLETA do workout.js');
+    
+    // Limpar dados corrompidos antes de iniciar
+    cleanCorruptedTimerData();
+    
+    // Verificar se há treino em andamento
+    const treinoEmAndamento = await workoutStateManager.verificarTreinoEmAndamento();
+    if (treinoEmAndamento && false) { // TEMPORÁRIO: desabilitado para testes
+        console.log('[iniciarTreino] Treino em andamento encontrado');
+        
+        // Mostrar modal de escolha
+        criarModalRecuperacaoTreino(
+            treinoEmAndamento,
+            // Opção: Continuar
+            () => {
+                mostrarTela('workout-screen');
+                const restaurado = workoutStateManager.restaurarEstado(treinoEmAndamento);
+                if (restaurado) {
+                    // Limpar timers antigos antes de restaurar
+                    timerManager.clearContext('workout');
+                    
+                    // Aguardar um pouco para garantir que o DOM esteja pronto
+                    setTimeout(() => {
+                        // Re-registrar timer do treino se necessário
+                        const workoutStartTime = AppState.get('workoutStartTime');
+                        console.log('[iniciarTreino] workoutStartTime restaurado:', workoutStartTime);
+                        console.log('[iniciarTreino] Estado completo do cronometro:', treinoEmAndamento.cronometro);
+                        
+                        // Verificar se o tempo foi restaurado corretamente
+                        if (!workoutStartTime && treinoEmAndamento.cronometro?.workoutStartTime) {
+                            console.log('[iniciarTreino] Usando workoutStartTime do cache:', treinoEmAndamento.cronometro.workoutStartTime);
+                            AppState.set('workoutStartTime', treinoEmAndamento.cronometro.workoutStartTime);
+                        }
+                        
+                        // Forçar inicialização do timer
+                        const finalStartTime = AppState.get('workoutStartTime');
+                        if (finalStartTime && !isNaN(finalStartTime)) {
+                            // Garantir que o timer use o tempo correto
+                            startWorkoutTimer();
+                        } else {
+                            // Se não tem tempo salvo válido, iniciar novo
+                            console.warn('[iniciarTreino] Nenhum workoutStartTime válido encontrado, iniciando novo');
+                            AppState.set('workoutStartTime', Date.now());
+                            startWorkoutTimer();
+                        }
+                    }, 100);
+                    
+                    // Verificar se havia cronômetro de descanso ativo
+                    const restTime = treinoEmAndamento.cronometro?.restTime;
+                    if (restTime && restTime > 0) {
+                        // Restaurar cronômetro de descanso
+                        AppState.set('restTime', restTime);
+                        mostrarCronometroDescanso(restTime);
+                    }
+                    
+                    workoutAnalytics.logTreinoRetomado(treinoEmAndamento);
+                    workoutAnalytics.logCacheRecuperado(treinoEmAndamento.execucoes?.length || 0);
+                    showNotification('Treino anterior restaurado', 'success');
+                    
+                    // Mostrar exercício e restaurar séries após o timer ser inicializado
+                    setTimeout(() => {
+                        mostrarExercicioAtual();
+                        restaurarSeriesCompletadas();
+                    }, 150);
+                }
+            },
+            // Opção: Novo treino
+            () => {
+                workoutStateManager.limparTudo();
+                workoutAnalytics.logTreinoAbandonado('usuario_escolheu_novo');
+                // Continuar com fluxo normal de novo treino
+                iniciarNovoTreino();
+            }
+        );
+        return;
+    }
+    
+    // Se não há treino em andamento, continuar com o fluxo normal
+    console.log('[iniciarTreino] Nenhum treino em andamento, iniciando novo treino...');
     
     // Debug: Adicionar listener temporário para monitorar mudanças
     const unsubscribe = AppState.subscribe('currentExercises', (newValue) => {
@@ -92,15 +177,29 @@ export async function iniciarTreino() {
     
     // Verificar se há execuções não salvas no cache
     const execucoesPendentes = localStorage.getItem('treino_execucoes_temp');
+    let estadoRecuperado = false;
+    
     if (execucoesPendentes) {
-        const quantidade = JSON.parse(execucoesPendentes).length;
+        const execucoesCache = JSON.parse(execucoesPendentes);
+        const quantidade = execucoesCache.length;
         if (confirm(`Há ${quantidade} execuções não salvas de um treino anterior. Deseja recuperá-las?`)) {
             // Recuperar execuções do cache
-            AppState.set('execucoesCache', JSON.parse(execucoesPendentes));
+            AppState.set('execucoesCache', execucoesCache);
             showNotification(`${quantidade} execuções recuperadas do cache`, 'info');
+            estadoRecuperado = true;
+            
+            // Recuperar também o estado do treino
+            const estadoTreino = localStorage.getItem('treino_estado_temp');
+            if (estadoTreino) {
+                const estado = JSON.parse(estadoTreino);
+                AppState.set('currentExerciseIndex', estado.currentExerciseIndex || 0);
+                AppState.set('completedSeries', estado.completedSeries || 0);
+                console.log('[iniciarTreino] Estado recuperado:', estado);
+            }
         } else {
             // Limpar cache antigo
             localStorage.removeItem('treino_execucoes_temp');
+            localStorage.removeItem('treino_estado_temp');
             AppState.set('execucoesCache', []);
         }
     } else {
@@ -108,13 +207,58 @@ export async function iniciarTreino() {
         AppState.set('execucoesCache', []);
     }
     
-    // Resetar estado do treino
-    AppState.set('currentExerciseIndex', 0);
-    AppState.set('completedSeries', 0);
-    AppState.set('workoutStartTime', Date.now());
+    // Resetar estado do treino apenas se não foi recuperado
+    if (!estadoRecuperado) {
+        AppState.set('currentExerciseIndex', 0);
+        AppState.set('completedSeries', 0);
+    }
+    // Gerenciar tempo do treino
+    if (estadoRecuperado) {
+        // Recuperar tempo salvo
+        const tempoSalvo = localStorage.getItem('treino_tempo_temp');
+        if (tempoSalvo) {
+            try {
+                const dados = JSON.parse(tempoSalvo);
+                const tempoDecorrido = Math.floor((Date.now() - dados.ultimaAtualizacao) / 1000);
+                const tempoTotal = Number(dados.tempo || 0) + Number(tempoDecorrido || 0);
+                
+                // Validar que tempoTotal é válido
+                if (!isNaN(tempoTotal) && tempoTotal >= 0) {
+                    AppState.set('workoutElapsedTime', tempoTotal);
+                    const calculatedStartTime = Date.now() - (tempoTotal * 1000);
+                    
+                    // Garantir que o tempo calculado é válido
+                    if (!isNaN(calculatedStartTime) && calculatedStartTime > 0) {
+                        AppState.set('workoutStartTime', calculatedStartTime);
+                        console.log('[iniciarTreino] Tempo recuperado - elapsed:', tempoTotal, 'startTime:', calculatedStartTime);
+                    } else {
+                        console.warn('[iniciarTreino] Tempo calculado inválido, usando tempo atual');
+                        AppState.set('workoutStartTime', Date.now());
+                    }
+                } else {
+                    console.warn('[iniciarTreino] Tempo total inválido:', tempoTotal);
+                    AppState.set('workoutStartTime', Date.now());
+                }
+            } catch (error) {
+                console.error('[iniciarTreino] Erro ao recuperar tempo:', error);
+                AppState.set('workoutStartTime', Date.now());
+            }
+        } else {
+            AppState.set('workoutStartTime', Date.now());
+        }
+    } else {
+        AppState.set('workoutStartTime', Date.now());
+    }
     
     // Navegar para tela de treino
     mostrarTela('workout-screen');
+    
+    // Se houve recuperação de estado, restaurar UI das séries completadas
+    if (estadoRecuperado) {
+        setTimeout(() => {
+            restaurarSeriesCompletadas();
+        }, 500);
+    }
     
     // Atualizar informações do treino no template
     const workoutNameEl = document.getElementById('workout-name');
@@ -168,33 +312,169 @@ export async function iniciarTreino() {
 
 // Timer do treino
 function startWorkoutTimer() {
-    const startTime = AppState.get('workoutStartTime');
+    let startTime = AppState.get('workoutStartTime');
+    
+    console.log('[startWorkoutTimer] Iniciando timer com startTime:', startTime);
+    
+    // Validar se startTime é válido
+    if (!startTime || isNaN(startTime) || typeof startTime !== 'number') {
+        console.warn('[startWorkoutTimer] startTime inválido:', startTime, 'tipo:', typeof startTime);
+        startTime = Date.now();
+        AppState.set('workoutStartTime', startTime);
+        console.log('[startWorkoutTimer] Novo startTime definido:', startTime);
+    }
+    
+    // Limpar timer anterior se existir
+    const oldInterval = AppState.get('workoutTimerInterval');
+    if (oldInterval) {
+        clearInterval(oldInterval);
+        console.log('[startWorkoutTimer] Timer anterior limpo');
+    }
     
     const updateTimer = () => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
-        const timerDisplay = document.getElementById('workout-timer-display');
-        if (timerDisplay) {
-            timerDisplay.textContent = timeString;
+        try {
+            const currentStartTime = AppState.get('workoutStartTime') || startTime;
+            const now = Date.now();
+            const elapsed = Math.floor((now - currentStartTime) / 1000);
+            
+            // Validação adicional
+            if (isNaN(elapsed) || elapsed < 0) {
+                console.error('[startWorkoutTimer] Elapsed time inválido:', elapsed, 'startTime:', currentStartTime, 'now:', now);
+                return;
+            }
+            
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Tentar múltiplos seletores para encontrar o timer
+            let timerDisplay = document.getElementById('workout-timer-display');
+            if (!timerDisplay) {
+                // Tentar selector alternativo
+                timerDisplay = document.querySelector('#workout-timer-display');
+            }
+            
+            if (!timerDisplay) {
+                // Tentar encontrar em containers alternativos
+                const workoutHeader = document.querySelector('.workout-header');
+                if (workoutHeader) {
+                    timerDisplay = workoutHeader.querySelector('#workout-timer-display');
+                }
+            }
+            
+            if (timerDisplay) {
+                timerDisplay.textContent = timeString;
+                // Remover flag de aviso se conseguiu atualizar
+                delete updateTimer.warnedOnce;
+            } else {
+                // Só logar aviso na primeira vez
+                if (!updateTimer.warnedOnce) {
+                    console.warn('[startWorkoutTimer] Elemento workout-timer-display não encontrado');
+                    console.warn('[startWorkoutTimer] Tentando novamente em 500ms...');
+                    updateTimer.warnedOnce = true;
+                    
+                    // Tentar novamente após um delay
+                    setTimeout(() => {
+                        const retryDisplay = document.getElementById('workout-timer-display');
+                        if (retryDisplay) {
+                            retryDisplay.textContent = timeString;
+                            console.log('[startWorkoutTimer] Timer encontrado na segunda tentativa');
+                            delete updateTimer.warnedOnce;
+                        }
+                    }, 500);
+                }
+            }
+            // Salvar tempo a cada 5 segundos
+            if (elapsed % 5 === 0 && !isNaN(elapsed) && elapsed >= 0) {
+                const dadosTempo = {
+                    tempo: elapsed,
+                    ultimaAtualizacao: Date.now()
+                };
+                localStorage.setItem('treino_tempo_temp', JSON.stringify(dadosTempo));
+            }
+        } catch (error) {
+            console.error('[startWorkoutTimer] Erro ao atualizar timer:', error);
         }
     };
     
-    // Atualizar imediatamente
-    updateTimer();
+    // Aguardar DOM se necessário
+    const startTimer = () => {
+        // Atualizar imediatamente
+        updateTimer();
+        
+        // Atualizar a cada segundo
+        const interval = setInterval(updateTimer, 1000);
+        AppState.set('workoutTimerInterval', interval);
+        console.log('[startWorkoutTimer] Timer iniciado com intervalo:', interval);
+    };
     
-    // Atualizar a cada segundo
-    const interval = setInterval(updateTimer, 1000);
-    AppState.set('workoutTimerInterval', interval);
+    // Verificar se o DOM está pronto
+    if (document.readyState === 'loading') {
+        console.log('[startWorkoutTimer] DOM ainda carregando, aguardando...');
+        document.addEventListener('DOMContentLoaded', startTimer);
+    } else {
+        startTimer();
+    }
 }
 
-// Expor no window apenas se não existir (evitar sobrescrever WorkoutExecutionManager)
-if (!window.iniciarTreino) {
-    console.log('[workout.js] Registrando iniciarTreino legacy');
-    window.iniciarTreino = iniciarTreino;
+// === Funções auxiliares ===
+function iniciarTimerTreino() {
+    try {
+        const startTime = AppState.get('workoutStartTime') || Date.now();
+        AppState.set('workoutStartTime', startTime);
+
+        const update = () => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const min = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const sec = String(elapsed % 60).padStart(2, '0');
+            const displayEl = document.getElementById('workout-timer-display');
+            if (displayEl) {
+                displayEl.textContent = `${min}:${sec}`;
+            }
+        };
+
+        update();
+        timerManager.setInterval('workout_timer', update, 1000);
+    } catch (err) {
+        console.error('[iniciarTimerTreino] Erro:', err);
+    }
 }
+
+async function iniciarNovoTreino() {
+    console.log('[iniciarNovoTreino] Iniciando novo treino...');
+
+    // Reiniciar índices de estado
+    AppState.set('currentExerciseIndex', 0);
+    AppState.set('completedSeries', 0);
+    AppState.set('workoutStartTime', Date.now());
+
+    // Garantir dados de treino
+    let workout = AppState.get('currentWorkout');
+    let exercises = AppState.get('currentExercises');
+    if (!workout || !exercises || exercises.length === 0) {
+        if (window.carregarDashboard) {
+            await window.carregarDashboard();
+            workout = AppState.get('currentWorkout');
+            exercises = AppState.get('currentExercises');
+        }
+    }
+
+    if (!workout || !exercises || exercises.length === 0) {
+        showNotification('Nenhum treino disponível para hoje', 'warning');
+        return;
+    }
+
+    // Navegar e iniciar UI
+    mostrarTela('workout-screen');
+    iniciarTimerTreino();
+    mostrarExercicioAtual();
+}
+
+// Expor no window - SEMPRE registrar a versão completa
+// Como workout.js é carregado primeiro (import estático em app.js), 
+// esta será a versão definitiva
+console.log('[workout.js] Registrando iniciarTreino (versão completa)');
+window.iniciarTreino = iniciarTreino;
 
 // Mostrar exercício atual
 async function mostrarExercicioAtual() {
@@ -359,7 +639,7 @@ function renderizarSeries(exercicio, pesosSugeridos) {
                 </svg>
                 <span>Anterior</span>
             </button>
-            <button class="btn-primary" onclick="proximoExercicio()">
+            <button class="btn-primary" id="btn-proximo-exercicio-${currentIndex}" onclick="proximoExercicio()">
                 <span>Próximo</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="9 18 15 12 9 6"/>
@@ -485,6 +765,11 @@ function renderizarSeries(exercicio, pesosSugeridos) {
     // Atualizar contador de séries completadas
     const seriesCompletadas = execucoesDoExercicio.length;
     AppState.set('completedSeries', seriesCompletadas);
+    
+    // Atualizar estado do botão próximo após renderizar
+    setTimeout(() => {
+        atualizarBotaoProximo();
+    }, 100);
 }
 
 // Ajustar valor dos inputs
@@ -524,18 +809,25 @@ window.confirmarSerie = async function(serieIndex) {
         serie_numero: serieIndex + 1,
         peso_utilizado: peso,
         repeticoes_realizadas: reps,
-        data_execucao: new Date().toISOString()
+        data_execucao: new Date().toISOString(),
+        // REMOVIDO tempo_descanso - não existe na tabela execucao_exercicio_usuario
+        // O tempo de descanso está disponível em exercicio.tempo_descanso quando necessário
+        // ID temporário para debug
+        _tempId: `${exercicio.exercicio_id}_${serieIndex + 1}_${Date.now()}`
     };
     
     console.log('[confirmarSerie] Salvando série:', dados);
     
     // Adicionar ao cache local ao invés de salvar no Supabase
-    let execucoesCache = AppState.get('execucoesCache') || [];
+    const execucoesCache = AppState.get('execucoesCache') || [];
     execucoesCache.push(dados);
     AppState.set('execucoesCache', execucoesCache);
     
-    // Salvar no localStorage para proteção
-    localStorage.setItem('treino_execucoes_temp', JSON.stringify(execucoesCache));
+    // Usar o WorkoutStateManager para salvar com throttle
+    workoutStateManager.onSerieConfirmada(dados);
+    
+    // Registrar analytics
+    workoutAnalytics.logSerieCompletada(dados);
     
     console.log(`[workout] Série ${serieIndex + 1} salva no cache local. Total: ${execucoesCache.length} execuções`);
     
@@ -559,9 +851,39 @@ window.confirmarSerie = async function(serieIndex) {
     const completedSeries = AppState.get('completedSeries') + 1;
     AppState.set('completedSeries', completedSeries);
     
-    // Mostrar cronômetro de descanso se não for a última série
-    if (completedSeries < exercicio.series) {
-        mostrarCronometroDescanso(exercicio.tempo_descanso);
+    // Atualizar visual do botão próximo baseado no progresso
+    atualizarBotaoProximo();
+    
+    // Mostrar cronômetro de descanso se não for a última série do exercício
+    const currentExerciseIndex = AppState.get('currentExerciseIndex');
+    const seriesDoExercicio = document.querySelectorAll(`#series-container-${currentExerciseIndex} .series-item`).length;
+    const seriesCompletadasDoExercicio = document.querySelectorAll(`#series-container-${currentExerciseIndex} .series-item.completed`).length;
+    
+    console.log('[confirmarSerie] Verificando descanso - séries completadas:', seriesCompletadasDoExercicio, 'de', seriesDoExercicio);
+    
+    if (seriesCompletadasDoExercicio < seriesDoExercicio) {
+        // Calcular tempo médio de descanso das execuções anteriores
+        const execucoesCache = AppState.get('execucoesCache') || [];
+        const temposDescanso = execucoesCache
+            .filter(e => e.tempo_descanso && e.tempo_descanso > 0)
+            .map(e => e.tempo_descanso);
+        
+        let tempoDescanso;
+        if (temposDescanso.length > 0) {
+            // Usar média dos tempos anteriores
+            const soma = temposDescanso.reduce((a, b) => a + b, 0);
+            tempoDescanso = Math.round(soma / temposDescanso.length);
+            console.log('[confirmarSerie] Usando tempo médio de descanso:', tempoDescanso);
+        } else {
+            // Usar tempo sugerido ou default
+            tempoDescanso = exercicio.tempo_descanso || 60;
+            console.log('[confirmarSerie] Usando tempo padrão de descanso:', tempoDescanso);
+        }
+        
+        console.log('[confirmarSerie] Mostrando cronômetro de descanso por', tempoDescanso, 'segundos');
+        mostrarCronometroDescanso(tempoDescanso);
+    } else {
+        console.log('[confirmarSerie] Última série do exercício - não mostrando cronômetro');
     }
     
     // Verificar se completou todas as séries
@@ -657,20 +979,171 @@ window.pularDescanso = function() {
 
 // Próximo exercício
 function proximoExercicio() {
+    console.log('[proximoExercicio] Avançando para próximo exercício...');
+    
+    const exercises = AppState.get('currentExercises');
     const currentIndex = AppState.get('currentExerciseIndex');
-    AppState.set('currentExerciseIndex', currentIndex + 1);
+    const novoIndex = currentIndex + 1;
+    
+    // Verificar se todas as séries foram completadas
+    const currentExercise = exercises[currentIndex];
+    if (currentExercise) {
+        const totalSeries = currentExercise.series || 0;
+        const seriesCompletadas = document.querySelectorAll(`#series-container-${currentIndex} .series-item.completed`).length;
+        
+        if (seriesCompletadas < totalSeries) {
+            showNotification(`Complete todas as séries antes de avançar (${seriesCompletadas}/${totalSeries} concluídas)`, 'warning');
+            return;
+        }
+    }
+    
+    // Verificar se há próximo exercício
+    if (novoIndex >= exercises.length) {
+        console.log('[proximoExercicio] Não há mais exercícios, mostrando conclusão');
+        mostrarTreinoConcluido();
+        return;
+    }
+    
+    // 1. SALVAR ESTADO ANTES DE AVANÇAR (crítico para não perder progresso)
+    workoutStateManager.saveStateImmediate();
+    
+    // 2. MOSTRAR LOADING/SPINNER
+    const exerciseContainer = document.getElementById('exercises-container');
+    if (exerciseContainer) {
+        exerciseContainer.innerHTML = `
+            <div class="exercise-loading">
+                <div class="loading-spinner"></div>
+                <p>Carregando próximo exercício...</p>
+            </div>
+        `;
+        exerciseContainer.style.display = 'block';
+    }
+    
+    // 3. RESETAR TODOS OS ESTADOS DA UI
+    resetarEstadosUI();
+    
+    // 4. REMOVER OVERLAYS
+    const restOverlay = document.getElementById('rest-timer-overlay');
+    if (restOverlay) {
+        restOverlay.style.display = 'none';
+    }
+    
+    // Limpar timer se existir
+    const timerInterval = AppState.get('restTimerInterval');
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        AppState.set('restTimerInterval', null);
+    }
+    
+    // 5. ATUALIZAR ÍNDICE E ESTADO
+    AppState.set('currentExerciseIndex', novoIndex);
     AppState.set('completedSeries', 0);
     
-    mostrarExercicioAtual();
+    // 6. CARREGAR PRÓXIMO EXERCÍCIO COM DELAY PARA GARANTIR UI RESPONSIVA
+    setTimeout(async () => {
+        try {
+            // Carregar pesos sugeridos para o novo exercício
+            const proximoExercicio = exercises[novoIndex];
+            if (proximoExercicio) {
+                const currentUser = AppState.get('currentUser');
+                const { data: pesosSugeridos } = await carregarPesosSugeridos(
+                    currentUser.id,
+                    proximoExercicio.protocolo_treino_id
+                );
+                
+                // Salvar pesos sugeridos no estado
+                if (pesosSugeridos) {
+                    AppState.set('pesosSugeridos', pesosSugeridos);
+                }
+            }
+            
+            // Mostrar novo exercício
+            mostrarExercicioAtual();
+            
+            // Salvar estado após mudança completa
+            workoutStateManager.onExercicioMudou(novoIndex);
+            
+            // Rolar para o topo suavemente
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            console.log(`[proximoExercicio] Avançado para exercício ${novoIndex + 1} de ${exercises.length}`);
+            
+        } catch (error) {
+            console.error('[proximoExercicio] Erro ao carregar exercício:', error);
+            showNotification('Erro ao carregar exercício', 'error');
+            
+            // Em caso de erro, ainda mostrar o exercício sem pesos sugeridos
+            mostrarExercicioAtual();
+        }
+    }, 100); // Pequeno delay para garantir que o spinner seja visível
+}
+
+// Função auxiliar para resetar estados da UI
+function resetarEstadosUI() {
+    // Resetar indicadores de falha
+    AppState.set('seriesFalhadas', []);
+    
+    // Resetar dropsets se existirem
+    AppState.set('dropsetsAtivos', false);
+    AppState.set('dropsetConfig', null);
+    
+    // Resetar temporizadores
+    AppState.set('restTime', null);
+    
+    // Resetar contadores visuais
+    const seriesCompletadas = document.querySelectorAll('.serie-row.completed');
+    seriesCompletadas.forEach(serie => {
+        serie.classList.remove('completed', 'failed');
+    });
+    
+    // Resetar inputs de séries anteriores
+    const inputs = document.querySelectorAll('.series-input');
+    inputs.forEach(input => {
+        input.value = '';
+        input.disabled = false;
+    });
+    
+    // Resetar botões de confirmação
+    const confirmButtons = document.querySelectorAll('.btn-confirm-series');
+    confirmButtons.forEach(btn => {
+        btn.disabled = false;
+        btn.innerHTML = '<svg>...</svg>'; // Restaurar ícone original
+    });
+    
+    console.log('[resetarEstadosUI] Estados da UI resetados');
 }
 
 // Voltar exercício
 window.voltarExercicio = function() {
     const currentIndex = AppState.get('currentExerciseIndex');
     if (currentIndex > 0) {
+        // Salvar estado antes de voltar
+        workoutStateManager.saveStateImmediate();
+        
+        // Mostrar loading
+        const exerciseContainer = document.getElementById('exercises-container');
+        if (exerciseContainer) {
+            exerciseContainer.innerHTML = `
+                <div class="exercise-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando exercício anterior...</p>
+                </div>
+            `;
+        }
+        
+        // Resetar estados da UI
+        resetarEstadosUI();
+        
+        // Atualizar índice
         AppState.set('currentExerciseIndex', currentIndex - 1);
         AppState.set('completedSeries', 0);
-        mostrarExercicioAtual();
+        
+        // Carregar exercício anterior com delay
+        setTimeout(() => {
+            mostrarExercicioAtual();
+            workoutStateManager.onExercicioMudou(currentIndex - 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
     } else {
         showNotification('Este é o primeiro exercício', 'info');
     }
@@ -736,6 +1209,8 @@ function mostrarTreinoConcluido() {
 
 // Finalizar treino
 window.finalizarTreino = async function() {
+    let loadingNotification = null;
+    
     try {
         const currentUser = AppState.get('currentUser');
         
@@ -747,25 +1222,66 @@ window.finalizarTreino = async function() {
         // IMPORTANTE: Enviar todas as execuções do cache para o Supabase
         const execucoesCache = AppState.get('execucoesCache') || [];
         
+        console.log('[finalizarTreino] 📊 Debug - Estado do cache:', {
+            quantidade: execucoesCache.length,
+            execucoes: execucoesCache
+        });
+        
         if (execucoesCache.length > 0) {
-            showNotification('Salvando treino...', 'info');
+            // Mostrar notificação de loading persistente
+            loadingNotification = showNotification('Salvando treino...', 'info', true);
             
-            console.log(`[finalizarTreino] Enviando ${execucoesCache.length} execuções para o Supabase...`);
+            console.log(`[finalizarTreino] Enviando ${execucoesCache.length} execuções em lote...`);
             
-            // Enviar todas as execuções de uma vez
-            for (const execucao of execucoesCache) {
-                const success = await salvarExecucaoExercicio(execucao);
-                if (!success) {
-                    console.error('[finalizarTreino] Erro ao salvar execução:', execucao);
-                    // Continuar salvando as outras mesmo se uma falhar
+            // Verificar se está online
+            if (!navigator.onLine) {
+                // Se offline, adicionar à fila de sincronização
+                await offlineSyncService.addToSyncQueue(execucoesCache, 'execucoes');
+                
+                // Remover notificação de loading
+                if (loadingNotification && loadingNotification.remove) {
+                    loadingNotification.remove();
+                }
+                
+                showNotification(
+                    'Sem conexão. Treino salvo localmente e será sincronizado quando voltar online.',
+                    'warning',
+                    true
+                );
+                
+                // Continuar com fluxo normal (limpar cache local)
+            } else {
+                // Se online, tentar salvar normalmente
+                const resultado = await salvarExecucoesEmLote(execucoesCache);
+                
+                // Remover notificação de loading
+                if (loadingNotification && loadingNotification.remove) {
+                    loadingNotification.remove();
+                }
+                
+                if (!resultado.sucesso) {
+                    console.error('[finalizarTreino] ❌ Erro ao salvar execuções:', resultado.erros);
+                    
+                    // Adicionar à fila offline para retry
+                    await offlineSyncService.addToSyncQueue(execucoesCache, 'execucoes');
+                    
+                    const errorBanner = showNotification(
+                        `Erro ao salvar. Dados salvos localmente. <button onclick="tentarNovamenteSalvar()" class="btn-retry">Tentar Novamente</button>`,
+                        'error',
+                        true
+                    );
+                    
+                    window.errorBanner = errorBanner;
+                    
+                    // Continuar com fluxo para não bloquear usuário
+                } else {
+                    console.log(`[finalizarTreino] ✅ ${resultado.salvos} execuções salvas com sucesso`);
                 }
             }
             
-            console.log('[finalizarTreino] ✅ Todas as execuções enviadas para o Supabase');
-            
-            // Limpar cache após envio bem sucedido
+            // Limpar cache após processamento (sucesso ou erro tratado)
             AppState.set('execucoesCache', []);
-            localStorage.removeItem('treino_execucoes_temp');
+            workoutStateManager.limparTudo();
         }
         
         // Marcar treino como concluído
@@ -787,6 +1303,16 @@ window.finalizarTreino = async function() {
             AppState.set('workoutTimerInterval', null);
         }
         
+        // Registrar analytics de finalização
+        const resumo = {
+            exerciciosCompletados: exercises.length,
+            seriesCompletadas: execucoesCache.length,
+            pesoTotal: execucoesCache.reduce((total, exec) => 
+                total + (exec.peso_utilizado * exec.repeticoes_realizadas), 0
+            )
+        };
+        workoutAnalytics.logTreinoFinalizado(resumo);
+        
         // Resetar estado do treino
         AppState.resetWorkout();
         
@@ -802,14 +1328,42 @@ window.finalizarTreino = async function() {
         
     } catch (error) {
         console.error('Erro ao finalizar treino:', error);
-        showNotification('Erro ao finalizar treino', 'error');
+        
+        // Remover loading se ainda existir
+        if (loadingNotification && loadingNotification.remove) {
+            loadingNotification.remove();
+        }
+        
+        // Mostrar erro com opção de retry
+        const errorBanner = showNotification(
+            `Erro ao finalizar treino: ${error.message}. <button onclick="tentarNovamenteSalvar()" class="btn-retry">Tentar Novamente</button>`,
+            'error',
+            true
+        );
+        window.errorBanner = errorBanner;
+    } finally {
+        // Garantir que loading seja removido
+        if (loadingNotification && loadingNotification.remove) {
+            loadingNotification.remove();
+        }
     }
+};
+
+// Função para tentar salvar novamente
+window.tentarNovamenteSalvar = async function() {
+    // Remover banner de erro anterior
+    if (window.errorBanner && window.errorBanner.remove) {
+        window.errorBanner.remove();
+    }
+    
+    // Tentar finalizar novamente
+    await window.finalizarTreino();
 };
 
 // Mostrar cronômetro de descanso
 function mostrarCronometroDescanso(tempoDescanso) {
     // Remover overlay existente se houver
-    let existingOverlay = document.getElementById('rest-timer-overlay');
+    const existingOverlay = document.getElementById('rest-timer-overlay');
     if (existingOverlay) {
         existingOverlay.remove();
     }
@@ -858,6 +1412,10 @@ function mostrarCronometroDescanso(tempoDescanso) {
         
         // Configurar timer
         let tempoRestante = tempoDescanso;
+        
+        // Salvar estado do cronômetro
+        AppState.set('restTime', tempoRestante);
+        workoutStateManager.onCronometroIniciado(tempoRestante);
         
         // Calcular circunferência do círculo
         const radius = 54;
@@ -923,6 +1481,99 @@ function updateElement(id, value) {
     }
 }
 
+// Atualizar estado visual do botão próximo
+function atualizarBotaoProximo() {
+    const currentIndex = AppState.get('currentExerciseIndex');
+    const exercises = AppState.get('currentExercises');
+    const currentExercise = exercises[currentIndex];
+    
+    if (!currentExercise) return;
+    
+    const btnProximo = document.getElementById(`btn-proximo-exercicio-${currentIndex}`);
+    if (!btnProximo) return;
+    
+    const totalSeries = currentExercise.series || 0;
+    const seriesCompletadas = document.querySelectorAll(`#series-container-${currentIndex} .series-item.completed`).length;
+    
+    if (seriesCompletadas < totalSeries) {
+        // Desabilitar visualmente o botão
+        btnProximo.classList.add('btn-disabled');
+        btnProximo.style.opacity = '0.5';
+        btnProximo.style.cursor = 'not-allowed';
+        btnProximo.title = `Complete todas as séries (${seriesCompletadas}/${totalSeries})`;
+    } else {
+        // Habilitar o botão
+        btnProximo.classList.remove('btn-disabled');
+        btnProximo.style.opacity = '1';
+        btnProximo.style.cursor = 'pointer';
+        btnProximo.title = 'Ir para o próximo exercício';
+    }
+}
+
+// Restaurar visualmente as séries já completadas
+function restaurarSeriesCompletadas() {
+    console.log('[restaurarSeriesCompletadas] Iniciando restauração visual...');
+    
+    const execucoesCache = AppState.get('execucoesCache') || [];
+    const currentExerciseIndex = AppState.get('currentExerciseIndex') || 0;
+    const exercises = AppState.get('currentExercises') || [];
+    
+    if (!exercises.length) {
+        console.log('[restaurarSeriesCompletadas] Sem exercícios para restaurar');
+        return;
+    }
+    
+    // Agrupar execuções por exercício
+    const execucoesPorExercicio = {};
+    execucoesCache.forEach(exec => {
+        if (!execucoesPorExercicio[exec.exercicio_id]) {
+            execucoesPorExercicio[exec.exercicio_id] = [];
+        }
+        execucoesPorExercicio[exec.exercicio_id].push(exec);
+    });
+    
+    console.log('[restaurarSeriesCompletadas] Execuções agrupadas:', execucoesPorExercicio);
+    
+    // Para cada exercício com execuções, marcar séries como completadas
+    Object.keys(execucoesPorExercicio).forEach(exercicioId => {
+        const execucoesDoExercicio = execucoesPorExercicio[exercicioId];
+        
+        execucoesDoExercicio.forEach(exec => {
+            const serieIndex = exec.serie_numero - 1;
+            const serieRow = document.querySelector(`#serie-${serieIndex}`);
+            
+            if (serieRow) {
+                // Marcar como completada
+                serieRow.classList.add('completed');
+                
+                // Preencher valores se os inputs existirem
+                const pesoInput = document.getElementById(`peso-${serieIndex}`);
+                const repInput = document.getElementById(`rep-${serieIndex}`);
+                
+                if (pesoInput) pesoInput.value = exec.peso_utilizado;
+                if (repInput) repInput.value = exec.repeticoes_realizadas || exec.repeticoes;
+                
+                // Desabilitar botão de confirmar
+                const confirmBtn = serieRow.querySelector('.confirm-serie-btn');
+                if (confirmBtn) {
+                    confirmBtn.disabled = true;
+                    confirmBtn.innerHTML = '<i class="fas fa-check"></i>';
+                }
+                
+                console.log(`[restaurarSeriesCompletadas] Série ${exec.serie_numero} do exercício ${exercicioId} restaurada`);
+            }
+        });
+    });
+    
+    // Atualizar contador de séries completadas
+    const totalSeriesCompletadas = execucoesCache.length;
+    if (window.updateProgressBar) {
+        window.updateProgressBar(totalSeriesCompletadas);
+    }
+    
+    console.log(`[restaurarSeriesCompletadas] ${totalSeriesCompletadas} séries restauradas visualmente`);
+}
+
 // Exportar funções globais
 // Renomeado para evitar conflito com nova implementação no WorkoutExecutionManager
-// window.iniciarTreinoLegacy = iniciarTreino;
+// window.iniciarTreinoLegacy = iniciarTreino;console.log('[workout.js] ✅ Arquivo carregado com sucesso - window.iniciarTreino =', typeof window.iniciarTreino);

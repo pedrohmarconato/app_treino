@@ -546,12 +546,10 @@ export class ContextualWorkoutButton {
      */
     async startWorkout() {
         try {
-            if (window.startWorkout) {
-                await window.startWorkout();
-            } else if (window.workoutExecutionManager?.startWorkout) {
-                await window.workoutExecutionManager.startWorkout();
+            if (window.iniciarTreino) {
+                await window.iniciarTreino();
             } else {
-                throw new Error('Método startWorkout não disponível');
+                throw new Error('Método iniciarTreino não disponível');
             }
         } catch (error) {
             console.error('[ContextualWorkoutButton] Erro ao iniciar treino:', error);

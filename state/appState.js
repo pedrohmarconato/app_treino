@@ -38,6 +38,16 @@ class AppStateManager {
     
     // Setter com notificação de mudanças
     set(key, value) {
+        // Validação especial para workoutStartTime
+        if (key === 'workoutStartTime' && value !== null && value !== undefined) {
+            const numValue = Number(value);
+            if (isNaN(numValue) || numValue <= 0) {
+                console.error('[AppState] Tentativa de definir workoutStartTime inválido:', value, 'tipo:', typeof value);
+                return;
+            }
+            value = numValue;
+        }
+        
         const oldValue = this.state[key];
         this.state[key] = value;
         this.notify(key, value, oldValue);

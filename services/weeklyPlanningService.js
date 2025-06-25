@@ -1074,9 +1074,9 @@ export async function carregarStatusSemanas(userId) {
 }
 
 // Buscar exercícios do treino do dia atual
-export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
+export async function buscarExerciciosTreinoDia(userId, diaAtual = null, semanaOverride = null) {
     try {
-        console.log('[buscarExerciciosTreinoDia] 🏋️‍♂️ Buscando exercícios do treino do dia para usuário:', userId);
+        console.log('[buscarExerciciosTreinoDia] 🏋️‍♂️ Buscando exercícios do treino do dia para usuário:', userId, 'semanaOverride:', semanaOverride);
         
         // Se não informado, usar dia atual
         const hoje = diaAtual || new Date();
@@ -1089,14 +1089,20 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null) {
         // 1. CORRIGIDO: Buscar planejamento usando semana do protocolo do usuário
         const ano = hoje.getFullYear();
         
-        // Obter semana do protocolo do usuário em vez da semana do calendário
-        const semanaAtiva = await obterSemanaAtivaUsuario(userId);
-        if (!semanaAtiva) {
-            console.log('[buscarExerciciosTreinoDia] ❌ Não foi possível obter semana ativa do usuário');
-            return { data: [], error: 'Usuário sem protocolo ativo' };
+        // Usar semana override se fornecida, senão usar semana do protocolo
+        let numeroSemana;
+        if (semanaOverride !== null) {
+            numeroSemana = semanaOverride;
+            console.log('[buscarExerciciosTreinoDia] 🔄 Usando semana override:', numeroSemana);
+        } else {
+            // Obter semana do protocolo do usuário em vez da semana do calendário
+            const semanaAtiva = await obterSemanaAtivaUsuario(userId);
+            if (!semanaAtiva) {
+                console.log('[buscarExerciciosTreinoDia] ❌ Não foi possível obter semana ativa do usuário');
+                return { data: [], error: 'Usuário sem protocolo ativo' };
+            }
+            numeroSemana = semanaAtiva.semana_treino;
         }
-        
-        const numeroSemana = semanaAtiva.semana_treino;
         console.log('[buscarExerciciosTreinoDia] 🔄 NOVA LÓGICA: Usando semana do protocolo:', numeroSemana);
         console.log('[buscarExerciciosTreinoDia] 🔍 Buscando planejamento:', {
             usuario_id: userId,

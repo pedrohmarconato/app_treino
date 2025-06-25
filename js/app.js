@@ -35,6 +35,8 @@ function checkDependencies() {
     return true;
 }
 
+import { initTemplates, renderTemplate as renderTemplateModule } from '../templates/index.js';
+
 // Inicializar aplicação
 async function initApp() {
     console.log('[initApp] 🚀 INICIANDO APLICAÇÃO...');
@@ -56,6 +58,20 @@ async function initApp() {
     
     try {
         console.log('[initApp] ✅ Dependências verificadas');
+        // 1. Inicializar sistema de templates se ainda não estiver
+        if (!window.renderTemplate) {
+            console.log('[initApp] 🔧 Inicializando sistema de templates...');
+            try {
+                await initTemplates();
+                // Expor função renderTemplate globalmente caso initTemplates não o faça (edge-case)
+                if (!window.renderTemplate && renderTemplateModule) {
+                    window.renderTemplate = renderTemplateModule;
+                }
+                console.log('[initApp] ✅ Sistema de templates inicializado');
+            } catch (tplErr) {
+                console.error('[initApp] ❌ Falha ao inicializar templates:', tplErr);
+            }
+        }
         
         // 1. Aguardar módulos carregarem
         console.log('[initApp] ⏳ Aguardando módulos carregarem...');

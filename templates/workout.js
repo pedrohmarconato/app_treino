@@ -1,5 +1,5 @@
 export const workoutTemplate = () => `
-    <div id="workout-screen" class="workout-screen">
+    <div id="workout-screen" class="screen workout-screen">
         <!-- Header Flutuante -->
         <div class="workout-header-float">
             <button class="back-button-float" onclick="document.getElementById('exit-confirmation-overlay').style.display = 'flex'">

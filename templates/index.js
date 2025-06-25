@@ -283,9 +283,9 @@ function updateUserInfo(user) {
 // Configurar botão contextual de treino
 function setupContextualWorkoutButton() {
     try {
-        const contextualBtn = document.getElementById('contextual-workout-btn');
+        const contextualBtn = document.getElementById('contextual-workout-btn') || document.getElementById('start-workout-btn');
         if (!contextualBtn) {
-            console.warn('[setupContextualWorkoutButton] Botão contextual não encontrado');
+            console.warn('[setupContextualWorkoutButton] Nenhum botão contextual encontrado (procurou #contextual-workout-btn e #start-workout-btn)');
             return;
         }
         
