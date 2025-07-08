@@ -187,7 +187,7 @@ export class AvaliacaoTreinoComponent {
         if (!modal) return;
         
         // Estado da avaliação
-        let avaliacaoEstado = {
+        const avaliacaoEstado = {
             post_workout: null,  // Nível de fadiga (0-5)
             observacoes: ''
         };

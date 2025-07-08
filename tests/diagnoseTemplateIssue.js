@@ -64,7 +64,7 @@
             
             console.log('\nElementos principais encontrados:');
             Object.entries(elements).forEach(([name, el]) => {
-                console.log(`- ${name}:`, !!el ? '✅' : '❌');
+                console.log(`- ${name}:`, el ? '✅' : '❌');
             });
             
         } catch (error) {

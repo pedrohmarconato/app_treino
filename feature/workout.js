@@ -1,5 +1,4 @@
 // js/features/workout.js
-import { weeklyPlanManager } from '../hooks/useWeeklyPlan.js';
 // Lógica da tela de treino
 
 import AppState from '../state/appState.js';
@@ -8,11 +7,11 @@ import { carregarPesosSugeridos, salvarExecucaoExercicio, salvarExecucoesEmLote,
 import { showNotification } from '../ui/notifications.js';
 import { mostrarTela, voltarParaHome } from '../ui/navigation.js';
 import { workoutStateManager } from '../services/workoutStateManager.js';
-import { offlineSyncService } from '../services/offlineSyncService.js';
 import { workoutAnalytics } from '../services/workoutAnalytics.js';
 import { criarModalRecuperacaoTreino } from '../components/workoutRecoveryModal.js';
 import { timerManager } from '../services/timerManager.js';
 import { cleanCorruptedTimerData } from '../utils/cleanCorruptedTimer.js';
+import { offlineSyncService } from '../services/offlineSyncService.js';
 
 // Iniciar treino
 export async function iniciarTreino() {
@@ -478,37 +477,68 @@ window.iniciarTreino = iniciarTreino;
 
 // Mostrar exercício atual
 async function mostrarExercicioAtual() {
+    console.log('[mostrarExercicioAtual] Iniciando...');
+    
     const exercises = AppState.get('currentExercises');
     const currentIndex = AppState.get('currentExerciseIndex');
     const exercicio = exercises[currentIndex];
     
+    console.log('[mostrarExercicioAtual] Dados:', {
+        exercisesCount: exercises?.length,
+        currentIndex,
+        exercicio: exercicio?.exercicio_nome
+    });
+    
     if (!exercicio) {
+        console.log('[mostrarExercicioAtual] Nenhum exercício encontrado, concluindo treino');
         mostrarTreinoConcluido();
         return;
     }
     
-    // Buscar pesos sugeridos
-    const currentUser = AppState.get('currentUser');
-    const { data: pesosSugeridos } = await carregarPesosSugeridos(
-        currentUser.id,
-        exercicio.protocolo_treino_id
-    );
-    
-    // Atualizar progresso
-    atualizarProgresso();
-    
-    // Mostrar container do exercício
-    showExerciseContainer();
-    
-    // Atualizar informações do exercício
-    atualizarInfoExercicio(exercicio, pesosSugeridos);
-    
-    // Buscar 1RM
-    const rm = await fetch1RMUsuario(currentUser.id, exercicio.exercicio_id);
-    updateElement('rm-info', rm ? `${rm}kg` : '--');
-    
-    // Renderizar séries
-    renderizarSeries(exercicio, pesosSugeridos);
+    try {
+        // Buscar pesos sugeridos
+        const currentUser = AppState.get('currentUser');
+        console.log('[mostrarExercicioAtual] Carregando pesos sugeridos...');
+        const { data: pesosSugeridos } = await carregarPesosSugeridos(
+            currentUser.id,
+            exercicio.protocolo_treino_id
+        );
+        
+        console.log('[mostrarExercicioAtual] Pesos sugeridos carregados:', pesosSugeridos);
+        
+        // Atualizar progresso
+        console.log('[mostrarExercicioAtual] Atualizando progresso...');
+        atualizarProgresso();
+        
+        // Mostrar container do exercício
+        console.log('[mostrarExercicioAtual] Mostrando container...');
+        showExerciseContainer();
+        
+        // Atualizar informações do exercício
+        console.log('[mostrarExercicioAtual] Atualizando informações...');
+        atualizarInfoExercicio(exercicio, pesosSugeridos);
+        
+        // Buscar 1RM
+        console.log('[mostrarExercicioAtual] Buscando 1RM...');
+        const rm = await fetch1RMUsuario(currentUser.id, exercicio.exercicio_id);
+        updateElement('rm-info', rm ? `${rm}kg` : '--');
+        
+        // Renderizar séries
+        console.log('[mostrarExercicioAtual] Renderizando séries...');
+        renderizarSeries(exercicio, pesosSugeridos);
+        
+        console.log('[mostrarExercicioAtual] Exercício renderizado com sucesso!');
+        
+    } catch (error) {
+        console.error('[mostrarExercicioAtual] Erro:', error);
+        showNotification('Erro ao carregar exercício', 'error');
+        
+        // Tentar renderizar sem pesos sugeridos
+        atualizarProgresso();
+        showExerciseContainer();
+        atualizarInfoExercicio(exercicio, null);
+        renderizarSeries(exercicio, null);
+    }
 }
 
 // Atualizar barra de progresso
@@ -529,14 +559,26 @@ function atualizarProgresso() {
 
 // Mostrar container do exercício
 function showExerciseContainer() {
+    console.log('[showExerciseContainer] Iniciando...');
+    
     const exerciseContainer = document.getElementById('exercises-container');
     const timerContainer = document.getElementById('rest-timer-overlay');
     const completedContainer = document.getElementById('workout-completion');
     
+    console.log('[showExerciseContainer] Containers encontrados:', {
+        exerciseContainer: !!exerciseContainer,
+        timerContainer: !!timerContainer,
+        completedContainer: !!completedContainer
+    });
+    
     if (exerciseContainer) {
         exerciseContainer.style.display = 'block';
         exerciseContainer.classList.remove('hidden');
+        console.log('[showExerciseContainer] Container de exercícios mostrado');
+    } else {
+        console.error('[showExerciseContainer] Container exercises-container não encontrado!');
     }
+    
     if (timerContainer) timerContainer.style.display = 'none';
     if (completedContainer) completedContainer.style.display = 'none';
 }
@@ -564,8 +606,15 @@ function atualizarInfoExercicio(exercicio, pesosSugeridos) {
 
 // Renderizar séries
 function renderizarSeries(exercicio, pesosSugeridos) {
+    console.log('[renderizarSeries] Iniciando renderização...');
+    
     const container = document.getElementById('exercises-container');
-    if (!container) return;
+    if (!container) {
+        console.error('[renderizarSeries] Container exercises-container não encontrado!');
+        return;
+    }
+    
+    console.log('[renderizarSeries] Container encontrado, limpando...');
     
     // Limpar container
     container.innerHTML = '';
@@ -574,6 +623,13 @@ function renderizarSeries(exercicio, pesosSugeridos) {
     const exerciseData = AppState.get('currentExerciseData');
     const currentIndex = AppState.get('currentExerciseIndex');
     const exercises = AppState.get('currentExercises');
+    
+    console.log('[renderizarSeries] Dados do exercício:', {
+        exercicio: exercicio?.exercicio_nome,
+        currentIndex,
+        totalExercises: exercises?.length,
+        exerciseData: exerciseData
+    });
     
     // Criar card do exercício
     const exerciseCard = document.createElement('div');
@@ -766,10 +822,18 @@ function renderizarSeries(exercicio, pesosSugeridos) {
     const seriesCompletadas = execucoesDoExercicio.length;
     AppState.set('completedSeries', seriesCompletadas);
     
+    console.log('[renderizarSeries] Séries renderizadas:', {
+        totalSeries: exercicio.series,
+        seriesCompletadas,
+        containerHtml: container.innerHTML.length
+    });
+    
     // Atualizar estado do botão próximo após renderizar
     setTimeout(() => {
         atualizarBotaoProximo();
     }, 100);
+    
+    console.log('[renderizarSeries] Renderização completa!');
 }
 
 // Ajustar valor dos inputs
@@ -823,16 +887,65 @@ window.confirmarSerie = async function(serieIndex) {
     execucoesCache.push(dados);
     AppState.set('execucoesCache', execucoesCache);
     
-    // Usar o WorkoutStateManager para salvar com throttle
-    workoutStateManager.onSerieConfirmada(dados);
-    
-    // Registrar analytics
-    workoutAnalytics.logSerieCompletada(dados);
-    
-    console.log(`[workout] Série ${serieIndex + 1} salva no cache local. Total: ${execucoesCache.length} execuções`);
-    
-    // Sempre retornar sucesso pois salvamos localmente
-    const success = true;
+    // CRÍTICO: Garantir salvamento antes de continuar
+    try {
+        // Primeiro, garantir que o estado está atualizado no AppState
+        AppState.set('execucoesCache', execucoesCache);
+        
+        // Validar dados críticos antes de salvar
+        const currentWorkout = AppState.get('currentWorkout');
+        const currentExercises = AppState.get('currentExercises');
+        
+        if (!currentWorkout || !currentExercises) {
+            console.warn('[confirmarSerie] Estado de treino incompleto, forçando salvamento básico');
+            // Salvar pelo menos as execuções no localStorage
+            localStorage.setItem('treino_execucoes_temp', JSON.stringify(execucoesCache));
+            localStorage.setItem('treino_execucoes_backup', JSON.stringify({
+                execucoes: execucoesCache,
+                timestamp: Date.now()
+            }));
+        } else {
+            // Salvar estado completo
+            const estadoCompleto = {
+                execucoes: execucoesCache,
+                estadoAtual: {
+                    currentExerciseIndex: AppState.get('currentExerciseIndex') || 0,
+                    completedSeries: AppState.get('completedSeries') || 0,
+                    currentWorkout: currentWorkout,
+                    currentExercises: currentExercises,
+                    currentUser: AppState.get('currentUser')
+                },
+                cronometro: {
+                    workoutStartTime: AppState.get('workoutStartTime'),
+                    restTime: AppState.get('restTime') || 0
+                },
+                timestamp: Date.now()
+            };
+            
+            // Tentar salvar pelo workoutStateManager
+            try {
+                const salvouNoCache = workoutStateManager.saveStateImmediate(estadoCompleto);
+                console.log('[confirmarSerie] Resultado do salvamento:', salvouNoCache);
+            } catch (saveError) {
+                console.error('[confirmarSerie] Erro no saveStateImmediate:', saveError);
+                // Fallback para salvamento manual
+                localStorage.setItem('treino_unified_state', JSON.stringify(estadoCompleto));
+                localStorage.setItem('treino_execucoes_temp', JSON.stringify(execucoesCache));
+            }
+        }
+        
+        // Usar o WorkoutStateManager para salvar com throttle (sempre executar)
+        if (workoutStateManager && workoutStateManager.onSerieConfirmada) {
+            workoutStateManager.onSerieConfirmada(dados);
+        }
+        
+        // Dados salvos no cache local - sync será feito na finalização do treino
+        console.log('[confirmarSerie] Dados salvos no cache local, sync na finalização');
+        
+        // Registrar analytics
+        workoutAnalytics.logSerieCompletada(dados);
+        
+        console.log(`[workout] Série ${serieIndex + 1} salva com segurança. Total: ${execucoesCache.length} execuções`);
     
     // Marcar série como completa
     const serieItem = document.getElementById(`serie-${serieIndex}`);
@@ -891,6 +1004,9 @@ window.confirmarSerie = async function(serieIndex) {
         // Resetar contador para próximo exercício
         AppState.set('completedSeries', 0);
         
+        // AGUARDAR FRAME PARA GARANTIR UI ATUALIZADA antes de prosseguir
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        
         // Se for o último exercício, mostrar conclusão
         if (currentIndex === exercises.length - 1) {
             setTimeout(() => {
@@ -902,6 +1018,31 @@ window.confirmarSerie = async function(serieIndex) {
                 iniciarDescanso();
             }, 500);
         }
+    }
+    
+    } catch (error) {
+        console.error('[confirmarSerie] Erro crítico ao salvar série:', error);
+        showNotification('Erro ao salvar série. Tente novamente.', 'error');
+        
+        // Reverter mudanças visuais se houve erro
+        const serieItem = document.getElementById(`serie-${serieIndex}`);
+        serieItem?.classList.remove('completed');
+        
+        // Reabilitar inputs
+        const pesoInput = document.getElementById(`peso-${serieIndex}`);
+        const repInput = document.getElementById(`rep-${serieIndex}`);
+        if (pesoInput) pesoInput.disabled = false;
+        if (repInput) repInput.disabled = false;
+        
+        // Restaurar botão
+        const confirmBtn = serieItem?.querySelector('.btn-confirm-series');
+        if (confirmBtn) {
+            confirmBtn.innerHTML = 'Confirmar';
+            confirmBtn.disabled = false;
+        }
+        
+        // Não prosseguir se houve erro crítico
+        return false;
     }
 };
 
@@ -996,75 +1137,253 @@ function proximoExercicio() {
     // 1. SALVAR ESTADO ANTES DE AVANÇAR (crítico para não perder progresso)
     workoutStateManager.saveStateImmediate();
     
-    // 2. MOSTRAR LOADING/SPINNER
-    const exerciseContainer = document.getElementById('exercises-container');
-    if (exerciseContainer) {
-        exerciseContainer.innerHTML = `
-            <div class="exercise-loading">
-                <div class="loading-spinner"></div>
-                <p>Carregando próximo exercício...</p>
-            </div>
-        `;
-        exerciseContainer.style.display = 'block';
-    }
+    // 2. OBTER TEMPO DE DESCANSO DO EXERCÍCIO ATUAL
+    const exercicioAtual = exercises[currentIndex];
+    const tempoDescansoEntreExercicios = exercicioAtual.tempo_descanso || 60; // Padrão 60 segundos
     
-    // 3. RESETAR TODOS OS ESTADOS DA UI
-    resetarEstadosUI();
+    console.log(`[proximoExercicio] Iniciando descanso de ${tempoDescansoEntreExercicios}s entre exercícios`);
     
-    // 4. REMOVER OVERLAYS
-    const restOverlay = document.getElementById('rest-timer-overlay');
-    if (restOverlay) {
-        restOverlay.style.display = 'none';
-    }
-    
-    // Limpar timer se existir
-    const timerInterval = AppState.get('restTimerInterval');
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        AppState.set('restTimerInterval', null);
-    }
-    
-    // 5. ATUALIZAR ÍNDICE E ESTADO
-    AppState.set('currentExerciseIndex', novoIndex);
-    AppState.set('completedSeries', 0);
-    
-    // 6. CARREGAR PRÓXIMO EXERCÍCIO COM DELAY PARA GARANTIR UI RESPONSIVA
-    setTimeout(async () => {
-        try {
-            // Carregar pesos sugeridos para o novo exercício
-            const proximoExercicio = exercises[novoIndex];
-            if (proximoExercicio) {
-                const currentUser = AppState.get('currentUser');
-                const { data: pesosSugeridos } = await carregarPesosSugeridos(
-                    currentUser.id,
-                    proximoExercicio.protocolo_treino_id
-                );
-                
-                // Salvar pesos sugeridos no estado
-                if (pesosSugeridos) {
-                    AppState.set('pesosSugeridos', pesosSugeridos);
-                }
-            }
-            
-            // Mostrar novo exercício
-            mostrarExercicioAtual();
-            
-            // Salvar estado após mudança completa
-            workoutStateManager.onExercicioMudou(novoIndex);
-            
-            // Rolar para o topo suavemente
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            
-            console.log(`[proximoExercicio] Avançado para exercício ${novoIndex + 1} de ${exercises.length}`);
-            
-        } catch (error) {
-            console.error('[proximoExercicio] Erro ao carregar exercício:', error);
-            showNotification('Erro ao carregar exercício', 'error');
-            
-            // Em caso de erro, ainda mostrar o exercício sem pesos sugeridos
-            mostrarExercicioAtual();
+    // 3. MOSTRAR TELA DE DESCANSO ENTRE EXERCÍCIOS
+    mostrarDescansoEntreExercicios(tempoDescansoEntreExercicios, () => {
+        // Callback executado após o descanso ou quando o usuário pular
+        console.log('[proximoExercicio] Descanso concluído, carregando próximo exercício');
+        
+        // MOSTRAR LOADING/SPINNER
+        const exerciseContainer = document.getElementById('exercises-container');
+        if (exerciseContainer) {
+            exerciseContainer.innerHTML = `
+                <div class="exercise-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando próximo exercício...</p>
+                </div>
+            `;
+            exerciseContainer.style.display = 'block';
         }
-    }, 100); // Pequeno delay para garantir que o spinner seja visível
+        
+        // RESETAR TODOS OS ESTADOS DA UI
+        resetarEstadosUI();
+        
+        // REMOVER OVERLAYS
+        const restOverlay = document.getElementById('rest-timer-overlay');
+        if (restOverlay) {
+            restOverlay.style.display = 'none';
+        }
+        
+        // Limpar timer se existir
+        const timerInterval = AppState.get('restTimerInterval');
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            AppState.set('restTimerInterval', null);
+        }
+        
+        // ATUALIZAR ÍNDICE E ESTADO
+        AppState.set('currentExerciseIndex', novoIndex);
+        AppState.set('completedSeries', 0);
+        
+        // CARREGAR PRÓXIMO EXERCÍCIO COM DELAY PARA GARANTIR UI RESPONSIVA
+        setTimeout(async () => {
+            try {
+                // Carregar pesos sugeridos para o novo exercício
+                const proximoExercicio = exercises[novoIndex];
+                if (proximoExercicio) {
+                    const currentUser = AppState.get('currentUser');
+                    const { data: pesosSugeridos } = await carregarPesosSugeridos(
+                        currentUser.id,
+                        proximoExercicio.protocolo_treino_id
+                    );
+                    
+                    // Salvar pesos sugeridos no estado
+                    if (pesosSugeridos) {
+                        AppState.set('pesosSugeridos', pesosSugeridos);
+                    }
+                }
+                
+                // Mostrar novo exercício
+                mostrarExercicioAtual();
+                
+                // Salvar estado após mudança completa
+                workoutStateManager.onExercicioMudou(novoIndex);
+                
+                // Rolar para o topo suavemente
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                console.log(`[proximoExercicio] Avançado para exercício ${novoIndex + 1} de ${exercises.length}`);
+                
+            } catch (error) {
+                console.error('[proximoExercicio] Erro ao carregar exercício:', error);
+                showNotification('Erro ao carregar exercício', 'error');
+                
+                // Em caso de erro, ainda mostrar o exercício sem pesos sugeridos
+                mostrarExercicioAtual();
+            }
+        }, 100); // Pequeno delay para garantir que o spinner seja visível
+    }); // Fim do callback de descanso
+}
+
+// Mostrar descanso entre exercícios com UI personalizada
+function mostrarDescansoEntreExercicios(tempoDescanso, onComplete) {
+    console.log(`[mostrarDescansoEntreExercicios] Iniciando descanso de ${tempoDescanso}s entre exercícios`);
+    
+    // Obter informações dos exercícios
+    const exercises = AppState.get('currentExercises');
+    const currentIndex = AppState.get('currentExerciseIndex');
+    const nextIndex = currentIndex + 1;
+    
+    const exercicioAtual = exercises[currentIndex];
+    const proximoExercicio = exercises[nextIndex];
+    
+    // Usar o overlay existente mas personalizar o conteúdo
+    const overlay = document.getElementById('rest-timer-overlay');
+    if (!overlay) {
+        console.error('[mostrarDescansoEntreExercicios] Overlay não encontrado');
+        onComplete(); // Executar callback mesmo sem overlay
+        return;
+    }
+    
+    // Personalizar overlay para descanso entre exercícios
+    overlay.innerHTML = `
+        <div class="rest-timer-content">
+            <div class="exercise-transition-header">
+                <h2>Exercício Concluído!</h2>
+                <div class="exercise-info">
+                    <div class="completed-exercise">
+                        <span class="exercise-label">Concluído:</span>
+                        <span class="exercise-name">${exercicioAtual.nome}</span>
+                    </div>
+                    <div class="arrow-down">↓</div>
+                    <div class="next-exercise">
+                        <span class="exercise-label">Próximo:</span>
+                        <span class="exercise-name">${proximoExercicio.nome}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="rest-timer-circle">
+                <svg class="rest-progress" width="240" height="240">
+                    <circle cx="120" cy="120" r="110" fill="none" stroke="#e2e8f0" stroke-width="8"/>
+                    <circle cx="120" cy="120" r="110" fill="none" stroke="#4f46e5" stroke-width="8" 
+                            class="rest-progress-fill" stroke-linecap="round" 
+                            transform="rotate(-90 120 120)"/>
+                </svg>
+                <div class="rest-timer-text">
+                    <span id="rest-timer-display" class="rest-time">00:00</span>
+                    <span class="rest-label">descanso</span>
+                </div>
+            </div>
+            
+            <div class="rest-timer-actions">
+                <button id="skip-rest" class="btn-rest-skip">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 4 15 12 5 20 5 4"/>
+                        <line x1="19" y1="5" x2="19" y2="19"/>
+                    </svg>
+                    <span>Pular Descanso</span>
+                </button>
+            </div>
+            
+            <div class="rest-motivation">
+                <p id="motivation-text">"Prepare-se para o próximo exercício! Respire fundo e mantenha o foco."</p>
+            </div>
+        </div>
+    `;
+    
+    // Mostrar overlay
+    overlay.style.display = 'flex';
+    
+    // Configurar timer
+    let tempoRestante = tempoDescanso;
+    let timerInterval;
+    
+    // Salvar estado do cronômetro
+    AppState.set('restTime', tempoRestante);
+    AppState.set('isExerciseTransition', true); // Flag para identificar transição
+    workoutStateManager.onCronometroIniciado(tempoRestante);
+    
+    // Configurar elementos
+    const timerDisplay = document.getElementById('rest-timer-display');
+    const progressCircle = overlay.querySelector('.rest-progress-fill');
+    const skipButton = document.getElementById('skip-rest');
+    
+    if (!timerDisplay || !progressCircle) {
+        console.error('[mostrarDescansoEntreExercicios] Elementos do timer não encontrados');
+        onComplete();
+        return;
+    }
+    
+    // Calcular circunferência do círculo
+    const radius = 110;
+    const circumference = 2 * Math.PI * radius;
+    progressCircle.style.strokeDasharray = circumference;
+    
+    // Função para formatar tempo
+    function formatarTempo(segundos) {
+        const mins = Math.floor(segundos / 60);
+        const secs = segundos % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    // Função para atualizar progresso
+    function updateProgress() {
+        const progress = tempoRestante / tempoDescanso;
+        const offset = circumference * (1 - progress);
+        progressCircle.style.strokeDashoffset = offset;
+    }
+    
+    // Função para finalizar descanso
+    function finalizarDescanso() {
+        console.log('[mostrarDescansoEntreExercicios] Finalizando descanso entre exercícios');
+        
+        // Limpar timer
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+        
+        // Esconder overlay
+        overlay.style.display = 'none';
+        
+        // Limpar estado
+        AppState.set('restTime', 0);
+        AppState.set('isExerciseTransition', false);
+        AppState.set('restTimerInterval', null);
+        
+        // Executar callback
+        if (onComplete) {
+            onComplete();
+        }
+    }
+    
+    // Configurar botão de pular
+    if (skipButton) {
+        skipButton.onclick = finalizarDescanso;
+    }
+    
+    // Iniciar timer
+    timerDisplay.textContent = formatarTempo(tempoRestante);
+    updateProgress();
+    
+    timerInterval = setInterval(() => {
+        tempoRestante--;
+        
+        if (timerDisplay) {
+            timerDisplay.textContent = formatarTempo(tempoRestante);
+        }
+        updateProgress();
+        
+        // Atualizar estado
+        AppState.set('restTime', tempoRestante);
+        
+        if (tempoRestante <= 0) {
+            finalizarDescanso();
+            
+            // Tocar som ou vibrar se disponível
+            if ('vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200]);
+            }
+        }
+    }, 1000);
+    
+    // Salvar referência do timer
+    AppState.set('restTimerInterval', timerInterval);
 }
 
 // Função auxiliar para resetar estados da UI

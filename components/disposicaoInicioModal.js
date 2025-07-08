@@ -102,7 +102,7 @@ export default class DisposicaoInicioModal {
             const confirmBtn = document.getElementById('btn-disposicao-confirmar');
             console.log('[DEBUG] 🔍 Botão confirmar encontrado:', !!confirmBtn);
             
-            let valorSelecionado = null;
+            const valorSelecionado = null;
 
             modal.addEventListener('click', () => {
                 console.log('[DEBUG] 🖱️ Click no modal (backdrop)');

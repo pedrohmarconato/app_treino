@@ -218,7 +218,7 @@ class QuickEditModal {
 
             if (result.success) {
                 // Atualizar estado local
-                let weekPlan = AppState.get('weekPlan') || {};
+                const weekPlan = AppState.get('weekPlan') || {};
                 weekPlan[this.currentDay] = {
                     ...this.selectedType,
                     concluido: false

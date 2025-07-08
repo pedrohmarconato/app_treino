@@ -24,6 +24,94 @@ const supabase = window.supabase.createClient(
 
 export { supabase };
 
+// Função para detectar erros de rede
+function isNetworkError(error) {
+    if (!error) return false;
+    
+    const errorMessage = error.message?.toLowerCase() || '';
+    const errorDetails = error.details?.toLowerCase() || '';
+    
+    return errorMessage.includes('failed to fetch') ||
+           errorMessage.includes('network') ||
+           errorMessage.includes('err_network_changed') ||
+           errorDetails.includes('failed to fetch') ||
+           error.code === '' ||
+           !navigator.onLine;
+}
+
+// Função wrapper com retry automático para operações críticas
+export async function queryWithRetry(queryFn, options = {}) {
+    const maxRetries = options.maxRetries || 3;
+    const baseDelay = options.baseDelay || 1000;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`[queryWithRetry] Tentativa ${attempt}/${maxRetries}`);
+            const result = await queryFn();
+            
+            if (result.error && isNetworkError(result.error) && attempt < maxRetries) {
+                const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 5000);
+                console.log(`[queryWithRetry] Erro de rede detectado, retry em ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            
+            return result;
+        } catch (error) {
+            console.error(`[queryWithRetry] Erro na tentativa ${attempt}:`, error);
+            
+            if (isNetworkError(error) && attempt < maxRetries) {
+                const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 5000);
+                console.log(`[queryWithRetry] Retry em ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+            
+            throw error;
+        }
+    }
+}
+
+// Listener para mudanças de conectividade
+let isOnline = navigator.onLine;
+let networkNotificationShown = false;
+
+window.addEventListener('online', () => {
+    isOnline = true;
+    console.log('[supabaseService] 🌐 Conexão restaurada');
+    
+    // Mostrar notificação de conexão restaurada
+    if (networkNotificationShown && window.showNotification) {
+        window.showNotification('Conexão restaurada!', 'success', false, 3000);
+        networkNotificationShown = false;
+    }
+});
+
+window.addEventListener('offline', () => {
+    isOnline = false;
+    console.log('[supabaseService] 📵 Conexão perdida');
+    
+    // Mostrar notificação de conexão perdida
+    if (window.showNotification) {
+        window.showNotification('Sem conexão com a internet. Dados serão salvos localmente.', 'warning', false, 5000);
+        networkNotificationShown = true;
+    }
+});
+
+// Função que verifica conectividade antes de fazer query
+export async function safeQuery(queryFn, options = {}) {
+    if (!isOnline && !options.forceOffline) {
+        console.warn('[safeQuery] Offline - não executando query');
+        return { 
+            data: null, 
+            error: { message: 'Sem conexão com a internet', code: 'OFFLINE' },
+            offline: true 
+        };
+    }
+    
+    return await queryWithRetry(queryFn, options);
+}
+
 // Funções auxiliares para queries comuns
 export async function query(table, options = {}) {
     console.log(`[query] Consultando tabela: ${table}`, options);

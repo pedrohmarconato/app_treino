@@ -118,8 +118,8 @@ class WeeklyPlanService {
     
     // Salvar plano completo - REFATORADO PARA USAR SEMANA DO PROTOCOLO
     static async savePlan(userId, plan) {
-        let ano = new Date().getFullYear();
-        let semana = this.getWeekNumber(new Date()); // Semana do ANO (calendário)
+        const ano = new Date().getFullYear();
+        const semana = this.getWeekNumber(new Date()); // Semana do ANO (calendário)
         let semana_treino = 1; // Semana do PROTOCOLO
         
         try {
@@ -272,7 +272,7 @@ class WeeklyPlanService {
         try {
             // 2. Buscar dados da tabela planejamento_semanal usando semana_treino
             console.log('[WeeklyPlanService.getPlan] 🔄 Buscando dados do planejamento_semanal usando semana_treino...');
-            let { data, error } = await supabase
+            const { data, error } = await supabase
                 .from('planejamento_semanal')
                 .select('*')
                 .eq('usuario_id', userId)
@@ -299,7 +299,7 @@ class WeeklyPlanService {
                 const jsDay = this.dbToDay(dia.dia_semana);
                 
                 // Validação e limpeza dos dados
-                let tipoAtividade = dia.tipo_atividade || dia.tipo;
+                const tipoAtividade = dia.tipo_atividade || dia.tipo;
                 if (!tipoAtividade || tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
                     return; // Pular dias sem atividade definida
                 }
@@ -605,7 +605,7 @@ class WeeklyPlanService {
         
         try {
             // 1. Buscar dados do planejamento_semanal diretamente
-            let { data, error } = await supabase
+            const { data, error } = await supabase
                 .from('planejamento_semanal')
                 .select('*')
                 .eq('usuario_id', userId)
@@ -626,7 +626,7 @@ class WeeklyPlanService {
             console.log('[getTodaysWorkout] 📊 Dados do dia encontrados:', planoDoDia);
             
             // Validação e limpeza do tipo de atividade
-            let tipoAtividade = planoDoDia.tipo_atividade || planoDoDia.tipo;
+            const tipoAtividade = planoDoDia.tipo_atividade || planoDoDia.tipo;
             if (!tipoAtividade || tipoAtividade === 'undefined' || tipoAtividade === 'null' || !tipoAtividade.trim()) {
                 return null; // Não há treino definido para hoje
             }
@@ -985,7 +985,16 @@ export async function obterSemanaAtivaUsuario(userId) {
         
         // CORREÇÃO AUTOMÁTICA: Garantir que eh_semana_atual está correto
         console.log('[obterSemanaAtivaUsuario] 🔧 Verificando e corrigindo semana atual...');
-        await CalendarioService.manterSemanaAtualizada();
+        try {
+            const resultado = await CalendarioService.manterSemanaAtualizada();
+            if (!resultado.success && resultado.reason === 'network_error') {
+                console.warn('[obterSemanaAtivaUsuario] 🌐 Erro de rede no calendário, continuando com dados em cache...');
+                // Continuar execução mesmo com erro de rede
+            }
+        } catch (error) {
+            console.error('[obterSemanaAtivaUsuario] ❌ Erro ao atualizar calendário:', error);
+            // Continuar execução mesmo com erro
+        }
         
         // NOVO MÉTODO: Usar apenas a progressão individual do usuário
         console.log('[obterSemanaAtivaUsuario] 📊 Buscando protocolo ativo do usuário...');

@@ -374,7 +374,7 @@ export class AccessibilityValidator {
             // Verificar se elementos focusáveis têm outline visível
             const focusableElements = this.getFocusableElements(document.body);
             let hasVisibleFocus = true;
-            let elementsWithoutFocus = [];
+            const elementsWithoutFocus = [];
             
             for (const element of focusableElements.slice(0, 10)) { // Testar primeiros 10
                 element.focus();
@@ -413,7 +413,7 @@ export class AccessibilityValidator {
         try {
             const focusableElements = this.getFocusableElements(document.body);
             let logicalTabOrder = true;
-            let issues = [];
+            const issues = [];
             
             // Verificar se elementos têm tabindex apropriados
             for (const element of focusableElements) {
@@ -456,7 +456,7 @@ export class AccessibilityValidator {
             const hasSkipLinks = skipLinks.length > 0;
             
             let validSkipLinks = true;
-            let issues = [];
+            const issues = [];
             
             for (const link of skipLinks) {
                 if (link.href && link.href.includes('#')) {
@@ -618,7 +618,7 @@ export class AccessibilityValidator {
             }
             
             // Simular Tab navigation
-            let currentFocusIndex = 0;
+            const currentFocusIndex = 0;
             focusableElements[currentFocusIndex].focus();
             
             // Testar se o foco está contido no modal
@@ -936,7 +936,7 @@ export class AccessibilityValidator {
         try {
             // Verificar elementos de texto principais
             const textElements = document.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span, button, a');
-            let contrastIssues = [];
+            const contrastIssues = [];
             
             for (let i = 0; i < Math.min(textElements.length, 20); i++) { // Testar primeiros 20
                 const element = textElements[i];
@@ -978,7 +978,7 @@ export class AccessibilityValidator {
     async testTextSize() {
         try {
             const textElements = document.querySelectorAll('p, span, div, button, a');
-            let smallTextElements = [];
+            const smallTextElements = [];
             
             for (const element of textElements) {
                 const style = window.getComputedStyle(element);
@@ -1137,7 +1137,7 @@ export class AccessibilityValidator {
     async testAltText() {
         try {
             const images = document.querySelectorAll('img');
-            let missingAlt = [];
+            const missingAlt = [];
             
             for (const img of images) {
                 const alt = img.getAttribute('alt');

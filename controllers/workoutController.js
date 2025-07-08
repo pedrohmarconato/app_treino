@@ -73,7 +73,7 @@ function atualizarCardPrincipal(resultado) {
             updateElement(elementos.btnText, 'Iniciar Cardio');
             break;
             
-        case 'forca':
+        case 'forca': {
             const tipoTreino = planejamento.tipo_atividade;
             const numExercicios = exercicios?.length || 0;
             
@@ -82,6 +82,7 @@ function atualizarCardPrincipal(resultado) {
             updateElement(elementos.workoutType, `Treino ${tipoTreino}`);
             updateElement(elementos.btnText, 'Iniciar Treino');
             break;
+        }
     }
     
     console.log('[workoutController.atualizarCardPrincipal] ✅ Card principal atualizado');

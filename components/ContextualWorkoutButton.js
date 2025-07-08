@@ -3,8 +3,6 @@
  * Adapta estado baseado em cache de treino e sessões ativas
  */
 
-import { ComponentConfig } from '../templates/COMPONENT_CONFIG.js';
-import TreinoCacheService from '../services/treinoCacheService.js';
 import AppState from '../state/appState.js';
 
 export class ContextualWorkoutButton {
@@ -150,18 +148,18 @@ export class ContextualWorkoutButton {
         try {
             console.log('[ContextualWorkoutButton] 🔍 Verificando estado do cache...');
             
-            // Verificar se há treino ativo
-            const [hasActiveWorkout, workoutState, isWorkoutActive] = await Promise.all([
-                TreinoCacheService.hasActiveWorkout(),
-                TreinoCacheService.getWorkoutState(),
+            // Verificar se há treino ativo usando apenas AppState
+            const [workoutState, isWorkoutActive] = await Promise.all([
+                this.getWorkoutStateFromCache(),
                 this.checkAppStateWorkout()
             ]);
+            const hasActiveWorkout = !!workoutState;
             
             console.log('[ContextualWorkoutButton] Estado detectado:', {
                 hasActiveWorkout,
                 hasWorkoutState: !!workoutState,
                 isWorkoutActive,
-                stateValid: workoutState ? TreinoCacheService.validateState(workoutState) : false
+                stateValid: workoutState ? this.validateWorkoutState(workoutState) : false
             });
             
             // Verificar se treino foi concluído hoje
@@ -180,7 +178,7 @@ export class ContextualWorkoutButton {
             }
             
             // Determinar estado baseado no cache com lógica mais rigorosa
-            if (hasActiveWorkout && workoutState && TreinoCacheService.validateState(workoutState)) {
+            if (hasActiveWorkout && workoutState && this.validateWorkoutState(workoutState)) {
                 // Verificar se há realmente progresso para mostrar botão de resume
                 const hasRealProgress = workoutState.exerciciosExecutados && workoutState.exerciciosExecutados.length > 0;
                 
@@ -195,7 +193,7 @@ export class ContextualWorkoutButton {
                 }
             } else {
                 // Verificar melhor se há cache corrompido
-                if (workoutState && !TreinoCacheService.validateState(workoutState)) {
+                if (workoutState && !this.validateWorkoutState(workoutState)) {
                     console.log('[ContextualWorkoutButton] Cache corrompido detectado');
                     this.setState('error', { 
                         errorType: 'corrupt_cache',
@@ -296,7 +294,7 @@ export class ContextualWorkoutButton {
             
             // Calcular progresso total de séries
             let totalSeries = 0;
-            let completedSeries = exerciciosExecutados.length;
+            const completedSeries = exerciciosExecutados.length;
             
             // Calcular total de séries esperadas
             currentWorkout.exercicios?.forEach(ex => {
@@ -562,7 +560,7 @@ export class ContextualWorkoutButton {
      */
     async resumeWorkout() {
         try {
-            const workoutState = await TreinoCacheService.getWorkoutState();
+            const workoutState = await this.getWorkoutStateFromCache();
             
             if (window.resumeWorkout) {
                 await window.resumeWorkout(workoutState);
@@ -593,7 +591,7 @@ export class ContextualWorkoutButton {
      */
     async clearCache() {
         try {
-            await TreinoCacheService.clearWorkoutState();
+            this.clearWorkoutStateFromCache();
             AppState.resetWorkout();
             
             if (window.showNotification) {
@@ -702,6 +700,39 @@ export class ContextualWorkoutButton {
         this.eventListeners.clear();
         
         console.log('[ContextualWorkoutButton] Destruído');
+    }
+
+    /**
+     * Obtém estado do treino do cache local
+     */
+    async getWorkoutStateFromCache() {
+        try {
+            const data = localStorage.getItem('workout_state');
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('[ContextualWorkoutButton] Erro ao obter estado do cache:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Valida estado do treino
+     */
+    validateWorkoutState(state) {
+        if (!state || typeof state !== 'object') return false;
+        return !!(state.currentWorkout && state.exerciciosExecutados);
+    }
+
+    /**
+     * Limpa estado do treino do cache
+     */
+    clearWorkoutStateFromCache() {
+        try {
+            localStorage.removeItem('workout_state');
+            sessionStorage.removeItem('workout_session');
+        } catch (error) {
+            console.error('[ContextualWorkoutButton] Erro ao limpar cache:', error);
+        }
     }
 
     /**

@@ -9,7 +9,7 @@ import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../uti
 // Buscar próximo treino do usuário
 export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
     // Primeiro verificar o plano semanal do usuário
-    const weekPlan = await WeeklyPlanService.getPlan(userId);
+    const weekPlan = window.WeeklyPlanService ? await window.WeeklyPlanService.getPlan(userId) : null;
     const today = new Date().getDay();
     
     if (weekPlan && weekPlan[today] && 
@@ -41,7 +41,7 @@ export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
     
     const treinosRealizados = [...new Set((execucoes || []).map(e => e.protocolo_treino_id))];
     
-    let queryOptions = {
+    const queryOptions = {
         select: '*, exercicios(*)',
         eq: { protocolo_id: protocoloId },
         order: { column: 'tipo_atividade', ascending: true },
@@ -202,7 +202,7 @@ export async function salvarExecucaoExercicio(dados) {
         }
         
         const dadosParaSalvar = {
-            usuario_id: dados.usuario_id,
+            usuario_id: String(dados.usuario_id),
             protocolo_treino_id: dados.protocolo_treino_id || null,
             exercicio_id: dados.exercicio_id,
             data_execucao: dados.data_execucao || toSaoPauloISOString(nowInSaoPaulo()),
@@ -232,15 +232,50 @@ export async function salvarExecucaoExercicio(dados) {
     }
 }
 
-// Salvar múltiplas execuções em lote (otimizado com chunking)
-export async function salvarExecucoesEmLote(execucoes) {
+// Função auxiliar para validar dados de execução
+function validarDadosExecucao(dados) {
+    const erros = [];
+    
+    if (!dados.usuario_id || (typeof dados.usuario_id !== 'string' && typeof dados.usuario_id !== 'number')) {
+        erros.push('usuario_id inválido');
+    }
+    
+    if (!dados.exercicio_id || typeof dados.exercicio_id !== 'number') {
+        erros.push('exercicio_id inválido');
+    }
+    
+    const peso = parseFloat(dados.peso_utilizado);
+    if (isNaN(peso) || peso < 0 || peso > 1000) {
+        erros.push(`peso_utilizado inválido: ${dados.peso_utilizado}`);
+    }
+    
+    const reps = parseInt(dados.repeticoes || dados.repeticoes_realizadas);
+    if (isNaN(reps) || reps < 0 || reps > 100) {
+        erros.push(`repeticoes inválidas: ${dados.repeticoes}`);
+    }
+    
+    const serie = parseInt(dados.serie_numero);
+    if (isNaN(serie) || serie < 1 || serie > 10) {
+        erros.push(`serie_numero inválido: ${dados.serie_numero}`);
+    }
+    
+    return { valido: erros.length === 0, erros };
+}
+
+// Função principal com retry logic
+export async function salvarExecucoesEmLote(execucoes, maxRetries = 3) {
+    return await salvarExecucoesEmLoteComRetry(execucoes, maxRetries);
+}
+
+// Salvar múltiplas execuções em lote (otimizado com chunking e retry)
+async function salvarExecucoesEmLoteComRetry(execucoes, maxRetries = 3, tentativa = 1) {
     try {
-        console.log('[salvarExecucoesEmLote] Salvando', execucoes.length, 'execuções em lote');
+        console.log(`[salvarExecucoesEmLote] Tentativa ${tentativa}/${maxRetries} - Salvando ${execucoes.length} execuções em lote`);
         
         // Validar que temos execuções para salvar
         if (!execucoes || execucoes.length === 0) {
             console.log('[salvarExecucoesEmLote] Nenhuma execução para salvar');
-            return { sucesso: true, salvos: 0, erros: [] };
+            return { sucesso: true, salvos: 0, erros: [], dadosNaoSalvos: [] };
         }
         
         // Configurar tamanho do chunk (PostgreSQL suporta até 1000 por vez)
@@ -263,56 +298,87 @@ export async function salvarExecucoesEmLote(execucoes) {
             const chunk = chunks[i];
             console.log(`[salvarExecucoesEmLote] Processando chunk ${i + 1}/${chunks.length} com ${chunk.length} itens`);
             
-            // Preparar dados do chunk
-            const dadosParaSalvar = chunk.map(dados => ({
-                usuario_id: dados.usuario_id,
-                protocolo_treino_id: dados.protocolo_treino_id || null,
-                exercicio_id: dados.exercicio_id,
-                data_execucao: dados.data_execucao || toSaoPauloISOString(nowInSaoPaulo()),
-                peso_utilizado: dados.peso_utilizado,
-                repeticoes: dados.repeticoes || dados.repeticoes_realizadas,
-                serie_numero: dados.serie_numero,
-                falhou: dados.falhou || false,
-                observacoes: dados.observacoes || null
-                // REMOVIDO: tempo_descanso - esta coluna não existe na tabela execucao_exercicio_usuario
-            }));
+            // Validar e transformar dados do chunk
+            const dadosValidados = chunk
+                .map(dados => {
+                    const validacao = validarDadosExecucao(dados);
+                    if (!validacao.valido) {
+                        console.error('[salvarExecucoesEmLote] Dados inválidos:', validacao.erros, dados);
+                        return null;
+                    }
+                    return {
+                        usuario_id: String(dados.usuario_id),
+                        protocolo_treino_id: dados.protocolo_treino_id || null,
+                        exercicio_id: parseInt(dados.exercicio_id),
+                        data_execucao: dados.data_execucao || toSaoPauloISOString(nowInSaoPaulo()),
+                        peso_utilizado: parseFloat(dados.peso_utilizado),
+                        repeticoes: parseInt(dados.repeticoes || dados.repeticoes_realizadas),
+                        serie_numero: parseInt(dados.serie_numero),
+                        falhou: Boolean(dados.falhou),
+                        observacoes: dados.observacoes || null
+                    };
+                })
+                .filter(Boolean);
             
-            // Tentar inserir o chunk
-            const { data, error, status } = await insert('execucao_exercicio_usuario', dadosParaSalvar);
+            if (dadosValidados.length === 0) {
+                console.warn(`[salvarExecucoesEmLote] Chunk ${i + 1} não tem dados válidos`);
+                dadosNaoSalvos.push(...chunk);
+                continue;
+            }
             
-            if (error) {
-                console.error(`[salvarExecucoesEmLote] Erro no chunk ${i + 1}:`, error);
-                
-                // Verificar se é erro parcial (status 207)
-                if (status === 207 && error.details?.failed_rows) {
-                    // Alguns registros falharam
-                    const falhas = error.details.failed_rows;
-                    const sucessos = chunk.length - falhas.length;
-                    totalSalvos += sucessos;
+            // Tentar inserir o chunk com tratamento robusto
+            try {
+                const { data, error, status } = await insert('execucao_exercicio_usuario', dadosValidados);
+            
+                if (error) {
+                    console.error(`[salvarExecucoesEmLote] Erro no chunk ${i + 1}:`, error);
                     
-                    errosDetalhados.push({
-                        chunk: i + 1,
-                        tipo: 'parcial',
-                        mensagem: `${falhas.length} registros falharam no chunk ${i + 1}`,
-                        detalhes: falhas
-                    });
-                    
-                    // Adicionar falhas aos dados não salvos
-                    dadosNaoSalvos.push(...falhas);
+                    // Verificar se é erro parcial (status 207)
+                    if (status === 207 && error.details?.failed_rows) {
+                        // Alguns registros falharam
+                        const falhas = error.details.failed_rows;
+                        const sucessos = dadosValidados.length - falhas.length;
+                        totalSalvos += sucessos;
+                        
+                        errosDetalhados.push({
+                            chunk: i + 1,
+                            tentativa,
+                            tipo: 'parcial',
+                            mensagem: `${falhas.length} registros falharam no chunk ${i + 1}`,
+                            detalhes: falhas
+                        });
+                        
+                        // Mapear falhas de volta para dados originais
+                        const dadosOriginaisFalhas = falhas.map(indice => chunk[indice]).filter(Boolean);
+                        dadosNaoSalvos.push(...dadosOriginaisFalhas);
+                    } else {
+                        // Falha total do chunk - será retentado
+                        errosDetalhados.push({
+                            chunk: i + 1,
+                            tentativa,
+                            tipo: 'total',
+                            mensagem: error.message || `Erro ao salvar chunk ${i + 1}`,
+                            error: error
+                        });
+                        
+                        // Todo o chunk falhou
+                        dadosNaoSalvos.push(...chunk);
+                    }
                 } else {
-                    // Falha total do chunk
-                    errosDetalhados.push({
-                        chunk: i + 1,
-                        tipo: 'total',
-                        mensagem: error.message || `Erro ao salvar chunk ${i + 1}`
-                    });
-                    
-                    // Todo o chunk falhou
-                    dadosNaoSalvos.push(...chunk);
+                    // Sucesso total do chunk
+                    totalSalvos += data?.length || dadosValidados.length;
+                    console.log(`[salvarExecucoesEmLote] Chunk ${i + 1} salvo com sucesso: ${dadosValidados.length} registros`);
                 }
-            } else {
-                // Sucesso total do chunk
-                totalSalvos += data?.length || chunk.length;
+            } catch (networkError) {
+                console.error(`[salvarExecucoesEmLote] Erro de rede no chunk ${i + 1}:`, networkError);
+                errosDetalhados.push({
+                    chunk: i + 1,
+                    tentativa,
+                    tipo: 'network',
+                    mensagem: `Erro de rede no chunk ${i + 1}: ${networkError.message}`,
+                    error: networkError
+                });
+                dadosNaoSalvos.push(...chunk);
             }
         }
         
@@ -320,7 +386,26 @@ export async function salvarExecucoesEmLote(execucoes) {
         const sucessoParcial = totalSalvos > 0 && totalSalvos < execucoes.length;
         const sucessoTotal = totalSalvos === execucoes.length;
         
+        // Se há dados não salvos e ainda temos tentativas, retry
+        if (dadosNaoSalvos.length > 0 && tentativa < maxRetries) {
+            // Verificar se são apenas erros de rede/temporários
+            const temErrosRecuperaveis = errosDetalhados.some(erro => 
+                erro.tipo === 'network' || erro.tipo === 'total'
+            );
+            
+            if (temErrosRecuperaveis) {
+                console.log(`[salvarExecucoesEmLote] ${dadosNaoSalvos.length} dados não salvos. Tentando novamente em ${tentativa * 2}s...`);
+                
+                // Aguardar com backoff exponencial
+                await new Promise(resolve => setTimeout(resolve, tentativa * 2000));
+                
+                // Retry apenas com dados que falharam
+                return await salvarExecucoesEmLoteComRetry(dadosNaoSalvos, maxRetries, tentativa + 1);
+            }
+        }
+        
         console.log('[salvarExecucoesEmLote] Resultado final:', {
+            tentativa,
             total: execucoes.length,
             salvos: totalSalvos,
             falhas: dadosNaoSalvos.length,
@@ -333,7 +418,8 @@ export async function salvarExecucoesEmLote(execucoes) {
             salvos: totalSalvos,
             erros: errosDetalhados.map(e => e.mensagem),
             errosDetalhados,
-            dadosNaoSalvos: dadosNaoSalvos.length > 0 ? dadosNaoSalvos : null
+            dadosNaoSalvos: dadosNaoSalvos.length > 0 ? dadosNaoSalvos : null,
+            tentativasRealizadas: tentativa
         };
         
     } catch (error) {
@@ -377,7 +463,7 @@ export async function marcarTreinoConcluido(userId) {
         const hoje = new Date();
         const ano = hoje.getFullYear();
         const semana = planoUsuario?.semana_atual || 1; // CORREÇÃO: usar semana do protocolo
-        const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay()); // Converter para formato DB
+        const diaSemana = window.WeeklyPlanService ? window.WeeklyPlanService.dayToDb(hoje.getDay()) : hoje.getDay(); // Converter para formato DB
         
         const { error } = await update('planejamento_semanal', 
             { 

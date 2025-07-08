@@ -2046,7 +2046,203 @@ button {
     margin: 12px 16px;
     font-size: 0.9rem;
   }
+}
+
+/* ====== TEMPORIZADOR ENTRE EXERCÍCIOS ====== */
+
+/* Header da transição entre exercícios */
+.exercise-transition-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.exercise-transition-header h2 {
+  color: var(--accent-primary);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 10px rgba(255, 229, 0, 0.3);
+}
+
+.exercise-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.completed-exercise,
+.next-exercise {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 300px;
+}
+
+.completed-exercise {
+  border-left: 4px solid var(--accent-secondary);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.next-exercise {
+  border-left: 4px solid var(--accent-primary);
+  background: var(--accent-primary-bg);
+}
+
+.exercise-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.exercise-name {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.arrow-down {
+  font-size: 1.5rem;
+  color: var(--accent-primary);
+  animation: bounce-arrow 2s ease-in-out infinite;
+}
+
+@keyframes bounce-arrow {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-5px);
+  }
+  60% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Ajustes para tela de transição */
+.rest-timer-overlay .rest-timer-content {
+  max-width: 500px;
+  width: 90%;
+}
+
+.rest-timer-overlay .rest-label {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.rest-timer-overlay .rest-time {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-shadow: 0 0 15px rgba(255, 229, 0, 0.4);
+}
+
+/* Motivação para transição */
+.rest-timer-overlay .rest-motivation {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.rest-timer-overlay .rest-motivation p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Botão de pular para transição */
+.rest-timer-overlay .btn-rest-skip {
+  background: var(--bg-card);
+  border: 2px solid var(--accent-primary);
+  color: var(--accent-primary);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rest-timer-overlay .btn-rest-skip:hover {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  box-shadow: 0 0 20px rgba(255, 229, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.rest-timer-overlay .btn-rest-skip:active {
+  transform: translateY(0);
+}
+
+/* Responsividade para tela de transição */
+@media (max-width: 768px) {
+  .exercise-transition-header h2 {
+    font-size: 1.5rem;
+  }
   
+  .exercise-info {
+    gap: 0.8rem;
+  }
+  
+  .completed-exercise,
+  .next-exercise {
+    padding: 0.8rem 1rem;
+    max-width: 280px;
+  }
+  
+  .exercise-name {
+    font-size: 1rem;
+  }
+  
+  .rest-timer-overlay .rest-time {
+    font-size: 2.5rem;
+  }
+  
+  .rest-timer-overlay .rest-motivation p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .exercise-transition-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .completed-exercise,
+  .next-exercise {
+    padding: 0.7rem;
+    max-width: 250px;
+  }
+  
+  .exercise-name {
+    font-size: 0.9rem;
+  }
+  
+  .rest-timer-overlay .rest-time {
+    font-size: 2rem;
+  }
+  
+  .btn-rest-skip {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
   .plan-validation.show {
     margin: 12px 16px 20px;
     padding: 14px 16px;

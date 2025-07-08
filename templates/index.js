@@ -31,7 +31,7 @@ export function renderTemplate(templateName, container = 'app') {
         clearActiveScreens();
         
         switch(templateName) {
-            case 'login':
+            case 'login': {
                 console.log('[renderTemplate] Renderizando login');
                 containerEl.innerHTML = loginTemplate();
                 
@@ -54,6 +54,7 @@ export function renderTemplate(templateName, container = 'app') {
                     }, 10);
                 }
                 break;
+            }
                 
             case 'home':
                 console.log('[renderTemplate] 🏠 Renderizando home NOVA');
@@ -98,7 +99,7 @@ export function renderTemplate(templateName, container = 'app') {
                 }
                 break;
                 
-            case 'workout':
+            case 'workout': {
                 console.log('[renderTemplate] Renderizando workout');
                 containerEl.innerHTML = workoutTemplate();
                 
@@ -121,6 +122,7 @@ export function renderTemplate(templateName, container = 'app') {
                     }, 10);
                 }
                 break;
+            }
                 
             case 'orderWeek':
                 console.log('[renderTemplate] Redirecionando OrderWeek para Home');
@@ -130,7 +132,7 @@ export function renderTemplate(templateName, container = 'app') {
                 }
                 break;
                 
-            case 'planejamentoSemanalPage':
+            case 'planejamentoSemanalPage': {
                 console.log('[renderTemplate] 🚀 Renderizando planejamentoSemanalPage');
                 console.log('[renderTemplate] Container:', containerEl);
                 console.log('[renderTemplate] planejamentoSemanalPageTemplate disponível:', !!window.planejamentoSemanalPageTemplate);
@@ -165,6 +167,7 @@ export function renderTemplate(templateName, container = 'app') {
                 
                 console.log('[renderTemplate] ✅ Template de planejamento renderizado, aguardando inicialização externa');
                 break;
+            }
                 
             default:
                 console.error(`[renderTemplate] Template ${templateName} não encontrado`);

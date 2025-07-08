@@ -1192,7 +1192,7 @@ function atualizarUITreinoAtualCompleto(treino) {
             updateElement(progressTextEl, getWorkoutIcon('cardio', 'small'));
             break;
             
-        default:
+        default: {
             // Treino de força com informações detalhadas
             const grupoMuscular = treino.grupo_muscular;
             const icon = getWorkoutIcon(TREINO_ICONS[grupoMuscular] || 'peito', 'small');
@@ -1205,6 +1205,7 @@ function atualizarUITreinoAtualCompleto(treino) {
             updateElement(btnTextEl, 'Iniciar Treino');
             updateElement(progressTextEl, icon);
             break;
+        }
     }
     
     // Atualizar progresso circular se necessário
@@ -1262,7 +1263,7 @@ function atualizarUITreinoAtual(treino) {
             updateElement(progressTextEl, getWorkoutIcon('cardio', 'small'));
             break;
             
-        default:
+        default: {
             // Treino de força
             const grupoMuscular = treino.tipo;
             const icon = getWorkoutIcon(TREINO_ICONS[grupoMuscular] || 'peito', 'small');
@@ -1272,6 +1273,7 @@ function atualizarUITreinoAtual(treino) {
             updateElement(btnTextEl, 'Iniciar Treino');
             updateElement(progressTextEl, icon);
             break;
+        }
     }
     
     // Simular progresso baseado no dia da semana
@@ -1930,7 +1932,7 @@ function configurarBotaoIniciar() {
 // Variável para evitar múltiplos registros de listeners
 let listenersConfigured = false;
 let debounceTimer = null;
-let supabaseChannel = null;
+const supabaseChannel = null;
 
 // Configurar listener do Supabase para mudanças em tempo real
 // DESABILITADO: Realtime do Supabase foi desativado para evitar erros de WebSocket
@@ -4482,7 +4484,7 @@ function calcularMetricasHeader(historico, somenteplanejamento) {
     const grupoMuscular = historico.planejamento?.tipo_atividade || 'Treino';
     let percentualRM = 0;
     let pesoTotal = 0;
-    let status = somenteplanejamento ? 'planejado' : 'executado';
+    const status = somenteplanejamento ? 'planejado' : 'executado';
     
     if (somenteplanejamento) {
         // Para treino planejado, usar dados sugeridos
@@ -5323,7 +5325,7 @@ function calcularEstatisticasTreino(historico) {
     const duracaoEstimada = Math.round(totalSeries * 3.5);
     
     // Performance vs sugerido
-    let performance = { percentual: 100, class: 'good', icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' };
+    const performance = { percentual: 100, class: 'good', icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' };
     
     if (exerciciosSugeridos.length > 0) {
         const pesoSugerido = exerciciosSugeridos.reduce((total, sug) => {
@@ -5924,7 +5926,7 @@ function mostrarMensagemExercicios(mensagem, tipo = 'info', container) {
 
 // Variáveis para controle do scroll
 let lastScrollTop = 0;
-let scrollThreshold = 50; // Pixels de scroll para ativar o efeito
+const scrollThreshold = 50; // Pixels de scroll para ativar o efeito
 
 // Função para gerenciar o efeito de scroll do header
 function initHeaderScrollEffect() {

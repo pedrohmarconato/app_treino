@@ -1,5 +1,4 @@
 // Gerenciador de Estado de Treino com Persistência Otimizada
-import TreinoCacheService from './treinoCacheService.js';
 import { storageMonitor } from './storageMonitor.js';
 import { tabSyncService } from './tabSyncService.js';
 
@@ -291,14 +290,28 @@ class WorkoutStateManager {
                 console.log('[WorkoutStateManager] Restaurando cronometro:', cronometro);
                 
                 if (cronometro.workoutStartTime) {
-                    // Garantir que seja um número válido
                     const startTime = Number(cronometro.workoutStartTime);
-                    if (!isNaN(startTime) && startTime > 0) {
-                        window.AppState.set('workoutStartTime', startTime);
-                        console.log('[WorkoutStateManager] workoutStartTime restaurado:', startTime);
+                    const now = Date.now();
+                    
+                    // Validar se é um timestamp válido e não futuro
+                    if (!isNaN(startTime) && startTime > 0 && startTime <= now) {
+                        // Verificar se não é muito antigo (mais de 24h)
+                        const ageInHours = (now - startTime) / (1000 * 60 * 60);
+                        if (ageInHours <= 24) {
+                            window.AppState.set('workoutStartTime', startTime);
+                            console.log('[WorkoutStateManager] workoutStartTime restaurado:', startTime, `(${ageInHours.toFixed(1)}h atrás)`);
+                        } else {
+                            console.warn('[WorkoutStateManager] workoutStartTime muito antigo, usando atual');
+                            window.AppState.set('workoutStartTime', now);
+                        }
                     } else {
-                        console.warn('[WorkoutStateManager] workoutStartTime inválido:', cronometro.workoutStartTime);
+                        console.warn('[WorkoutStateManager] workoutStartTime inválido, usando atual:', cronometro.workoutStartTime);
+                        window.AppState.set('workoutStartTime', now);
                     }
+                } else {
+                    // Se não há startTime salvo, usar atual
+                    console.log('[WorkoutStateManager] Nenhum workoutStartTime salvo, usando atual');
+                    window.AppState.set('workoutStartTime', Date.now());
                 }
                 if (cronometro.restTime !== undefined) {
                     window.AppState.set('restTime', cronometro.restTime);
@@ -323,20 +336,82 @@ class WorkoutStateManager {
     }
     
     /**
-     * Valida integridade do estado
+     * Valida integridade rigorosa do estado
      */
     validateState(state) {
         if (!state || typeof state !== 'object') {
+            console.log('[WorkoutStateManager] Estado não é objeto válido');
+            return false;
+        }
+        
+        // Verificar timestamp
+        if (!state.timestamp || typeof state.timestamp !== 'number') {
+            console.log('[WorkoutStateManager] Timestamp inválido');
+            return false;
+        }
+        
+        // Verificar se não expirou (24h)
+        const ageInMs = Date.now() - state.timestamp;
+        if (ageInMs > 24 * 60 * 60 * 1000) {
+            console.log('[WorkoutStateManager] Estado expirado');
+            return false;
+        }
+        
+        // Verificar execuções
+        if (!Array.isArray(state.execucoes)) {
+            console.log('[WorkoutStateManager] Execuções não é array');
             return false;
         }
         
         // Para ser considerado válido, DEVE ter execuções reais
-        // Apenas ter estado sem execuções não é suficiente
-        const hasExecutions = state.execucoes && state.execucoes.length > 0;
-        
-        // Se não tem execuções, não é um treino válido em andamento
-        if (!hasExecutions) {
+        if (state.execucoes.length === 0) {
             console.log('[WorkoutStateManager] Estado sem execuções - considerado inválido');
+            return false;
+        }
+        
+        // Validar estrutura das execuções
+        const execucoesValidas = state.execucoes.every((exec, index) => {
+            if (!exec.exercicio_id) {
+                console.log(`[WorkoutStateManager] Execução ${index}: exercicio_id ausente`);
+                return false;
+            }
+            if (typeof exec.serie_numero !== 'number' || exec.serie_numero < 1) {
+                console.log(`[WorkoutStateManager] Execução ${index}: serie_numero inválido`);
+                return false;
+            }
+            if (typeof exec.peso_utilizado !== 'number' || exec.peso_utilizado < 0) {
+                console.log(`[WorkoutStateManager] Execução ${index}: peso_utilizado inválido`);
+                return false;
+            }
+            if (typeof exec.repeticoes !== 'number' || exec.repeticoes < 0) {
+                console.log(`[WorkoutStateManager] Execução ${index}: repeticoes inválidas`);
+                return false;
+            }
+            if (!exec.timestamp && !exec.data_execucao) {
+                console.log(`[WorkoutStateManager] Execução ${index}: timestamp/data_execucao ausente`);
+                return false;
+            }
+            return true;
+        });
+        
+        if (!execucoesValidas) {
+            console.log('[WorkoutStateManager] Estrutura de execuções inválida');
+            return false;
+        }
+        
+        // Verificar estado atual
+        if (!state.estadoAtual || typeof state.estadoAtual !== 'object') {
+            console.log('[WorkoutStateManager] Estado atual inválido');
+            return false;
+        }
+        
+        if (!state.estadoAtual.currentWorkout) {
+            console.log('[WorkoutStateManager] Dados de treino ausentes no estado');
+            return false;
+        }
+        
+        if (!state.estadoAtual.currentExercises || !Array.isArray(state.estadoAtual.currentExercises)) {
+            console.log('[WorkoutStateManager] Exercícios ausentes ou inválidos no estado');
             return false;
         }
         

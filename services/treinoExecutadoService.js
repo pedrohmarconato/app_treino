@@ -97,7 +97,7 @@ export class TreinoExecutadoService {
             
             // Buscar execuções para cada sessão
             if (sessoes && sessoes.length > 0) {
-                for (let sessao of sessoes) {
+                for (const sessao of sessoes) {
                     const { data: execucoes, error: errorExec } = await supabase
                         .from('execucao_exercicio_usuario')
                         .select(`
@@ -152,7 +152,7 @@ export class TreinoExecutadoService {
             
             // Se encontrou sessões, buscar as execuções separadamente
             if (sessoes && sessoes.length > 0) {
-                for (let sessao of sessoes) {
+                for (const sessao of sessoes) {
                     const { data: execucoes, error: errorExec } = await supabase
                         .from('execucao_exercicio_usuario')
                         .select(`

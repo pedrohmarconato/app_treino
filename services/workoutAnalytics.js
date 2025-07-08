@@ -186,7 +186,7 @@ class WorkoutAnalytics {
             seriesFalhadas: 0
         };
         
-        let temposTreino = [];
+        const temposTreino = [];
         
         eventosPeriodo.forEach(event => {
             const dia = new Date(event.timestamp).toDateString();
@@ -372,28 +372,22 @@ class WorkoutAnalytics {
      * Adiciona eventos à fila de sincronização offline
      */
     addToOfflineSync() {
-        if (window.offlineSyncService && this.eventBuffer.length > 0) {
-            console.log('[Analytics] Adicionando eventos à fila offline');
-            
-            window.offlineSyncService.addToSyncQueue(
-                this.eventBuffer,
-                'analytics_events'
-            );
-            
-            // Adicionar ao storage local também
-            const events = this.getEvents();
-            events.push(...this.eventBuffer);
-            
-            if (events.length > this.maxEvents) {
-                events.splice(0, events.length - this.maxEvents);
-            }
-            
-            this.saveEvents(events);
-            
-            // Limpar buffer
-            this.eventBuffer = [];
-            this.saveBuffer();
+        // offlineSyncService removido - apenas salvar localmente
+        console.log('[Analytics] Salvando eventos offline localmente');
+        
+        // Adicionar ao storage local
+        const events = this.getEvents();
+        events.push(...this.eventBuffer);
+        
+        if (events.length > this.maxEvents) {
+            events.splice(0, events.length - this.maxEvents);
         }
+        
+        this.saveEvents(events);
+        
+        // Limpar buffer
+        this.eventBuffer = [];
+        this.saveBuffer();
     }
     
     /**

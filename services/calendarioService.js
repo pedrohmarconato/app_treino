@@ -1,7 +1,7 @@
 // services/calendarioService.js
 // Serviço para gerenciar a tabela d_calendario e atualizar semana atual
 
-import { supabase } from './supabaseService.js';
+import { supabase, safeQuery, queryWithRetry } from './supabaseService.js';
 
 export class CalendarioService {
     
@@ -86,22 +86,41 @@ export class CalendarioService {
     }
     
     /**
-     * Verifica qual registro está marcado como semana atual
+     * Verifica qual registro está marcado como semana atual com retry automático
      */
     static async verificarSemanaAtual() {
         console.log('[CalendarioService] 🔍 Verificando semana atual...');
         
         try {
-            const { data, error } = await supabase
-                .from('d_calendario')
-                .select('*')
-                .eq('eh_semana_atual', true)
-                .order('data_completa', { ascending: false });
+            // Usar safeQuery com retry automático
+            const result = await safeQuery(async () => {
+                return await supabase
+                    .from('d_calendario')
+                    .select('*')
+                    .eq('eh_semana_atual', true)
+                    .order('data_completa', { ascending: false });
+            }, { maxRetries: 3, baseDelay: 1000 });
             
-            if (error) {
-                console.error('[CalendarioService] ❌ Erro ao verificar semana atual:', error);
-                return { success: false, error: error.message };
+            // Verificar se está offline
+            if (result.offline) {
+                console.warn('[CalendarioService] 📵 Operação offline - usando dados em cache se disponível');
+                return { 
+                    success: false, 
+                    error: 'Sem conexão com a internet',
+                    offline: true 
+                };
             }
+            
+            if (result.error) {
+                console.error('[CalendarioService] ❌ Erro ao verificar semana atual:', result.error);
+                return { 
+                    success: false, 
+                    error: result.error.message,
+                    isNetworkError: true 
+                };
+            }
+            
+            const { data } = result;
             
             console.log('[CalendarioService] 📊 Semanas marcadas como atuais:', data);
             
@@ -138,7 +157,20 @@ export class CalendarioService {
         const verificacao = await this.verificarSemanaAtual();
         
         if (!verificacao.success) {
-            console.error('[CalendarioService] ❌ Erro na verificação, tentando reset forçado...');
+            console.error('[CalendarioService] ❌ Erro na verificação:', verificacao.error);
+            
+            // Se foi erro de rede, não tentar reset forçado ainda
+            if (verificacao.isNetworkError) {
+                console.warn('[CalendarioService] 🌐 Erro de rede detectado, pulando reset forçado');
+                return { 
+                    success: false, 
+                    error: verificacao.error,
+                    skippedReset: true,
+                    reason: 'network_error'
+                };
+            }
+            
+            console.error('[CalendarioService] ❌ Erro persistente na verificação, tentando reset forçado...');
             const resetResult = await this.resetForcado();
             if (!resetResult.success) {
                 console.error('[CalendarioService] ❌ Reset forçado falhou, usando atualização normal...');
