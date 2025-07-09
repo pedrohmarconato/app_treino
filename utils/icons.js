@@ -1,5 +1,31 @@
-// icons.js - Sistema de Ícones Customizados para App Treino
-// Substitui completamente o uso de emojis por SVGs otimizados
+/**
+ * 🎯 SISTEMA DE ÍCONES - Icons Utils
+ * 
+ * FUNÇÃO: Centralizar e padronizar todos os ícones SVG usados na aplicação.
+ * 
+ * RESPONSABILIDADES:
+ * - Fornecer ícones SVG otimizados para cada tipo de treino e ação
+ * - Substituir emojis por ícones consistentes e profissionais
+ * - Organizar ícones por categoria (treinos, ações, status, grupos musculares)
+ * - Garantir acessibilidade com labels e roles adequados
+ * - Manter tamanhos e estilos consistentes em toda aplicação
+ * - Fornecer variações (preenchido, outline, colored)
+ * 
+ * CATEGORIAS DE ÍCONES:
+ * - Treinos: A (peito), B (costas), C (pernas), D (ombros/braços)
+ * - Ações: play, pause, stop, next, previous, settings
+ * - Status: completed, pending, failed, loading
+ * - Grupos Musculares: biceps, triceps, peito, costas, pernas, etc.
+ * - Interface: menu, close, edit, save, delete
+ * 
+ * PADRÕES:
+ * - SVGs inline para performance (sem requisições HTTP)
+ * - Viewbox 24x24 para consistência
+ * - Cores CSS customizáveis via currentColor
+ * - Stroke-width padrão de 2px para melhor legibilidade
+ * 
+ * USO: getWorkoutIcon(), getActionIcon(), getMuscleIcon()
+ */
 
 export const AppIcons = {
     // Tipos de Treino - Design Flat Moderno baseado em pesquisa 2024

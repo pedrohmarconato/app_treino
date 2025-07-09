@@ -1,4 +1,31 @@
-// Gerenciador Centralizado de Timers e Listeners
+/**
+ * ⏰ GERENCIADOR DE TIMERS - Timer Manager
+ * 
+ * FUNÇÃO: Centralizar e gerenciar todos os timers e cronômetros da aplicação.
+ * 
+ * RESPONSABILIDADES:
+ * - Criar e gerenciar múltiplos timers simultâneos
+ * - Evitar vazamentos de memória (timers órfãos)
+ * - Organizar timers por contexto (workout, rest, global)
+ * - Fornecer API consistente para setTimeout/setInterval
+ * - Limpar automaticamente timers ao trocar de tela
+ * - Pausar/resumir timers quando necessário
+ * - Sincronizar timers com mudanças de estado
+ * 
+ * CONTEXTOS SUPORTADOS:
+ * - workout: Timers da execução de treino
+ * - rest: Cronômetros de descanso entre séries/exercícios
+ * - global: Timers gerais da aplicação
+ * - ui: Timers de animações e transições
+ * 
+ * FUNCIONALIDADES:
+ * - createTimer(): Criar timer com ID único
+ * - clearContext(): Limpar todos os timers de um contexto
+ * - pauseAll(): Pausar todos os timers ativos
+ * - resumeAll(): Retomar timers pausados
+ * 
+ * VANTAGENS: Previne memory leaks, facilita debugging, controle centralizado
+ */
 class TimerManager {
     constructor() {
         this.activeTimers = new Map(); // id -> timerId

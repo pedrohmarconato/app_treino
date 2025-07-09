@@ -1,7 +1,29 @@
-// services/weeklyPlanService.js - VERSÃO REFATORADA UNIFICADA
-// Serviço unificado para gestão do planejamento semanal
-// Combina todas as funcionalidades em um só lugar com estrutura consistente
-// Updated: Fixed import issue by using supabase directly instead of remove function
+/**
+ * 📅 SERVIÇO DE PLANEJAMENTO SEMANAL - Weekly Planning Service
+ * 
+ * FUNÇÃO: Gerenciar criação, edição e acompanhamento do planejamento semanal de treinos.
+ * 
+ * RESPONSABILIDADES:
+ * - Criar planos semanais personalizados (A, B, C, D, Folga, Cardio)
+ * - Carregar e salvar configurações semanais do usuário
+ * - Calcular progresso semanal (dias completados, próximos treinos)
+ * - Integrar com calendario para exibição visual
+ * - Detectar e atualizar semana ativa baseada na data atual
+ * - Gerenciar transições entre semanas de protocolo
+ * - Validar consistência do plano (não pode ter mais que X treinos por semana)
+ * 
+ * ESTRUTURA DO PLANO:
+ * - domingo: "folga" | "A" | "B" | "C" | "D" | "cardio"
+ * - segunda: "folga" | "A" | "B" | "C" | "D" | "cardio"
+ * - ...para cada dia da semana
+ * 
+ * DADOS GERENCIADOS:
+ * - planejamento_semanal: Configuração de cada usuário
+ * - semana_ativa: Qual semana do protocolo está em execução
+ * - status_conclusao: Quais dias foram completados
+ * 
+ * VALIDAÇÕES: Consistência de protocolo, limites de carga, progressão adequada
+ */
 
 import { query, insert, update, supabase } from './supabaseService.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';

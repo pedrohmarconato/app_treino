@@ -1,3 +1,31 @@
+/**
+ * 🧹 LIMPEZA DE DADOS CORROMPIDOS DO TIMER - Clean Corrupted Timer
+ * 
+ * FUNÇÃO: Detectar e corrigir dados corrompidos relacionados a timers e cronômetros.
+ * 
+ * RESPONSABILIDADES:
+ * - Verificar integridade dos dados de timer no localStorage
+ * - Detectar valores NaN ou inválidos em tempos e timestamps
+ * - Corrigir automaticamente dados corrompidos quando possível
+ * - Limpar dados irrecuperáveis para evitar bugs
+ * - Sincronizar dados entre diferentes chaves de armazenamento
+ * - Executar verificações automáticas na inicialização
+ * 
+ * VERIFICAÇÕES REALIZADAS:
+ * - treino_tempo_temp: valida tempo e timestamp de última atualização
+ * - treino_unified_state: verifica workoutStartTime no cronômetro
+ * - Detecção de strings 'NaN' nos dados JSON
+ * - Validação de tipos numéricos e ranges válidos
+ * 
+ * ESTRATÉGIAS DE CORREÇÃO:
+ * - Remoção completa de dados inválidos não-recuperáveis
+ * - Correção usando timestamps alternativos quando disponíveis
+ * - Fallback para tempo atual em casos extremos
+ * - Logs detalhados para debugging e monitoramento
+ * 
+ * INTEGRAÇÃO: Executado automaticamente na inicialização e disponível para chamada manual
+ */
+
 // Utilitário para limpar dados corrompidos do timer
 export function cleanCorruptedTimerData() {
     console.log('[cleanCorruptedTimer] Verificando dados do timer...');

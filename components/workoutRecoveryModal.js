@@ -1,3 +1,43 @@
+/**
+ * 🔄 MODAL DE RECUPERAÇÃO DE TREINO - Workout Recovery Modal
+ * 
+ * FUNÇÃO: Permitir recuperação de treinos interrompidos com validação e preview detalhado.
+ * 
+ * RESPONSABILIDADES:
+ * - Detectar treinos em andamento salvos no cache local
+ * - Validar correspondência entre cache e treino atual selecionado
+ * - Exibir preview detalhado do progresso salvo (séries, exercícios, tempo)
+ * - Oferecer opções de recuperação ou descarte com confirmação
+ * - Calcular estatísticas de progresso e tempo decorrido
+ * - Implementar validações de integridade dos dados
+ * - Re-estabelecer timers e cronômetros quando necessário
+ * 
+ * VALIDAÇÕES IMPLEMENTADAS:
+ * - Correspondência de ID do protocolo/treino
+ * - Hash do planejamento para detectar modificações
+ * - Limite de idade dos dados (máximo 7 dias)
+ * - Verificação de exercícios modificados
+ * - Integridade estrutural dos dados salvos
+ * 
+ * RECURSOS:
+ * - Cálculo automático de tempo decorrido com formatação intuitiva
+ * - Preview agrupado de séries por exercício
+ * - Algoritmo de hash deterministico (djb2) para comparação
+ * - Suporte a hash criptográfico SHA-256 para produção
+ * - Interface responsiva com ícones SVG
+ * - Sistema de confirmação para ações destrutivas
+ * 
+ * FLUXO DE RECUPERAÇÃO:
+ * 1. Verificar cache de treino interrompido
+ * 2. Validar correspondência com treino atual
+ * 3. Exibir modal com preview e opções
+ * 4. Processar escolha do usuário
+ * 5. Restaurar estado ou limpar cache
+ * 6. Re-estabelecer timers se necessário
+ * 
+ * INTEGRAÇÃO: Usado no início de treinos para detectar e recuperar sessões interrompidas
+ */
+
 // Modal de Recuperação de Treino
 export function criarModalRecuperacaoTreino(dadosRecuperados, onContinuar, onNovoTreino) {
     const tempoDecorrido = calcularTempoDecorrido(dadosRecuperados.timestamp);

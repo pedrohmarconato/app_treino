@@ -1,5 +1,30 @@
-// utils/timezoneUtils.js
-// Utilitários para conversão de timezone UTC <-> São Paulo
+/**
+ * 🕐 UTILITÁRIOS DE FUSO HORÁRIO - Timezone Utils
+ * 
+ * FUNÇÃO: Gerenciar conversões precisas entre UTC e horário de São Paulo.
+ * 
+ * RESPONSABILIDADES:
+ * - Converter datas UTC (do banco) para horário local de São Paulo
+ * - Converter datas locais para UTC para salvar no banco
+ * - Tratar automaticamente horário de verão brasileiro
+ * - Fornecer formatação consistente de datas e horas
+ * - Evitar problemas de timezone em operações críticas
+ * - Manter precisão em cálculos de tempo (cronômetros, intervalos)
+ * 
+ * FUNÇÕES PRINCIPAIS:
+ * - nowInSaoPaulo(): Data/hora atual no fuso de São Paulo
+ * - toSaoPauloISOString(): Converte UTC para ISO string de São Paulo
+ * - toSaoPauloDateString(): Formato de data brasileiro (DD/MM/AAAA)
+ * - parseFromSaoPaulo(): Converte string São Paulo para UTC
+ * 
+ * CASOS DE USO:
+ * - Salvar timestamp de execuções de treino
+ * - Exibir horários corretos no dashboard
+ * - Filtrar dados por dia/semana brasileira
+ * - Calcular métricas diárias precisas
+ * 
+ * IMPORTANTE: Todas as datas no banco são UTC, UI sempre em horário de São Paulo
+ */
 
 /**
  * Converte data UTC para o fuso horário de São Paulo

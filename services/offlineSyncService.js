@@ -1,4 +1,30 @@
-// Serviço de Sincronização Offline
+/**
+ * 📡 SERVIÇO DE SINCRONIZAÇÃO OFFLINE - Offline Sync Service
+ * 
+ * FUNÇÃO: Gerenciar sincronização de dados quando conexão voltar online.
+ * 
+ * RESPONSABILIDADES:
+ * - Detectar mudanças no status de conectividade (online/offline)
+ * - Armazenar dados em fila quando offline (localStorage/IndexedDB)
+ * - Sincronizar automaticamente quando conexão voltar
+ * - Implementar retry logic com backoff exponencial
+ * - Priorizar dados críticos (execuções de treino vs configurações)
+ * - Notificar usuário sobre status de sincronização
+ * - Resolver conflitos de dados quando necessário
+ * 
+ * CENÁRIOS SUPORTADOS:
+ * - Usuário treina sem internet → dados salvos localmente
+ * - Conexão instável → retry automático até sucesso
+ * - Múltiplos dispositivos → sincronização bidirecional
+ * - Dados corrompidos → validação e recuperação
+ * 
+ * TIPOS DE DADOS:
+ * - execucoes: Séries e exercícios realizados (CRÍTICO)
+ * - configuracoes: Preferências do usuário (NORMAL)
+ * - metricas: Dados de progresso (NORMAL)
+ * 
+ * ARQUITETURA: Event-driven com filas priorizadas e workers em background
+ */
 import { salvarExecucoesEmLote } from './workoutService.js';
 import { showNotification } from '../ui/notifications.js';
 

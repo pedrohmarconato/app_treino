@@ -1,4 +1,30 @@
-// templates/index.js - Sistema de templates CORRIGIDO
+/**
+ * 🎨 SISTEMA DE TEMPLATES - Template Manager
+ * 
+ * FUNÇÃO: Centralizar e organizar todos os templates HTML das telas da aplicação.
+ * 
+ * RESPONSABILIDADES:
+ * - Importar e exportar templates de todas as telas (login, home, workout, planning)
+ * - Organizar estilos CSS específicos de cada template
+ * - Fornecer interface unificada para o sistema de navegação
+ * - Garantir carregamento eficiente e reutilização de templates
+ * - Manter estrutura modular para facilitar manutenção
+ * - Validar templates antes de retornar (evitar HTML quebrado)
+ * 
+ * TEMPLATES INCLUÍDOS:
+ * - loginTemplate: Tela de autenticação com formulário
+ * - homeTemplate: Dashboard principal com métricas e navegação
+ * - workoutTemplate: Interface de execução de treino
+ * - modalPlanejamentoTemplate: Modal de configuração semanal
+ * - exerciseCardTemplate: Card individual de exercício
+ * 
+ * ESTILOS:
+ * - Cada template pode ter CSS específico associado
+ * - Estilos são injetados dinamicamente quando template é usado
+ * - Sistema evita conflitos de CSS entre diferentes telas
+ * 
+ * INTEGRAÇÃO: Usado por navigation.js para renderizar telas
+ */
 import { modalPlanejamentoTemplate, modalPlanejamentoStyles } from './modals.js';
 import { loginTemplate, loginStyles } from './login.js';
 import { homeTemplate, homeStyles } from './home.js';

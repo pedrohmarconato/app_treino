@@ -1,4 +1,30 @@
-// Gerenciador de Estado de Treino com Persistência Otimizada
+/**
+ * 💾 GERENCIADOR DE ESTADO DE TREINO - Workout State Manager
+ * 
+ * FUNÇÃO: Gerenciar persistência e recuperação de estado de treinos em execução.
+ * 
+ * RESPONSABILIDADES:
+ * - Salvar estado do treino em localStorage com throttling automático
+ * - Recuperar treinos em andamento quando usuário retorna ao app
+ * - Sincronizar estado entre múltiplas abas/janelas do navegador
+ * - Limpar dados expirados ou corrompidos automaticamente
+ * - Validar integridade dos dados antes de restaurar estado
+ * - Gerenciar backup e versionamento de estados críticos
+ * 
+ * CENÁRIOS DE USO:
+ * - Usuário fecha navegador durante treino → recupera ao abrir
+ * - Navegador trava durante execução → restaura estado completo
+ * - Múltiplas abas abertas → sincroniza entre todas
+ * - Falha de energia → dados preservados no localStorage
+ * 
+ * DADOS PERSISTIDOS:
+ * - Estado completo do treino (exercícios, séries, progresso)
+ * - Cache de execuções não sincronizadas
+ * - Cronômetros e timers em execução
+ * - Configurações e preferências do usuário
+ * 
+ * OTIMIZAÇÕES: Throttling de escrita, compressão de dados, limpeza automática
+ */
 import { storageMonitor } from './storageMonitor.js';
 import { tabSyncService } from './tabSyncService.js';
 

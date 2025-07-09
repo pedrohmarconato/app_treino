@@ -1,6 +1,24 @@
-// js/services/supabaseService.js
-// Centraliza a conexão e queries básicas do Supabase
-// Updated: Added remove function
+/**
+ * 🔌 SERVIÇO DE CONEXÃO COM BANCO - Supabase Service
+ * 
+ * FUNÇÃO: Interface única para comunicação com o banco de dados PostgreSQL via Supabase.
+ * 
+ * RESPONSABILIDADES:
+ * - Configurar e manter conexão com banco de dados Supabase
+ * - Fornecer métodos padronizados para operações CRUD (query, insert, update, remove)
+ * - Gerenciar autenticação e autorização de usuários
+ * - Tratar erros de conexão e retries automáticos
+ * - Logging detalhado de operações para debugging
+ * 
+ * MÉTODOS PRINCIPAIS:
+ * - query(): SELECT com filtros, ordenação, paginação
+ * - insert(): INSERT com validação e retorno de dados
+ * - update(): UPDATE com condições e validação
+ * - remove(): DELETE com condições de segurança
+ * - auth(): Métodos de autenticação (login, logout, signup)
+ * 
+ * CONFIGURAÇÃO: Lê credenciais de window.SUPABASE_CONFIG (definido em config.js)
+ */
 
 // Verificar se as configurações estão disponíveis
 if (!window.SUPABASE_CONFIG) {

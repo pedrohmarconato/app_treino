@@ -1,4 +1,23 @@
-// js/app.js - App principal LIMPO e OTIMIZADO
+/**
+ * 🏠 APP PRINCIPAL - Ponto de entrada da aplicação
+ * 
+ * FUNÇÃO: Arquivo de inicialização principal que configura a aplicação de treinos.
+ * 
+ * RESPONSABILIDADES:
+ * - Inicializar o estado global da aplicação (AppState)
+ * - Carregar e configurar todas as funcionalidades principais
+ * - Configurar navegação entre telas (login, dashboard, workout, planning)
+ * - Integrar protocolos de treino com Supabase
+ * - Gerenciar cache e sincronização offline
+ * 
+ * ARQUITETURA:
+ * - Carrega features: planning.js, workout.js, dashboard.js
+ * - Configura serviços: navigation, notifications, protocol integration
+ * - Expõe funções globais necessárias para o funcionamento da UI
+ * 
+ * IMPORTANTE: Este arquivo é carregado pelo index.html e deve manter 
+ * compatibilidade com browsers sem suporte total a ES6 modules.
+ */
 import AppState from '../state/appState.js';
 // Importar apenas o que é necessário, resto será acessado via window
 import '../feature/planning.js';

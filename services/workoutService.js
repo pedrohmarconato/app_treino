@@ -1,5 +1,29 @@
-// js/services/workoutService.js
-// Serviço para gerenciar treinos e exercícios
+/**
+ * 🏋️ SERVIÇO DE TREINOS - Workout Service
+ * 
+ * FUNÇÃO: Gerenciar todas as operações relacionadas aos treinos e exercícios.
+ * 
+ * RESPONSABILIDADES:
+ * - Buscar protocolos de treino e exercícios do banco de dados
+ * - Calcular pesos sugeridos baseados no 1RM do usuário
+ * - Salvar execuções de séries (individual e em lote com otimização)
+ * - Marcar treinos como concluídos no planejamento semanal
+ * - Validar dados de execução antes de salvar
+ * - Implementar retry logic para falhas de rede
+ * - Gerenciar chunking para inserções em massa (PostgreSQL limits)
+ * 
+ * FUNÇÕES PRINCIPAIS:
+ * - fetchProximoTreino(): Busca próximo treino baseado no planejamento
+ * - carregarPesosSugeridos(): Calcula pesos usando percentual do 1RM
+ * - salvarExecucoesEmLote(): Salva múltiplas séries com retry e validação
+ * - marcarTreinoConcluido(): Atualiza status no planejamento semanal
+ * 
+ * OTIMIZAÇÕES:
+ * - Chunking automático para evitar limits do PostgreSQL
+ * - Retry exponential backoff para falhas de rede
+ * - Validação robusta de dados para evitar corrupção
+ * - Fuso horário correto (America/Sao_Paulo)
+ */
 
 import { query, insert, update } from './supabaseService.js';
 import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';

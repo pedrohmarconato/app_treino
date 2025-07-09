@@ -1,5 +1,28 @@
-// js/services/userService.js
-// Serviço para gerenciar usuários e suas métricas
+/**
+ * 👤 SERVIÇO DE USUÁRIOS - User Service
+ * 
+ * FUNÇÃO: Gerenciar dados de usuários, autenticação e métricas pessoais.
+ * 
+ * RESPONSABILIDADES:
+ * - Buscar e atualizar perfis de usuários
+ * - Calcular e gerenciar 1RM (uma repetição máxima) por exercício
+ * - Coletar métricas de progresso (treinos completados, cargas, etc.)
+ * - Gerenciar configurações pessoais do usuário
+ * - Integrar com sistema de autenticação do Supabase
+ * - Validar e normalizar dados de entrada do usuário
+ * 
+ * FUNÇÕES PRINCIPAIS:
+ * - fetchMetricasUsuario(): Busca estatísticas de progresso
+ * - fetch1RMUsuario(): Retorna 1RM atual para exercício específico
+ * - updateUserProfile(): Atualiza dados do perfil
+ * - calculateProgress(): Calcula métricas de evolução
+ * 
+ * DADOS GERENCIADOS:
+ * - Perfil: nome, email, data nascimento, objetivos
+ * - 1RM: valores máximos por exercício para cálculo de cargas
+ * - Métricas: progresso semanal/mensal, recordes pessoais
+ * - Preferências: configurações de interface e notificações
+ */
 
 import { query, insert, update } from './supabaseService.js';
 

@@ -1,5 +1,30 @@
-// js/ui/navigation.js - VERSÃO CORRIGIDA
-// Sistema de navegação e controle de telas
+/**
+ * 🧭 SISTEMA DE NAVEGAÇÃO - Navigation UI
+ * 
+ * FUNÇÃO: Controlar navegação entre telas e gerenciar transições de estado.
+ * 
+ * RESPONSABILIDADES:
+ * - Gerenciar navegação entre telas (home, login, workout, planning)
+ * - Implementar guards de navegação (verificar autenticação, estado)
+ * - Controlar transições suaves com loading states
+ * - Manter histórico de navegação para botão "voltar"
+ * - Preservar estado durante navegação (não perder dados)
+ * - Integrar com workoutStateManager para recuperação
+ * 
+ * TELAS PRINCIPAIS:
+ * - login-screen: Autenticação do usuário
+ * - home-screen: Dashboard principal
+ * - workout-screen: Execução de treinos
+ * - planning-screen: Planejamento semanal
+ * 
+ * FUNCIONALIDADES:
+ * - mostrarTela(): Navegar para tela específica com validações
+ * - voltarParaHome(): Voltar ao dashboard com limpeza de estado
+ * - logout(): Limpar sessão e redirecionar para login
+ * - navigationGuard(): Verificar permissões antes da navegação
+ * 
+ * INTEGRAÇÃO: AppState, workoutStateManager, authentication
+ */
 
 import AppState from '../state/appState.js';
 

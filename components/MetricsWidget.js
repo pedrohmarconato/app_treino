@@ -1,3 +1,37 @@
+/**
+ * 📊 WIDGET DE MÉTRICAS AVANÇADAS - Metrics Widget
+ * 
+ * FUNÇÃO: Exibir métricas detalhadas de progresso do usuário com visualizações interativas e animadas.
+ * 
+ * RESPONSABILIDADES:
+ * - Buscar e processar dados de estatísticas do usuário (treinos, progresso, sequências)
+ * - Renderizar métricas principais (treinos completos, semana atual, progresso geral)
+ * - Exibir métricas secundárias (dias consecutivos, melhor sequência, peso médio)
+ * - Apresentar progresso semanal com barras animadas
+ * - Comparar desempenho atual com metas estabelecidas
+ * - Aplicar animações suaves para contadores e barras de progresso
+ * - Fornecer feedback visual interativo (hover effects, pulsos)
+ * 
+ * RECURSOS:
+ * - Animações de contadores incrementais para engajamento
+ * - Barras de progresso com efeitos shimmer
+ * - Cards responsivos com efeitos de hover
+ * - Sistema de fallback com dados mock quando API falha
+ * - Integração com AppState para atualizações em tempo real
+ * - Design adaptativo para diferentes tamanhos de tela
+ * - Tratamento de erros com interface de retry
+ * 
+ * MÉTRICAS EXIBIDAS:
+ * - Treinos Completos: quantidade total de treinos finalizados
+ * - Semana Atual: posição no protocolo de treinamento
+ * - Progresso Geral: percentual de conclusão do programa
+ * - Dias Consecutivos: streak atual de treinos
+ * - Melhor Sequência: maior streak já alcançada
+ * - Peso Médio: média de carga utilizada nos exercícios
+ * 
+ * INTEGRAÇÃO: Usado no dashboard principal, carregado dinamicamente pelo template manager
+ */
+
 // components/MetricsWidget.js - Widget avançado para métricas
 import AppState from '../state/appState.js';
 import { fetchDadosIndicadores } from '../services/workoutService.js';

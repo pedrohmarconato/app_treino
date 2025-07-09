@@ -1,5 +1,26 @@
-// js/features/workout.js
-// Lógica da tela de treino
+/**
+ * 💪 FUNCIONALIDADE PRINCIPAL - Execução de Treinos
+ * 
+ * FUNÇÃO: Gerenciar toda a lógica de execução de treinos em tempo real.
+ * 
+ * RESPONSABILIDADES:
+ * - Controlar fluxo completo do treino (início → séries → descanso → próximo exercício → conclusão)
+ * - Renderizar interface de exercícios com séries, pesos e repetições
+ * - Gerenciar cronômetros de descanso entre séries e entre exercícios
+ * - Salvar execuções no cache local para sincronização posterior
+ * - Implementar sistema de recuperação de treino (continue de onde parou)
+ * - Calcular e sugerir pesos baseados no 1RM do usuário
+ * - Validar dados de entrada e tratar erros de execução
+ * 
+ * FLUXO PRINCIPAL:
+ * 1. iniciarTreino() → carrega protocolo e configura estado
+ * 2. mostrarExercicioAtual() → renderiza exercício e séries
+ * 3. confirmarSerie() → salva execução e mostra cronômetro
+ * 4. proximoExercicio() → descanso entre exercícios e navegação
+ * 5. finalizarTreino() → sincroniza dados e marca treino como concluído
+ * 
+ * INTEGRAÇÃO: AppState, workoutService, timerManager, workoutStateManager
+ */
 
 import AppState from '../state/appState.js';
 import { fetch1RMUsuario } from '../services/userService.js';
@@ -571,16 +592,28 @@ function showExerciseContainer() {
         completedContainer: !!completedContainer
     });
     
+    // CORRIGIDO: Garantir que o container seja visível
     if (exerciseContainer) {
         exerciseContainer.style.display = 'block';
+        exerciseContainer.style.visibility = 'visible';
+        exerciseContainer.style.opacity = '1';
         exerciseContainer.classList.remove('hidden');
         console.log('[showExerciseContainer] Container de exercícios mostrado');
     } else {
         console.error('[showExerciseContainer] Container exercises-container não encontrado!');
     }
     
-    if (timerContainer) timerContainer.style.display = 'none';
-    if (completedContainer) completedContainer.style.display = 'none';
+    // CORRIGIDO: Esconder overlays com mais certeza
+    if (timerContainer) {
+        timerContainer.style.display = 'none';
+        timerContainer.style.visibility = 'hidden';
+        timerContainer.style.opacity = '0';
+    }
+    if (completedContainer) {
+        completedContainer.style.display = 'none';
+        completedContainer.style.visibility = 'hidden';
+        completedContainer.style.opacity = '0';
+    }
 }
 
 // Atualizar informações do exercício
@@ -695,7 +728,7 @@ function renderizarSeries(exercicio, pesosSugeridos) {
                 </svg>
                 <span>Anterior</span>
             </button>
-            <button class="btn-primary" id="btn-proximo-exercicio-${currentIndex}" onclick="proximoExercicio()">
+            <button class="btn-primary" id="btn-proximo-exercicio-${currentIndex}" onclick="verificarEProximoExercicio()">
                 <span>Próximo</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="9 18 15 12 9 6"/>
@@ -1013,9 +1046,10 @@ window.confirmarSerie = async function(serieIndex) {
                 mostrarTreinoConcluido();
             }, 500);
         } else {
-            // Senão, iniciar descanso
+            // CORRIGIDO: Ir direto para proximoExercicio() ao invés de iniciarDescanso()
+            // O proximoExercicio() já cuida do descanso entre exercícios
             setTimeout(() => {
-                iniciarDescanso();
+                proximoExercicio();
             }, 500);
         }
     }
@@ -1068,7 +1102,7 @@ function iniciarDescanso() {
     atualizarTimer();
 }
 
-// Atualizar timer
+// Atualizar timer (para descanso entre séries)
 function atualizarTimer() {
     const restTime = AppState.get('restTime');
     
@@ -1079,7 +1113,13 @@ function atualizarTimer() {
         
         const timerModal = document.getElementById('rest-timer-overlay');
         if (timerModal) timerModal.style.display = 'none';
-        proximoExercicio();
+        
+        // CORRIGIDO: Apenas esconder timer, não chamar proximoExercicio()
+        // Esta função é para descanso entre séries, não entre exercícios
+        const exerciseContainer = document.getElementById('exercises-container');
+        if (exerciseContainer) exerciseContainer.style.display = 'block';
+        
+        console.log('[atualizarTimer] Descanso entre séries finalizado');
         return;
     }
     
@@ -1107,16 +1147,14 @@ function atualizarTimer() {
 
 // REMOVIDO: Função pularDescanso duplicada - usar a versão correta mais abaixo
 
-// Próximo exercício
-function proximoExercicio() {
-    console.log('[proximoExercicio] Avançando para próximo exercício...');
+// Verificar se pode avançar e chamar próximo exercício
+window.verificarEProximoExercicio = function() {
+    console.log('[verificarEProximoExercicio] Verificando se pode avançar...');
     
     const exercises = AppState.get('currentExercises');
     const currentIndex = AppState.get('currentExerciseIndex');
-    const novoIndex = currentIndex + 1;
-    
-    // Verificar se todas as séries foram completadas
     const currentExercise = exercises[currentIndex];
+    
     if (currentExercise) {
         const totalSeries = currentExercise.series || 0;
         const seriesCompletadas = document.querySelectorAll(`#series-container-${currentIndex} .series-item.completed`).length;
@@ -1126,6 +1164,18 @@ function proximoExercicio() {
             return;
         }
     }
+    
+    // Se todas as séries foram completadas, pode avançar
+    proximoExercicio();
+}
+
+// Próximo exercício
+function proximoExercicio() {
+    console.log('[proximoExercicio] Avançando para próximo exercício...');
+    
+    const exercises = AppState.get('currentExercises');
+    const currentIndex = AppState.get('currentExerciseIndex');
+    const novoIndex = currentIndex + 1;
     
     // Verificar se há próximo exercício
     if (novoIndex >= exercises.length) {
@@ -1158,15 +1208,23 @@ function proximoExercicio() {
                 </div>
             `;
             exerciseContainer.style.display = 'block';
+            exerciseContainer.style.visibility = 'visible';
+            exerciseContainer.style.opacity = '1';
+            console.log('[proximoExercicio] Spinner de loading adicionado');
+        } else {
+            console.error('[proximoExercicio] Container exercises-container não encontrado!');
         }
         
         // RESETAR TODOS OS ESTADOS DA UI
         resetarEstadosUI();
         
-        // REMOVER OVERLAYS
+        // REMOVER OVERLAYS COM MAIS CERTEZA
         const restOverlay = document.getElementById('rest-timer-overlay');
         if (restOverlay) {
             restOverlay.style.display = 'none';
+            restOverlay.style.visibility = 'hidden';
+            restOverlay.style.opacity = '0';
+            console.log('[proximoExercicio] Overlay de descanso escondido');
         }
         
         // Limpar timer se existir
@@ -1174,6 +1232,7 @@ function proximoExercicio() {
         if (timerInterval) {
             clearInterval(timerInterval);
             AppState.set('restTimerInterval', null);
+            console.log('[proximoExercicio] Timer interval limpo');
         }
         
         // ATUALIZAR ÍNDICE E ESTADO
@@ -1199,7 +1258,8 @@ function proximoExercicio() {
                 }
                 
                 // Mostrar novo exercício
-                mostrarExercicioAtual();
+                console.log('[proximoExercicio] Chamando mostrarExercicioAtual()...');
+                await mostrarExercicioAtual();
                 
                 // Salvar estado após mudança completa
                 workoutStateManager.onExercicioMudou(novoIndex);
@@ -1207,14 +1267,25 @@ function proximoExercicio() {
                 // Rolar para o topo suavemente
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 
-                console.log(`[proximoExercicio] Avançado para exercício ${novoIndex + 1} de ${exercises.length}`);
+                console.log(`[proximoExercicio] ✅ Exercício ${novoIndex + 1} de ${exercises.length} carregado com sucesso!`);
+                
+                // Verificar se o container está visível
+                const finalContainer = document.getElementById('exercises-container');
+                if (finalContainer) {
+                    console.log('[proximoExercicio] Estado final do container:', {
+                        display: finalContainer.style.display,
+                        visibility: finalContainer.style.visibility,
+                        opacity: finalContainer.style.opacity,
+                        hasContent: finalContainer.innerHTML.length > 0
+                    });
+                }
                 
             } catch (error) {
                 console.error('[proximoExercicio] Erro ao carregar exercício:', error);
                 showNotification('Erro ao carregar exercício', 'error');
                 
                 // Em caso de erro, ainda mostrar o exercício sem pesos sugeridos
-                mostrarExercicioAtual();
+                await mostrarExercicioAtual();
             }
         }, 100); // Pequeno delay para garantir que o spinner seja visível
     }); // Fim do callback de descanso
@@ -1240,55 +1311,21 @@ function mostrarDescansoEntreExercicios(tempoDescanso, onComplete) {
         return;
     }
     
-    // Personalizar overlay para descanso entre exercícios
-    overlay.innerHTML = `
-        <div class="rest-timer-content">
-            <div class="exercise-transition-header">
-                <h2>Exercício Concluído!</h2>
-                <div class="exercise-info">
-                    <div class="completed-exercise">
-                        <span class="exercise-label">Concluído:</span>
-                        <span class="exercise-name">${exercicioAtual.nome}</span>
-                    </div>
-                    <div class="arrow-down">↓</div>
-                    <div class="next-exercise">
-                        <span class="exercise-label">Próximo:</span>
-                        <span class="exercise-name">${proximoExercicio.nome}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="rest-timer-circle">
-                <svg class="rest-progress" width="240" height="240">
-                    <circle cx="120" cy="120" r="110" fill="none" stroke="#e2e8f0" stroke-width="8"/>
-                    <circle cx="120" cy="120" r="110" fill="none" stroke="#4f46e5" stroke-width="8" 
-                            class="rest-progress-fill" stroke-linecap="round" 
-                            transform="rotate(-90 120 120)"/>
-                </svg>
-                <div class="rest-timer-text">
-                    <span id="rest-timer-display" class="rest-time">00:00</span>
-                    <span class="rest-label">descanso</span>
-                </div>
-            </div>
-            
-            <div class="rest-timer-actions">
-                <button id="skip-rest" class="btn-rest-skip">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="5 4 15 12 5 20 5 4"/>
-                        <line x1="19" y1="5" x2="19" y2="19"/>
-                    </svg>
-                    <span>Pular Descanso</span>
-                </button>
-            </div>
-            
-            <div class="rest-motivation">
-                <p id="motivation-text">"Prepare-se para o próximo exercício! Respire fundo e mantenha o foco."</p>
-            </div>
-        </div>
-    `;
+    // CORRIGIDO: Atualizar elementos existentes ao invés de recriar HTML
+    const titleElement = overlay.querySelector('.rest-timer-title, h2');
+    if (titleElement) {
+        titleElement.textContent = 'Exercício Concluído!';
+    }
+    
+    const motivationElement = overlay.querySelector('#motivation-text, .rest-motivation p');
+    if (motivationElement) {
+        motivationElement.textContent = `Prepare-se para: ${proximoExercicio.exercicio_nome}`;
+    }
     
     // Mostrar overlay
     overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
     
     // Configurar timer
     let tempoRestante = tempoDescanso;
@@ -1299,21 +1336,30 @@ function mostrarDescansoEntreExercicios(tempoDescanso, onComplete) {
     AppState.set('isExerciseTransition', true); // Flag para identificar transição
     workoutStateManager.onCronometroIniciado(tempoRestante);
     
-    // Configurar elementos
+    // Configurar elementos do overlay existente
     const timerDisplay = document.getElementById('rest-timer-display');
-    const progressCircle = overlay.querySelector('.rest-progress-fill');
+    const progressCircle = overlay.querySelector('.rest-progress-fill, circle[class*="progress"]');
     const skipButton = document.getElementById('skip-rest');
     
-    if (!timerDisplay || !progressCircle) {
-        console.error('[mostrarDescansoEntreExercicios] Elementos do timer não encontrados');
+    console.log('[mostrarDescansoEntreExercicios] Elementos encontrados:', {
+        timerDisplay: !!timerDisplay,
+        progressCircle: !!progressCircle,
+        skipButton: !!skipButton
+    });
+    
+    if (!timerDisplay) {
+        console.error('[mostrarDescansoEntreExercicios] Timer display não encontrado');
         onComplete();
         return;
     }
     
-    // Calcular circunferência do círculo
-    const radius = 110;
-    const circumference = 2 * Math.PI * radius;
-    progressCircle.style.strokeDasharray = circumference;
+    // Configurar progresso circular se disponível
+    let circumference = 0;
+    if (progressCircle) {
+        const radius = 110;
+        circumference = 2 * Math.PI * radius;
+        progressCircle.style.strokeDasharray = circumference;
+    }
     
     // Função para formatar tempo
     function formatarTempo(segundos) {
@@ -1338,13 +1384,17 @@ function mostrarDescansoEntreExercicios(tempoDescanso, onComplete) {
             clearInterval(timerInterval);
         }
         
-        // Esconder overlay
+        // CORRIGIDO: Esconder overlay com mais certeza
         overlay.style.display = 'none';
+        overlay.style.visibility = 'hidden';
+        overlay.style.opacity = '0';
         
         // Limpar estado
         AppState.set('restTime', 0);
         AppState.set('isExerciseTransition', false);
         AppState.set('restTimerInterval', null);
+        
+        console.log('[mostrarDescansoEntreExercicios] Overlay escondido, executando callback...');
         
         // Executar callback
         if (onComplete) {

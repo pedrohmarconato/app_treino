@@ -1,3 +1,34 @@
+/**
+ * 🧹 MODAL CLEAN REDESIGNED - Clean History Modal
+ * 
+ * FUNÇÃO: Exibir histórico de treinos e planejamentos com design limpo e moderno.
+ * 
+ * RESPONSABILIDADES:
+ * - Renderizar modais de histórico com design consistente e acessível
+ * - Diferenciar entre treinos executados e apenas planejados
+ * - Apresentar estatísticas de treino de forma visual e intuitiva
+ * - Exibir preview de exercícios sugeridos e realizados
+ * - Calcular e mostrar métricas de desempenho (volume, duração, performance)
+ * - Aplicar estilos responsivos e animações suaves
+ * - Fornecer navegação acessível com foco trap e ARIA labels
+ * 
+ * RECURSOS:
+ * - Design clean com gradientes e efeitos modernos
+ * - Cards informativos com ícones SVG vetoriais
+ * - Grid responsivo que se adapta a diferentes tamanhos de tela
+ * - Efeitos de hover e transições suaves
+ * - Suporte a backdrop blur e glassmorphism
+ * - Validação de dados com fallbacks seguros
+ * 
+ * TIPOS DE CONTEÚDO:
+ * - Treinos Executados: histórico completo com estatísticas de performance
+ * - Treinos Planejados: preview de exercícios sugeridos e configurações
+ * - Estatísticas: volume total, exercícios completados, duração estimada
+ * - Performance: percentual de conclusão com indicadores visuais
+ * 
+ * INTEGRAÇÃO: Usado pelo sistema de calendário e dashboard para exibir detalhes históricos
+ */
+
 // ===== MODAL CLEAN REDESIGNED =====
 
 // Função para criar modal de histórico com design clean e moderno

@@ -1,3 +1,35 @@
+/**
+ * 💪 MAPEAMENTO DE GRUPOS MUSCULARES - Muscle Group Icons
+ * 
+ * FUNÇÃO: Definir mapeamento entre grupos musculares e seus respectivos ícones SVG.
+ * 
+ * RESPONSABILIDADES:
+ * - Mapear grupos musculares para arquivos SVG específicos
+ * - Definir variações de ícones para diferentes contextos (primary, variants)
+ * - Estabelecer paleta de cores para cada grupo muscular
+ * - Listar músculos incluídos em cada grupo
+ * - Suportar tipos especiais (cardio, folga) com tratamento diferenciado
+ * - Fornecer estrutura consistente para o sistema de ícones
+ * 
+ * ESTRUTURA DOS GRUPOS:
+ * - primary: ícone principal do grupo muscular
+ * - variants: variações específicas (lats, traps, quads, etc.)
+ * - color: cor padrão para o grupo (#ffffff para músculos)
+ * - muscles: lista de músculos incluídos no grupo
+ * - icon: emoji de fallback (removido para melhor consistência)
+ * 
+ * GRUPOS INCLUÍDOS:
+ * - Peito: peitoral completo
+ * - Costas: dorsais e trapézio com variações
+ * - Pernas: quadríceps, posterior, panturrilha, glúteos
+ * - Ombro: deltoides
+ * - Braço: bíceps e tríceps
+ * - Core: abdominais
+ * - Especiais: cardio e folga com cores diferenciadas
+ * 
+ * INTEGRAÇÃO: Usado pelo MuscleGroupIcon component para renderização de ícones
+ */
+
 // Mapeamento de grupos musculares para ícones SVG
 const muscleGroups = {
   'Peito': {

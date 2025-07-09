@@ -1,3 +1,38 @@
+/**
+ * ✅ VERIFICAÇÃO DE SALVAMENTO DE TREINOS - Verify Workout Saves
+ * 
+ * FUNÇÃO: Verificar e diagnosticar problemas no salvamento de dados de treino.
+ * 
+ * RESPONSABILIDADES:
+ * - Buscar e validar últimas execuções de exercícios no banco
+ * - Verificar treinos concluídos em período específico (hoje)
+ * - Diagnosticar dados em cache local (localStorage e AppState)
+ * - Fornecer logs detalhados para debugging de problemas
+ * - Expor informações estruturadas sobre estado do salvamento
+ * - Identificar inconsistências entre cache e banco de dados
+ * 
+ * VERIFICAÇÕES REALIZADAS:
+ * - execucao_exercicio_usuario: últimas 10 execuções por usuário
+ * - treino_realizado: treinos concluídos na data atual
+ * - Cache local: chaves de armazenamento temporário
+ * - AppState: execuções em memória não persistidas
+ * 
+ * DADOS RETORNADOS:
+ * - Lista de execuções recentes com detalhes completos
+ * - Contador de treinos concluídos hoje
+ * - Informações da última execução registrada
+ * - Status de sucesso/falha das operações
+ * - Dados de cache local organizados por chave
+ * 
+ * USO PARA DEBUG:
+ * - Executar após problemas de salvamento
+ * - Verificar se dados chegam ao banco
+ * - Identificar problemas de sincronização
+ * - Monitorar integridade do cache
+ * 
+ * INTEGRAÇÃO: Disponível globalmente para debug via console do navegador
+ */
+
 // Utilitário para verificar se os treinos estão sendo salvos corretamente
 import { supabase } from '../services/supabaseService.js';
 

@@ -1,6 +1,28 @@
 /**
- * ContextualWorkoutButton.js - Botão Contextual de Treino
- * Adapta estado baseado em cache de treino e sessões ativas
+ * 🔄 COMPONENTE CONTEXTUAL - Botão Inteligente de Treino
+ * 
+ * FUNÇÃO: Botão que adapta automaticamente seu estado baseado no contexto atual.
+ * 
+ * RESPONSABILIDADES:
+ * - Detectar se há treino em andamento e mostrar "Continuar Treino"
+ * - Quando não há treino em andamento, mostrar "Iniciar Treino"
+ * - Integrar com workoutStateManager para recuperação de sessões
+ * - Atualizar automaticamente baseado em mudanças de estado
+ * - Fornecer feedback visual sobre ações disponíveis
+ * - Navegar adequadamente para workout.js ou mostrar modal de recuperação
+ * 
+ * ESTADOS DO BOTÃO:
+ * - "Iniciar Treino": Quando não há treino em cache
+ * - "Continuar Treino": Quando há treino em andamento detectado
+ * - "Carregando...": Durante verificação de estado
+ * - "Disabled": Quando há erro ou dados inconsistentes
+ * 
+ * INTEGRAÇÃO:
+ * - workoutStateManager: Para detectar treinos em andamento
+ * - AppState: Para monitorar mudanças de estado
+ * - navigation: Para redirecionar adequadamente
+ * 
+ * EVENTOS: Escuta mudanças de cache e atualiza estado automaticamente
  */
 
 import AppState from '../state/appState.js';

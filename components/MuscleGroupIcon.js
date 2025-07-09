@@ -1,3 +1,33 @@
+/**
+ * 💪 COMPONENTE DE ÍCONES DE GRUPOS MUSCULARES - Muscle Group Icon
+ * 
+ * FUNÇÃO: Renderizar ícones SVG dinâmicos para diferentes grupos musculares com suporte a variações visuais.
+ * 
+ * RESPONSABILIDADES:
+ * - Exibir ícones específicos para cada grupo muscular (peito, costas, pernas, etc.)
+ * - Suportar múltiplas variações visuais (primary, filled, outline)
+ * - Permitir customização de tamanho, cor e efeitos visuais
+ * - Fallback para emojis em casos especiais (cardio, folga)
+ * - Aplicar efeitos visuais como drop-shadow e transições
+ * - Validar entradas e tratar erros de carregamento de recursos
+ * 
+ * RECURSOS:
+ * - Ícones SVG vetoriais para melhor qualidade em diferentes resoluções
+ * - Sistema de variantes (primary, secondary, outline) para contextos diversos
+ * - Labels opcionais para identificação textual
+ * - Efeitos visuais responsivos (hover, focus)
+ * - Tratamento de erros para recursos não encontrados
+ * 
+ * PARÂMETROS:
+ * - grupo: string identificando o grupo muscular (ex: 'peito', 'costas')
+ * - variant: tipo visual do ícone ('primary', 'filled', 'outline')
+ * - size: tamanho em pixels (default: 64px)
+ * - showLabel: boolean para exibir label textual
+ * - className: classes CSS adicionais
+ * 
+ * INTEGRAÇÃO: Usado nos cards de treino, seletores de exercício e dashboards
+ */
+
 import muscleGroups from '../utils/muscleGroupIcons.js';
 
 const MuscleGroupIcon = ({ 

@@ -1,3 +1,33 @@
+/**
+ * 📅 ARMAZENAMENTO DE PLANOS SEMANAIS - Week Plan Storage
+ * 
+ * FUNÇÃO: Gerenciar armazenamento local de planos de treino semanais com sistema de chaves inteligente.
+ * 
+ * RESPONSABILIDADES:
+ * - Calcular números de semana baseados em data (domingo como primeiro dia)
+ * - Gerar chaves únicas para localStorage por usuário e semana
+ * - Salvar, carregar e gerenciar planos semanais localmente
+ * - Manter histórico de planos anteriores organizados por ano/semana
+ * - Fornecer funções de compatibilidade global para código legado
+ * - Implementar verificações de integridade dos dados
+ * 
+ * SISTEMA DE CHAVES:
+ * - Formato: weekPlan_{userId}_{year}_{week}
+ * - Semana baseada em domingo=0, sábado=6
+ * - Cálculo considera primeiro dia do ano para numeração
+ * - Suporte a semanas customizadas para testes
+ * 
+ * FUNCIONALIDADES:
+ * - saveWeekPlan(): salva plano no localStorage com tratamento de erros
+ * - getWeekPlan(): carrega plano atual com logs informativos
+ * - clearWeekPlan(): remove plano específico do localStorage
+ * - hasWeekPlan(): verifica existência sem carregar dados
+ * - getAllUserWeekPlans(): obtém histórico completo ordenado
+ * 
+ * NOTA: Funcionalidade principal migrada para services/weeklyPlanningService.js
+ * Este arquivo mantém utilitários de baixo nível para compatibilidade.
+ */
+
 // utils/weekPlanStorage.js
 // Utilitários auxiliares para gerenciamento de planos semanais
 // NOTA: A funcionalidade principal foi movida para services/weeklyPlanningService.js

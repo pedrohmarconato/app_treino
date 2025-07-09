@@ -1,4 +1,31 @@
-// js/features/dashboard.js - Dashboard completo com dados reais
+/**
+ * 🏠 TELA PRINCIPAL - Dashboard do Usuário
+ * 
+ * FUNÇÃO: Exibir visão geral completa do progresso e status do usuário.
+ * 
+ * RESPONSABILIDADES:
+ * - Mostrar resumo da semana atual de treinos (A, B, C, D, Folga, Cardio)
+ * - Exibir métricas de progresso (treinos concluídos, séries, carga total)
+ * - Renderizar calendário visual com status de cada dia
+ * - Detectar e mostrar treinos em andamento (botão "Continuar Treino")
+ * - Fornecer acesso rápido a funcionalidades (Iniciar Treino, Planejamento)
+ * - Sincronizar dados offline quando voltar online
+ * 
+ * COMPONENTES PRINCIPAIS:
+ * - Header com dados do usuário e notificações
+ * - Widget de semana atual com indicadores visuais
+ * - Card de métricas com estatísticas de progresso
+ * - Botão contextual de treino (Iniciar/Continuar)
+ * - Lista de treinos recentes e próximos
+ * 
+ * DADOS CARREGADOS:
+ * - Planejamento semanal atual do usuário
+ * - Métricas de progresso (semana/mês)
+ * - Status de treinos executados
+ * - Cache de treinos em andamento
+ * 
+ * NAVEGAÇÃO: Ponto central que direciona para workout.js e planning.js
+ */
 import AppState from '../state/appState.js';
 import { obterSemanaAtivaUsuario, carregarStatusSemanas, buscarExerciciosTreinoDia } from '../services/weeklyPlanningService.js';
 import { fetchMetricasUsuario } from '../services/userService.js';
@@ -10,7 +37,7 @@ import WeeklyPlanService from '../services/weeklyPlanningService.js';
 import homeService from '../services/homeService.js';
 import { showNotification } from '../ui/notifications.js';
 import { supabase, query } from '../services/supabaseService.js';
-import TreinoExecutadoService from '../services/treinoExecutadoService.js';
+// Removido: import TreinoExecutadoService - serviço obsoleto
 
 // Mapear tipos de treino para ícones
 const TREINO_ICONS = {

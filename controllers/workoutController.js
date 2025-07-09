@@ -1,3 +1,36 @@
+/**
+ * 🎮 CONTROLADOR DE TREINO - Workout Controller
+ * 
+ * FUNÇÃO: Gerenciar a interface de usuário relacionada a treinos, centralizando atualizações de dados e elementos DOM.
+ * 
+ * RESPONSABILIDADES:
+ * - Buscar dados completos de treino via queries especializadas
+ * - Atualizar elementos da UI de forma coordenada e consistente
+ * - Gerenciar diferentes tipos de treino (força, cardio, folga)
+ * - Sincronizar dados com AppState para reatividade
+ * - Tratar estados de erro e ausência de dados
+ * - Fornecer interface unificada para atualizações de treino
+ * 
+ * ARQUITETURA:
+ * - Controller Layer: coordena queries e atualizações de UI
+ * - Função principal: atualizarTodoTreinoUI() - ÚNICA função que deve ser chamada pelas telas
+ * - Funções especializadas para cada seção da UI
+ * - Sistema de fallback para cenários de erro
+ * 
+ * TIPOS DE TREINO SUPORTADOS:
+ * - Força: treinos com exercícios estruturados por semana/protocolo
+ * - Cardio: atividades cardiovasculares com duração estimada
+ * - Folga: dias de descanso e recuperação
+ * 
+ * ELEMENTOS UI GERENCIADOS:
+ * - Card principal: nome, exercícios, tipo de treino
+ * - Indicadores de semana: número, status, progresso
+ * - Estatísticas: treinos concluídos, percentual de progresso
+ * - Botões de ação: texto e comportamento contextual
+ * 
+ * INTEGRAÇÃO: Usado pelo dashboard principal e sistema de navegação
+ */
+
 // controllers/workoutController.js - Controlador que gerencia a UI de treinos
 // Pega dados das queries e atualiza elementos da página
 

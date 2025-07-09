@@ -1,3 +1,37 @@
+/**
+ * 🏋️ TEMPLATE DE CARD DE EXERCÍCIO - Exercise Card Template
+ * 
+ * FUNÇÃO: Renderizar interface completa para execução individual de exercícios durante treinos.
+ * 
+ * RESPONSABILIDADES:
+ * - Exibir informações completas do exercício (nome, grupo, equipamento)
+ * - Mostrar dados do protocolo (séries, repetições, descanso, intensidade)
+ * - Apresentar sugestões de peso baseadas em 1RM e histórico
+ * - Gerenciar interface de execução de séries com inputs interativos
+ * - Fornecer controles para ajuste de peso e repetições
+ * - Exibir histórico da última execução do exercício
+ * - Implementar validação e confirmação de séries
+ * - Aplicar estilos responsivos e acessíveis
+ * 
+ * COMPONENTES DO CARD:
+ * - Header: nome, grupo muscular, equipamento, contador de exercícios
+ * - Protocolo: estatísticas do protocolo (séries, reps, descanso, %1RM)
+ * - Pesos: sugestões mínimo, base e máximo calculadas
+ * - Histórico: dados da última execução (peso, reps, data)
+ * - Observações: notas técnicas do protocolo quando disponíveis
+ * - Séries: interface para execução com inputs de peso/reps
+ * - Ações: botões para histórico e conclusão do exercício
+ * 
+ * FUNCIONALIDADES INTERATIVAS:
+ * - Botões +/- para ajuste rápido de valores
+ * - Confirmação visual de séries completadas
+ * - Progresso dinâmico de séries executadas
+ * - Validação de dados antes da confirmação
+ * - Estados visuais para séries concluídas
+ * 
+ * INTEGRAÇÃO: Usado pelo workout.js durante execução de treinos
+ */
+
 // templates/exerciseCard.js - Template para card de exercício individual
 export function exerciseCardTemplate(exercicio, index, total) {
     const pesos = exercicio.pesos_sugeridos || {};

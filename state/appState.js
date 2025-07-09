@@ -1,5 +1,24 @@
-// js/state/appState.js
-// Estado global da aplicação centralizado
+/**
+ * 🗂️ GERENCIADOR DE ESTADO GLOBAL - AppState
+ * 
+ * FUNÇÃO: Centralizar e gerenciar todo o estado da aplicação de forma reativa.
+ * 
+ * RESPONSABILIDADES:
+ * - Armazenar dados globais: usuário atual, treino em execução, exercícios
+ * - Gerenciar cache de execuções de treino para sincronização posterior
+ * - Manter estado da navegação entre semanas e exercícios
+ * - Fornecer sistema reativo com observers para mudanças de estado
+ * - Validar dados antes de armazenar (evitar corrupção de estado)
+ * 
+ * DADOS PRINCIPAIS:
+ * - currentUser: Dados do usuário logado
+ * - currentWorkout: Treino em execução (protocolo, exercícios)
+ * - execucoesCache: Séries executadas (aguardando sincronização)
+ * - weekPlan: Planejamento semanal do usuário
+ * - navigation: Estado da navegação (semana atual, exercício atual)
+ * 
+ * PADRÃO: Singleton reativo - uma única instância com sistema de observadores
+ */
 
 class AppStateManager {
     constructor() {

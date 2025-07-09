@@ -1,3 +1,37 @@
+/**
+ * ⚡ SISTEMA DE UI REATIVA - Reactive UI System
+ * 
+ * FUNÇÃO: Sistema reativo para atualização automática da interface baseada em mudanças de estado.
+ * 
+ * RESPONSABILIDADES:
+ * - Criar bindings entre elementos DOM e propriedades do AppState
+ * - Aplicar formatadores automáticos para diferentes tipos de dados
+ * - Executar animações suaves em mudanças de valor
+ * - Gerenciar atualizações condicionais baseadas em regras
+ * - Implementar observadores de estado para reatividade
+ * - Fornecer sistema de notificações visuais para mudanças
+ * 
+ * SISTEMA DE BINDING:
+ * - bind(elementId, statePath, options): vincula elemento a propriedade do estado
+ * - Suporte a transformações customizadas de dados
+ * - Condições para atualizações seletivas
+ * - Múltiplos atributos de destino (textContent, innerHTML, style, etc)
+ * 
+ * FORMATADORES INCLUÍDOS:
+ * - default: conversão básica para string
+ * - percentage: valores numéricos como porcentagem
+ * - number, weight, time, date: formatações específicas
+ * - workoutName, workoutType: formatações para treinos
+ * 
+ * ANIMAÇÕES DISPONÍVEIS:
+ * - counter: contagem animada de números
+ * - progressBar: barras de progresso suaves
+ * - fadeIn, scale: transições visuais
+ * - Custom: sistema extensível para novas animações
+ * 
+ * INTEGRAÇÃO: Usado na home para atualização automática de métricas, usuário e progresso
+ */
+
 // utils/reactiveUI.js - Sistema reativo para atualizar UI automaticamente
 import AppState from '../state/appState.js';
 
