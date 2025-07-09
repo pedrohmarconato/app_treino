@@ -350,6 +350,68 @@
     }
 }
 
+/* Loading State para Exercícios */
+.exercise-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 64px;
+    height: 64px;
+    border: 4px solid var(--bg-card);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 24px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.exercise-loading p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Estado vazio para exercícios */
+.no-workout-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    padding: 40px;
+}
+
+.empty-state {
+    text-align: center;
+    max-width: 400px;
+}
+
+.empty-state svg {
+    stroke: var(--text-tertiary);
+    opacity: 0.5;
+    margin-bottom: 24px;
+}
+
+.empty-state h2 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+}
+
 /* Card de Exercício Individual */
 .exercise-card {
     background: var(--bg-card);
@@ -597,6 +659,58 @@
     gap: 12px;
 }
 
+.series-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    transition: all 0.3s ease;
+}
+
+.input-wrapper:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.input-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.input-btn:hover:not(:disabled) {
+    background: var(--bg-card);
+    color: var(--accent-primary);
+}
+
+.input-btn:active:not(:disabled) {
+    transform: scale(0.9);
+}
+
+.input-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
 .input-group {
     display: flex;
     flex-direction: column;
@@ -608,6 +722,8 @@
     color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    text-align: center;
+    margin-bottom: 4px;
 }
 
 .series-input {
@@ -1318,6 +1434,33 @@
     justify-content: center;
     z-index: 1000;
     animation: fadeIn 0.3s ease;
+    transition: all 0.3s ease;
+}
+
+/* Estilo especial para descanso entre exercícios */
+.rest-timer-overlay.rest-between-exercises {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(0, 0, 0, 0.95) 100%);
+}
+
+.rest-timer-overlay.rest-between-exercises .rest-timer-modal,
+.rest-timer-overlay.rest-between-exercises .rest-timer-content {
+    border: 2px solid var(--accent-green);
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.3);
+}
+
+.rest-timer-overlay.rest-between-exercises .rest-timer-title {
+    color: var(--accent-green);
+    font-size: 2rem;
+}
+
+.rest-timer-overlay.rest-between-exercises .rest-progress-fill,
+.rest-timer-overlay.rest-between-exercises .rest-timer-circle-progress {
+    stroke: var(--accent-green);
+}
+
+.rest-timer-overlay.rest-between-exercises #rest-timer-seconds,
+.rest-timer-overlay.rest-between-exercises .rest-time {
+    color: var(--accent-green);
 }
 
 .rest-timer-modal {

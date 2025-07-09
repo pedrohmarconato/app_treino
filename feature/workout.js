@@ -1000,36 +1000,42 @@ window.confirmarSerie = async function(serieIndex) {
     // Atualizar visual do botão próximo baseado no progresso
     atualizarBotaoProximo();
     
-    // Mostrar cronômetro de descanso se não for a última série do exercício
+    // NOVO FLUXO: Mostrar cronômetro de descanso entre séries
     const currentExerciseIndex = AppState.get('currentExerciseIndex');
-    const seriesDoExercicio = document.querySelectorAll(`#series-container-${currentExerciseIndex} .series-item`).length;
+    const exercises = AppState.get('currentExercises');
+    const exercicioAtual = exercises[currentExerciseIndex];
+    
+    // Contar séries do exercício atual
+    const seriesDoExercicio = exercicioAtual.series || 4;
     const seriesCompletadasDoExercicio = document.querySelectorAll(`#series-container-${currentExerciseIndex} .series-item.completed`).length;
     
-    console.log('[confirmarSerie] Verificando descanso - séries completadas:', seriesCompletadasDoExercicio, 'de', seriesDoExercicio);
+    console.log('[confirmarSerie] Status das séries:', {
+        completadas: seriesCompletadasDoExercicio,
+        total: seriesDoExercicio,
+        isUltimaSerie: seriesCompletadasDoExercicio === seriesDoExercicio,
+        exercicioIndex: currentExerciseIndex,
+        totalExercicios: exercises.length
+    });
     
+    // REGRA: Mostrar descanso entre séries, EXCETO na última série
     if (seriesCompletadasDoExercicio < seriesDoExercicio) {
-        // Calcular tempo médio de descanso das execuções anteriores
-        const execucoesCache = AppState.get('execucoesCache') || [];
-        const temposDescanso = execucoesCache
-            .filter(e => e.tempo_descanso && e.tempo_descanso > 0)
-            .map(e => e.tempo_descanso);
+        // Ainda há séries para fazer - mostrar descanso entre séries
+        const tempoDescanso = exercicioAtual.tempo_descanso || 60;
         
-        let tempoDescanso;
-        if (temposDescanso.length > 0) {
-            // Usar média dos tempos anteriores
-            const soma = temposDescanso.reduce((a, b) => a + b, 0);
-            tempoDescanso = Math.round(soma / temposDescanso.length);
-            console.log('[confirmarSerie] Usando tempo médio de descanso:', tempoDescanso);
-        } else {
-            // Usar tempo sugerido ou default
-            tempoDescanso = exercicio.tempo_descanso || 60;
-            console.log('[confirmarSerie] Usando tempo padrão de descanso:', tempoDescanso);
-        }
+        console.log('[confirmarSerie] Mostrando descanso entre séries:', tempoDescanso, 'segundos');
         
-        console.log('[confirmarSerie] Mostrando cronômetro de descanso por', tempoDescanso, 'segundos');
+        // Mostrar cronômetro de descanso
         mostrarCronometroDescanso(tempoDescanso);
+        
+        // Após o descanso, apenas voltar para a tela de exercício
+        AppState.set('isRestBetweenSets', true);
+        
     } else {
-        console.log('[confirmarSerie] Última série do exercício - não mostrando cronômetro');
+        // Última série do exercício - NÃO mostrar descanso
+        console.log('[confirmarSerie] Última série completada - preparando para próximo exercício');
+        
+        // Se não é o último exercício, haverá descanso no proximoExercicio()
+        // Se é o último exercício, irá para tela de conclusão
     }
     
     // Verificar se completou todas as séries
@@ -1187,9 +1193,10 @@ function proximoExercicio() {
     // 1. SALVAR ESTADO ANTES DE AVANÇAR (crítico para não perder progresso)
     workoutStateManager.saveStateImmediate();
     
-    // 2. OBTER TEMPO DE DESCANSO DO EXERCÍCIO ATUAL
-    const exercicioAtual = exercises[currentIndex];
-    const tempoDescansoEntreExercicios = exercicioAtual.tempo_descanso || 60; // Padrão 60 segundos
+    // 2. OBTER TEMPO DE DESCANSO DO PRÓXIMO EXERCÍCIO
+    const proximoExercicio = exercises[novoIndex];
+    // Usar tempo de descanso do próximo exercício para consistência
+    const tempoDescansoEntreExercicios = proximoExercicio.tempo_descanso || 90; // Padrão 90 segundos entre exercícios
     
     console.log(`[proximoExercicio] Iniciando descanso de ${tempoDescansoEntreExercicios}s entre exercícios`);
     
@@ -1311,16 +1318,26 @@ function mostrarDescansoEntreExercicios(tempoDescanso, onComplete) {
         return;
     }
     
-    // CORRIGIDO: Atualizar elementos existentes ao invés de recriar HTML
+    // MELHORADO: Atualizar elementos para descanso entre exercícios
     const titleElement = overlay.querySelector('.rest-timer-title, h2');
     if (titleElement) {
-        titleElement.textContent = 'Exercício Concluído!';
+        titleElement.textContent = '✅ Exercício Concluído!';
     }
     
     const motivationElement = overlay.querySelector('#motivation-text, .rest-motivation p');
     if (motivationElement) {
-        motivationElement.textContent = `Prepare-se para: ${proximoExercicio.exercicio_nome}`;
+        const frases = [
+            `Próximo: ${proximoExercicio.exercicio_nome} - ${proximoExercicio.series} séries`,
+            `Prepare-se! ${proximoExercicio.exercicio_nome} vem aí!`,
+            `Respire fundo. Próximo desafio: ${proximoExercicio.exercicio_nome}`,
+            `Hidrate-se! Logo vem ${proximoExercicio.exercicio_nome}`
+        ];
+        const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
+        motivationElement.textContent = fraseAleatoria;
     }
+    
+    // Adicionar classe para estilização diferente
+    overlay.classList.add('rest-between-exercises');
     
     // Mostrar overlay
     overlay.style.display = 'flex';
@@ -1725,6 +1742,28 @@ function mostrarCronometroDescanso(tempoDescanso) {
     if (!overlay) {
         console.error('[mostrarCronometroDescanso] Overlay não encontrado no DOM');
         return;
+    }
+    
+    // Remover classe de descanso entre exercícios se existir
+    overlay.classList.remove('rest-between-exercises');
+    
+    // Restaurar textos padrão para descanso entre séries
+    const titleElement = overlay.querySelector('.rest-timer-title, h2');
+    if (titleElement) {
+        titleElement.textContent = 'Tempo de Descanso';
+    }
+    
+    const motivationElement = overlay.querySelector('#motivation-text, .rest-motivation p');
+    if (motivationElement) {
+        const frases = [
+            "Respire fundo e prepare-se para a próxima série!",
+            "Mantenha o foco! Você está indo bem!",
+            "Hidrate-se e recupere a energia!",
+            "Concentre-se na próxima série. Você consegue!",
+            "Use este tempo para relaxar os músculos."
+        ];
+        const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
+        motivationElement.textContent = fraseAleatoria;
     }
     
     // Mostrar overlay
