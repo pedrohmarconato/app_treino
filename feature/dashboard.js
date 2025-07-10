@@ -5954,6 +5954,7 @@ function mostrarMensagemExercicios(mensagem, tipo = 'info', container) {
 // Variáveis para controle do scroll
 let lastScrollTop = 0;
 const scrollThreshold = 50; // Pixels de scroll para ativar o efeito
+let handleScrollReference = null; // Armazenar referência da função handleScroll para poder remover depois
 
 // Função para gerenciar o efeito de scroll do header
 function initHeaderScrollEffect() {
@@ -6007,9 +6008,6 @@ function initHeaderScrollEffect() {
     
     console.log('[initHeaderScrollEffect] ✅ Efeito de scroll do header inicializado');
 }
-
-// Armazenar referência da função handleScroll para poder remover depois
-let handleScrollReference = null;
 
 // Função para limpar o listener de scroll quando necessário
 function cleanupHeaderScrollEffect() {

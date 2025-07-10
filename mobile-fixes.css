@@ -2,6 +2,30 @@
    MOBILE FIXES - Correções para iPhone 13 e dispositivos móveis
    ============================================================================= */
 
+/* Week indicators adaptativo para telas extra pequenas */
+@media (max-width: 375px) {
+    .week-indicators {
+        grid-template-columns: repeat(4, 1fr) !important;
+        grid-template-rows: repeat(2, 1fr) !important;
+        gap: 6px !important;
+        margin-bottom: 16px !important;
+    }
+    
+    .day-indicator {
+        padding: 8px 4px !important;
+        min-height: 76px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .day-indicator .day-name {
+        font-size: 0.75rem !important;
+    }
+    
+    .day-indicator .day-type {
+        font-size: 0.85rem !important;
+    }
+}
+
 /* Correções gerais para mobile */
 @media (max-width: 428px) {
     /* Prevenir scroll horizontal */
@@ -16,10 +40,12 @@
         overflow-x: hidden !important;
     }
     
-    /* Header da Home */
+    /* Header da Home com safe area completa */
     .home-header {
         padding: 16px !important;
         padding-top: calc(16px + env(safe-area-inset-top)) !important;
+        padding-left: calc(16px + env(safe-area-inset-left)) !important;
+        padding-right: calc(16px + env(safe-area-inset-right)) !important;
     }
     
     .header-content {
@@ -37,7 +63,7 @@
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        max-width: 120px !important;
+        max-width: 140px !important;
     }
     
     /* Logo no header */
@@ -67,15 +93,19 @@
     }
     
     .logout-btn {
-        width: 36px !important;
-        height: 36px !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
         padding: 0 !important;
     }
     
-    /* Conteúdo principal */
+    /* Conteúdo principal com safe area completa */
     .home-content {
         padding: 16px !important;
         padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+        padding-left: calc(16px + env(safe-area-inset-left)) !important;
+        padding-right: calc(16px + env(safe-area-inset-right)) !important;
     }
     
     /* Section header */
@@ -105,8 +135,10 @@
     }
     
     .week-nav {
-        width: 32px !important;
-        height: 32px !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
     }
     
     .current-week-info {
@@ -120,7 +152,7 @@
     }
     
     .week-status {
-        font-size: 0.7rem !important;
+        font-size: 0.75rem !important;
         padding: 2px 6px !important;
     }
     
@@ -137,21 +169,22 @@
     /* Week indicators */
     .week-indicators {
         grid-template-columns: repeat(7, 1fr) !important;
-        gap: 4px !important;
+        gap: 8px !important;
         margin-bottom: 20px !important;
     }
     
     .day-indicator {
         padding: 12px 4px !important;
-        min-height: 80px !important;
+        min-height: 88px !important;
+        min-width: 44px !important;
     }
     
     .day-indicator .day-name {
-        font-size: 0.7rem !important;
+        font-size: 0.8rem !important;
     }
     
     .day-indicator .day-type {
-        font-size: 0.8rem !important;
+        font-size: 0.9rem !important;
     }
     
     /* Workout card */
@@ -264,6 +297,57 @@
         margin: 0 !important;
         max-height: 100vh !important;
         border-radius: 0 !important;
+        padding-left: calc(16px + env(safe-area-inset-left)) !important;
+        padding-right: calc(16px + env(safe-area-inset-right)) !important;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+    }
+    
+    /* Estados de toque aprimorados */
+    .btn,
+    .week-nav,
+    .day-indicator,
+    .logout-btn,
+    .btn-primary,
+    .btn-edit {
+        -webkit-tap-highlight-color: transparent !important;
+        touch-action: manipulation !important;
+        transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    }
+    
+    .btn:active,
+    .week-nav:active,
+    .day-indicator:active,
+    .logout-btn:active,
+    .btn-primary:active,
+    .btn-edit:active {
+        transform: scale(0.96) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    /* Otimização de animações com reduce-motion */
+    @media (prefers-reduced-motion: reduce) {
+        .btn,
+        .week-nav,
+        .day-indicator,
+        .logout-btn,
+        .btn-primary,
+        .btn-edit,
+        .modal-content,
+        .modal-content-enhanced,
+        .workout-card,
+        .exercise-item {
+            transition: none !important;
+            animation: none !important;
+        }
+        
+        .btn:active,
+        .week-nav:active,
+        .day-indicator:active,
+        .logout-btn:active,
+        .btn-primary:active,
+        .btn-edit:active {
+            transform: none !important;
+        }
     }
 }
 

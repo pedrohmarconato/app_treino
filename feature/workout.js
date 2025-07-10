@@ -1017,15 +1017,21 @@ window.confirmarSerie = async function(serieIndex) {
         totalExercicios: exercises.length
     });
     
+    // TESTE: Forçar descanso para debug  
+    console.log('[DEBUG] Forçando descanso independente da série');
+    const tempoDescanso = exercicioAtual.tempo_descanso || 60;
+    console.log('[DEBUG] Tempo de descanso configurado:', tempoDescanso);
+    mostrarCronometroDescanso(tempoDescanso);
+    
     // REGRA: Mostrar descanso entre séries, EXCETO na última série
     if (seriesCompletadasDoExercicio < seriesDoExercicio) {
         // Ainda há séries para fazer - mostrar descanso entre séries
-        const tempoDescanso = exercicioAtual.tempo_descanso || 60;
+        //const tempoDescanso = exercicioAtual.tempo_descanso || 60;
         
         console.log('[confirmarSerie] Mostrando descanso entre séries:', tempoDescanso, 'segundos');
         
         // Mostrar cronômetro de descanso
-        mostrarCronometroDescanso(tempoDescanso);
+        //mostrarCronometroDescanso(tempoDescanso);
         
         // Após o descanso, apenas voltar para a tela de exercício
         AppState.set('isRestBetweenSets', true);
@@ -1737,12 +1743,17 @@ window.tentarNovamenteSalvar = async function() {
 
 // Mostrar cronômetro de descanso
 function mostrarCronometroDescanso(tempoDescanso) {
+    console.log('[mostrarCronometroDescanso] Iniciando com tempo:', tempoDescanso);
+    
     // Usar o overlay existente no template
     const overlay = document.getElementById('rest-timer-overlay');
     if (!overlay) {
         console.error('[mostrarCronometroDescanso] Overlay não encontrado no DOM');
+        console.log('[mostrarCronometroDescanso] Elementos disponíveis:', document.querySelectorAll('[id*="rest"]'));
         return;
     }
+    
+    console.log('[mostrarCronometroDescanso] Overlay encontrado:', overlay);
     
     // Remover classe de descanso entre exercícios se existir
     overlay.classList.remove('rest-between-exercises');
@@ -1767,7 +1778,10 @@ function mostrarCronometroDescanso(tempoDescanso) {
     }
     
     // Mostrar overlay
+    console.log('[mostrarCronometroDescanso] Mostrando overlay');
     overlay.style.display = 'flex';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
     
     // Aguardar DOM estar pronto e então configurar timer
     setTimeout(() => {
@@ -1777,8 +1791,13 @@ function mostrarCronometroDescanso(tempoDescanso) {
         // Verificar se os elementos foram encontrados
         if (!timerDisplay || !progressCircle) {
             console.error('[mostrarCronometroDescanso] Elementos do timer não encontrados');
+            console.log('[mostrarCronometroDescanso] timerDisplay:', timerDisplay);
+            console.log('[mostrarCronometroDescanso] progressCircle:', progressCircle);
+            console.log('[mostrarCronometroDescanso] Todos os elementos rest:', overlay.querySelectorAll('[id*="rest"]'));
             return;
         }
+        
+        console.log('[mostrarCronometroDescanso] Elementos encontrados, configurando timer');
         
         // Configurar timer
         let tempoRestante = tempoDescanso;
