@@ -1,0 +1,365 @@
+/**
+ * 🍎 CORREÇÕES ESPECÍFICAS PARA SAFARI iOS
+ * 
+ * Fix para problemas comuns de distorção no Safari móvel,
+ * especialmente quando salvo como PWA na tela inicial
+ */
+
+/* ============================================================================
+   📱 VIEWPORT E SAFE AREAS PARA SAFARI IOS
+   ============================================================================ */
+
+/* Garantir viewport correto em Safari iOS */
+html {
+  /* Prevenir zoom automático */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  
+  /* Força altura correta */
+  height: 100%;
+  height: -webkit-fill-available;
+}
+
+body {
+  /* Altura total incluindo safe areas */
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  
+  /* Prevenir elastic scroll */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Garantir que o conteúdo não seja cortado */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* ============================================================================
+   🏠 CORREÇÕES ESPECÍFICAS PARA HOME HEADER
+   ============================================================================ */
+
+/* Fix para Safari iOS - header pode ficar distorcido */
+.home-header {
+  /* Força display correto */
+  display: block !important;
+  width: 100% !important;
+  
+  /* Safe area para notch/dynamic island */
+  padding-top: calc(var(--space-4, 1rem) + env(safe-area-inset-top));
+  
+  /* Prevenir compressão no Safari */
+  flex-shrink: 0;
+  
+  /* Garantir que fique no topo */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  /* Safari às vezes não respeita grid, força flexbox como fallback */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  
+  /* Força largura total */
+  width: 100% !important;
+  max-width: none !important;
+  
+  /* Prevenir shrink em Safari */
+  flex-shrink: 0;
+  
+  /* Padding lateral respeitando safe area */
+  padding-left: max(var(--space-4, 1rem), env(safe-area-inset-left));
+  padding-right: max(var(--space-4, 1rem), env(safe-area-inset-right));
+}
+
+/* ============================================================================
+   👤 FOTO DE PERFIL - FIXES SAFARI
+   ============================================================================ */
+
+.header-profile {
+  /* Força posição e tamanho */
+  flex: 0 0 auto;
+  min-width: 44px;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.user-avatar {
+  /* Safari às vezes distorce imagens circulares */
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  
+  /* Força aspect ratio */
+  aspect-ratio: 1 / 1;
+  
+  /* Prevenir distorção */
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   🏷️ MARCA - FIXES SAFARI
+   ============================================================================ */
+
+.header-brand {
+  /* Força centralização */
+  flex: 1 1 auto;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  
+  /* Prevenir overflow */
+  min-width: 0;
+  text-align: center;
+}
+
+.brand-logo {
+  /* Tamanho fixo para evitar distorção */
+  height: 40px !important;
+  width: auto !important;
+  max-width: 120px !important;
+  
+  /* Garantir aspect ratio */
+  object-fit: contain !important;
+  
+  /* Prevenir blur em Safari */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================================================
+   🚪 BOTÃO SAIR - FIXES SAFARI
+   ============================================================================ */
+
+.header-logout {
+  /* Força posição */
+  flex: 0 0 auto;
+  min-width: 44px;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+}
+
+.logout-btn {
+  /* Touch target adequado para Safari */
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  
+  /* Força display */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  
+  /* Prevenir shrink */
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   📱 CORREÇÕES PARA PWA MODE NO SAFARI
+   ============================================================================ */
+
+/* Quando app é aberto como PWA (fullscreen) */
+@media all and (display-mode: standalone) {
+  /* Ajustar header para PWA */
+  .home-header {
+    /* Sem backdrop-filter em PWA pode ser mais estável */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    
+    /* Background sólido */
+    background-color: var(--color-bg-secondary, #141414) !important;
+  }
+  
+  /* Garantir padding adequado */
+  body {
+    padding-top: 0;
+  }
+  
+  /* Header com safe area específica para PWA */
+  .home-header {
+    padding-top: calc(var(--space-4, 1rem) + env(safe-area-inset-top));
+  }
+}
+
+/* ============================================================================
+   📐 RESPONSIVE ESPECÍFICO PARA IPHONE 13 VARIANTS
+   ============================================================================ */
+
+/* iPhone 13 mini (375x812) */
+@media only screen 
+  and (device-width: 375px) 
+  and (device-height: 812px) 
+  and (-webkit-device-pixel-ratio: 3) {
+  
+  .user-avatar {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  .brand-logo {
+    height: 36px !important;
+    max-width: 100px !important;
+  }
+  
+  .logout-btn {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}
+
+/* iPhone 13 / 13 Pro (390x844) */
+@media only screen 
+  and (device-width: 390px) 
+  and (device-height: 844px) 
+  and (-webkit-device-pixel-ratio: 3) {
+  
+  .user-avatar {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  
+  .brand-logo {
+    height: 40px !important;
+    max-width: 110px !important;
+  }
+  
+  .logout-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+}
+
+/* iPhone 13 Pro Max (428x926) */
+@media only screen 
+  and (device-width: 428px) 
+  and (device-height: 926px) 
+  and (-webkit-device-pixel-ratio: 3) {
+  
+  .user-avatar {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  
+  .brand-logo {
+    height: 44px !important;
+    max-width: 130px !important;
+  }
+  
+  .logout-btn {
+    width: 48px !important;
+    height: 48px !important;
+  }
+}
+
+/* ============================================================================
+   🔧 FIXES ESPECÍFICOS DE LAYOUT SAFARI
+   ============================================================================ */
+
+/* Safari às vezes não calcula clamp() corretamente */
+@supports not (font-size: clamp(1rem, 4vw, 1.5rem)) {
+  .user-avatar {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  
+  .brand-logo {
+    height: 40px !important;
+  }
+  
+  .logout-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+}
+
+/* ============================================================================
+   📱 FIXES PARA ORIENTAÇÃO
+   ============================================================================ */
+
+/* Portrait mode (padrão) */
+@media (orientation: portrait) {
+  .header-content {
+    flex-direction: row !important;
+  }
+}
+
+/* Landscape mode - ajustar se necessário */
+@media (orientation: landscape) {
+  .home-header {
+    padding-top: calc(var(--space-3, 0.75rem) + env(safe-area-inset-top));
+    padding-bottom: var(--space-3, 0.75rem);
+  }
+  
+  .user-avatar {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  .brand-logo {
+    height: 32px !important;
+  }
+  
+  .logout-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+}
+
+/* ============================================================================
+   🍎 WEBKIT SPECIFIC FIXES
+   ============================================================================ */
+
+/* Prevenir font boosting no Safari */
+.header-content * {
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+/* Fix para transforms no Safari */
+.user-avatar-wrapper,
+.logout-btn {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Fix para flex em Safari antigo */
+.header-content {
+  -webkit-box-pack: justify;
+  -webkit-box-align: center;
+}
+
+/* ============================================================================
+   🔍 DEBUG MODE (remover em produção)
+   ============================================================================ */
+
+/* Uncomment para debug visual */
+/*
+.home-header {
+  border: 2px solid red !important;
+}
+
+.header-content {
+  border: 2px solid blue !important;
+}
+
+.header-profile {
+  border: 1px solid green !important;
+}
+
+.header-brand {
+  border: 1px solid yellow !important;
+}
+
+.header-logout {
+  border: 1px solid purple !important;
+}
+*/
