@@ -2837,14 +2837,14 @@ button:focus-visible {
     will-change: transform, opacity;
 }
 
-/* Reduce motion for accessibility */
+/* Reduce motion for accessibility - less extreme */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-        animation-duration: 0.01ms !important;
+        animation-duration: 0.15s !important;
         animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+        transition-duration: 0.15s !important;
         scroll-behavior: auto !important;
     }
     

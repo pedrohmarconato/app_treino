@@ -324,7 +324,7 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
     }
     
-    /* Otimização de animações com reduce-motion */
+    /* Otimização de animações com reduce-motion - menos agressiva */
     @media (prefers-reduced-motion: reduce) {
         .btn,
         .week-nav,
@@ -336,17 +336,8 @@
         .modal-content-enhanced,
         .workout-card,
         .exercise-item {
-            transition: none !important;
-            animation: none !important;
-        }
-        
-        .btn:active,
-        .week-nav:active,
-        .day-indicator:active,
-        .logout-btn:active,
-        .btn-primary:active,
-        .btn-edit:active {
-            transform: none !important;
+            transition-duration: 0.15s !important;
+            animation-duration: 0.15s !important;
         }
     }
 }
@@ -394,10 +385,4 @@
     z-index: 9999 !important;
 }
 
-/* Animações reduzidas para performance */
-@media (max-width: 428px) {
-    * {
-        animation-duration: 0.2s !important;
-        transition-duration: 0.2s !important;
-    }
-}
+/* Animações reduzidas removidas - experiência mais natural no mobile */
