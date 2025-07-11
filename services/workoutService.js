@@ -26,7 +26,10 @@
  */
 
 import { query, insert, update } from './supabaseService.js';
-import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
+import { nowUtcISO, getDateInSP, nowInSaoPaulo } from '../utils/dateUtils.js';
+// Compatibilidade com código legado
+const toSaoPauloISOString = (date) => nowUtcISO(); // Converter para UTC
+const toSaoPauloDateString = (date) => getDateInSP(date);
 // import removido para compatibilidade com browser tradicional
 // Utilize window.WeeklyPlanService diretamente quando necessário
 
@@ -229,7 +232,7 @@ export async function salvarExecucaoExercicio(dados) {
             usuario_id: String(dados.usuario_id),
             protocolo_treino_id: dados.protocolo_treino_id || null,
             exercicio_id: dados.exercicio_id,
-            data_execucao: dados.data_execucao || toSaoPauloISOString(nowInSaoPaulo()),
+            data_execucao: dados.data_execucao || nowUtcISO(),
             peso_utilizado: dados.peso_utilizado,
             repeticoes: dados.repeticoes || dados.repeticoes_realizadas,
             serie_numero: dados.serie_numero,
@@ -334,7 +337,7 @@ async function salvarExecucoesEmLoteComRetry(execucoes, maxRetries = 3, tentativ
                         usuario_id: String(dados.usuario_id),
                         protocolo_treino_id: dados.protocolo_treino_id || null,
                         exercicio_id: parseInt(dados.exercicio_id),
-                        data_execucao: dados.data_execucao || toSaoPauloISOString(nowInSaoPaulo()),
+                        data_execucao: dados.data_execucao || nowUtcISO(),
                         peso_utilizado: parseFloat(dados.peso_utilizado),
                         repeticoes: parseInt(dados.repeticoes || dados.repeticoes_realizadas),
                         serie_numero: parseInt(dados.serie_numero),

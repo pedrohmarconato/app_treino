@@ -1,5 +1,6 @@
 // Serviço para gerenciar cache local de execuções de treino
 import WeeklyPlanService from './weeklyPlanningService.js';
+import { nowUtcISO, getDateInSP } from '../utils/dateUtils.js';
 
 export class TreinoCacheService {
     
@@ -14,8 +15,8 @@ export class TreinoCacheService {
             protocolo_treino_id: dadosIniciais.protocolo_treino_id,
             grupo_muscular: dadosIniciais.grupo_muscular,
             tipo_atividade: dadosIniciais.tipo_atividade,
-            data_inicio: new Date().toISOString(),
-            data_treino: new Date().toISOString().split('T')[0],
+            data_inicio: nowUtcISO(),
+            data_treino: getDateInSP(),
             status: 'em_andamento',
             
             // Execuções em cache
@@ -50,7 +51,7 @@ export class TreinoCacheService {
                 serie_numero: dadosExecucao.serie_numero,
                 falhou: dadosExecucao.falhou || false,
                 observacoes: dadosExecucao.observacoes || null,
-                timestamp: new Date().toISOString(),
+                timestamp: nowUtcISO(),
                 
                 // Dados adicionais para UX
                 peso_sugerido: dadosExecucao.peso_sugerido,
@@ -59,7 +60,7 @@ export class TreinoCacheService {
             };
             
             sessao.execucoes.push(execucao);
-            sessao.ultima_atividade = new Date().toISOString();
+            sessao.ultima_atividade = nowUtcISO();
             
             this.salvarSessaoCache(sessao);
             
@@ -216,11 +217,11 @@ export class TreinoCacheService {
                 dificuldade_percebida,
                 energia_nivel,
                 observacoes_finais,
-                data_avaliacao: new Date().toISOString()
+                data_avaliacao: nowUtcISO()
             };
             
             sessao.status = 'finalizado';
-            sessao.data_fim = new Date().toISOString();
+            sessao.data_fim = nowUtcISO();
             
             // Salvar no cache antes de commitar
             this.salvarSessaoCache(sessao);
@@ -352,7 +353,7 @@ export class TreinoCacheService {
             
             sessao.status = 'falta';
             sessao.motivo_falta = motivo;
-            sessao.data_abandono = new Date().toISOString();
+            sessao.data_abandono = nowUtcISO();
             
             // Mover para histórico como falta
             this.moverParaHistorico(sessao);
@@ -398,7 +399,7 @@ export class TreinoCacheService {
             const historico = this.obterHistorico();
             historico.push({
                 ...sessao,
-                movido_para_historico: new Date().toISOString()
+                movido_para_historico: nowUtcISO()
             });
             
             // Manter apenas últimas 10 sessões no histórico local
@@ -500,7 +501,7 @@ export class TreinoCacheService {
             const stateToSave = {
                 ...state,
                 metadata: {
-                    savedAt: new Date().toISOString(),
+                    savedAt: nowUtcISO(),
                     isPartial,
                     appVersion: '2.0',
                     stateKey: 'workoutSession_v2',

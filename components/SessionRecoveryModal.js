@@ -162,11 +162,13 @@ export class SessionRecoveryModal {
             if (diffDays === 1) return 'Ontem';
             if (diffDays < 7) return `${diffDays} dias atrás`;
             
-            return date.toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
+            return window.dateUtils ? 
+                window.dateUtils.formatInSP(date, 'dd/MM/yyyy') : 
+                date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
         } catch (error) {
             console.error('[SessionRecoveryModal] Erro ao formatar timestamp:', error);
             return 'Indisponível';

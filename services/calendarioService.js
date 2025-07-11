@@ -2,6 +2,7 @@
 // Serviço para gerenciar a tabela d_calendario e atualizar semana atual
 
 import { supabase, safeQuery, queryWithRetry } from './supabaseService.js';
+import { nowUtcISO, getDateInSP } from '../utils/dateUtils.js';
 
 export class CalendarioService {
     
@@ -13,8 +14,7 @@ export class CalendarioService {
         console.log('[CalendarioService] 🗓️ Iniciando atualização da semana atual...');
         
         try {
-            const hoje = new Date();
-            const dataHoje = hoje.toISOString().split('T')[0]; // YYYY-MM-DD
+            const dataHoje = getDateInSP(); // YYYY-MM-DD em São Paulo
             
             console.log('[CalendarioService] 📅 Data atual:', dataHoje);
             
@@ -39,7 +39,7 @@ export class CalendarioService {
                 .from('d_calendario')
                 .update({ 
                     eh_semana_atual: true,
-                    updated_at: new Date().toISOString()
+                    updated_at: nowUtcISO()
                 })
                 .eq('data_completa', dataHoje)
                 .select();
@@ -124,7 +124,7 @@ export class CalendarioService {
             
             console.log('[CalendarioService] 📊 Semanas marcadas como atuais:', data);
             
-            const hoje = new Date().toISOString().split('T')[0];
+            const hoje = getDateInSP();
             const semanaCorreta = data.find(d => d.data_completa === hoje);
             
             if (semanaCorreta) {
@@ -203,14 +203,14 @@ export class CalendarioService {
         console.log('[CalendarioService] 🐛 Debug do calendário...');
         
         try {
-            const hoje = new Date().toISOString().split('T')[0];
+            const hoje = getDateInSP();
             
             // Buscar registros próximos à data atual
             const { data, error } = await supabase
                 .from('d_calendario')
                 .select('*')
-                .gte('data_completa', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) // 7 dias atrás
-                .lte('data_completa', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) // 7 dias à frente
+                .gte('data_completa', getDateInSP(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))) // 7 dias atrás
+                .lte('data_completa', getDateInSP(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))) // 7 dias à frente
                 .order('data_completa', { ascending: true });
             
             if (error) {
@@ -247,7 +247,7 @@ export class CalendarioService {
         console.log('[CalendarioService] 🚨 Executando reset forçado...');
         
         try {
-            const hoje = new Date().toISOString().split('T')[0];
+            const hoje = getDateInSP();
             
             // 1. Verificar se existe registro para hoje
             const { data: registroHoje } = await supabase
@@ -277,7 +277,7 @@ export class CalendarioService {
                 .from('d_calendario')
                 .update({ 
                     eh_semana_atual: true,
-                    updated_at: new Date().toISOString()
+                    updated_at: nowUtcISO()
                 })
                 .eq('data_completa', hoje);
             

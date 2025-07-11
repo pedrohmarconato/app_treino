@@ -100,7 +100,7 @@ export function exerciseCardTemplate(exercicio, index, total) {
                         <h4>Última Execução</h4>
                         <div class="execution-data">
                             <span>${ultimaExecucao.peso_utilizado}kg × ${ultimaExecucao.repeticoes} reps</span>
-                            <span class="execution-date">${new Date(ultimaExecucao.data_execucao).toLocaleDateString('pt-BR')}</span>
+                            <span class="execution-date">${window.dateUtils ? window.dateUtils.formatInSP(ultimaExecucao.data_execucao, 'dd/MM/yyyy') : new Date(ultimaExecucao.data_execucao).toLocaleDateString('pt-BR')}</span>
                         </div>
                     </div>
                 ` : ''}

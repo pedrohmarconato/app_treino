@@ -3,6 +3,7 @@ import { query, insert, update } from './supabaseService.js';
 import { WeightCalculatorService } from './weightCalculatorService.js';
 import WeeklyPlanService from './weeklyPlanningService.js';
 import AppState from '../state/appState.js';
+import { nowUtcISO, getDateInSP } from '../utils/dateUtils.js';
 
 export class WorkoutProtocolService {
     
@@ -28,14 +29,14 @@ export class WorkoutProtocolService {
             // O calendário pode estar em uma semana diferente da progressão do usuário
             const hoje = new Date();
             const { data: calendarioHoje } = await query('d_calendario', {
-                eq: { data_completa: hoje.toISOString().split('T')[0] },
+                eq: { data_completa: getDateInSP() },
                 single: true
             });
             
             const semanaAtual = planoUsuario.semana_atual || 1;
             
             console.log(`[WorkoutProtocol] 📊 DIAGNÓSTICO COMPLETO DE SEMANAS (CORRIGIDO):`, {
-                hoje: hoje.toISOString().split('T')[0],
+                hoje: getDateInSP(),
                 calendarioHoje: calendarioHoje,
                 semanaCalendario: calendarioHoje?.semana_treino,
                 semanaPlano: planoUsuario.semana_atual,
@@ -108,7 +109,7 @@ export class WorkoutProtocolService {
                 semana_atual: semanaAtual,
                 protocolo_id: planoUsuario.protocolo_treinamento_id,
                 exercicios: exerciciosCompletos,
-                data_inicio: new Date().toISOString(),
+                data_inicio: nowUtcISO(),
                 status: 'ativo'
             };
             
@@ -203,7 +204,7 @@ export class WorkoutProtocolService {
                 usuario_id: userId,
                 protocolo_treino_id: protocolo_treino_id,
                 exercicio_id: exercicio_id,
-                data_execucao: new Date().toISOString(),
+                data_execucao: nowUtcISO(),
                 peso_utilizado: parseFloat(peso_utilizado),
                 repeticoes: parseInt(repeticoes_realizadas),
                 serie_numero: serie_numero || 1,
@@ -224,7 +225,7 @@ export class WorkoutProtocolService {
                 peso_utilizado: parseFloat(peso_utilizado),
                 repeticoes_realizadas: parseInt(repeticoes_realizadas),
                 serie_numero: serie_numero,
-                data_execucao: new Date().toISOString(),
+                data_execucao: nowUtcISO(),
                 sucesso: true
             };
             
@@ -243,7 +244,7 @@ export class WorkoutProtocolService {
     static async finalizarExercicio(userId, exercicioId) {
         try {
             // Buscar todas as séries executadas hoje para este exercício
-            const hoje = new Date().toISOString().split('T')[0];
+            const hoje = getDateInSP();
             const { data: execucoes } = await query('execucao_exercicio_usuario', {
                 eq: {
                     usuario_id: userId,
@@ -301,7 +302,7 @@ export class WorkoutProtocolService {
             
             const resultado = {
                 treino_concluido: true,
-                data_conclusao: new Date().toISOString(),
+                data_conclusao: nowUtcISO(),
                 estatisticas: {
                     exercicios_realizados: totalExercicios,
                     series_total: totalSeries,
@@ -353,7 +354,7 @@ export class WorkoutProtocolService {
                     peso_teste: peso,
                     repeticoes_teste: reps,
                     rm_calculado: novo1RM,
-                    data_teste: new Date().toISOString().split('T')[0],
+                    data_teste: getDateInSP(),
                     status: 'ativo'
                 });
                 
@@ -482,7 +483,7 @@ export class WorkoutProtocolService {
             await update('usuario_plano_treino',
                 { 
                     semana_atual: novaSemana,
-                    updated_at: new Date().toISOString()
+                    updated_at: nowUtcISO()
                 },
                 { eq: { id: planoAtual.id } }
             );
@@ -536,7 +537,7 @@ export class WorkoutProtocolService {
                 await update('usuario_plano_treino',
                     { 
                         semana_atual: proximaSemana,
-                        updated_at: new Date().toISOString()
+                        updated_at: nowUtcISO()
                     },
                     { eq: { id: planoAtual.id } }
                 );

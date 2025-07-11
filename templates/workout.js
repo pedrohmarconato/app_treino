@@ -74,13 +74,18 @@ export const workoutTemplate = () => `
                 <div class="rest-timer-bg"></div>
                 <h2 class="rest-timer-title">Tempo de Descanso</h2>
                 <div class="rest-timer-circle">
-                    <svg class="rest-progress-ring" width="240" height="240">
-                        <circle class="rest-progress-bg" cx="120" cy="120" r="110" stroke-width="10" fill="none"/>
-                        <circle class="rest-progress-fill" cx="120" cy="120" r="110" stroke-width="10" fill="none"/>
+                    <svg class="rest-progress-ring" width="200" height="200" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="rest-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color: #3b82f6"/>
+                                <stop offset="100%" style="stop-color: #06b6d4"/>
+                            </linearGradient>
+                        </defs>
+                        <circle class="rest-progress-bg" cx="100" cy="100" r="85" stroke-width="12" fill="none"/>
+                        <circle class="rest-progress-fill" cx="100" cy="100" r="85" stroke-width="12" fill="none"/>
                     </svg>
                     <div class="rest-timer-text">
                         <span id="rest-timer-display" class="rest-time">00:00</span>
-                        <span class="rest-label">segundos</span>
                     </div>
                 </div>
                 <div class="rest-timer-actions">
@@ -91,9 +96,6 @@ export const workoutTemplate = () => `
                         </svg>
                         <span>Pular Descanso</span>
                     </button>
-                </div>
-                <div class="rest-motivation">
-                    <p id="motivation-text">"Respire fundo e prepare-se para a próxima série!"</p>
                 </div>
             </div>
         </div>

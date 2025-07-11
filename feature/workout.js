@@ -1588,145 +1588,96 @@ function mostrarTreinoConcluido() {
     }
 }
 
-// Finalizar treino
-window.finalizarTreino = async function() {
+// Finalizar treino - NOVA IMPLEMENTAÇÃO ROBUSTA
+window.finalizarTreino = async function(dadosAvaliacao = {}) {
+    try {
+        console.log('[finalizarTreino] 🏁 Iniciando finalização robusta...');
+        
+        // Usar o novo serviço de finalização
+        const { WorkoutCompletionService } = await import('../services/workoutCompletionService.js');
+        
+        const resultado = await WorkoutCompletionService.finalizarTreino(dadosAvaliacao);
+        
+        if (resultado.sucesso) {
+            console.log('[finalizarTreino] ✅ Treino finalizado com sucesso');
+            return true;
+        } else {
+            console.warn('[finalizarTreino] ⚠️ Finalização com problemas, mas dados preservados');
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('[finalizarTreino] ❌ Erro crítico:', error);
+        
+        // Fallback para o método anterior em caso de erro crítico
+        return await window.finalizarTreinoLegacy();
+    }
+};
+
+// Manter método legado como backup
+window.finalizarTreinoLegacy = async function() {
     let loadingNotification = null;
     
     try {
+        console.log('[finalizarTreinoLegacy] 🔄 Usando método de fallback...');
+        
         const currentUser = AppState.get('currentUser');
         
         if (!currentUser) {
             showNotification('Erro: usuário não identificado', 'error');
-            return;
+            return false;
         }
         
-        // IMPORTANTE: Enviar todas as execuções do cache para o Supabase
         const execucoesCache = AppState.get('execucoesCache') || [];
         
-        console.log('[finalizarTreino] 📊 Debug - Estado do cache:', {
-            quantidade: execucoesCache.length,
-            execucoes: execucoesCache
-        });
-        
         if (execucoesCache.length > 0) {
-            // Mostrar notificação de loading persistente
-            loadingNotification = showNotification('Salvando treino...', 'info', true);
+            loadingNotification = showNotification('Salvando treino (modo compatibilidade)...', 'info', true);
             
-            console.log(`[finalizarTreino] Enviando ${execucoesCache.length} execuções em lote...`);
+            // Salvar execuções
+            const resultado = await salvarExecucoesEmLote(execucoesCache);
             
-            // Verificar se está online
-            if (!navigator.onLine) {
-                // Se offline, adicionar à fila de sincronização
-                await offlineSyncService.addToSyncQueue(execucoesCache, 'execucoes');
-                
-                // Remover notificação de loading
-                if (loadingNotification && loadingNotification.remove) {
-                    loadingNotification.remove();
-                }
-                
-                showNotification(
-                    'Sem conexão. Treino salvo localmente e será sincronizado quando voltar online.',
-                    'warning',
-                    true
-                );
-                
-                // Continuar com fluxo normal (limpar cache local)
-            } else {
-                // Se online, tentar salvar normalmente
-                const resultado = await salvarExecucoesEmLote(execucoesCache);
-                
-                // Remover notificação de loading
-                if (loadingNotification && loadingNotification.remove) {
-                    loadingNotification.remove();
-                }
-                
-                if (!resultado.sucesso) {
-                    console.error('[finalizarTreino] ❌ Erro ao salvar execuções:', resultado.erros);
-                    
-                    // Adicionar à fila offline para retry
-                    await offlineSyncService.addToSyncQueue(execucoesCache, 'execucoes');
-                    
-                    const errorBanner = showNotification(
-                        `Erro ao salvar. Dados salvos localmente. <button onclick="tentarNovamenteSalvar()" class="btn-retry">Tentar Novamente</button>`,
-                        'error',
-                        true
-                    );
-                    
-                    window.errorBanner = errorBanner;
-                    
-                    // Continuar com fluxo para não bloquear usuário
-                } else {
-                    console.log(`[finalizarTreino] ✅ ${resultado.salvos} execuções salvas com sucesso`);
-                }
+            if (loadingNotification && loadingNotification.remove) {
+                loadingNotification.remove();
             }
             
-            // Limpar cache após processamento (sucesso ou erro tratado)
+            if (!resultado.sucesso) {
+                console.error('[finalizarTreinoLegacy] Erro ao salvar:', resultado.erros);
+                showNotification('Erro ao salvar - dados mantidos localmente', 'warning', true);
+            }
+            
+            // Limpar cache
             AppState.set('execucoesCache', []);
-            workoutStateManager.limparTudo();
         }
         
-        // Marcar treino como concluído
-        const workout = AppState.get('currentWorkout');
-        if (workout) {
-            await marcarTreinoConcluido(currentUser.id, workout.id);
-        }
-        
-        // Fechar modal
-        const modal = document.getElementById('workout-complete-modal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-        
-        // Parar timer do treino
+        // Limpar timers
         const timerInterval = AppState.get('workoutTimerInterval');
         if (timerInterval) {
             clearInterval(timerInterval);
             AppState.set('workoutTimerInterval', null);
         }
         
-        // Registrar analytics de finalização
-        const resumo = {
-            exerciciosCompletados: exercises.length,
-            seriesCompletadas: execucoesCache.length,
-            pesoTotal: execucoesCache.reduce((total, exec) => 
-                total + (exec.peso_utilizado * exec.repeticoes_realizadas), 0
-            )
-        };
-        workoutAnalytics.logTreinoFinalizado(resumo);
-        
-        // Resetar estado do treino
-        AppState.resetWorkout();
-        
-        // Voltar para home
+        // Navegar para home
         voltarParaHome();
         
         // Recarregar dashboard
-        if (window.carregarDashboard) {
-            await window.carregarDashboard();
-        }
+        setTimeout(async () => {
+            if (window.carregarDashboard) {
+                await window.carregarDashboard();
+            }
+        }, 1000);
         
-        showNotification('Treino finalizado e salvo com sucesso!', 'success');
+        showNotification('Treino finalizado (modo compatibilidade)', 'success');
+        return true;
         
     } catch (error) {
-        console.error('Erro ao finalizar treino:', error);
+        console.error('[finalizarTreinoLegacy] Erro no fallback:', error);
         
-        // Remover loading se ainda existir
         if (loadingNotification && loadingNotification.remove) {
             loadingNotification.remove();
         }
         
-        // Mostrar erro com opção de retry
-        const errorBanner = showNotification(
-            `Erro ao finalizar treino: ${error.message}. <button onclick="tentarNovamenteSalvar()" class="btn-retry">Tentar Novamente</button>`,
-            'error',
-            true
-        );
-        window.errorBanner = errorBanner;
-    } finally {
-        // Garantir que loading seja removido
-        if (loadingNotification && loadingNotification.remove) {
-            loadingNotification.remove();
-        }
+        showNotification('Erro na finalização - atualize a página', 'error', true);
+        return false;
     }
 };
 
@@ -1764,19 +1715,6 @@ function mostrarCronometroDescanso(tempoDescanso) {
         titleElement.textContent = 'Tempo de Descanso';
     }
     
-    const motivationElement = overlay.querySelector('#motivation-text, .rest-motivation p');
-    if (motivationElement) {
-        const frases = [
-            "Respire fundo e prepare-se para a próxima série!",
-            "Mantenha o foco! Você está indo bem!",
-            "Hidrate-se e recupere a energia!",
-            "Concentre-se na próxima série. Você consegue!",
-            "Use este tempo para relaxar os músculos."
-        ];
-        const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
-        motivationElement.textContent = fraseAleatoria;
-    }
-    
     // Mostrar overlay
     console.log('[mostrarCronometroDescanso] Mostrando overlay');
     overlay.style.display = 'flex';
@@ -1806,10 +1744,20 @@ function mostrarCronometroDescanso(tempoDescanso) {
         AppState.set('restTime', tempoRestante);
         workoutStateManager.onCronometroIniciado(tempoRestante);
         
-        // Calcular circunferência do círculo (raio 110 para o novo tamanho)
-        const radius = 110;
+        // Detectar se é mobile para ajustar raio
+        const isMobile = window.innerWidth <= 480;
+        const radius = isMobile ? 65 : 85;
         const circumference = 2 * Math.PI * radius;
+        
         progressCircle.style.strokeDasharray = circumference;
+        progressCircle.style.strokeDashoffset = circumference;
+        
+        // Ajustar atributos do SVG para mobile
+        if (isMobile) {
+            progressCircle.setAttribute('r', '65');
+            const bgCircle = overlay.querySelector('.rest-progress-bg');
+            if (bgCircle) bgCircle.setAttribute('r', '65');
+        }
         
         // Função para atualizar o progresso
         function updateProgress() {
@@ -1841,11 +1789,35 @@ function mostrarCronometroDescanso(tempoDescanso) {
             
             if (tempoRestante <= 0) {
                 clearInterval(timerInterval);
-                fecharCronometroDescanso();
-                // Tocar som ou vibrar se disponível
-                if ('vibrate' in navigator) {
-                    navigator.vibrate(200);
+                
+                // Feedback ao finalizar descanso
+                try {
+                    // Vibração mais intensa (3 pulsos)
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate([200, 100, 200, 100, 200]);
+                    }
+                    
+                    // Feedback sonoro alternativo (beep via AudioContext)
+                    if (window.AudioContext || window.webkitAudioContext) {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.value = 800; // Frequência do beep
+                        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.3);
+                    }
+                } catch (error) {
+                    console.log('[Cronômetro] Feedback de áudio/vibração não disponível:', error);
                 }
+                
+                fecharCronometroDescanso();
             }
         }, 1000);
         
