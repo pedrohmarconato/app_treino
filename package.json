@@ -36,7 +36,7 @@
   "main": "index.html",
   "scripts": {
     "start": "serve -s . -l 3000",
-    "dev": "live-server --port=3000 --host=localhost --open=/",
+    "dev": "serve -s . -l 3000 --cors",
     "build": "npm run minify:css && npm run minify:js",
     "preview": "serve -s dist -l 4173",
     "test": "jest",
@@ -61,9 +61,12 @@
     "deploy": "npm run build && gh-pages -d dist"
   },
   "devDependencies": {
+    "@babel/core": "^7.22.0",
+    "@babel/preset-env": "^7.22.0",
     "@types/jest": "^29.5.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "babel-jest": "^29.6.0",
     "clean-css-cli": "^5.6.0",
     "cypress": "^13.0.0",
     "eslint": "^8.45.0",
@@ -73,7 +76,6 @@
     "husky": "^8.0.3",
     "jest": "^29.6.0",
     "jest-environment-jsdom": "^29.6.0",
-    "live-server": "^1.2.2",
     "npm-check-updates": "^16.10.0",
     "prettier": "^3.0.0",
     "rimraf": "^5.0.0",
@@ -102,8 +104,34 @@
       "maxSize": "50 kB"
     }
   ],
+  "type": "module",
   "jest": {
+    "preset": "default",
     "testEnvironment": "jsdom",
+    "extensionsToTreatAsEsm": [
+      ".js"
+    ],
+    "globals": {
+      "TextEncoder": "TextEncoder",
+      "TextDecoder": "TextDecoder"
+    },
+    "transform": {
+      "^.+\\.js$": [
+        "babel-jest",
+        {
+          "presets": [
+            [
+              "@babel/preset-env",
+              {
+                "targets": {
+                  "node": "current"
+                }
+              }
+            ]
+          ]
+        }
+      ]
+    },
     "setupFilesAfterEnv": [
       "<rootDir>/tests/setup.js"
     ],
@@ -112,7 +140,8 @@
       "<rootDir>/tests/**/*.spec.js"
     ],
     "testPathIgnorePatterns": [
-      "<rootDir>/templates/*.spec.js"
+      "<rootDir>/templates/*.spec.js",
+      "<rootDir>/tests/workoutE2E.test.js"
     ],
     "collectCoverageFrom": [
       "**/*.js",
@@ -128,6 +157,9 @@
         "lines": 70,
         "statements": 70
       }
+    },
+    "moduleNameMapping": {
+      "^@/(.*)$": "<rootDir>/$1"
     }
   },
   "eslintConfig": {
