@@ -1,6 +1,6 @@
 {
-  "name": "FF Força - Sistema de Treinamento",
-  "short_name": "FF Força",
+  "name": "FF Força - Sistema de Treinamento [TESTE]",
+  "short_name": "FF Teste",
   "description": "Sistema completo de planejamento e execução de treinos - FF Força",
   "start_url": "/",
   "display": "standalone",
