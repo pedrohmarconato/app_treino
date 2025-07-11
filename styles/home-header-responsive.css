@@ -1,0 +1,451 @@
+/**
+ * 📱 HEADER HOME RESPONSIVO E PROPORCIONAL
+ * 
+ * CSS específico para o header da tela home com layout:
+ * [Foto Perfil] [Marca Centralizada] [Botão Sair]
+ */
+
+/* ============================================================================
+   🏠 HOME HEADER - LAYOUT PROPORCIONAL
+   ============================================================================ */
+
+.home-header {
+  background: var(--color-bg-secondary, #141414);
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  padding: var(--space-4, 1rem);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.header-content {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 60px;
+}
+
+/* ============================================================================
+   👤 FOTO DE PERFIL (ESQUERDA)
+   ============================================================================ */
+
+.header-profile {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.user-avatar-wrapper {
+  position: relative;
+  cursor: pointer;
+  transition: transform var(--duration-base, 250ms) var(--ease-out, ease-out);
+}
+
+.user-avatar-wrapper:hover {
+  transform: scale(1.05);
+}
+
+.user-avatar {
+  width: clamp(40px, 8vw, 48px);
+  height: clamp(40px, 8vw, 48px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-accent, #facc15);
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.2);
+  transition: all var(--duration-base, 250ms) var(--ease-out, ease-out);
+}
+
+.user-avatar:hover {
+  border-color: var(--color-accent-hover, #fde047);
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.3);
+}
+
+.avatar-status-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--color-success, #22c55e);
+  border: 2px solid var(--color-bg-secondary, #141414);
+  border-radius: 50%;
+  animation: pulse-status 2s infinite;
+}
+
+@keyframes pulse-status {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+/* ============================================================================
+   🏷️ MARCA CENTRALIZADA
+   ============================================================================ */
+
+.header-brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.brand-logo {
+  height: clamp(36px, 8vw, 48px);
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+  transition: all var(--duration-base, 250ms) var(--ease-out, ease-out);
+}
+
+.brand-logo:hover {
+  filter: drop-shadow(0 4px 12px rgba(250, 204, 21, 0.4));
+  transform: scale(1.02);
+}
+
+/* ============================================================================
+   🚪 BOTÃO SAIR (DIREITA)
+   ============================================================================ */
+
+.header-logout {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-min, 44px);
+  height: var(--touch-min, 44px);
+  background: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 12px);
+  color: var(--color-text-secondary, #a3a3a3);
+  cursor: pointer;
+  transition: all var(--duration-base, 250ms) var(--ease-out, ease-out);
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform var(--duration-base, 250ms) var(--ease-out, ease-out);
+}
+
+.logout-btn:hover::before {
+  transform: translateX(100%);
+}
+
+.logout-btn:hover,
+.logout-btn:focus-visible {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--color-error, #ef4444);
+  color: var(--color-error, #ef4444);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+.logout-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+  transition: transform var(--duration-fast, 150ms) var(--ease-out, ease-out);
+}
+
+.logout-btn:hover svg {
+  transform: translateX(2px);
+}
+
+/* ============================================================================
+   📱 RESPONSIVIDADE MOBILE
+   ============================================================================ */
+
+/* Mobile Small (até 374px) */
+@media (max-width: 374px) {
+  .home-header {
+    padding: var(--space-3, 0.75rem);
+  }
+  
+  .header-content {
+    gap: var(--space-2, 0.5rem);
+    min-height: 52px;
+  }
+  
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .brand-logo {
+    height: 32px;
+    max-width: 100px;
+  }
+  
+  .logout-btn {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .logout-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Mobile Standard (375px - 427px) */
+@media (min-width: 375px) and (max-width: 427px) {
+  .header-content {
+    gap: var(--space-3, 0.75rem);
+  }
+  
+  .brand-logo {
+    max-width: 110px;
+  }
+}
+
+/* Mobile Large (428px+) */
+@media (min-width: 428px) {
+  .header-content {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .brand-logo {
+    max-width: 130px;
+  }
+}
+
+/* Tablet (768px+) */
+@media (min-width: 768px) {
+  .home-header {
+    padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+  }
+  
+  .header-content {
+    max-width: 600px;
+    gap: var(--space-4, 1rem);
+  }
+  
+  .user-avatar {
+    width: 52px;
+    height: 52px;
+  }
+  
+  .brand-logo {
+    height: 52px;
+    max-width: 150px;
+  }
+  
+  .logout-btn {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .logout-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .header-content {
+    max-width: 800px;
+  }
+  
+  .brand-logo {
+    max-width: 180px;
+  }
+}
+
+/* ============================================================================
+   🌗 SUPORTE A TEMAS
+   ============================================================================ */
+
+/* Dark Mode (padrão) */
+.home-header {
+  background: var(--color-bg-secondary, #141414);
+  border-bottom-color: var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+/* Light Mode */
+@media (prefers-color-scheme: light) {
+  .home-header {
+    background: var(--color-bg-secondary, #f9fafb);
+    border-bottom-color: var(--border-color, rgba(0, 0, 0, 0.1));
+  }
+  
+  .logout-btn {
+    border-color: var(--border-color, rgba(0, 0, 0, 0.1));
+    color: var(--color-text-secondary, #6b7280);
+  }
+  
+  .logout-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--color-error, #ef4444);
+    color: var(--color-error, #ef4444);
+  }
+}
+
+/* ============================================================================
+   ⚡ ANIMAÇÕES E ESTADOS
+   ============================================================================ */
+
+/* Loading state para avatar */
+.user-avatar[src=""],
+.user-avatar:not([src]) {
+  background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+              linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+              linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+              linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  animation: loading-avatar 1s linear infinite;
+}
+
+@keyframes loading-avatar {
+  0% {
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  }
+  100% {
+    background-position: 20px 20px, 20px 30px, 30px 10px, 10px 20px;
+  }
+}
+
+/* Entrada suave do header */
+.home-header {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+   ♿ ACESSIBILIDADE
+   ============================================================================ */
+
+/* Focus visible */
+.user-avatar-wrapper:focus-visible,
+.logout-btn:focus-visible {
+  outline: 2px solid var(--color-accent, #facc15);
+  outline-offset: 2px;
+  border-radius: var(--radius-md, 12px);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .user-avatar {
+    border-width: 3px;
+  }
+  
+  .logout-btn {
+    border-width: 2px;
+  }
+  
+  .logout-btn:hover {
+    border-width: 3px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .avatar-status-indicator {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   🎯 ESTADOS ESPECÍFICOS
+   ============================================================================ */
+
+/* Estado offline */
+.home-header.offline {
+  background: var(--color-bg-tertiary, #1f1f1f);
+}
+
+.home-header.offline .avatar-status-indicator {
+  background: var(--color-warning, #f59e0b);
+}
+
+/* Estado de carregamento */
+.home-header.loading .brand-logo {
+  opacity: 0.6;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Estado de erro */
+.home-header.error .avatar-status-indicator {
+  background: var(--color-error, #ef4444);
+}
+
+/* ============================================================================
+   🔧 UTILITÁRIOS
+   ============================================================================ */
+
+/* Esconder elementos em telas muito pequenas */
+@media (max-width: 320px) {
+  .avatar-status-indicator {
+    display: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .home-header {
+    background: white !important;
+    border-bottom: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+  
+  .logout-btn {
+    display: none !important;
+  }
+}

@@ -4,28 +4,25 @@ import { getWorkoutIcon, getActionIcon, getNavigationIcon, getAchievementIcon } 
 
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
-        <!-- Header Moderno -->
+        <!-- Header Proporcional Mobile -->
         <div class="home-header">
             <div class="header-content">
-                <div class="user-info">
+                <!-- Foto de Perfil (Esquerda) -->
+                <div class="header-profile">
                     <div class="user-avatar-wrapper">
-                        <div class="user-avatar-small">
-                            <img id="user-avatar" src="pedro.png" alt="Avatar">
-                            <div class="avatar-status-indicator"></div>
-                        </div>
-                    </div>
-                    <div class="user-greeting">
-                        <h4>Bom dia,</h4>
-                        <p id="user-name">Atleta</p>
+                        <img id="user-avatar" src="pedro.png" alt="Foto do Perfil" class="user-avatar">
+                        <div class="avatar-status-indicator"></div>
                     </div>
                 </div>
-                <div class="app-logo-secondary">
-                    <div class="brand-logos-mini">
-    <img src="./icons/logo.png" alt="Logo" class="secondary-logo main-logo" style="height: 90px; width: auto; max-width: 80vw;">
-</div>
+                
+                <!-- Marca Centralizada -->
+                <div class="header-brand">
+                    <img src="./icons/logo.png" alt="App Treino" class="brand-logo">
                 </div>
-                <div class="header-actions">
-                    <button class="btn-icon logout-btn" onclick="logout()" title="Sair">
+                
+                <!-- Botão Sair (Direita) -->
+                <div class="header-logout">
+                    <button class="logout-btn" onclick="logout()" title="Sair" aria-label="Sair da aplicação">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                             <polyline points="16,17 21,12 16,7"/>
