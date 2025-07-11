@@ -1,0 +1,503 @@
+/**
+ * 📱 MIGRAÇÃO PARA O NOVO SISTEMA DE DESIGN MOBILE
+ * 
+ * Este arquivo aplica o novo sistema de design aos componentes existentes
+ * Corrige todos os problemas identificados na auditoria
+ */
+
+/* ============================================================================
+   🔧 CORREÇÕES CRÍTICAS DE FONTES (< 16px)
+   ============================================================================ */
+
+/* Corrigir todas as fontes pequenas para prevenir zoom no iOS */
+.day-indicator,
+.day-indicator .day-name,
+.day-indicator .day-number,
+.indicator-text,
+.week-number,
+.workout-exercises,
+.time-label,
+.rest-label,
+.motivational-message,
+.exercise-details,
+.exercise-info p,
+.set-info,
+.progress-text,
+.stats-item span,
+.notification,
+.save-exit-button {
+  font-size: var(--font-base) !important; /* Mínimo 16px */
+}
+
+/* Textos menores que ainda precisam ser legíveis */
+.helper-text,
+.error-message,
+.meta-info,
+.badge,
+.tag {
+  font-size: var(--font-sm) !important; /* Mínimo 14px com clamp */
+}
+
+/* ============================================================================
+   🎯 CORREÇÕES DE TOUCH TARGETS (< 44px)
+   ============================================================================ */
+
+/* Expandir todos os botões pequenos */
+button,
+.btn,
+.button,
+[role="button"],
+.clickable,
+.day-indicator,
+.week-indicator-item,
+.exercise-card,
+.set-item,
+.nav-item,
+.menu-item,
+.tab,
+.pill,
+.chip,
+.save-exit-button,
+.workout-toggle,
+.exercise-toggle {
+  min-height: var(--touch-min) !important;
+  min-width: var(--touch-min) !important;
+  position: relative !important;
+}
+
+/* Área de toque expandida invisível */
+button::before,
+.btn::before,
+.clickable::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -8px !important;
+  right: -8px !important;
+  bottom: -8px !important;
+  left: -8px !important;
+  z-index: 1 !important;
+}
+
+/* ============================================================================
+   📐 CORREÇÕES DE LAYOUT FIXO
+   ============================================================================ */
+
+/* Remover larguras fixas */
+.home-header,
+.workout-header,
+.planning-header,
+.section-header,
+.modal-content,
+.drawer-content,
+.card,
+.exercise-card,
+.day-card,
+.week-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Containers responsivos */
+.container,
+.main-content,
+.screen,
+.page,
+.view {
+  width: 100% !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  padding-left: var(--space-4) !important;
+  padding-right: var(--space-4) !important;
+}
+
+/* ============================================================================
+   📱 CORREÇÕES DE OVERFLOW
+   ============================================================================ */
+
+/* Prevenir overflow horizontal */
+* {
+  max-width: 100% !important;
+}
+
+/* Permitir scroll apenas onde necessário */
+.scrollable,
+.scroll-container,
+.overflow-auto {
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  max-width: 100vw !important;
+}
+
+/* Remover overflow:hidden desnecessário */
+body,
+html,
+#app,
+.main,
+.content {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* ============================================================================
+   🏠 HOME SCREEN - CORREÇÕES ESPECÍFICAS
+   ============================================================================ */
+
+/* Header responsivo */
+.home-header {
+  padding: var(--space-4) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--space-3) !important;
+}
+
+.header-content {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: var(--space-3) !important;
+  align-items: center !important;
+  text-align: center !important;
+}
+
+@media (min-width: 428px) {
+  .header-content {
+    grid-template-columns: auto 1fr auto !important;
+    text-align: left !important;
+  }
+}
+
+/* Avatar responsivo */
+.user-avatar-small,
+.user-avatar-wrapper {
+  width: clamp(48px, 12vw, 64px) !important;
+  height: clamp(48px, 12vw, 64px) !important;
+  margin: 0 auto !important;
+}
+
+/* Logo responsivo */
+.app-logo-secondary img,
+.secondary-logo,
+.main-logo {
+  max-height: clamp(60px, 15vw, 90px) !important;
+  width: auto !important;
+  max-width: 80vw !important;
+  height: auto !important;
+}
+
+/* ============================================================================
+   📅 WEEK INDICATORS - CORREÇÕES
+   ============================================================================ */
+
+.week-indicators {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: clamp(4px, 1vw, 8px) !important;
+  padding: var(--space-3) 0 !important;
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+.day-indicator {
+  min-height: clamp(64px, 15vw, 80px) !important;
+  padding: var(--space-2) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  border-radius: var(--radius-md) !important;
+  cursor: pointer !important;
+  transition: all var(--duration-base) var(--ease-out) !important;
+}
+
+/* ============================================================================
+   💪 WORKOUT CARDS - CORREÇÕES
+   ============================================================================ */
+
+.workout-card {
+  padding: clamp(var(--space-4), 4vw, var(--space-6)) !important;
+  border-radius: var(--radius-lg) !important;
+  margin-bottom: var(--space-4) !important;
+  background: var(--color-bg-card) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.workout-card h1 {
+  font-size: clamp(1.5rem, 5vw, 2rem) !important;
+  line-height: var(--leading-tight) !important;
+  margin-bottom: var(--space-3) !important;
+}
+
+.workout-meta {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--space-2) !important;
+  margin-bottom: var(--space-4) !important;
+}
+
+@media (min-width: 428px) {
+  .workout-meta {
+    flex-direction: row !important;
+    gap: var(--space-4) !important;
+  }
+}
+
+/* ============================================================================
+   🏃 WORKOUT EXECUTION - CORREÇÕES
+   ============================================================================ */
+
+.exercise-card {
+  padding: var(--space-4) !important;
+  margin-bottom: var(--space-3) !important;
+  border-radius: var(--radius-md) !important;
+  background: var(--color-bg-card) !important;
+  cursor: pointer !important;
+  transition: all var(--duration-base) var(--ease-out) !important;
+}
+
+.exercise-header {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: var(--space-2) !important;
+}
+
+.exercise-name {
+  font-size: var(--font-lg) !important;
+  font-weight: 600 !important;
+  line-height: var(--leading-snug) !important;
+}
+
+.exercise-details {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: var(--space-3) !important;
+  font-size: var(--font-base) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+/* ============================================================================
+   ⏱️ TIMER - CORREÇÕES
+   ============================================================================ */
+
+.timer-container,
+.rest-timer-container {
+  padding: var(--space-4) !important;
+  text-align: center !important;
+}
+
+.timer-display {
+  width: clamp(200px, 60vw, 300px) !important;
+  height: clamp(200px, 60vw, 300px) !important;
+  margin: 0 auto var(--space-4) auto !important;
+}
+
+.timer-text {
+  font-size: clamp(2rem, 10vw, 3.5rem) !important;
+  font-weight: 700 !important;
+}
+
+.timer-controls {
+  display: flex !important;
+  justify-content: center !important;
+  gap: var(--space-3) !important;
+  flex-wrap: wrap !important;
+}
+
+/* ============================================================================
+   🎭 MODAIS - CORREÇÕES
+   ============================================================================ */
+
+.modal-overlay,
+.popup-overlay {
+  padding: var(--space-4) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-content,
+.popup-content {
+  width: 100% !important;
+  max-width: min(90vw, 500px) !important;
+  max-height: 85vh !important;
+  margin: 0 !important;
+  padding: var(--space-5) !important;
+  border-radius: var(--radius-xl) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.modal-header,
+.popup-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: var(--space-4) !important;
+  gap: var(--space-3) !important;
+}
+
+.modal-close,
+.popup-close-btn {
+  min-width: var(--touch-min) !important;
+  min-height: var(--touch-min) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: var(--font-xl) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  color: var(--color-text-secondary) !important;
+}
+
+/* ============================================================================
+   🧭 NAVEGAÇÃO - CORREÇÕES
+   ============================================================================ */
+
+/* Bottom Navigation para mobile */
+@media (max-width: 767px) {
+  .app-container {
+    padding-bottom: calc(60px + var(--safe-area-bottom)) !important;
+  }
+  
+  .navigation-bottom {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: var(--color-bg-secondary) !important;
+    border-top: 1px solid var(--border-color) !important;
+    padding: var(--space-2) !important;
+    padding-bottom: calc(var(--space-2) + var(--safe-area-bottom)) !important;
+    display: flex !important;
+    justify-content: space-around !important;
+    z-index: 100 !important;
+  }
+}
+
+/* ============================================================================
+   📊 FORMULÁRIOS - CORREÇÕES
+   ============================================================================ */
+
+input,
+textarea,
+select,
+.input,
+.textarea,
+.select {
+  min-height: var(--touch-comfortable) !important;
+  padding: var(--space-3) var(--space-4) !important;
+  font-size: var(--font-base) !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--color-bg-tertiary) !important;
+  color: var(--color-text-primary) !important;
+  width: 100% !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+/* ============================================================================
+   🎨 TEMA E CORES - CORREÇÕES
+   ============================================================================ */
+
+/* Aplicar novo sistema de cores */
+body {
+  background-color: var(--color-bg-primary) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.card,
+.exercise-card,
+.day-card,
+.modal-content {
+  background-color: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Botões com novo sistema */
+.btn-primary {
+  background-color: var(--color-accent) !important;
+  color: var(--color-accent-text) !important;
+  box-shadow: var(--shadow-sm), var(--shadow-glow) !important;
+}
+
+.btn-secondary {
+  background-color: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* ============================================================================
+   🚀 PERFORMANCE - CORREÇÕES
+   ============================================================================ */
+
+/* Remover animações desnecessárias em mobile */
+@media (max-width: 767px) {
+  * {
+    animation-duration: var(--duration-fast) !important;
+  }
+  
+  .animated,
+  .transition {
+    transition-duration: var(--duration-fast) !important;
+  }
+}
+
+/* Hardware acceleration para elementos críticos */
+.modal,
+.drawer,
+.card,
+.exercise-card {
+  transform: translateZ(0) !important;
+  will-change: transform !important;
+}
+
+/* ============================================================================
+   📱 MEDIA QUERIES UNIFICADAS
+   ============================================================================ */
+
+/* iPhone SE e menores */
+@media (max-width: 374px) {
+  :root {
+    --font-base: 1rem !important;
+    --space-4: 0.875rem !important;
+    --space-5: 1rem !important;
+    --space-6: 1.25rem !important;
+  }
+  
+  .container {
+    padding-left: var(--space-3) !important;
+    padding-right: var(--space-3) !important;
+  }
+  
+  h1 { font-size: 1.75rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  h3 { font-size: 1.25rem !important; }
+}
+
+/* Tablets e maiores */
+@media (min-width: 768px) {
+  .grid-tablet-2 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-tablet-3 { grid-template-columns: repeat(3, 1fr) !important; }
+  
+  .flex-tablet-row {
+    flex-direction: row !important;
+  }
+  
+  .modal-content {
+    max-width: 600px !important;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px !important;
+    margin: 0 auto !important;
+  }
+  
+  .grid-desktop-3 { grid-template-columns: repeat(3, 1fr) !important; }
+  .grid-desktop-4 { grid-template-columns: repeat(4, 1fr) !important; }
+}
