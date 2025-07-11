@@ -17,9 +17,10 @@
  * - Usar estas funções em TODOS os lugares que manipulam datas
  */
 
-import { format, parseISO, isValid } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime, formatInTimeZone } from 'date-fns-tz';
-import { ptBR } from 'date-fns/locale';
+// Using CDN versions instead of ES6 imports
+const { format, parseISO, isValid } = window.dateFns || {};
+const { zonedTimeToUtc, utcToZonedTime, formatInTimeZone } = window.dateFnsTz || {};
+const { ptBR } = window.dateFns?.locale || {};
 
 const TIMEZONE_SP = 'America/Sao_Paulo';
 
