@@ -126,3 +126,4 @@ storage/
 # Service worker cache
 sw.js.map
 workbox-*.js.map
+.vercel
