@@ -1,0 +1,453 @@
+/**
+ * 📐 SISTEMA DE CONTAINERS PADRÃO WILLBANK
+ * 
+ * Sistema de containers com margens bem definidas, seguindo o padrão
+ * de aplicações financeiras modernas (Willbank, Nubank, etc.)
+ * 
+ * PRINCÍPIOS:
+ * - Conteúdo centralizado com max-width
+ * - Margens laterais consistentes
+ * - Responsividade fluida mas contida
+ * - Espaçamento adequado em todas as telas
+ */
+
+/* ============================================================================
+   🎯 RESET DO SISTEMA ATUAL (OVERRIDE PARA CORRIGIR)
+   ============================================================================ */
+
+/* Remover ocupação total da tela */
+* {
+  max-width: none !important;
+}
+
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+}
+
+#app {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ============================================================================
+   📱 SISTEMA DE CONTAINERS PRINCIPAL
+   ============================================================================ */
+
+/* Container base centralizado - padrão Willbank */
+.app-container,
+.screen,
+.home-screen,
+.workout-screen,
+.planning-screen {
+  width: 100% !important;
+  max-width: 1160px !important; /* Mesmo max-width do Willbank */
+  margin: 0 auto !important;
+  padding: 0 20px !important; /* Margens laterais consistentes */
+  box-sizing: border-box !important;
+}
+
+/* Container para conteúdo principal */
+.main-content,
+.home-content,
+.workout-content,
+.planning-content {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* ============================================================================
+   📏 BREAKPOINTS RESPONSIVOS - PADRÃO WILLBANK
+   ============================================================================ */
+
+/* Mobile Small (até 375px) */
+@media (max-width: 375px) {
+  .app-container,
+  .screen,
+  .home-screen,
+  .workout-screen,
+  .planning-screen {
+    padding: 0 16px !important;
+  }
+}
+
+/* Mobile Medium (376px - 767px) */
+@media (min-width: 376px) and (max-width: 767px) {
+  .app-container,
+  .screen,
+  .home-screen,
+  .workout-screen,
+  .planning-screen {
+    padding: 0 20px !important;
+  }
+}
+
+/* Tablet (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-container,
+  .screen,
+  .home-screen,
+  .workout-screen,
+  .planning-screen {
+    padding: 0 32px !important;
+  }
+}
+
+/* Desktop Small (1024px - 1199px) */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .app-container,
+  .screen,
+  .home-screen,
+  .workout-screen,
+  .planning-screen {
+    padding: 0 40px !important;
+  }
+}
+
+/* Desktop Large (1200px+) */
+@media (min-width: 1200px) {
+  .app-container,
+  .screen,
+  .home-screen,
+  .workout-screen,
+  .planning-screen {
+    padding: 0 50px !important;
+  }
+}
+
+/* ============================================================================
+   🏠 HEADER - SISTEMA CONTIDO
+   ============================================================================ */
+
+.home-header {
+  width: 100% !important;
+  max-width: 1160px !important;
+  margin: 0 auto !important;
+  padding: 16px 20px !important;
+  box-sizing: border-box !important;
+}
+
+.header-content {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Responsividade do header */
+@media (max-width: 375px) {
+  .home-header {
+    padding: 16px 16px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .home-header {
+    padding: 20px 32px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-header {
+    padding: 24px 40px !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .home-header {
+    padding: 24px 50px !important;
+  }
+}
+
+/* ============================================================================
+   🃏 CARDS E COMPONENTES - SISTEMA CONTIDO
+   ============================================================================ */
+
+/* Cards dentro do sistema */
+.workout-card,
+.exercise-card,
+.day-card,
+.training-plan,
+.week-indicators {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Seções principais */
+.training-plan,
+.workout-expandable-card,
+.section-header {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* ============================================================================
+   📊 FORMULÁRIOS E INPUTS - SISTEMA CONTIDO
+   ============================================================================ */
+
+.form-container,
+.input-container,
+.modal-content {
+  width: 100% !important;
+  max-width: 600px !important; /* Largura máxima para legibilidade */
+  margin: 0 auto !important;
+  padding: 20px !important;
+  box-sizing: border-box !important;
+}
+
+/* ============================================================================
+   🎭 MODAIS - SISTEMA CONTIDO
+   ============================================================================ */
+
+.modal-overlay {
+  padding: 20px !important;
+}
+
+.modal,
+.popup-content {
+  width: 100% !important;
+  max-width: 500px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 375px) {
+  .modal-overlay {
+    padding: 16px !important;
+  }
+  
+  .modal,
+  .popup-content {
+    max-width: none !important;
+    width: 100% !important;
+  }
+}
+
+/* ============================================================================
+   📱 NAVEGAÇÃO MOBILE - SISTEMA CONTIDO
+   ============================================================================ */
+
+.mobile-nav,
+.bottom-nav {
+  width: 100% !important;
+  max-width: none !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+.mobile-nav-content,
+.bottom-nav-items {
+  max-width: 1160px !important;
+  margin: 0 auto !important;
+  padding: 0 20px !important;
+}
+
+@media (max-width: 375px) {
+  .mobile-nav-content,
+  .bottom-nav-items {
+    padding: 0 16px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-nav-content,
+  .bottom-nav-items {
+    padding: 0 32px !important;
+  }
+}
+
+/* ============================================================================
+   🏃 WORKOUT EXECUTION - SISTEMA CONTIDO
+   ============================================================================ */
+
+.workout-progress-container,
+.exercises-container,
+.timer-container {
+  width: 100% !important;
+  max-width: 800px !important;
+  margin: 0 auto !important;
+  padding: 0 20px !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 375px) {
+  .workout-progress-container,
+  .exercises-container,
+  .timer-container {
+    padding: 0 16px !important;
+  }
+}
+
+/* ============================================================================
+   📅 WEEK INDICATORS - SISTEMA CONTIDO
+   ============================================================================ */
+
+.week-indicators {
+  width: 100% !important;
+  max-width: none !important;
+  overflow: visible !important;
+  padding: 16px 0 !important;
+}
+
+.week-carousel-container {
+  width: 100% !important;
+  max-width: none !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* ============================================================================
+   📐 LAYOUTS ESPECÍFICOS
+   ============================================================================ */
+
+/* Grid system respeitando containers */
+.grid,
+.grid-auto,
+.metrics-grid {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+/* Flexbox respeitando containers */
+.flex,
+.flex-container {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* ============================================================================
+   🔧 CORREÇÕES ESPECÍFICAS DE ELEMENTOS PROBLEMÁTICOS
+   ============================================================================ */
+
+/* Elementos que estavam ocupando 100vw */
+.container,
+.wrapper,
+.main,
+.content {
+  width: 100% !important;
+  max-width: 1160px !important;
+  margin: 0 auto !important;
+  padding: 0 20px !important;
+  box-sizing: border-box !important;
+}
+
+/* Resetar elementos com 100vw */
+*[style*="100vw"],
+*[style*="width: 100vw"] {
+  width: 100% !important;
+  max-width: 1160px !important;
+  margin: 0 auto !important;
+}
+
+/* ============================================================================
+   🎯 UTILIDADES DO SISTEMA WILLBANK
+   ============================================================================ */
+
+/* Container centralizado padrão */
+.willbank-container {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* Container sem padding (para elementos full-width dentro do limite) */
+.willbank-container-fluid {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Container pequeno para formulários */
+.willbank-container-small {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* ============================================================================
+   🔍 DEBUG MODE (para visualizar containers)
+   ============================================================================ */
+
+/* Descomente para ver os containers */
+/*
+.willbank-container,
+.willbank-container-fluid,
+.willbank-container-small {
+  border: 2px dashed rgba(255, 0, 0, 0.3) !important;
+  background: rgba(255, 0, 0, 0.05) !important;
+}
+
+.app-container,
+.screen {
+  border: 2px solid rgba(0, 255, 0, 0.5) !important;
+  background: rgba(0, 255, 0, 0.05) !important;
+}
+*/
+
+/* ============================================================================
+   📱 SAFE AREAS E PWA
+   ============================================================================ */
+
+/* Garantir que o sistema funcione em PWA */
+@media all and (display-mode: standalone) {
+  .app-container,
+  .screen {
+    padding-top: env(safe-area-inset-top) !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+  
+  .home-header {
+    margin-top: env(safe-area-inset-top) !important;
+  }
+}
+
+/* ============================================================================
+   🎨 TRANSIÇÕES SUAVES
+   ============================================================================ */
+
+.app-container,
+.screen,
+.home-screen,
+.workout-screen,
+.planning-screen {
+  transition: padding 0.3s ease, margin 0.3s ease;
+}
+
+/* ============================================================================
+   ✅ GARANTIAS DO SISTEMA
+   ============================================================================ */
+
+/* Garantir que nada quebre o layout */
+.app-container *,
+.screen *,
+.home-screen *,
+.workout-screen *,
+.planning-screen * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Exceções para elementos que precisam sair do container */
+.modal-overlay,
+.toast-container,
+.mobile-nav,
+.bottom-nav,
+.drawer-overlay {
+  max-width: none !important;
+}
