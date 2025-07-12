@@ -20,6 +20,8 @@
 
 import { nowUtcISO, getDateInSP } from '../utils/dateUtils.js';
 import { timerManager } from './timerManager.js';
+import { supabase } from './supabaseService.js';
+import AppState from '../state/appState.js';
 
 export class WorkoutCompletionService {
     
@@ -28,6 +30,10 @@ export class WorkoutCompletionService {
      */
     static async finalizarTreino(dadosCompletos = {}) {
         console.log('[WorkoutCompletion] 🏁 Iniciando finalização de treino...');
+        console.log('[WorkoutCompletion] 📊 Dados recebidos:', dadosCompletos);
+        
+        // Diagnóstico detalhado do estado atual
+        await this.diagnosticarEstadoTreino();
         
         const loadingId = this.showProgressiveLoading('Finalizando treino...');
         
@@ -40,8 +46,9 @@ export class WorkoutCompletionService {
             }
             
             // 2. Validar dados essenciais
-            if (!this.validarDadosMinimos(dadosSessao)) {
-                throw new Error('Dados insuficientes para finalizar treino');
+            const validacao = this.validarDadosMinimos(dadosSessao);
+            if (!validacao.valido) {
+                throw new Error(`Dados insuficientes: ${validacao.problemas.join(', ')}`);
             }
             
             // 3. Salvar dados completos (com retry)
@@ -53,7 +60,10 @@ export class WorkoutCompletionService {
             // 5. Salvar estado de finalização para recovery
             this.salvarEstadoFinalizacao(dadosSessao, resultadoSalvamento);
             
-            // 6. Navegação segura
+            // 6. Mostrar modal de sucesso
+            await this.mostrarModalSucesso(dadosSessao);
+            
+            // 7. Navegação segura
             await this.navegarApósFinalizacao();
             
             this.updateProgressiveLoading(loadingId, 'Treino finalizado com sucesso!', 'success');
@@ -191,10 +201,36 @@ export class WorkoutCompletionService {
      * Validar se temos dados mínimos para finalizar
      */
     static validarDadosMinimos(dados) {
-        return dados && 
-               dados.usuario_id && 
-               dados.data_inicio && 
-               dados.tempo_total_segundos > 0;
+        const problemas = [];
+        
+        if (!dados) {
+            problemas.push('Dados não fornecidos');
+            return { valido: false, problemas };
+        }
+        
+        if (!dados.usuario_id) {
+            problemas.push('ID do usuário não encontrado');
+        }
+        
+        if (!dados.data_inicio) {
+            problemas.push('Data de início não definida');
+        }
+        
+        if (!dados.tempo_total_segundos || dados.tempo_total_segundos <= 0) {
+            problemas.push('Tempo total inválido ou zero');
+        }
+        
+        if (!dados.execucoes || dados.execucoes.length === 0) {
+            problemas.push('Nenhuma execução encontrada');
+        }
+        
+        const valido = problemas.length === 0;
+        
+        if (!valido) {
+            console.warn('[WorkoutCompletion] ⚠️ Problemas de validação:', problemas);
+        }
+        
+        return { valido, problemas };
     }
     
     /**
@@ -425,6 +461,23 @@ export class WorkoutCompletionService {
     }
     
     /**
+     * Mostrar modal de sucesso com estatísticas
+     */
+    static async mostrarModalSucesso(dadosTreino) {
+        try {
+            const { WorkoutSuccessModal } = await import('../components/workoutSuccessModal.js');
+            await WorkoutSuccessModal.mostrar(dadosTreino);
+            console.log('[WorkoutCompletion] ✅ Modal de sucesso exibido');
+        } catch (error) {
+            console.error('[WorkoutCompletion] Erro ao mostrar modal de sucesso:', error);
+            // Fallback para notificação simples
+            if (window.showNotification) {
+                window.showNotification('🎉 Treino concluído com sucesso!', 'success');
+            }
+        }
+    }
+    
+    /**
      * Navegação segura após finalização
      */
     static async navegarApósFinalizacao() {
@@ -539,6 +592,86 @@ export class WorkoutCompletionService {
             return window.showNotification(message, type, type === 'error');
         }
         return null;
+    }
+    
+    /**
+     * Diagnóstico detalhado do estado do treino
+     */
+    static async diagnosticarEstadoTreino() {
+        console.log('\n🔍 === DIAGNÓSTICO DO ESTADO DO TREINO ===');
+        
+        // 1. Verificar AppState
+        const currentUser = AppState.get('currentUser');
+        const workoutStartTime = AppState.get('workoutStartTime');
+        const currentWorkout = AppState.get('currentWorkout');
+        const execucoesCache = AppState.get('execucoesCache') || [];
+        
+        console.log('📊 AppState:');
+        console.log(`  - Usuário: ${currentUser ? `${currentUser.nome} (ID: ${currentUser.id})` : 'NÃO ENCONTRADO'}`);
+        console.log(`  - Tempo início: ${workoutStartTime ? new Date(workoutStartTime).toLocaleString() : 'NÃO DEFINIDO'}`);
+        console.log(`  - Treino atual: ${currentWorkout ? currentWorkout.grupo_muscular || currentWorkout.tipo : 'NÃO DEFINIDO'}`);
+        console.log(`  - Execuções cache: ${execucoesCache.length} itens`);
+        
+        // 2. Verificar Supabase
+        console.log('🗄️ Supabase:');
+        try {
+            const { data: userTest } = await supabase.from('usuarios').select('id').limit(1);
+            console.log(`  - Conexão: ${userTest ? 'ATIVA' : 'FALHOU'}`);
+        } catch (error) {
+            console.log(`  - Conexão: ERRO - ${error.message}`);
+        }
+        
+        // 3. Verificar tabelas necessárias
+        const tabelas = ['execucoes_exercicios', 'planejamento_semanal', 'sessoes_treino'];
+        for (const tabela of tabelas) {
+            try {
+                const { data, error } = await supabase.from(tabela).select('*').limit(1);
+                console.log(`  - Tabela ${tabela}: ${error ? `ERRO - ${error.message}` : 'OK'}`);
+            } catch (error) {
+                console.log(`  - Tabela ${tabela}: ERRO - ${error.message}`);
+            }
+        }
+        
+        // 4. Verificar localStorage
+        console.log('💾 LocalStorage:');
+        const keys = ['workout_completion_state', 'workout_error_state'];
+        keys.forEach(key => {
+            const value = localStorage.getItem(key);
+            console.log(`  - ${key}: ${value ? 'PRESENTE' : 'AUSENTE'}`);
+        });
+        
+        // 5. Verificar funções críticas
+        console.log('🔧 Funções:');
+        console.log(`  - showNotification: ${typeof window.showNotification === 'function' ? 'OK' : 'AUSENTE'}`);
+        console.log(`  - carregarDashboard: ${typeof window.carregarDashboard === 'function' ? 'OK' : 'AUSENTE'}`);
+        console.log(`  - finalizarTreino: ${typeof window.finalizarTreino === 'function' ? 'OK' : 'AUSENTE'}`);
+        
+        // 6. Calcular tempo decorrido
+        if (workoutStartTime) {
+            const agora = Date.now();
+            const duracaoMs = agora - workoutStartTime;
+            const duracaoMin = Math.round(duracaoMs / 60000);
+            console.log(`⏱️ Duração do treino: ${duracaoMin} minutos (${Math.round(duracaoMs / 1000)} segundos)`);
+        }
+        
+        // 7. Status de execuções
+        if (execucoesCache.length > 0) {
+            const exerciciosUnicos = new Set(execucoesCache.map(e => e.exercicio_id)).size;
+            const pesoTotal = execucoesCache.reduce((total, e) => {
+                const peso = parseFloat(e.peso_utilizado) || 0;
+                const reps = parseInt(e.repeticoes_realizadas || e.repeticoes) || 0;
+                return total + (peso * reps);
+            }, 0);
+            
+            console.log(`💪 Execuções:`);
+            console.log(`  - Total séries: ${execucoesCache.length}`);
+            console.log(`  - Exercícios únicos: ${exerciciosUnicos}`);
+            console.log(`  - Peso total movimentado: ${Math.round(pesoTotal)}kg`);
+            console.log(`  - Primeira execução:`, execucoesCache[0]);
+            console.log(`  - Última execução:`, execucoesCache[execucoesCache.length - 1]);
+        }
+        
+        console.log('=== FIM DO DIAGNÓSTICO ===\n');
     }
 }
 
