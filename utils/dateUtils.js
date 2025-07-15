@@ -2,7 +2,7 @@
  * 📅 UTILITÁRIOS DE DATA - Date Utils
  * 
  * FUNÇÃO: Centralizar todas as operações de data/hora com suporte correto para o fuso de São Paulo.
- * Substitui timezoneUtils.js com implementação mais robusta usando date-fns-tz.
+ * Implementação simplificada sem dependências externas para compatibilidade com browser.
  * 
  * RESPONSABILIDADES:
  * - Converter entre UTC e São Paulo timezone
@@ -17,19 +17,50 @@
  * - Usar estas funções em TODOS os lugares que manipulam datas
  */
 
-// Using CDN versions instead of ES6 imports
-const { format, parseISO, isValid } = window.dateFns || {};
-const { zonedTimeToUtc, utcToZonedTime, formatInTimeZone } = window.dateFnsTz || {};
-const { ptBR } = window.dateFns?.locale || {};
-
 const TIMEZONE_SP = 'America/Sao_Paulo';
+
+/**
+ * Helper para verificar se uma data é válida
+ */
+function isValidDate(date) {
+    return date instanceof Date && !isNaN(date.getTime());
+}
+
+/**
+ * Parse ISO string para Date
+ */
+function parseISOString(dateStr) {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return isValidDate(date) ? date : null;
+}
+
+/**
+ * Formatar data usando Intl.DateTimeFormat
+ */
+function formatDate(date, options = {}) {
+    if (!isValidDate(date)) return '';
+    
+    const defaultOptions = {
+        timeZone: TIMEZONE_SP,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        ...options
+    };
+    
+    return new Intl.DateTimeFormat('pt-BR', defaultOptions).format(date);
+}
 
 /**
  * Obtém a data/hora atual em São Paulo
  * @returns {Date} Data atual no timezone de São Paulo
  */
 export function nowInSaoPaulo() {
-    return utcToZonedTime(new Date(), TIMEZONE_SP);
+    return new Date();
 }
 
 /**
@@ -40,14 +71,9 @@ export function nowInSaoPaulo() {
 export function spToUtc(spDateTime) {
     if (!spDateTime) return null;
     
-    // Se for string sem timezone info, assume São Paulo
-    if (typeof spDateTime === 'string' && !spDateTime.includes('Z') && !spDateTime.includes('+') && !spDateTime.includes('-')) {
-        return zonedTimeToUtc(spDateTime, TIMEZONE_SP);
-    }
-    
-    // Se já for Date ou ISO string com timezone
-    const date = typeof spDateTime === 'string' ? parseISO(spDateTime) : spDateTime;
-    return isValid(date) ? date : null;
+    // Se for string, converte para Date
+    const date = typeof spDateTime === 'string' ? parseISOString(spDateTime) : spDateTime;
+    return isValidDate(date) ? date : null;
 }
 
 /**
@@ -58,8 +84,8 @@ export function spToUtc(spDateTime) {
 export function utcToSp(utcDateTime) {
     if (!utcDateTime) return null;
     
-    const date = typeof utcDateTime === 'string' ? parseISO(utcDateTime) : utcDateTime;
-    return isValid(date) ? utcToZonedTime(date, TIMEZONE_SP) : null;
+    const date = typeof utcDateTime === 'string' ? parseISOString(utcDateTime) : utcDateTime;
+    return isValidDate(date) ? date : null;
 }
 
 /**
@@ -71,10 +97,27 @@ export function utcToSp(utcDateTime) {
 export function formatInSP(utcDateTime, formatStr = 'dd/MM/yyyy HH:mm') {
     if (!utcDateTime) return '';
     
-    const date = typeof utcDateTime === 'string' ? parseISO(utcDateTime) : utcDateTime;
-    if (!isValid(date)) return '';
+    const date = typeof utcDateTime === 'string' ? parseISOString(utcDateTime) : utcDateTime;
+    if (!isValidDate(date)) return '';
     
-    return formatInTimeZone(date, TIMEZONE_SP, formatStr, { locale: ptBR });
+    // Mapear formato customizado para opções do Intl
+    if (formatStr === 'dd/MM/yyyy HH:mm') {
+        return formatDate(date);
+    } else if (formatStr === 'yyyy-MM-dd') {
+        // Usar Intl.DateTimeFormat com locale en-CA para formato YYYY-MM-DD
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: TIMEZONE_SP,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        return formatter.format(date);
+    } else if (formatStr === "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'") {
+        return date.toISOString();
+    }
+    
+    // Fallback para formato padrão
+    return formatDate(date);
 }
 
 /**
@@ -101,7 +144,18 @@ export function spToUtcISO(spDateTime) {
  * @returns {string} Data no formato YYYY-MM-DD
  */
 export function getDateInSP(utcDateTime = new Date()) {
-    return formatInSP(utcDateTime, 'yyyy-MM-dd');
+    const date = typeof utcDateTime === 'string' ? parseISOString(utcDateTime) : utcDateTime;
+    if (!isValidDate(date)) return '';
+    
+    // Usar Intl.DateTimeFormat para garantir formato correto
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TIMEZONE_SP,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    
+    return formatter.format(date);
 }
 
 /**
@@ -113,8 +167,8 @@ export function getDateInSP(utcDateTime = new Date()) {
 export function combineDateTimeInSP(date, time) {
     if (!date) return null;
     
-    const dateTimeStr = time ? `${date} ${time}` : `${date} 00:00`;
-    return spToUtc(dateTimeStr);
+    const dateTimeStr = time ? `${date}T${time}:00` : `${date}T00:00:00`;
+    return new Date(dateTimeStr);
 }
 
 /**
@@ -135,12 +189,17 @@ export function isSameDayInSP(date1, date2) {
  * @param {string} label - Label para o console
  */
 export function debugTimezone(dateTime, label = 'Debug') {
-    const date = typeof dateTime === 'string' ? parseISO(dateTime) : dateTime;
+    const date = typeof dateTime === 'string' ? parseISOString(dateTime) : dateTime;
+    
+    if (!isValidDate(date)) {
+        console.log(`🕐 ${label} - Data inválida:`, dateTime);
+        return;
+    }
     
     console.group(`🕐 ${label}`);
     console.log('Input:', dateTime);
     console.log('UTC:', date.toISOString());
-    console.log('São Paulo:', formatInSP(date, 'yyyy-MM-dd HH:mm:ss zzz'));
+    console.log('São Paulo:', formatInSP(date));
     console.log('Timestamp:', date.getTime());
     console.groupEnd();
 }

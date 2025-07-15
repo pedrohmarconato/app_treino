@@ -12,21 +12,26 @@ export class ProtocolIntegration {
         
         try {
             // 1. Injetar estilos dos exercícios
+            console.log('[ProtocolIntegration] 1/4 - Injetando estilos...');
             this.injectExerciseStyles();
             
             // 2. Configurar funções globais
+            console.log('[ProtocolIntegration] 2/4 - Configurando funções globais...');
             this.setupGlobalFunctions();
             
             // 3. Configurar event listeners
+            console.log('[ProtocolIntegration] 3/4 - Configurando event listeners...');
             this.setupEventListeners();
             
             // 4. Atualizar dashboard com protocolo
+            console.log('[ProtocolIntegration] 4/4 - Integrando com dashboard...');
             this.integrateWithDashboard();
             
             console.log('[ProtocolIntegration] ✅ Protocolo integrado com sucesso!');
             
         } catch (error) {
             console.error('[ProtocolIntegration] Erro na integração:', error);
+            throw error; // Re-throw para o caller detectar
         }
     }
     
@@ -556,6 +561,8 @@ export async function initializeProtocol() {
             window.showNotification('Erro ao carregar protocolo. Algumas funcionalidades podem estar limitadas.', 'error');
         }
     }
+    
+    console.log('[initializeProtocol] 🏁 Função initializeProtocol concluída');
 }
 
 // Função global para testar protocolo

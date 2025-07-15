@@ -113,7 +113,11 @@ class AppStateManager {
     
     // Resetar estado
     reset() {
-        Object.keys(this.state).forEach(key => {
+        console.log('[AppState] Resetando estado...');
+        const keys = Object.keys(this.state);
+        console.log('[AppState] Chaves a resetar:', keys);
+        
+        keys.forEach(key => {
             if (key === 'users') {
                 this.set(key, []); // Mantém array vazio para usuários
             } else if (Array.isArray(this.state[key])) {
@@ -128,6 +132,8 @@ class AppStateManager {
                 this.set(key, null);
             }
         });
+        
+        console.log('[AppState] Estado resetado:', this.getAll());
     }
     
     // Resetar apenas estado do treino

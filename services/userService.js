@@ -26,18 +26,35 @@
 
 import { query, insert, update } from './supabaseService.js';
 
+// Usuários mockados para fallback
+function getMockUsers() {
+    console.log('[getMockUsers] Retornando usuários mockados para fallback');
+    return [
+        { id: 1, nome: 'Pedro', email: 'pedro@email.com', ativo: true },
+        { id: 2, nome: 'Japa', email: 'japa@email.com', ativo: true },
+        { id: 3, nome: 'Vini', email: 'vini@email.com', ativo: true }
+    ];
+}
+
 // Buscar todos os usuários ativos
 export async function fetchUsuarios() {
     console.log('[fetchUsuarios] Iniciando busca de usuários...');
     
     try {
-        // TESTE 1: Buscar todos os usuários primeiro
+        // TESTE 1: Buscar todos os usuários primeiro com timeout
         console.log('[fetchUsuarios] Buscando todos os usuários...');
-        const { data: todosUsuarios, error: erroTodos } = await query('usuarios');
+        
+        const queryPromise = query('usuarios');
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout na busca de usuários')), 10000)
+        );
+        
+        const { data: todosUsuarios, error: erroTodos } = await Promise.race([queryPromise, timeoutPromise]);
         
         if (erroTodos) {
             console.error('[fetchUsuarios] Erro ao buscar todos os usuários:', erroTodos);
-            return [];
+            // Retornar usuários mockados em caso de erro
+            return getMockUsers();
         }
         
         console.log('[fetchUsuarios] Todos os usuários encontrados:', todosUsuarios);
@@ -65,10 +82,7 @@ export async function fetchUsuarios() {
         
         // EM CASO DE ERRO, RETORNAR DADOS MOCK
         console.log('[fetchUsuarios] Retornando dados mock devido ao erro');
-        return [
-            { id: 1, nome: 'Pedro', status: 'ativo' },
-            { id: 2, nome: 'Japa', status: 'ativo' }
-        ];
+        return getMockUsers();
     }
 }
 

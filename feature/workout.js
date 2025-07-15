@@ -582,6 +582,13 @@ function atualizarProgresso() {
 function showExerciseContainer() {
     console.log('[showExerciseContainer] Iniciando...');
     
+    // PROTEÇÃO: Não mexer nos containers se o treino foi concluído
+    const workoutCompleted = AppState.get('workoutCompleted');
+    if (workoutCompleted) {
+        console.log('[showExerciseContainer] Treino concluído - mantendo tela de conclusão');
+        return;
+    }
+    
     const exerciseContainer = document.getElementById('exercises-container');
     const timerContainer = document.getElementById('rest-timer-overlay');
     const completedContainer = document.getElementById('workout-completion');
@@ -1017,21 +1024,17 @@ window.confirmarSerie = async function(serieIndex) {
         totalExercicios: exercises.length
     });
     
-    // TESTE: Forçar descanso para debug  
-    console.log('[DEBUG] Forçando descanso independente da série');
-    const tempoDescanso = exercicioAtual.tempo_descanso || 60;
-    console.log('[DEBUG] Tempo de descanso configurado:', tempoDescanso);
-    mostrarCronometroDescanso(tempoDescanso);
+    // DEBUG REMOVIDO: Não forçar descanso quando treino está concluído
     
     // REGRA: Mostrar descanso entre séries, EXCETO na última série
     if (seriesCompletadasDoExercicio < seriesDoExercicio) {
         // Ainda há séries para fazer - mostrar descanso entre séries
-        //const tempoDescanso = exercicioAtual.tempo_descanso || 60;
+        const tempoDescanso = exercicioAtual.tempo_descanso || 60;
         
         console.log('[confirmarSerie] Mostrando descanso entre séries:', tempoDescanso, 'segundos');
         
         // Mostrar cronômetro de descanso
-        //mostrarCronometroDescanso(tempoDescanso);
+        mostrarCronometroDescanso(tempoDescanso);
         
         // Após o descanso, apenas voltar para a tela de exercício
         AppState.set('isRestBetweenSets', true);
@@ -1270,9 +1273,14 @@ function proximoExercicio() {
                     }
                 }
                 
-                // Mostrar novo exercício
-                console.log('[proximoExercicio] Chamando mostrarExercicioAtual()...');
-                await mostrarExercicioAtual();
+                // PROTEÇÃO: Só mostrar próximo exercício se treino não foi concluído
+                const workoutCompleted = AppState.get('workoutCompleted');
+                if (!workoutCompleted) {
+                    console.log('[proximoExercicio] Chamando mostrarExercicioAtual()...');
+                    await mostrarExercicioAtual();
+                } else {
+                    console.log('[proximoExercicio] Treino já concluído, não mudando exercício');
+                }
                 
                 // Salvar estado após mudança completa
                 workoutStateManager.onExercicioMudou(novoIndex);
@@ -1538,6 +1546,11 @@ window.voltarParaHome = voltarParaHome;
 
 // Mostrar treino concluído
 function mostrarTreinoConcluido() {
+    console.log('[mostrarTreinoConcluido] Iniciando conclusão do treino');
+    
+    // PROTEÇÃO: Marcar treino como concluído PRIMEIRO para evitar race conditions
+    AppState.set('workoutCompleted', true);
+    
     // Ocultar containers
     const exerciseContainer = document.getElementById('exercises-container');
     if (exerciseContainer) exerciseContainer.style.display = 'none';
@@ -1555,6 +1568,12 @@ function mostrarTreinoConcluido() {
     const exercises = AppState.get('currentExercises');
     const workout = AppState.get('currentWorkout');
     
+    console.log('[mostrarTreinoConcluido] Dados para resumo:', {
+        tempoTotal: `${minutos}m ${segundos}s`,
+        exerciciosCount: exercises?.length,
+        workoutNome: workout?.nome
+    });
+    
     const resumoContent = `
         <div class="summary-item">
             <span>Tempo Total:</span>
@@ -1571,21 +1590,36 @@ function mostrarTreinoConcluido() {
     `;
     
     const summaryEl = document.getElementById('workout-summary-content');
+    console.log('[mostrarTreinoConcluido] Summary element encontrado:', !!summaryEl);
     if (summaryEl) {
         summaryEl.innerHTML = resumoContent;
+        console.log('[mostrarTreinoConcluido] Summary content inserido');
     }
     
     // Mostrar modal de conclusão
     const modal = document.getElementById('workout-completion');
+    console.log('[mostrarTreinoConcluido] Modal element encontrado:', !!modal);
     if (modal) {
         modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '9999';
+        console.log('[mostrarTreinoConcluido] Modal exibido com sucesso');
+    } else {
+        console.error('[mostrarTreinoConcluido] ERRO: Modal #workout-completion não encontrado no DOM!');
+        // Fallback: Tentar exibir alerta
+        alert(`Treino Concluído!\nTempo: ${minutos}m ${segundos}s\nExercícios: ${exercises.length}`);
     }
     
     // Atualizar progress bar para 100%
     const progressBar = document.getElementById('workout-progress');
+    console.log('[mostrarTreinoConcluido] Progress bar encontrado:', !!progressBar);
     if (progressBar) {
         progressBar.style.width = '100%';
+        console.log('[mostrarTreinoConcluido] Progress bar atualizado para 100%');
     }
+    
+    console.log('[mostrarTreinoConcluido] ✅ Função completada com sucesso');
 }
 
 // Finalizar treino - NOVA IMPLEMENTAÇÃO ROBUSTA

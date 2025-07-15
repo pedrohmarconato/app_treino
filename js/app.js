@@ -103,14 +103,33 @@ async function initApp() {
         
         // 2. Inicializar protocolo
         console.log('[initApp] 🔄 Inicializando protocolo...');
-        await initializeProtocol();
-        console.log('[initApp] ✅ Protocolo inicializado');
+        try {
+            // Timeout de 5 segundos para evitar travamento
+            const protocolPromise = initializeProtocol();
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout na inicialização do protocolo')), 5000)
+            );
+            
+            await Promise.race([protocolPromise, timeoutPromise]);
+            console.log('[initApp] ✅ Protocolo inicializado');
+        } catch (error) {
+            console.error('[initApp] ❌ Erro no protocolo:', error);
+            // Continuar mesmo com erro
+        }
         
         // 3. Iniciar na tela de login
         console.log('[initApp] 🔑 Iniciando tela de login...');
+        console.log('[initApp] 🔍 Verificando window.initLogin:', typeof window.initLogin);
+        
         if (window.initLogin) {
-            await window.initLogin();
-            console.log('[initApp] ✅ Login inicializado');
+            console.log('[initApp] 📞 Chamando window.initLogin()...');
+            try {
+                await window.initLogin();
+                console.log('[initApp] ✅ Login inicializado');
+            } catch (error) {
+                console.error('[initApp] ❌ Erro no initLogin:', error);
+                throw error;
+            }
         } else {
             console.error('[initApp] ❌ window.initLogin não está definido');
             // FALLBACK: Renderizar login diretamente
@@ -172,8 +191,17 @@ function setupGlobalFunctions() {
     
     // === LOGIN ===
     window.initLogin = async () => {
-        const { initLoginScreen } = await import('../feature/login.js');
-        return initLoginScreen();
+        try {
+            console.log('[initLogin] Importando login.js...');
+            const { initLoginScreen } = await import('../feature/login.js');
+            console.log('[initLogin] Módulo importado, chamando initLoginScreen...');
+            const result = await initLoginScreen();
+            console.log('[initLogin] initLoginScreen concluído');
+            return result;
+        } catch (error) {
+            console.error('[initLogin] Erro:', error);
+            throw error;
+        }
     };
     
     // === DASHBOARD ===

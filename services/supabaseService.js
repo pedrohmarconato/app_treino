@@ -30,17 +30,68 @@ console.log('Configuração Supabase:', {
     hasKey: !!window.SUPABASE_CONFIG?.key
 });
 
+// Estado de conectividade
+let connectionStatus = {
+    isOnline: navigator.onLine,
+    lastCheck: null,
+    retryCount: 0
+};
+
 const supabase = window.supabase.createClient(
     window.SUPABASE_CONFIG.url, 
     window.SUPABASE_CONFIG.key,
     {
         realtime: {
             enabled: false
+        },
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false
         }
     }
 );
 
-export { supabase };
+// Teste inicial de conectividade
+async function testConnection() {
+    try {
+        console.log('[Supabase] Testando conectividade...');
+        const { error } = await supabase.from('usuarios').select('count').limit(1);
+        
+        if (error) {
+            console.error('[Supabase] Erro no teste de conectividade:', error);
+            connectionStatus.isOnline = false;
+            return false;
+        }
+        
+        console.log('[Supabase] Conectividade OK');
+        connectionStatus.isOnline = true;
+        connectionStatus.retryCount = 0;
+        return true;
+    } catch (error) {
+        console.error('[Supabase] Falha no teste de conectividade:', error);
+        connectionStatus.isOnline = false;
+        return false;
+    }
+}
+
+// Verificar conectividade periodicamente
+window.addEventListener('online', () => {
+    console.log('[Supabase] Conexão de rede restaurada');
+    connectionStatus.isOnline = true;
+    testConnection();
+});
+
+window.addEventListener('offline', () => {
+    console.log('[Supabase] Conexão de rede perdida');
+    connectionStatus.isOnline = false;
+});
+
+// Testar conectividade no startup
+setTimeout(() => {
+    testConnection();
+}, 2000);
+
+export { supabase, testConnection, connectionStatus };
 
 // Função para detectar erros de rede
 function isNetworkError(error) {
@@ -133,6 +184,19 @@ export async function safeQuery(queryFn, options = {}) {
 // Funções auxiliares para queries comuns
 export async function query(table, options = {}) {
     console.log(`[query] Consultando tabela: ${table}`, options);
+    
+    // Verificar conectividade antes de tentar
+    if (!connectionStatus.isOnline && !navigator.onLine) {
+        console.warn('[query] Sem conectividade - abortando query');
+        return {
+            data: null,
+            error: { 
+                message: 'Sem conexão com a internet',
+                code: 'NETWORK_ERROR',
+                details: 'ERR_ADDRESS_UNREACHABLE'
+            }
+        };
+    }
     
     try {
         let q = supabase.from(table);
