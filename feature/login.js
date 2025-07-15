@@ -15,19 +15,110 @@ import { carregarDashboard } from './dashboard.js';
 export async function initLoginScreen() {
     console.log('[initLoginScreen] Iniciando...');
     try {
+        console.log('[initLoginScreen] Chamando fetchUsuarios...');
         const usuarios = await fetchUsuarios();
         console.log('[initLoginScreen] Usuários carregados:', usuarios);
         AppState.set('users', usuarios);
+        
         // AGUARDAR mais tempo para garantir que o template foi renderizado
         setTimeout(() => {
             console.log('[initLoginScreen] Tentando renderizar usuários...');
             renderizarUsuarios(usuarios);
         }, 500);
+        
+        console.log('[initLoginScreen] Inicialização concluída');
     } catch (error) {
-        console.error('Erro ao carregar usuários:', error);
-        showNotification('Erro ao carregar usuários', 'error');
+        console.error('[initLoginScreen] Erro ao carregar usuários:', error);
+        
+        // Verificar se é erro de rede
+        if (error.message?.includes('Failed to fetch') || error.code === 'NETWORK_ERROR') {
+            console.log('[initLoginScreen] Exibindo erro de rede');
+            showNetworkErrorWithRetry();
+        } else {
+            console.log('[initLoginScreen] Exibindo notificação de erro');
+            showNotification('Erro ao carregar usuários', 'error');
+        }
     }
 }
+
+// Mostrar erro de rede com opção de retry
+function showNetworkErrorWithRetry() {
+    const container = document.getElementById('users-grid');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="network-error">
+            <div class="error-icon">📵</div>
+            <h3>Sem conexão</h3>
+            <p>Não foi possível conectar ao servidor. Verifique sua conexão com a internet.</p>
+            <button class="retry-btn" onclick="retryConnection()">
+                🔄 Tentar novamente
+            </button>
+        </div>
+    `;
+    
+    // Adicionar estilos se não existir
+    if (!document.getElementById('network-error-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'network-error-styles';
+        styles.textContent = `
+            .network-error {
+                text-align: center;
+                padding: 40px 20px;
+                color: #666;
+            }
+            .error-icon {
+                font-size: 48px;
+                margin-bottom: 16px;
+            }
+            .network-error h3 {
+                margin: 0 0 12px 0;
+                color: #333;
+            }
+            .network-error p {
+                margin: 0 0 24px 0;
+                opacity: 0.8;
+            }
+            .retry-btn {
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .retry-btn:hover {
+                background: #0056b3;
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+}
+
+// Função global para retry de conexão
+window.retryConnection = async function() {
+    console.log('[retryConnection] Tentando reconectar...');
+    
+    const retryBtn = document.querySelector('.retry-btn');
+    if (retryBtn) {
+        retryBtn.innerHTML = '⏳ Conectando...';
+        retryBtn.disabled = true;
+    }
+    
+    try {
+        // Tentar recarregar usuários
+        await initLoginScreen();
+    } catch (error) {
+        console.error('[retryConnection] Falha na reconexão:', error);
+        
+        if (retryBtn) {
+            retryBtn.innerHTML = '🔄 Tentar novamente';
+            retryBtn.disabled = false;
+        }
+    }
+};
 
 // Renderizar usuários na tela
 function renderizarUsuarios(usuarios) {

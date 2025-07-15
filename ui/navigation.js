@@ -44,6 +44,14 @@ export function mostrarTela(telaId) {
     window.scrollTo(0, 0);
     document.body.style.overflow = 'auto';
     
+    // Debug: verificar estado atual
+    console.log('[mostrarTela] Estado atual:', {
+        telaId,
+        templateMap: screenTemplateMap[telaId],
+        renderTemplate: typeof window.renderTemplate,
+        currentUser: AppState.get('currentUser')
+    });
+    
     // IMPORTANTE: Remover duplicatas de workout-screen antes de criar nova
     if (telaId === 'workout-screen') {
         const existingScreens = document.querySelectorAll('#workout-screen');
@@ -476,17 +484,30 @@ export function voltarParaHome() {
 // Fazer logout
 export function logout() {
     try {
+        console.log('[logout] Iniciando logout...');
+        
+        // Limpar estado da aplicação
         AppState.reset();
+        console.log('[logout] AppState resetado');
+        
+        // Navegar para login
+        console.log('[logout] Navegando para login-screen...');
         mostrarTela('login-screen');
         
+        // Notificação de sucesso
         if (window.showNotification) {
-            window.showNotification('Logout realizado com sucesso', 'info');
+            window.showNotification('Logout realizado', 'success');
         }
         
         console.log('[logout] Logout realizado');
         
     } catch (error) {
         console.error('[logout] Erro no logout:', error);
+        
+        // Fallback: forçar redirecionamento
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
     }
 }
 
