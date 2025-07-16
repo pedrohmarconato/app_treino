@@ -1142,14 +1142,17 @@ export async function buscarExerciciosTreinoDia(userId, diaAtual = null, semanaO
             dia_semana: diaSemana
         });
         
-        const { data: planejamento, error: planejamentoError } = await supabase
+        const { data: planejamentos, error: planejamentoError } = await supabase
             .from('planejamento_semanal')
             .select('*')
             .eq('usuario_id', userId)
             .eq('ano', ano)
             .eq('semana_treino', numeroSemana)
             .eq('dia_semana', diaSemana)
-            .single();
+            .order('id', { ascending: false })
+            .limit(1);
+            
+        const planejamento = planejamentos?.[0];
             
         if (planejamentoError || !planejamento) {
             console.log('[buscarExerciciosTreinoDia] ❌ Nenhum planejamento encontrado para hoje:', planejamentoError?.message);
