@@ -484,35 +484,209 @@ export function voltarParaHome() {
 // Fazer logout
 export function logout() {
     try {
-        console.log('[logout] Iniciando logout...');
+        console.log('[logout] 🚪 Iniciando logout...');
         
-        // Limpar estado da aplicação
-        AppState.reset();
-        console.log('[logout] AppState resetado');
-        
-        // Navegar para login
-        console.log('[logout] Navegando para login-screen...');
-        mostrarTela('login-screen');
-        
-        // Notificação de sucesso
-        if (window.showNotification) {
-            window.showNotification('Logout realizado', 'success');
+        // Limpar timers e intervalos ativos
+        if (window.timerManager && typeof window.timerManager.clearAll === 'function') {
+            window.timerManager.clearAll();
+            console.log('[logout] ⏰ Timers limpos');
         }
         
-        console.log('[logout] Logout realizado');
+        // Limpar estado da aplicação
+        if (AppState && typeof AppState.reset === 'function') {
+            AppState.reset();
+            console.log('[logout] 🧹 AppState resetado');
+        }
+        
+        // Limpar localStorage relacionado ao treino (opcional)
+        try {
+            const keys = ['workoutState', 'currentWorkout', 'currentExercises'];
+            keys.forEach(key => localStorage.removeItem(key));
+            console.log('[logout] 💾 Cache local limpo');
+        } catch (e) {
+            console.warn('[logout] ⚠️ Erro ao limpar localStorage:', e);
+        }
+        
+        // Aguardar um frame para garantir que limpeza terminou
+        requestAnimationFrame(() => {
+            // Navegar para login
+            console.log('[logout] 🔄 Navegando para login-screen...');
+            
+            if (typeof mostrarTela === 'function') {
+                mostrarTela('login-screen');
+            } else if (window.renderTemplate) {
+                window.renderTemplate('login');
+            } else {
+                // Fallback direto
+                console.warn('[logout] ⚠️ Sistema de navegação não disponível, usando fallback');
+                forcarNavegacaoLogin();
+            }
+            
+            // Notificação de sucesso após um pequeno delay
+            setTimeout(() => {
+                if (window.showNotification) {
+                    window.showNotification('Logout realizado com sucesso! 👋', 'success');
+                }
+            }, 100);
+            
+            console.log('[logout] ✅ Logout realizado com sucesso');
+        });
         
     } catch (error) {
-        console.error('[logout] Erro no logout:', error);
+        console.error('[logout] ❌ Erro no logout:', error);
         
-        // Fallback: forçar redirecionamento
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
+        // Fallback robusto em caso de erro
+        forcarNavegacaoLogin();
     }
 }
 
-// Tornar logout acessível globalmente
+// Função auxiliar para forçar navegação para login
+function forcarNavegacaoLogin() {
+    console.log('[logout] 🆘 Executando fallback de navegação...');
+    
+    // Tentar múltiplas abordagens
+    const tentativas = [
+        () => {
+            // Tentativa 1: Verificar se existe elemento login-screen
+            const loginScreen = document.getElementById('login-screen');
+            if (loginScreen) {
+                // Esconder todas as telas
+                document.querySelectorAll('.screen').forEach(screen => {
+                    screen.classList.remove('active');
+                });
+                // Mostrar login
+                loginScreen.classList.add('active');
+                return true;
+            }
+            return false;
+        },
+        () => {
+            // Tentativa 2: Recriar tela de login básica
+            const app = document.getElementById('app');
+            if (app) {
+                app.innerHTML = `
+                    <div id="login-screen" class="screen active">
+                        <div class="login-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-primary, #101010); color: var(--text-primary, #fff);">
+                            <h1 style="margin-bottom: 2rem; color: var(--accent-primary, #CFFF04);">App Treino</h1>
+                            <p style="margin-bottom: 1rem;">Logout realizado com sucesso!</p>
+                            <button onclick="location.reload()" style="padding: 12px 24px; background: var(--accent-primary, #CFFF04); color: #000; border: none; border-radius: 6px; cursor: pointer;">
+                                Fazer Login Novamente
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return true;
+            }
+            return false;
+        },
+        () => {
+            // Tentativa 3: Recarregar página
+            console.log('[logout] 🔄 Recarregando página como último recurso...');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+            return true;
+        }
+    ];
+    
+    // Executar tentativas em sequência
+    for (let i = 0; i < tentativas.length; i++) {
+        try {
+            if (tentativas[i]()) {
+                console.log(`[logout] ✅ Fallback ${i + 1} executado com sucesso`);
+                break;
+            }
+        } catch (e) {
+            console.error(`[logout] ❌ Fallback ${i + 1} falhou:`, e);
+        }
+    }
+}
+
+// Função auxiliar para executar logout com múltiplas tentativas
+function executarLogout() {
+    console.log('[executarLogout] 🚪 Iniciando processo de logout...');
+    
+    try {
+        // Primeira tentativa: usar função logout padrão
+        if (typeof logout === 'function') {
+            console.log('[executarLogout] 🎯 Usando função logout padrão');
+            logout();
+            return;
+        }
+        
+        // Segunda tentativa: usar função global
+        if (typeof window.logout === 'function') {
+            console.log('[executarLogout] 🎯 Usando função global window.logout');
+            window.logout();
+            return;
+        }
+        
+        // Terceira tentativa: execução manual
+        console.log('[executarLogout] 🎯 Executando logout manualmente');
+        logoutManual();
+        
+    } catch (error) {
+        console.error('[executarLogout] ❌ Erro ao executar logout:', error);
+        
+        // Última tentativa: força brutal
+        setTimeout(() => {
+            console.log('[executarLogout] 🆘 Forçando logout com recarregamento');
+            window.location.reload();
+        }, 1000);
+    }
+}
+
+// Função de logout manual como backup
+function logoutManual() {
+    console.log('[logoutManual] 🔧 Executando logout manual...');
+    
+    try {
+        // Limpar AppState se disponível
+        if (typeof AppState !== 'undefined' && AppState.reset) {
+            AppState.reset();
+            console.log('[logoutManual] ✅ AppState limpo');
+        }
+        
+        // Limpar localStorage
+        const keys = ['workoutState', 'currentWorkout', 'currentExercises'];
+        keys.forEach(key => localStorage.removeItem(key));
+        console.log('[logoutManual] ✅ localStorage limpo');
+        
+        // Limpar timers se disponível
+        if (window.timerManager && typeof window.timerManager.clearAll === 'function') {
+            window.timerManager.clearAll();
+            console.log('[logoutManual] ✅ Timers limpos');
+        }
+        
+        // Navegar para login
+        setTimeout(() => {
+            if (typeof mostrarTela === 'function') {
+                mostrarTela('login-screen');
+                console.log('[logoutManual] ✅ Navegação via mostrarTela');
+            } else if (window.renderTemplate) {
+                window.renderTemplate('login');
+                console.log('[logoutManual] ✅ Navegação via renderTemplate');
+            } else {
+                forcarNavegacaoLogin();
+                console.log('[logoutManual] ✅ Navegação forçada');
+            }
+            
+            // Notificação
+            if (window.showNotification) {
+                window.showNotification('Logout realizado! 👋', 'success');
+            }
+        }, 100);
+        
+    } catch (error) {
+        console.error('[logoutManual] ❌ Erro no logout manual:', error);
+        forcarNavegacaoLogin();
+    }
+}
+
+// Tornar funções acessíveis globalmente
 window.logout = logout;
+window.executarLogout = executarLogout;
+window.logoutManual = logoutManual;
 
 // Obter tipo de treino baseado no dia da semana
 function obterTipoTreino(diaSemana) {

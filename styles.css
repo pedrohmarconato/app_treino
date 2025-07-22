@@ -2492,6 +2492,98 @@ button {
 }
 
 /* ========================================
+   QUICK EDIT MODAL - ESTILOS PARA DIAS CONCLUÍDOS
+   ======================================== */
+
+/* Container quando dia está concluído */
+.quick-edit-modal-container.concluido {
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+/* Header info container */
+.quick-edit-modal-header .header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    width: fit-content;
+}
+
+.status-badge.concluido {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.pendente {
+    background: rgba(156, 163, 175, 0.15);
+    color: #9ca3af;
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+/* Mensagem de aviso */
+.warning-message {
+    display: flex;
+    gap: 12px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.warning-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.warning-content {
+    flex: 1;
+}
+
+.warning-title {
+    font-weight: 600;
+    color: #f59e0b;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+
+.warning-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Opções com aviso de conclusão */
+.quick-edit-option.concluido-warning {
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.quick-edit-option.concluido-warning:hover {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+.option-status.concluido {
+    color: #f59e0b;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+/* ========================================
    POPUP STYLES FOR PLANNING SCREEN
    ======================================== */
 
@@ -3814,6 +3906,15 @@ button:focus-visible {
     backdrop-filter: blur(10px);
     padding: 20px;
     box-sizing: border-box;
+    z-index: 999999 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .avaliacao-content {

@@ -30,6 +30,7 @@ class QuickEditModal {
         this.currentDay = dia;
         this.currentConfig = config;
         this.onSave = onSaveCallback;
+        this.isConcluido = config?.concluido || false;
 
         const modal = this.createModalElement();
         document.body.appendChild(modal);
@@ -47,13 +48,17 @@ class QuickEditModal {
         modal.className = 'quick-edit-modal-overlay';
         
         modal.innerHTML = `
-            <div class="quick-edit-modal-container">
+            <div class="quick-edit-modal-container ${this.isConcluido ? 'concluido' : ''}">
                 <div class="quick-edit-modal-header">
-                    <h3>Editar ${DIAS_SEMANA[this.currentDay]}</h3>
+                    <div class="header-info">
+                        <h3>Editar ${DIAS_SEMANA[this.currentDay]}</h3>
+                        ${this.isConcluido ? '<div class="status-badge concluido">✅ Concluído</div>' : '<div class="status-badge pendente">⏳ Pendente</div>'}
+                    </div>
                     <button class="quick-edit-close-btn" type="button">&times;</button>
                 </div>
                 
                 <div class="quick-edit-modal-body">
+                    ${this.isConcluido ? this.renderWarningMessage() : ''}
                     <div class="quick-edit-options">
                         ${this.renderOptions()}
                     </div>
@@ -69,6 +74,25 @@ class QuickEditModal {
         return modal;
     }
 
+    // Renderizar mensagem de aviso para dias concluídos
+    renderWarningMessage() {
+        const dataFormatada = this.currentConfig?.data_conclusao ? 
+            new Date(this.currentConfig.data_conclusao).toLocaleDateString('pt-BR') : '';
+        
+        return `
+            <div class="warning-message">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-content">
+                    <div class="warning-title">Treino Já Concluído</div>
+                    <div class="warning-text">
+                        Este treino foi finalizado ${dataFormatada ? `em ${dataFormatada}` : 'anteriormente'}. 
+                        Alterar o tipo de treino pode afetar o histórico registrado.
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     // Renderizar opções de treino
     renderOptions() {
         let html = '';
@@ -77,8 +101,10 @@ class QuickEditModal {
             const isSelected = this.currentConfig?.tipo === tipo.id;
             const isDisabled = this.isTypeDisabled(tipo);
             
+            const additionalClasses = this.isConcluido ? 'concluido-warning' : '';
+            
             html += `
-                <div class="quick-edit-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
+                <div class="quick-edit-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${additionalClasses}" 
                      data-type="${tipo.id}" 
                      data-categoria="${tipo.categoria}">
                     <div class="option-emoji">${tipo.emoji}</div>
@@ -86,6 +112,7 @@ class QuickEditModal {
                         <div class="option-name">${tipo.nome}</div>
                         <div class="option-description">${tipo.descricao}</div>
                         ${isDisabled ? '<div class="option-status">Já utilizado esta semana</div>' : ''}
+                        ${this.isConcluido && isSelected ? '<div class="option-status concluido">Treino já realizado</div>' : ''}
                     </div>
                     ${isSelected ? '<div class="option-check">✓</div>' : ''}
                 </div>

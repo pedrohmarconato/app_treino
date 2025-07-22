@@ -1436,6 +1436,26 @@ function fecharModalPlanejamento() {
     treinosDisponiveis = [];
     usuarioIdAtual = null;
     nomeDiaAtual = '';
+    
+    // Voltar para a home após fechar o modal
+    console.log('[fecharModalPlanejamento] Verificando window.mostrarTela:', typeof window.mostrarTela);
+    console.log('[fecharModalPlanejamento] window.mostrarTela disponível:', !!window.mostrarTela);
+    
+    if (window.mostrarTela) {
+        console.log('[fecharModalPlanejamento] Navegando para home-screen...');
+        window.mostrarTela('home-screen');
+        console.log('[fecharModalPlanejamento] ✅ Navegação executada');
+    } else {
+        console.warn('[fecharModalPlanejamento] ⚠️ window.mostrarTela não disponível');
+        // Fallback 1: Tentar usar renderTemplate
+        if (window.renderTemplate) {
+            console.log('[fecharModalPlanejamento] 🔄 Usando fallback: renderTemplate("home")');
+            window.renderTemplate('home');
+        } else if (window.location.hash !== '#home') {
+            console.log('[fecharModalPlanejamento] 🔄 Usando fallback final: location.hash');
+            window.location.hash = '#home';
+        }
+    }
 }
 
 // Função para CRIAR novo planejamento

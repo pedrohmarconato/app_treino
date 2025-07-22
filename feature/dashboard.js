@@ -1941,9 +1941,9 @@ function configurarBotaoIniciar() {
             return;
         }
         
-        // Com treino - usar a função global iniciarTreino
-        if (window.iniciarTreino) {
-            window.iniciarTreino();
+        // Com treino - usar a função global iniciarTreinoComDisposicao
+        if (window.iniciarTreinoComDisposicao) {
+            window.iniciarTreinoComDisposicao();
         } else {
             showNotification('Sistema de treino carregando...', 'info');
         }
@@ -2726,6 +2726,7 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
                 }, dayIndex);
             } else {
                 // Usar o novo modal unificado
+                resumoCompleto.dia_index = dayIndex;
                 mostrarModalResumoUnificado(resumoCompleto);
             }
         } else {
@@ -2749,6 +2750,74 @@ window.handleDayClick = async function(dayIndex, isCompleted) {
     } catch (error) {
         console.error('[handleDayClick] Erro:', error);
         showNotification('Erro ao carregar histórico do treino', 'error');
+    }
+};
+
+// Função para abrir modal de edição rápida de um dia
+window.abrirEdicaoRapidaDia = async function(dayIndex) {
+    console.log(`[abrirEdicaoRapidaDia] Abrindo edição para dia ${dayIndex}`);
+    
+    const currentUser = AppState.get('currentUser');
+    if (!currentUser?.id) {
+        showNotification('Usuário não encontrado', 'error');
+        return;
+    }
+    
+    try {
+        // Obter dados do planejamento para o dia específico
+        const dadosCompletos = await carregarDadosCompletos(currentUser.id);
+        
+        if (!dadosCompletos?.planejamento) {
+            showNotification('Planejamento não encontrado', 'error');
+            return;
+        }
+        
+        // Encontrar o planejamento para o dia específico
+        const diaConfig = dadosCompletos.planejamento.find(p => p.dia_semana === (dayIndex + 1));
+        
+        if (!diaConfig) {
+            showNotification('Configuração do dia não encontrada', 'error');
+            return;
+        }
+        
+        // Preparar dados para o modal
+        const config = {
+            tipo: diaConfig.tipo_atividade?.toLowerCase() || 'folga',
+            concluido: diaConfig.concluido || false,
+            data_conclusao: diaConfig.data_conclusao
+        };
+        
+        // Callback para salvar alterações
+        const onSave = async (novoTipo) => {
+            try {
+                showNotification('Salvando alteração...', 'info');
+                
+                // Atualizar via WeeklyPlanService
+                await WeeklyPlanService.updateDay(currentUser.id, dayIndex, { tipo: novoTipo });
+                
+                showNotification('Dia atualizado com sucesso!', 'success');
+                
+                // Recarregar dados do dashboard
+                if (typeof carregarDadosDinamicosHome === 'function') {
+                    await carregarDadosDinamicosHome();
+                }
+                
+            } catch (error) {
+                console.error('[abrirEdicaoRapidaDia] Erro ao salvar:', error);
+                showNotification('Erro ao salvar alteração: ' + error.message, 'error');
+            }
+        };
+        
+        // Abrir modal de edição rápida
+        if (window.openQuickEditModal) {
+            window.openQuickEditModal(dayIndex, config, onSave);
+        } else {
+            showNotification('Modal de edição não disponível', 'error');
+        }
+        
+    } catch (error) {
+        console.error('[abrirEdicaoRapidaDia] Erro:', error);
+        showNotification('Erro ao carregar dados do dia', 'error');
     }
 };
 
@@ -3076,7 +3145,14 @@ function mostrarModalResumoUnificado(resumoCompleto) {
                                 ${statusBadge}
                             </div>
                         </div>
-                        <button class="close-btn-clean" onclick="fecharModalResumoUnificado()">×</button>
+                        <div class="modal-actions-clean">
+                            <button class="edit-btn-clean" onclick="fecharModalResumoUnificado(); window.abrirEdicaoRapidaDia(${resumo.dia_index || 0});" title="Editar tipo de treino">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                </svg>
+                            </button>
+                            <button class="close-btn-clean" onclick="fecharModalResumoUnificado()">×</button>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-body-clean">
@@ -3361,6 +3437,42 @@ function mostrarModalResumoUnificado(resumoCompleto) {
                 font-size: 0.95rem;
                 font-weight: 600;
                 display: block;
+            }
+            
+            /* Container de ações do modal */
+            .modal-actions-clean {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            
+            /* Botão de editar */
+            #modal-resumo-unificado .edit-btn-clean {
+                background: rgba(168, 255, 0, 0.15);
+                border: 1px solid rgba(168, 255, 0, 0.3);
+                color: #a8ff00;
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                cursor: pointer;
+            }
+            
+            #modal-resumo-unificado .edit-btn-clean:hover {
+                background: rgba(168, 255, 0, 0.25);
+                border-color: rgba(168, 255, 0, 0.5);
+                color: #7acc00;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(168, 255, 0, 0.3);
+            }
+            
+            #modal-resumo-unificado .edit-btn-clean svg {
+                width: 16px;
+                height: 16px;
+                stroke-width: 2;
             }
             
             /* Botão de fechar aprimorado */
