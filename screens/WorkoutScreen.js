@@ -524,17 +524,43 @@ export class WorkoutScreen extends BaseComponent {
             });
             
             // Mostrar modal de conclusão
-            // TODO: Implementar CompletionModal
+            // Implementar CompletionModal
+            const stats = {
+                time: this._formatDuration(duration),
+                exercises: this.currentWorkout?.exercicios?.length || 0,
+                series: this.exercisesCompleted?.reduce((acc, ex) => acc + (ex.series || 0), 0)
+            };
             
-            showNotification('Treino concluído com sucesso! 🎉', 'success');
+            let CompletionModal = window.WorkoutCompletionModal;
+            if (!CompletionModal) {
+                try {
+                    const imported = await import('../components/workoutCompletionModal.js');
+                    CompletionModal = imported.default;
+                    window.WorkoutCompletionModal = CompletionModal;
+                } catch (e) {
+                    console.error('[WorkoutScreen] Erro ao importar CompletionModal:', e);
+                    showNotification('Treino concluído! (modal não pôde ser exibido)', 'warning');
+                    await this.persistenceManager.clearState();
+                    eventBus.emit('navigate-to', 'home-screen');
+                    return;
+                }
+            }
+            
+            const modal = new CompletionModal();
+            await new Promise(resolve => {
+                modal.onFinishCallback = () => {
+                    if (modal.modal && modal.modal.parentNode) {
+                        modal.modal.parentNode.removeChild(modal.modal);
+                    }
+                    resolve();
+                };
+                modal.show(stats);
+            });
             
             // Limpar cache
             await this.persistenceManager.clearState();
-            
-            // Navegar para home após delay
-            setTimeout(() => {
-                eventBus.emit('navigate-to', 'home-screen');
-            }, 2000);
+            // Navegar para home
+            eventBus.emit('navigate-to', 'home-screen');
             
         } catch (error) {
             console.error('[WorkoutScreen] Erro ao completar treino:', error);

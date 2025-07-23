@@ -25,7 +25,7 @@ export const homeTemplate = () => `
 </div>
                 </div>
                 <div class="header-actions">
-                    <button class="btn-icon logout-btn" onclick="logout()" title="Sair">
+                    <button class="btn-icon logout-btn" onclick="executarLogout()" title="Sair" id="logout-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                             <polyline points="16,17 21,12 16,7"/>
@@ -59,6 +59,10 @@ export const homeTemplate = () => `
                             ${getActionIcon('edit')}
                             <span class="btn-text">Editar</span>
                         </button>
+                        <button class="btn-secondary btn-dashboard" onclick="window.abrirDashboardMetricas()">
+                            ${getActionIcon('chart')}
+                            <span class="btn-text">Métricas</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -90,7 +94,7 @@ export const homeTemplate = () => `
 
                             </div>
                             <div class="workout-action">
-                                <button id="start-workout-btn" class="btn-primary btn-glow" onclick="window.iniciarTreino()">
+                                <button id="start-workout-btn" class="btn-primary btn-glow" onclick="window.iniciarTreinoComDisposicao()">
                                     <span class="btn-text">Iniciar Treino</span>
                                     ${getActionIcon('play', 'active')}
                                 </button>
@@ -590,7 +594,8 @@ export const homeStyles = `
     }
 
     /* Botões reestilizados */
-    .btn-edit {
+    .btn-edit,
+    .btn-dashboard {
         padding: 8px 12px !important;
         font-size: 0.875rem !important;
         min-height: 36px !important;

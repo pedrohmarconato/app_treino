@@ -5,21 +5,62 @@ import TreinoFinalizacaoService from '../services/treinoFinalizacaoService.js';
 export class AvaliacaoTreinoComponent {
     
     static mostrarModalAvaliacao(dadosAvaliacao) {
+        console.log('[AvaliacaoTreino] 🎯 Iniciando exibição do modal com dados:', dadosAvaliacao);
+        
+        // Verificar se modal já existe
+        const modalExistente = document.getElementById('modal-avaliacao-treino');
+        if (modalExistente) {
+            console.log('[AvaliacaoTreino] 🗑️ Removendo modal existente');
+            modalExistente.remove();
+        }
+        
         const modal = this.criarModalHTML(dadosAvaliacao);
-        document.body.insertAdjacentHTML('beforeend', modal);
+        console.log('[AvaliacaoTreino] 📝 HTML do modal criado, tamanho:', modal.length);
+        
+        // Inserir no container de alta prioridade se disponível
+        const highPriorityContainer = document.getElementById('high-priority-modals');
+        if (highPriorityContainer) {
+            highPriorityContainer.insertAdjacentHTML('beforeend', modal);
+            highPriorityContainer.style.pointerEvents = 'auto'; // Habilitar eventos de mouse
+            console.log('[AvaliacaoTreino] ✅ HTML inserido no container de alta prioridade');
+        } else {
+            document.body.insertAdjacentHTML('beforeend', modal);
+            console.log('[AvaliacaoTreino] ✅ HTML inserido no body (fallback)');
+        }
+        
+        // Verificar se foi inserido corretamente
+        const modalInserido = document.getElementById('modal-avaliacao-treino');
+        console.log('[AvaliacaoTreino] 🔍 Modal encontrado após inserção:', !!modalInserido);
+        
+        if (modalInserido) {
+            // Forçar estilos para garantir visibilidade
+            modalInserido.style.display = 'flex';
+            modalInserido.style.visibility = 'visible';
+            modalInserido.style.opacity = '1';
+            modalInserido.style.zIndex = '1000000';
+            modalInserido.style.position = 'fixed';
+            modalInserido.style.top = '0';
+            modalInserido.style.left = '0';
+            modalInserido.style.width = '100vw';
+            modalInserido.style.height = '100vh';
+            console.log('[AvaliacaoTreino] 🎨 Estilos de visibilidade aplicados');
+        }
         
         // Mostrar modal com animação
         setTimeout(() => {
             const modalElement = document.getElementById('modal-avaliacao-treino');
             if (modalElement) {
                 modalElement.classList.add('show');
+                console.log('[AvaliacaoTreino] ✨ Classe "show" adicionada');
+            } else {
+                console.error('[AvaliacaoTreino] ❌ Modal não encontrado para adicionar classe show');
             }
-        }, 10);
+        }, 100);
         
         // Configurar handlers
         this.configurarEventListeners();
         
-        console.log('[AvaliacaoTreino] Modal de avaliação exibido');
+        console.log('[AvaliacaoTreino] ✅ Modal de avaliação exibido com sucesso');
     }
     
     static criarModalHTML(dados) {
@@ -184,13 +225,28 @@ export class AvaliacaoTreinoComponent {
     
     static configurarEventListeners() {
         const modal = document.getElementById('modal-avaliacao-treino');
-        if (!modal) return;
+        if (!modal) {
+            console.error('[AvaliacaoTreino] ❌ Modal não encontrado para configurar listeners');
+            return;
+        }
         
-        // Estado da avaliação
+        console.log('[AvaliacaoTreino] 🎧 Configurando event listeners...');
+        
+        // Limpar listeners antigos se existirem
+        const oldModal = document.querySelector('.avaliacao-modal');
+        if (oldModal && oldModal !== modal) {
+            console.log('[AvaliacaoTreino] 🧹 Removendo modal antigo');
+            oldModal.remove();
+        }
+        
+        // Estado da avaliação (criar novo objeto a cada configuração)
         const avaliacaoEstado = {
             post_workout: null,  // Nível de fadiga (0-5)
-            observacoes: ''
+            observacoes: '',
+            timestamp: Date.now() // para identificar a sessão
         };
+        
+        console.log('[AvaliacaoTreino] 📊 Estado inicial criado:', avaliacaoEstado);
         
         // Escala Likert principal (obrigatória)
         modal.querySelectorAll('.likert-option').forEach(option => {
@@ -230,22 +286,83 @@ export class AvaliacaoTreinoComponent {
             }
         });
         
-        // Botão Finalizar
+        // Botão Finalizar - configuração mais robusta
         const btnFinalizar = modal.querySelector('#btn-finalizar-treino');
-        btnFinalizar?.addEventListener('click', async () => {
-            if (avaliacaoEstado.post_workout === null) {
-                alert('Por favor, avalie seu nível de fadiga antes de finalizar.');
-                return;
-            }
+        if (btnFinalizar) {
+            console.log('[AvaliacaoTreino] ✅ Botão finalizar encontrado:', btnFinalizar.id);
+            console.log('[AvaliacaoTreino] 📍 Botão estado inicial:', {
+                disabled: btnFinalizar.disabled,
+                className: btnFinalizar.className,
+                innerHTML: btnFinalizar.innerHTML.substring(0, 100)
+            });
             
-            btnFinalizar.disabled = true;
-            btnFinalizar.innerHTML = `
-                <span class="btn-text">Finalizando...</span>
-                <div class="loading-spinner-small"></div>
-            `;
+            // Remover listeners antigos (se existirem)
+            const newBtn = btnFinalizar.cloneNode(true);
+            btnFinalizar.parentNode.replaceChild(newBtn, btnFinalizar);
             
-            await this.finalizarTreino(avaliacaoEstado);
-        });
+            // Configurar listener no botão limpo
+            newBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[AvaliacaoTreino] 🖱️ CLICK DETECTADO no botão finalizar');
+                console.log('[AvaliacaoTreino] 📊 Estado atual da avaliação:', avaliacaoEstado);
+                console.log('[AvaliacaoTreino] 🔘 Botão disabled?', newBtn.disabled);
+                
+                // Verificar se avaliação foi preenchida
+                if (avaliacaoEstado.post_workout === null || avaliacaoEstado.post_workout === undefined) {
+                    console.warn('[AvaliacaoTreino] ⚠️ Avaliação de fadiga não preenchida');
+                    alert('Por favor, avalie seu nível de fadiga antes de finalizar.');
+                    return;
+                }
+                
+                // Verificar se botão já está processando
+                if (newBtn.disabled) {
+                    console.warn('[AvaliacaoTreino] ⚠️ Botão já está processando, ignorando clique');
+                    return;
+                }
+                
+                console.log('[AvaliacaoTreino] 🚀 Iniciando processo de finalização...');
+                
+                // Desabilitar botão e mostrar loading
+                newBtn.disabled = true;
+                newBtn.innerHTML = `
+                    <span class="btn-text">Finalizando...</span>
+                    <div class="loading-spinner-small"></div>
+                `;
+                
+                try {
+                    console.log('[AvaliacaoTreino] 🎯 Chamando this.finalizarTreino...');
+                    await this.finalizarTreino(avaliacaoEstado);
+                    console.log('[AvaliacaoTreino] ✅ Finalização concluída com sucesso');
+                    
+                } catch (error) {
+                    console.error('[AvaliacaoTreino] ❌ ERRO na finalização:', error);
+                    console.error('[AvaliacaoTreino] Stack trace:', error.stack);
+                    
+                    // Restaurar botão em caso de erro
+                    newBtn.disabled = false;
+                    newBtn.innerHTML = `
+                        <span class="btn-text">Tentar Novamente</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                    `;
+                    
+                    // Mostrar erro para usuário
+                    alert(`Erro ao finalizar treino: ${error.message}`);
+                }
+            });
+            
+            console.log('[AvaliacaoTreino] ✅ Listener configurado no botão finalizar');
+            
+        } else {
+            console.error('[AvaliacaoTreino] ❌ Botão finalizar NÃO encontrado no DOM');
+            console.log('[AvaliacaoTreino] 📍 Elementos encontrados no modal:', {
+                buttons: modal.querySelectorAll('button').length,
+                button_ids: Array.from(modal.querySelectorAll('button')).map(b => b.id),
+                modal_innerHTML_sample: modal.innerHTML.substring(0, 500)
+            });
+        }
         
         // Botão Salvar Rascunho
         const btnRascunho = modal.querySelector('#btn-salvar-rascunho');
@@ -283,34 +400,71 @@ export class AvaliacaoTreinoComponent {
     }
     
     static async finalizarTreino(avaliacaoEstado) {
+        console.log('[AvaliacaoTreino] 🎯 Iniciando finalizarTreino...');
+        console.log('[AvaliacaoTreino] avaliacaoEstado recebido:', avaliacaoEstado);
+        
         try {
-            console.log('[AvaliacaoTreino] Finalizando treino com avaliação:', avaliacaoEstado);
-            
-            // Obter userId atual
-            const userId = 1; // TODO: implementar sistema de usuários
-            
-            // Finalizar treino usando o novo serviço
-            const resultado = await TreinoFinalizacaoService.finalizarTreino(userId, {
-                post_workout: avaliacaoEstado.post_workout,
-                observacoes: avaliacaoEstado.observacoes
-            });
-            
-            if (!resultado.success) {
-                throw new Error(resultado.mensagem || resultado.erro);
+            // Verificar se serviços estão disponíveis
+            if (typeof TreinoFinalizacaoService === 'undefined') {
+                console.error('[AvaliacaoTreino] ❌ TreinoFinalizacaoService não disponível');
+                throw new Error('Serviço de finalização não disponível');
             }
             
+            if (typeof TreinoCacheService === 'undefined') {
+                console.error('[AvaliacaoTreino] ❌ TreinoCacheService não disponível');
+                throw new Error('Serviço de cache não disponível');
+            }
+            
+            console.log('[AvaliacaoTreino] ✅ Serviços disponíveis');
+            
+            // Obter userId do AppState (usuário logado)
+            const currentUser = AppState.get('currentUser');
+            const userId = currentUser?.id || 1;
+            console.log('[AvaliacaoTreino] 👤 Usuário atual:', currentUser?.nome, 'ID:', userId);
+            console.log('[AvaliacaoTreino] userId:', userId);
+            
+            // Obter energia pré-treino do AppState
+            const energiaPreTreino = AppState.get('energiaPreTreino');
+            console.log('[AvaliacaoTreino] Energia pré-treino do AppState:', energiaPreTreino);
+            
+            // Preparar dados para finalização
+            const dadosFinalizacao = {
+                pre_workout: energiaPreTreino || null,
+                post_workout: avaliacaoEstado.post_workout,
+                observacoes: avaliacaoEstado.observacoes || ''
+            };
+            
+            console.log('[AvaliacaoTreino] 🚀 Chamando TreinoFinalizacaoService.finalizarTreino...');
+            console.log('[AvaliacaoTreino] Dados de finalização:', dadosFinalizacao);
+            
+            // Finalizar treino usando o serviço
+            const resultado = await TreinoFinalizacaoService.finalizarTreino(userId, dadosFinalizacao);
+            
+            console.log('[AvaliacaoTreino] 📝 Resultado do serviço:', resultado);
+            
+            if (!resultado.success) {
+                const errorMsg = resultado.mensagem || resultado.erro || 'Erro desconhecido na finalização';
+                console.error('[AvaliacaoTreino] ❌ Falha na finalização:', errorMsg);
+                throw new Error(errorMsg);
+            }
+            
+            console.log('[AvaliacaoTreino] ✅ Finalização bem-sucedida');
+            
             // Limpar cache local após sucesso
+            console.log('[AvaliacaoTreino] 🧹 Limpando cache...');
             await TreinoCacheService.limparSessaoAtiva();
             
             // Mostrar sucesso
+            console.log('[AvaliacaoTreino] 🎉 Mostrando tela de sucesso...');
             this.mostrarSucesso({
-                execucoes_salvas: resultado.execucoes_finalizadas,
-                sessao_id: resultado.sessao_id
+                execucoes_salvas: resultado.execucoes_finalizadas || 0,
+                sessao_id: resultado.sessao_id || 'N/A'
             });
             
         } catch (error) {
-            console.error('[AvaliacaoTreino] Erro ao finalizar:', error);
-            this.mostrarErro(error.message);
+            console.error('[AvaliacaoTreino] ❌ ERRO CRÍTICO na finalização:', error);
+            console.error('[AvaliacaoTreino] Stack trace:', error.stack);
+            this.mostrarErro(error.message || 'Erro desconhecido');
         }
     }
     
@@ -413,9 +567,22 @@ export class AvaliacaoTreinoComponent {
         const modal = document.getElementById('modal-avaliacao-treino');
         if (modal) {
             modal.classList.remove('show');
-            setTimeout(() => modal.remove(), 300);
+            setTimeout(() => {
+                modal.remove();
+                
+                // Se estava no container de alta prioridade, verificar se pode desabilitar eventos
+                const highPriorityContainer = document.getElementById('high-priority-modals');
+                if (highPriorityContainer && highPriorityContainer.children.length === 0) {
+                    highPriorityContainer.style.pointerEvents = 'none';
+                    console.log('[AvaliacaoTreino] 🔒 Container de alta prioridade desabilitado');
+                }
+            }, 300);
         }
     }
 }
 
 export default AvaliacaoTreinoComponent;
+
+// Registrar globalmente para acesso em testes
+window.AvaliacaoTreinoComponent = AvaliacaoTreinoComponent;
+console.log('[AvaliacaoTreino] ✅ Componente registrado globalmente: window.AvaliacaoTreinoComponent');

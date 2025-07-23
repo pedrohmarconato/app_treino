@@ -40,7 +40,7 @@ window.planejamentoSemanalPageTemplate = planejamentoSemanalPageTemplate;
 window.MetricsWidget = MetricsWidget;
 
 // Função principal para renderizar templates
-export function renderTemplate(templateName, container = 'app') {
+export async function renderTemplate(templateName, container = 'app') {
     console.log('[renderTemplate] Renderizando template:', templateName);
     
     const containerEl = typeof container === 'string' 
@@ -192,6 +192,26 @@ export function renderTemplate(templateName, container = 'app') {
                 }, 50);
                 
                 console.log('[renderTemplate] ✅ Template de planejamento renderizado, aguardando inicialização externa');
+                break;
+            }
+            
+            case 'dashboardMetricas': {
+                console.log('[renderTemplate] 📊 Renderizando dashboardMetricas');
+                
+                // Importar template dinamicamente
+                const { dashboardMetricasTemplate } = await import('./dashboardMetricas.js');
+                
+                containerEl.innerHTML = dashboardMetricasTemplate();
+                
+                // Adicionar classe active à tela
+                setTimeout(() => {
+                    const dashboardScreen = document.getElementById('dashboard-metricas-screen');
+                    if (dashboardScreen) {
+                        dashboardScreen.classList.add('active');
+                        console.log('[renderTemplate] ✅ Dashboard de métricas renderizado');
+                    }
+                }, 50);
+                
                 break;
             }
                 
@@ -346,8 +366,8 @@ function setupContextualWorkoutButton() {
                         window.showNotification('Hora do cardio! 🏃‍♂️', 'info');
                     }
                 } else {
-                    if (window.iniciarTreino) {
-                        window.iniciarTreino();
+                    if (window.iniciarTreinoComDisposicao) {
+                        window.iniciarTreinoComDisposicao();
                     } else if (window.showNotification) {
                         window.showNotification('Sistema de treino carregando...', 'info');
                     }
@@ -386,8 +406,8 @@ function setupBasicHomeElements(user) {
                             window.showNotification('Hora do cardio! 🏃‍♂️', 'info');
                         }
                     } else {
-                        if (window.iniciarTreino) {
-                            window.iniciarTreino();
+                        if (window.iniciarTreinoComDisposicao) {
+                            window.iniciarTreinoComDisposicao();
                         } else if (window.showNotification) {
                             window.showNotification('Sistema de treino carregando...', 'info');
                         }

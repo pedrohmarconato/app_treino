@@ -168,6 +168,57 @@ async function initApp() {
     }
 }
 
+// === DASHBOARD DE MÉTRICAS (DEFINIÇÃO IMEDIATA) ===
+window.abrirDashboardMetricas = async () => {
+    try {
+        console.log('[app.js] Abrindo dashboard de métricas...');
+        
+        // Verificar se AppState está disponível
+        if (!AppState) {
+            console.error('[app.js] ❌ AppState não está disponível');
+            if (window.showNotification) {
+                window.showNotification('Sistema não inicializado completamente', 'error');
+            }
+            return;
+        }
+        
+        // Verificar se há usuário antes de abrir dashboard
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            console.error('[app.js] ❌ Tentativa de abrir dashboard sem usuário válido');
+            if (window.showNotification) {
+                window.showNotification('Usuário não está logado. Faça login novamente.', 'error');
+            }
+            return;
+        }
+        
+        // Renderizar template
+        if (window.renderTemplate) {
+            await window.renderTemplate('dashboardMetricas');
+            
+            // Carregar dados após renderizar
+            setTimeout(async () => {
+                try {
+                    const { carregarDashboardMetricas } = await import('../feature/dashboardMetricas.js');
+                    await carregarDashboardMetricas();
+                } catch (error) {
+                    console.error('[app.js] Erro ao carregar dados do dashboard:', error);
+                    if (window.showNotification) {
+                        window.showNotification('Erro ao carregar métricas', 'error');
+                    }
+                }
+            }, 100);
+        }
+    } catch (error) {
+        console.error('[app.js] Erro ao abrir dashboard de métricas:', error);
+        if (window.showNotification) {
+            window.showNotification('Erro ao abrir dashboard', 'error');
+        }
+    }
+};
+
+console.log('[app.js] ✅ window.abrirDashboardMetricas definida imediatamente:', typeof window.abrirDashboardMetricas);
+
 // Configurar funções globais essenciais
 function setupGlobalFunctions() {
     // === NAVEGAÇÃO ===
@@ -185,6 +236,23 @@ function setupGlobalFunctions() {
     // Disponibilizar DisposicaoInicioModal globalmente
     window.DisposicaoInicioModal = DisposicaoInicioModal;
     console.log('[APP] ✅ DisposicaoInicioModal disponibilizado globalmente');
+
+    // === DEBUG - VERIFICAR DISPONIBILIDADE DAS FUNÇÕES ===
+    console.log('[app.js] 🔍 Verificando funções disponíveis em setupGlobalFunctions:');
+    console.log('- window.abrirDashboardMetricas:', typeof window.abrirDashboardMetricas);
+    console.log('- window.mostrarTela:', typeof window.mostrarTela);
+    console.log('- window.voltarParaHome:', typeof window.voltarParaHome);
+    
+    // === GARANTIR DEFINIÇÃO DO DASHBOARD ===
+    if (typeof window.abrirDashboardMetricas !== 'function') {
+        console.warn('[app.js] ⚠️ abrirDashboardMetricas não está definida, redefinindo...');
+        window.abrirDashboardMetricas = async () => {
+            console.log('[app.js] Dashboard - função backup executada');
+            if (window.renderTemplate) {
+                await window.renderTemplate('dashboardMetricas');
+            }
+        };
+    }
 
     // === PERSISTÊNCIA DE TREINO ===
     // workoutPersistence.js foi removido - funcionalidade integrada em workoutExecution.js
@@ -377,8 +445,8 @@ function setupBasicHomeElements(user) {
                             showNotification('Hora do cardio! 🏃‍♂️', 'info');
                             break;
                         default:
-                            if (window.iniciarTreino) {
-                                window.iniciarTreino();
+                            if (window.iniciarTreinoComDisposicao) {
+                                window.iniciarTreinoComDisposicao();
                             } else {
                                 showNotification('Sistema de treino carregando...', 'info');
                             }
@@ -475,9 +543,9 @@ function setupDebugSystem() {
                 return;
             }
             
-            if (window.iniciarTreino) {
+            if (window.iniciarTreinoComDisposicao) {
                 console.log('🏋️ Simulando início de treino...');
-                await window.iniciarTreino();
+                await window.iniciarTreinoComDisposicao();
             } else {
                 console.log('❌ Função iniciarTreino não disponível');
             }

@@ -33,8 +33,80 @@ import { criarModalRecuperacaoTreino } from '../components/workoutRecoveryModal.
 import { timerManager } from '../services/timerManager.js';
 import { cleanCorruptedTimerData } from '../utils/cleanCorruptedTimer.js';
 import { offlineSyncService } from '../services/offlineSyncService.js';
+import QuestionarioService from '../services/questionarioService.js';
+import DisposicaoInicioModal from '../components/disposicaoInicioModal.js';
 
-// Iniciar treino
+// Função que será chamada pelos botões - inclui modal de disposição
+export async function iniciarTreinoComDisposicao() {
+    console.log('[iniciarTreinoComDisposicao] Iniciando treino com modal de disposição...');
+    
+    try {
+        // Obter userId do AppState (usuário logado)
+        const currentUser = AppState.get('currentUser');
+        const userId = currentUser?.id || 1;
+        console.log('[iniciarTreinoComDisposicao] 👤 Usuário atual:', currentUser?.nome, 'ID:', userId);
+        
+        // Verificar se disposição já foi coletada hoje
+        const jaColetou = await DisposicaoInicioModal.verificarSeJaColetouHoje(userId);
+        
+        if (jaColetou) {
+            console.log('[iniciarTreinoComDisposicao] Disposição já foi coletada hoje, iniciando treino diretamente');
+            // Prosseguir diretamente para o treino
+            await iniciarTreino();
+        } else {
+            console.log('[iniciarTreinoComDisposicao] Solicitando disposição inicial...');
+            
+            // Solicitar disposição antes de iniciar treino
+            const energiaNivel = await DisposicaoInicioModal.solicitar();
+            
+            if (energiaNivel) {
+                console.log('[iniciarTreinoComDisposicao] Energia coletada:', energiaNivel);
+                
+                // Armazenar no AppState para usar na avaliação final
+                AppState.set('energiaPreTreino', energiaNivel);
+                
+                // Salvar disposição
+                try {
+                    const salvamento = await DisposicaoInicioModal.salvarValor(userId, energiaNivel);
+                    if (salvamento.success) {
+                        console.log('[iniciarTreinoComDisposicao] Energia salva com sucesso');
+                        if (window.showNotification) {
+                            window.showNotification('Energia registrada! Iniciando treino...', 'success');
+                        }
+                    } else {
+                        console.error('[iniciarTreinoComDisposicao] Erro ao salvar energia:', salvamento.error);
+                        if (window.showNotification) {
+                            window.showNotification('Erro ao salvar disposição. Continuando treino...', 'warning');
+                        }
+                    }
+                } catch (saveError) {
+                    console.error('[iniciarTreinoComDisposicao] Exceção ao salvar:', saveError);
+                    if (window.showNotification) {
+                        window.showNotification('Erro na gravação. Treino será iniciado mesmo assim.', 'warning');
+                    }
+                }
+                
+                // Prosseguir para o treino (independente do resultado do salvamento)
+                await iniciarTreino();
+                
+            } else {
+                console.log('[iniciarTreinoComDisposicao] Usuário cancelou disposição');
+                if (window.showNotification) {
+                    window.showNotification('Disposição não informada. Iniciando treino mesmo assim.', 'info');
+                }
+                // Permitir continuar mesmo sem disposição
+                await iniciarTreino();
+            }
+        }
+    } catch (error) {
+        console.error('[iniciarTreinoComDisposicao] Erro no modal de disposição:', error);
+        showNotification('Erro no modal de disposição. Iniciando treino...', 'warning');
+        // Continuar com treino mesmo se houver erro
+        await iniciarTreino();
+    }
+}
+
+// Função original de iniciar treino (agora interna)
 export async function iniciarTreino() {
     console.log('[iniciarTreino] Iniciando função iniciarTreino...');
     console.log('[iniciarTreino] Esta é a versão COMPLETA do workout.js');
@@ -463,12 +535,7 @@ function iniciarTimerTreino() {
 async function iniciarNovoTreino() {
     console.log('[iniciarNovoTreino] Iniciando novo treino...');
 
-    // Reiniciar índices de estado
-    AppState.set('currentExerciseIndex', 0);
-    AppState.set('completedSeries', 0);
-    AppState.set('workoutStartTime', Date.now());
-
-    // Garantir dados de treino
+    // Garantir dados de treino primeiro
     let workout = AppState.get('currentWorkout');
     let exercises = AppState.get('currentExercises');
     if (!workout || !exercises || exercises.length === 0) {
@@ -484,6 +551,31 @@ async function iniciarNovoTreino() {
         return;
     }
 
+    // QUESTIONÁRIO PRÉ-TREINO: Usar serviço centralizado
+    console.log('[iniciarNovoTreino] Executando questionário pré-treino...');
+    try {
+        // Obter userId do AppState (usuário logado)
+        const currentUser = AppState.get('currentUser');
+        const userId = currentUser?.id || 1;
+        console.log('[mostrarTreinoConcluido] 👤 Usuário atual:', currentUser?.nome, 'ID:', userId);
+        const resultadoQuestionario = await QuestionarioService.executarQuestionarioInicio(userId);
+        
+        if (resultadoQuestionario.sucesso) {
+            console.log('[iniciarNovoTreino] Questionário pré-treino concluído:', resultadoQuestionario.dados);
+        } else {
+            console.log('[iniciarNovoTreino] Questionário pré-treino não concluído:', resultadoQuestionario.erro);
+            // Continuar mesmo sem questionário
+        }
+    } catch (error) {
+        console.error('[iniciarNovoTreino] Erro no questionário pré-treino:', error);
+        // Continuar mesmo com erro no questionário
+    }
+
+    // Reiniciar índices de estado
+    AppState.set('currentExerciseIndex', 0);
+    AppState.set('completedSeries', 0);
+    AppState.set('workoutStartTime', Date.now());
+
     // Navegar e iniciar UI
     mostrarTela('workout-screen');
     iniciarTimerTreino();
@@ -493,8 +585,48 @@ async function iniciarNovoTreino() {
 // Expor no window - SEMPRE registrar a versão completa
 // Como workout.js é carregado primeiro (import estático em app.js), 
 // esta será a versão definitiva
-console.log('[workout.js] Registrando iniciarTreino (versão completa)');
+console.log('[workout.js] Registrando funções de treino (versão completa)');
 window.iniciarTreino = iniciarTreino;
+window.iniciarTreinoComDisposicao = iniciarTreinoComDisposicao;
+
+// Função de teste simplificada que funciona sempre
+window.testarModalDisposicaoIntegrado = () => {
+    console.log('[TESTE] 🧪 ==> TESTANDO INTEGRAÇÃO MODAL DISPOSIÇÃO <==');
+    
+    try {
+        // Verificar se função principal está disponível
+        const temFuncaoPrincipal = typeof window.iniciarTreinoComDisposicao === 'function';
+        console.log('[TESTE] ✅ Função iniciarTreinoComDisposicao:', temFuncaoPrincipal ? 'DISPONÍVEL' : 'NÃO ENCONTRADA');
+        
+        // Verificar se função antiga ainda existe
+        const temFuncaoAntiga = typeof window.iniciarTreino === 'function';
+        console.log('[TESTE] ℹ️  Função iniciarTreino (antiga):', temFuncaoAntiga ? 'DISPONÍVEL' : 'NÃO ENCONTRADA');
+        
+        // Verificar se DisposicaoInicioModal está disponível
+        const temModal = typeof window.DisposicaoInicioModal !== 'undefined' || typeof DisposicaoInicioModal !== 'undefined';
+        console.log('[TESTE] ✅ DisposicaoInicioModal:', temModal ? 'DISPONÍVEL' : 'NÃO ENCONTRADA');
+        
+        // Instruções para teste manual
+        console.log('[TESTE] 🎯 Para testar a integração:');
+        console.log('[TESTE] 1. Clique no botão "Iniciar Treino" na interface');
+        console.log('[TESTE] 2. Ou execute: window.iniciarTreinoComDisposicao()');
+        console.log('[TESTE] 3. Ou teste só o modal: window.testarModalDisposicao()');
+        
+        return {
+            funcaoDisponivel: temFuncaoPrincipal,
+            funcaoAntigaDisponivel: temFuncaoAntiga,
+            modalDisponivel: temModal,
+            status: temFuncaoPrincipal ? 'OK' : 'ERRO - Função principal não encontrada'
+        };
+        
+    } catch (error) {
+        console.error('[TESTE] ❌ Erro durante teste:', error);
+        return { erro: error.message };
+    }
+};
+
+// Registrar imediatamente para debug
+console.log('[workout.js] ✅ Função de teste registrada: window.testarModalDisposicaoIntegrado');
 
 // Mostrar exercício atual
 async function mostrarExercicioAtual() {
@@ -1620,31 +1752,61 @@ function mostrarTreinoConcluido() {
     }
     
     console.log('[mostrarTreinoConcluido] ✅ Função completada com sucesso');
+    
+    // Executar finalização com questionário automaticamente
+    setTimeout(() => {
+        if (typeof window.finalizarTreino === 'function' && !AppState.get('treinoFinalizandoOuFinalizado')) {
+            console.log('[mostrarTreinoConcluido] 🚀 Iniciando questionário pós-treino...');
+            window.finalizarTreino();
+        }
+    }, 2000); // Dar mais tempo para o modal aparecer
 }
 
 // Finalizar treino - NOVA IMPLEMENTAÇÃO ROBUSTA
 window.finalizarTreino = async function(dadosAvaliacao = {}) {
     try {
-        console.log('[finalizarTreino] 🏁 Iniciando finalização robusta...');
-        
-        // Usar o novo serviço de finalização
-        const { WorkoutCompletionService } = await import('../services/workoutCompletionService.js');
-        
-        const resultado = await WorkoutCompletionService.finalizarTreino(dadosAvaliacao);
-        
-        if (resultado.sucesso) {
-            console.log('[finalizarTreino] ✅ Treino finalizado com sucesso');
-            return true;
-        } else {
-            console.warn('[finalizarTreino] ⚠️ Finalização com problemas, mas dados preservados');
-            return false;
+        // Proteção contra chamadas duplicadas
+        if (AppState.get('treinoFinalizandoOuFinalizado')) {
+            console.log('[finalizarTreino] ⚠️ Treino já está sendo finalizado ou foi finalizado, ignorando...');
+            window.mostrarTela("home-screen");
+            return;
         }
         
-    } catch (error) {
-        console.error('[finalizarTreino] ❌ Erro crítico:', error);
+        AppState.set('treinoFinalizandoOuFinalizado', true);
+        console.log('[finalizarTreino] 🏁 Iniciando finalização com questionário...');
         
-        // Fallback para o método anterior em caso de erro crítico
-        return await window.finalizarTreinoLegacy();
+        // QUESTIONÁRIO PÓS-TREINO: Usar serviço centralizado
+        console.log('[finalizarTreino] Executando questionário pós-treino...');
+        
+        // Calcular resumo do treino usando o serviço
+        const dadosResumo = QuestionarioService.calcularResumoTreino();
+        
+        console.log('[finalizarTreino] Dados do resumo calculados:', dadosResumo);
+        
+        // Executar questionário de fim - isso irá finalizar automaticamente quando o usuário completar
+        const resultadoQuestionario = await QuestionarioService.executarQuestionarioFim(dadosResumo);
+        
+        if (resultadoQuestionario.sucesso) {
+            console.log('[finalizarTreino] Questionário pós-treino iniciado com sucesso');
+        } else {
+            console.error('[finalizarTreino] Erro ao iniciar questionário pós-treino:', resultadoQuestionario.erro);
+        }
+        
+        // O modal se encarrega da finalização, retornamos true aqui
+        return true;
+        
+    } catch (error) {
+        console.error('[finalizarTreino] ❌ Erro ao exibir avaliação:', error);
+        
+        // Fallback para finalização sem questionário
+        try {
+            const { WorkoutCompletionService } = await import('../services/workoutCompletionService.js');
+            const resultado = await WorkoutCompletionService.finalizarTreino(dadosAvaliacao);
+            return resultado.sucesso;
+        } catch (fallbackError) {
+            console.error('[finalizarTreino] ❌ Erro no fallback:', fallbackError);
+            return await window.finalizarTreinoLegacy();
+        }
     }
 };
 

@@ -12,6 +12,7 @@
     <link rel="manifest" href="/manifest.json">
     
     <!-- iOS PWA Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="App Treino">
@@ -31,7 +32,7 @@
     
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.umd.min.js"></script>
     <script src="./config.js"></script>
     
     <!-- Estilos Base -->
@@ -51,6 +52,11 @@
     <!-- Mobile Fixes -->
     <link rel="stylesheet" href="./mobile-fixes.css">
     
+    <!-- Visual Design Enhancements -->
+    <link rel="stylesheet" href="./design-enhancements.css">
+    <link rel="stylesheet" href="./ui-polish.css">
+    <link rel="stylesheet" href="./animations-premium.css">
+    
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="./favicon.png">
     <link rel="shortcut icon" type="image/png" href="./favicon.png">
@@ -62,7 +68,7 @@
     </div>
     
     <!-- Container para modais dinâmicos -->
-    <div id="modals-container">
+    <div id="modals-container" style="position: relative; z-index: 999999;">
         <div id="seletorTreinoPopup" class="popup-overlay" style="display: none;">
             <div class="popup-content">
                 <div class="popup-header">
@@ -74,6 +80,11 @@
                 </div>
             </div>
         </div>
+    </div>
+    
+    <!-- Container específico para modais de alto z-index -->
+    <div id="high-priority-modals" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000000;">
+        <!-- Modais críticos (avaliação, disposição) serão inseridos aqui -->
     </div>
     
     <!-- Loading Global -->
@@ -217,6 +228,18 @@
     <!-- Script principal da aplicação (ES Module) -->
     <!-- app.js é um módulo ES e já importa os demais módulos necessários. -->
 <script type="module" src="./js/app.js"></script>
+
+    <!-- Arquivo de teste para modal de disposição -->
+    <script src="./test-disposicao.js"></script>
+    
+    <!-- Verificador de sintaxe -->
+    <script src="./verificar-sintaxe.js"></script>
+    
+    <!-- Teste de logout -->
+    <script src="./test-logout.js"></script>
+    
+    <!-- Teste de conclusão de treino -->
+    <script src="./test-conclusao-treino.js"></script>
 
     <!-- Test Runner simplificado para testes no navegador -->
     <script src="./tests/simpleTestRunner.js"></script>

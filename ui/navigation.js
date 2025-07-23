@@ -33,7 +33,8 @@ const screenTemplateMap = {
     'login-screen': 'login',
     'home-screen': 'home',  // IMPORTANTE: mantém mapeamento para compatibilidade
     'workout-screen': 'workout',
-    'planejamentoSemanal': 'planejamentoSemanalPage'
+    'planejamentoSemanal': 'planejamentoSemanalPage',
+    'dashboard-metricas-screen': 'dashboardMetricas'
 };
 
 // Mostrar tela específica

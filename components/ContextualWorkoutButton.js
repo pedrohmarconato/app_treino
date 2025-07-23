@@ -566,8 +566,8 @@ export class ContextualWorkoutButton {
      */
     async startWorkout() {
         try {
-            if (window.iniciarTreino) {
-                await window.iniciarTreino();
+            if (window.iniciarTreinoComDisposicao) {
+                await window.iniciarTreinoComDisposicao();
             } else {
                 throw new Error('Método iniciarTreino não disponível');
             }

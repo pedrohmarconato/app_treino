@@ -234,6 +234,14 @@ export const AppIcons = {
         close: `<svg class="app-icon" viewBox="0 0 24 24">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>`,
+        
+        chart: `<svg class="app-icon" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+            <path d="M3 19L3 9" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 19L8 6" stroke-width="2" stroke-linecap="round"/>
+            <path d="M13 19L13 12" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 19L18 15" stroke-width="2" stroke-linecap="round"/>
+            <path d="M3 19L21 19" stroke-width="2" stroke-linecap="round"/>
         </svg>`
     },
     

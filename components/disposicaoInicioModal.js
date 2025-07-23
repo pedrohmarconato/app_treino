@@ -49,8 +49,16 @@ export default class DisposicaoInicioModal {
             console.log('[DEBUG] 📝 Inserindo no document.body...');
             
             try {
-                document.body.insertAdjacentHTML('beforeend', html);
-                console.log('[DEBUG] ✅ HTML inserido com sucesso');
+                // Inserir no container de alta prioridade se disponível  
+                const highPriorityContainer = document.getElementById('high-priority-modals');
+                if (highPriorityContainer) {
+                    highPriorityContainer.insertAdjacentHTML('beforeend', html);
+                    highPriorityContainer.style.pointerEvents = 'auto';
+                    console.log('[DEBUG] ✅ HTML inserido no container de alta prioridade');
+                } else {
+                    document.body.insertAdjacentHTML('beforeend', html);
+                    console.log('[DEBUG] ✅ HTML inserido no body (fallback)');
+                }
             } catch (insertError) {
                 console.error('[DEBUG] ❌ ERRO ao inserir HTML:', insertError);
                 resolve(null);
@@ -167,7 +175,7 @@ export default class DisposicaoInicioModal {
 
             const { error } = await supabase
                 .from('planejamento_semanal')
-                .update({ disposicao_inicio: valor, data_disposicao_inicio: toSaoPauloISOString(today) })
+                .update({ pre_workout: valor })
                 .eq('usuario_id', userId)
                 .eq('ano', ano)
                 .eq('semana', semana)
@@ -181,6 +189,75 @@ export default class DisposicaoInicioModal {
         } catch (err) {
             console.error('[DisposicaoInicioModal] Exceção ao salvar disposição:', err);
             return { success: false, error: err };
+        }
+    }
+
+    /**
+     * Verifica se a disposição já foi coletada hoje (SEMPRE consulta backend)
+     * @param {number} userId - ID do usuário
+     * @returns {Promise<boolean>} true se já foi coletada, false caso contrário
+     */
+    static async verificarSeJaColetouHoje(userId) {
+        console.log('[DisposicaoInicioModal] 🔍 Verificando disposição no BACKEND para usuário:', userId);
+        
+        // Limpar qualquer cache local para garantir consulta fresca
+        const cacheKey = `disposicao_${userId}_${new Date().toDateString()}`;
+        localStorage.removeItem(cacheKey);
+        console.log('[DisposicaoInicioModal] 🧹 Cache local limpo para consulta fresca');
+        
+        try {
+            const hoje = new Date();
+            const { ano, semana } = WeeklyPlanService.getCurrentWeek();
+            const diaSemana = WeeklyPlanService.dayToDb(hoje.getDay());
+            
+            console.log('[DisposicaoInicioModal] 📅 Parâmetros de busca:', { 
+                userId, ano, semana, diaSemana, 
+                dataHoje: hoje.toISOString().split('T')[0] 
+            });
+            
+            // Forçar consulta fresca no Supabase (sem cache)
+            const { data, error } = await supabase
+                .from('planejamento_semanal')
+                .select('pre_workout, created_at, updated_at')
+                .eq('usuario_id', userId)
+                .eq('ano', ano)
+                .eq('semana', semana)
+                .eq('dia_semana', diaSemana)
+                .maybeSingle(); // usar maybeSingle em vez de single para evitar erro se não existir
+            
+            if (error) {
+                console.error('[DisposicaoInicioModal] ❌ Erro na consulta Supabase:', error);
+                return false; // Em caso de erro, assume que não foi coletada
+            }
+            
+            if (!data) {
+                console.log('[DisposicaoInicioModal] 📝 Nenhum registro encontrado - disposição não coletada');
+                return false;
+            }
+            
+            const valorPreWorkout = data.pre_workout;
+            const jaColetou = valorPreWorkout !== null && valorPreWorkout !== undefined;
+            
+            console.log('[DisposicaoInicioModal] 📊 Resultado da verificação:', {
+                registro_existe: !!data,
+                pre_workout_value: valorPreWorkout,
+                ja_coletou: jaColetou,
+                created_at: data.created_at,
+                updated_at: data.updated_at
+            });
+            
+            // Se coletou, salvar no AppState para usar na avaliação final
+            if (jaColetou) {
+                AppState.set('energiaPreTreino', valorPreWorkout);
+                console.log('[DisposicaoInicioModal] ✅ Energia pré-treino salva no AppState:', valorPreWorkout);
+            }
+            
+            return jaColetou;
+            
+        } catch (error) {
+            console.error('[DisposicaoInicioModal] ❌ Exceção ao verificar disposição:', error);
+            console.error('[DisposicaoInicioModal] Stack trace:', error.stack);
+            return false; // Em caso de exceção, assume que não foi coletada
         }
     }
 }
@@ -198,15 +275,9 @@ window.testarModalDisposicao = async function() {
     }
 };
 
-// Função para teste e diagnóstico - função global
-window.testarModalDisposicao = () => {
-    console.log('[TESTE] 🧪 ==> INICIANDO TESTE DO MODAL <==');
-    DisposicaoInicioModal.solicitar().then(valor => {
-        console.log('[TESTE] ✅ Modal retornou:', valor);
-    }).catch(erro => {
-        console.error('[TESTE] ❌ Erro no modal:', erro);
-    });
-};
+// Registrar o modal globalmente para acesso fácil
+window.DisposicaoInicioModal = DisposicaoInicioModal;
+console.log('[DisposicaoInicioModal] ✅ Modal registrado globalmente: window.DisposicaoInicioModal');
 
 // Função de diagnóstico completo
 window.diagnosticarModalCompleto = () => {
