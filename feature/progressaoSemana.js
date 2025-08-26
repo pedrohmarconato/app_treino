@@ -122,7 +122,7 @@ function renderCard(container, status, usuarioId) {
                 <p>${status.mensagem || ''}</p>
                 <p class="sugestao">${status.sugestao || ''}</p>
             </div>
-            ${status.pode_avancar ? gerarAcoesHTML(status)}
+            ${status.pode_avancar ? gerarAcoesHTML(status) : ''}
         </div>
     `;
 
