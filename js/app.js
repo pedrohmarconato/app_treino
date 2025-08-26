@@ -84,12 +84,7 @@ async function initApp() {
         // FALLBACK: Tentar renderizar algo básico mesmo assim
         const app = document.getElementById('app');
         if (app) {
-            app.innerHTML = `
-                <div style="padding: 20px; color: white; background: #ff0000;">
-                    <h1>ERRO: Dependências não carregadas</h1>
-                    <p>Verifique se o Supabase está configurado corretamente.</p>
-                </div>
-            `;
+            app.innerHTML = '<div style="padding: 20px; color: white; background: #ff0000;"><h1>ERRO: Dependências não carregadas</h1><p>Verifique se o Supabase está configurado corretamente.</p></div>';
         }
         return;
     }
@@ -162,14 +157,7 @@ async function initApp() {
         // FALLBACK: Tentar renderizar tela de erro
         const app = document.getElementById('app');
         if (app) {
-            app.innerHTML = `
-                <div style="padding: 20px; color: white; background: #333;">
-                    <h1>Erro na Inicialização</h1>
-                    <p><strong>Erro:</strong> ${error.message}</p>
-                    <p>Verifique o console para mais detalhes.</p>
-                    <button onclick="location.reload()" style="padding: 10px; margin-top: 10px;">Recarregar Página</button>
-                </div>
-            `;
+            app.innerHTML = '<div style="padding: 20px; color: white; background: #333;"><h1>Erro na Inicialização</h1><p><strong>Erro:</strong> ' + error.message + '</p><p>Verifique o console para mais detalhes.</p><button onclick="location.reload()" style="padding: 10px; margin-top: 10px;">Recarregar Página</button></div>';
         }
     }
 }
@@ -1029,63 +1017,24 @@ function addGlobalStyles() {
 
     const style = document.createElement('style');
     style.id = 'app-global-styles';
-    style.textContent = `
-        /* Animações globais */
-        @keyframes slideUp {
-            from { transform: translate(-50%, 100%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        
-        @keyframes slideDown {
-            from { transform: translate(-50%, 0); opacity: 1; }
-            to { transform: translate(-50%, 100%); opacity: 0; }
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        /* Classes utilitárias */
-        .notification { animation: slideUp 0.3s ease; }
-        .notification.hide { animation: slideDown 0.3s ease; }
-        .loading-spinner { animation: spin 1s linear infinite; }
-        .pulse { animation: pulse 2s infinite; }
-        .fade-in { animation: fadeIn 0.5s ease; }
-        
-        /* Transições suaves */
-        .smooth-transition {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        /* Estados de carregamento */
-        .loading-state {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-        
-        /* Melhorias de acessibilidade */
-        .screen-reader-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-    `;
+    style.textContent = '/* Animações globais */' +
+        '@keyframes slideUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }' +
+        '@keyframes slideDown { from { transform: translate(-50%, 0); opacity: 1; } to { transform: translate(-50%, 100%); opacity: 0; } }' +
+        '@keyframes spin { to { transform: rotate(360deg); } }' +
+        '@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }' +
+        '@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }' +
+        '/* Classes utilitárias */' +
+        '.notification { animation: slideUp 0.3s ease; }' +
+        '.notification.hide { animation: slideDown 0.3s ease; }' +
+        '.loading-spinner { animation: spin 1s linear infinite; }' +
+        '.pulse { animation: pulse 2s infinite; }' +
+        '.fade-in { animation: fadeIn 0.5s ease; }' +
+        '/* Transições suaves */' +
+        '.smooth-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }' +
+        '/* Estados de carregamento */' +
+        '.loading-state { opacity: 0.6; pointer-events: none; }' +
+        '/* Melhorias de acessibilidade */' +
+        '.screen-reader-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }';
     
     document.head.appendChild(style);
 }
