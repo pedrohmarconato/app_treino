@@ -36,17 +36,16 @@ export async function carregarDashboardMetricas() {
         // Importar serviço do Supabase
         const { query } = await import('../services/supabaseService.js');
         
-        // Buscar métricas em paralelo
-        const [execucoes, planejamentos, rm1Data, estatisticas, sessoes] = await Promise.all([
+        // Buscar métricas usando apenas tabelas que existem
+        const [execucoes, planejamentos, rm1Data, resumoDiaSemana] = await Promise.all([
             buscarExecucoes(query, currentUser.id),
             buscarPlanejamentos(query, currentUser.id),
             buscar1RMData(query, currentUser.id),
-            buscarEstatisticas(query, currentUser.id),
-            buscarSessoesTreino(query, currentUser.id)
+            buscarResumoDiaSemana(query, currentUser.id)
         ]);
         
-        // Processar dados
-        const metricas = processarMetricas(execucoes, planejamentos, rm1Data, estatisticas, sessoes);
+        // Processar dados incluindo resumo por dia
+        const metricas = processarMetricas(execucoes, planejamentos, rm1Data, null, [], resumoDiaSemana);
         
         // Cachear dados
         metricsCache = metricas;
@@ -65,14 +64,13 @@ export async function carregarDashboardMetricas() {
     }
 }
 
-// Buscar execuções de exercícios usando view
+// Buscar execuções de exercícios usando tabela real
 async function buscarExecucoes(query, userId) {
     try {
-        const { data, error } = await query('v_execucoes_sao_paulo', {
+        const { data, error } = await query('execucao_exercicio_usuario', {
             select: `
                 id,
-                data_execucao_sp,
-                data_treino_sp,
+                data_execucao,
                 peso_utilizado,
                 repeticoes,
                 serie_numero,
@@ -90,17 +88,17 @@ async function buscarExecucoes(query, userId) {
     }
 }
 
-// Buscar planejamentos usando view
+// Buscar planejamentos usando tabela real
 async function buscarPlanejamentos(query, userId) {
     try {
-        const { data, error } = await query('v_planejamento_sao_paulo', {
+        const { data, error } = await query('planejamento_semanal', {
             select: `
                 id,
                 semana_treino,
                 dia_semana,
                 tipo_atividade,
                 concluido,
-                data_conclusao_sp
+                data_conclusao
             `,
             eq: { usuario_id: userId },
             limit: 100
@@ -114,14 +112,14 @@ async function buscarPlanejamentos(query, userId) {
     }
 }
 
-// Buscar dados de 1RM
+// Buscar dados de 1RM usando campos corretos
 async function buscar1RMData(query, userId) {
     try {
         const { data, error } = await query('usuario_1rm', {
             select: `
                 exercicio_id,
-                peso_maximo,
-                data_registro
+                rm_calculado,
+                data_teste
             `,
             eq: { usuario_id: userId }
         });
@@ -134,123 +132,241 @@ async function buscar1RMData(query, userId) {
     }
 }
 
-// Buscar estatísticas do usuário usando view
-async function buscarEstatisticas(query, userId) {
+
+// Buscar resumo por dia da semana usando campos corretos da view
+async function buscarResumoDiaSemana(query, userId) {
     try {
-        const { data, error } = await query('v_estatisticas_usuario', {
+        // Buscar dados dos últimos 3 meses para ter uma visão mais ampla
+        const dataLimite = new Date();
+        dataLimite.setMonth(dataLimite.getMonth() - 3);
+        
+        const { data, error } = await query('v_resumo_dia_semana', {
             select: `
-                total_treinos,
-                tempo_total_minutos,
-                tempo_medio_minutos,
+                usuario_id,
+                ano,
+                semana,
+                dia_semana,
+                tipo_atividade,
+                status_treino,
+                concluido,
+                data_conclusao,
+                pre_workout,
+                post_workout,
+                semana_treino,
+                total_exercicios,
                 total_series,
-                peso_total_levantado,
-                fadiga_media,
-                dificuldade_media,
-                energia_media,
-                ultimo_treino,
-                primeiro_treino
+                total_repeticoes,
+                peso_medio,
+                volume_total_kg,
+                tempo_total_segundos,
+                tempo_formatado,
+                exercicios_lista
             `,
             eq: { usuario_id: userId }
         });
         
-        if (error) throw error;
-        return data?.[0] || null;
-    } catch (error) {
-        console.error('[Dashboard] Erro ao buscar estatísticas:', error);
-        return null;
-    }
-}
-
-// Buscar sessões de treino usando view
-async function buscarSessoesTreino(query, userId) {
-    try {
-        const { data, error } = await query('v_sessoes_treino_sp', {
-            select: `
-                id,
-                data_treino,
-                inicio_sp,
-                fim_sp,
-                tempo_total_minutos,
-                grupo_muscular,
-                tipo_atividade,
-                total_series,
-                exercicios_unicos,
-                peso_total_levantado,
-                repeticoes_totais,
-                post_workout,
-                dificuldade_percebida,
-                energia_nivel
-            `,
-            eq: { usuario_id: userId },
-            limit: 50
-        });
+        if (error) {
+            console.error('[Dashboard] Erro ao buscar v_resumo_dia_semana:', error);
+            return [];
+        }
         
-        if (error) throw error;
+        console.log('[Dashboard] Dados da v_resumo_dia_semana carregados:', data?.length || 0, 'registros');
         return data || [];
     } catch (error) {
-        console.error('[Dashboard] Erro ao buscar sessões:', error);
+        console.error('[Dashboard] Erro ao buscar v_resumo_dia_semana:', error.message);
         return [];
     }
 }
 
-// Processar métricas usando dados reais das views
-function processarMetricas(execucoes, planejamentos, rm1Data, estatisticas, sessoes) {
+// Processar métricas usando dados reais das tabelas
+function processarMetricas(execucoes, planejamentos, rm1Data, estatisticas, sessoes, resumoDiaSemana = []) {
     const agora = new Date();
     const umMesAtras = new Date(agora.getFullYear(), agora.getMonth() - 1, agora.getDate());
     const quatroSemanasAtras = new Date(agora.getTime() - (28 * 24 * 60 * 60 * 1000));
     
-    // Usar dados das estatísticas se disponível, senão calcular
-    const totalTreinos = estatisticas?.total_treinos || sessoes.length || 0;
-    const tempoTotalHoras = estatisticas ? Math.round(estatisticas.tempo_total_minutos / 60) : 0;
-    const tempoMedioPorTreino = estatisticas?.tempo_medio_minutos || 0;
+    // Calcular métricas baseadas nas tabelas reais disponíveis
+    let totalTreinos, tempoTotalHoras, tempoMedioPorTreino;
     
-    // Treinos no último mês usando sessões
-    const treinosUltimoMes = sessoes.filter(s => {
-        const dataTreino = new Date(s.data_treino);
-        return dataTreino >= umMesAtras;
-    }).length;
+    if (resumoDiaSemana.length > 0) {
+        // Usar v_resumo_dia_semana (dados precisos da view)
+        const treinosConcluidos = resumoDiaSemana.filter(dia => dia.concluido);
+        totalTreinos = treinosConcluidos.length;
+        
+        // Calcular tempo total usando tempo_total_segundos da view
+        const tempoTotalSegundos = treinosConcluidos.reduce((total, dia) => {
+            return total + (dia.tempo_total_segundos || 0);
+        }, 0);
+        
+        tempoTotalHoras = Math.round(tempoTotalSegundos / 3600);
+        const tempoTotalMinutos = Math.round(tempoTotalSegundos / 60);
+        tempoMedioPorTreino = totalTreinos > 0 ? Math.round(tempoTotalMinutos / totalTreinos) : 0;
+        
+        console.log('[Dashboard] Usando métricas do v_resumo_dia_semana:', {
+            totalTreinos,
+            tempoTotalHoras,
+            tempoMedioPorTreino,
+            tempoTotalSegundos
+        });
+    } else {
+        // Calcular usando dados dos planejamentos concluídos
+        const planejamentosConcluidos = planejamentos.filter(p => p.concluido);
+        totalTreinos = planejamentosConcluidos.length;
+        
+        // Estimar tempo baseado em número de exercícios únicos por treino
+        const exerciciosUnicos = new Set(execucoes.map(e => e.exercicio_id)).size;
+        const tempoEstimadoPorTreino = exerciciosUnicos > 0 ? exerciciosUnicos * 4 : 60; // 4min por exercício ou 60min default
+        
+        tempoTotalHoras = Math.round((totalTreinos * tempoEstimadoPorTreino) / 60);
+        tempoMedioPorTreino = tempoEstimadoPorTreino;
+        
+        console.log('[Dashboard] Usando métricas calculadas das tabelas reais:', {
+            totalTreinos,
+            tempoTotalHoras: `${tempoTotalHoras}h (estimado)`,
+            tempoMedioPorTreino: `${tempoMedioPorTreino}min (estimado)`
+        });
+    }
     
-    // Taxa de conclusão (últimas 4 semanas)
-    const planejamentosRecentes = planejamentos.filter(p => {
-        if (!p.data_conclusao_sp && !p.concluido) return false;
-        const data = p.data_conclusao_sp ? new Date(p.data_conclusao_sp) : new Date();
-        return data >= quatroSemanasAtras;
-    });
+    // Calcular métricas de período
+    let treinosUltimoMes, taxaConclusao;
     
-    const totalPlanejado = planejamentosRecentes.length;
-    const totalConcluido = planejamentosRecentes.filter(p => p.concluido).length;
-    const taxaConclusao = totalPlanejado > 0 ? Math.round((totalConcluido / totalPlanejado) * 100) : 0;
+    if (resumoDiaSemana.length > 0) {
+        // Usar dados mais precisos do resumo por dia
+        // Como a view não tem data_treino diretamente, vamos usar data_conclusao para filtros
+        const treinosUltimoMesData = resumoDiaSemana.filter(dia => {
+            if (!dia.data_conclusao || !dia.concluido) return false;
+            const dataFiltro = new Date(dia.data_conclusao);
+            return dataFiltro >= umMesAtras;
+        });
+        treinosUltimoMes = treinosUltimoMesData.length;
+        
+        // Taxa de conclusão: precisamos assumir que se está na view, foi planejado
+        // Filtrar apenas registros das últimas 4 semanas
+        const diasRecentes = resumoDiaSemana.filter(dia => {
+            if (!dia.data_conclusao) return false;
+            const dataFiltro = new Date(dia.data_conclusao);
+            return dataFiltro >= quatroSemanasAtras;
+        });
+        
+        const totalPlanejado = diasRecentes.length; // Todos na view foram planejados
+        const totalConcluido = diasRecentes.filter(dia => dia.concluido).length;
+        taxaConclusao = totalPlanejado > 0 ? Math.round((totalConcluido / totalPlanejado) * 100) : 0;
+        
+        console.log('[Dashboard] Taxa de conclusão calculada da view:', {
+            totalPlanejado,
+            totalConcluido,
+            taxaConclusao: `${taxaConclusao}%`,
+            treinosUltimoMes
+        });
+    } else {
+        // Usar dados das tabelas reais disponíveis
+        const planejamentosRecentes = planejamentos.filter(p => {
+            const dataFiltro = p.data_conclusao ? new Date(p.data_conclusao) : new Date();
+            return dataFiltro >= quatroSemanasAtras;
+        });
+        
+        treinosUltimoMes = planejamentos.filter(p => {
+            if (!p.concluido) return false;
+            const dataFiltro = p.data_conclusao ? new Date(p.data_conclusao) : new Date();
+            return dataFiltro >= umMesAtras;
+        }).length;
+        
+        const totalPlanejado = planejamentosRecentes.length;
+        const totalConcluido = planejamentosRecentes.filter(p => p.concluido).length;
+        taxaConclusao = totalPlanejado > 0 ? Math.round((totalConcluido / totalPlanejado) * 100) : 0;
+        
+        console.log('[Dashboard] Métricas calculadas das tabelas reais:', {
+            totalPlanejado,
+            totalConcluido,
+            taxaConclusao: `${taxaConclusao}%`,
+            treinosUltimoMes
+        });
+    }
     
-    // Peso total levantado das estatísticas ou sessões
-    const pesoTotal = estatisticas?.peso_total_levantado || 
-                     sessoes.reduce((total, s) => total + (s.peso_total_levantado || 0), 0);
+    // Calcular peso total usando dados das execuções reais
+    let pesoTotal, pesoSemanaAtual, pesoSemanaAnterior;
     
-    // Peso da semana atual vs anterior usando sessões
-    const umaSemanaAtras = new Date(agora.getTime() - (7 * 24 * 60 * 60 * 1000));
-    const duasSemanasAtras = new Date(agora.getTime() - (14 * 24 * 60 * 60 * 1000));
+    if (resumoDiaSemana.length > 0) {
+        // Usar dados da view com campo volume_total_kg
+        pesoTotal = resumoDiaSemana
+            .filter(dia => dia.concluido)
+            .reduce((total, dia) => total + (dia.volume_total_kg || 0), 0);
+        
+        // Peso da semana atual vs anterior usando data_conclusao
+        const umaSemanaAtras = new Date(agora.getTime() - (7 * 24 * 60 * 60 * 1000));
+        const duasSemanasAtras = new Date(agora.getTime() - (14 * 24 * 60 * 60 * 1000));
+        
+        pesoSemanaAtual = resumoDiaSemana
+            .filter(dia => {
+                if (!dia.data_conclusao || !dia.concluido) return false;
+                const dataFiltro = new Date(dia.data_conclusao);
+                return dataFiltro >= umaSemanaAtras;
+            })
+            .reduce((total, dia) => total + (dia.volume_total_kg || 0), 0);
+        
+        pesoSemanaAnterior = resumoDiaSemana
+            .filter(dia => {
+                if (!dia.data_conclusao || !dia.concluido) return false;
+                const dataFiltro = new Date(dia.data_conclusao);
+                return dataFiltro >= duasSemanasAtras && dataFiltro < umaSemanaAtras;
+            })
+            .reduce((total, dia) => total + (dia.volume_total_kg || 0), 0);
+            
+        console.log('[Dashboard] Volume total calculado do v_resumo_dia_semana:', {
+            pesoTotal: `${pesoTotal}kg`,
+            pesoSemanaAtual: `${pesoSemanaAtual}kg`,
+            pesoSemanaAnterior: `${pesoSemanaAnterior}kg`
+        });
+    } else {
+        // Calcular usando dados das execuções reais
+        pesoTotal = execucoes.reduce((total, exec) => {
+            return total + ((exec.peso_utilizado || 0) * (exec.repeticoes || 0));
+        }, 0);
+        
+        const umaSemanaAtras = new Date(agora.getTime() - (7 * 24 * 60 * 60 * 1000));
+        const duasSemanasAtras = new Date(agora.getTime() - (14 * 24 * 60 * 60 * 1000));
+        
+        pesoSemanaAtual = execucoes
+            .filter(exec => new Date(exec.data_execucao) >= umaSemanaAtras)
+            .reduce((total, exec) => total + ((exec.peso_utilizado || 0) * (exec.repeticoes || 0)), 0);
+        
+        pesoSemanaAnterior = execucoes
+            .filter(exec => {
+                const data = new Date(exec.data_execucao);
+                return data >= duasSemanasAtras && data < umaSemanaAtras;
+            })
+            .reduce((total, exec) => total + ((exec.peso_utilizado || 0) * (exec.repeticoes || 0)), 0);
+            
+        console.log('[Dashboard] Peso total calculado das execuções reais:', {
+            pesoTotal,
+            pesoSemanaAtual,
+            pesoSemanaAnterior,
+            totalExecucoes: execucoes.length
+        });
+    }
     
-    const pesoSemanaAtual = sessoes
-        .filter(s => new Date(s.data_treino) >= umaSemanaAtras)
-        .reduce((total, s) => total + (s.peso_total_levantado || 0), 0);
+    // Calcular distribuição muscular e progresso semanal
+    let distribuicaoMuscular, progressoSemanal;
     
-    const pesoSemanaAnterior = sessoes
-        .filter(s => {
-            const data = new Date(s.data_treino);
-            return data >= duasSemanasAtras && data < umaSemanaAtras;
-        })
-        .reduce((total, s) => total + (s.peso_total_levantado || 0), 0);
-    
-    // Distribuição por grupo muscular baseada em sessões reais
-    const distribuicaoMuscular = calcularDistribuicaoMuscular(sessoes);
-    
-    // Progresso semanal (últimas 8 semanas)
-    const progressoSemanal = calcularProgressoSemanal(planejamentos);
+    if (resumoDiaSemana.length > 0) {
+        // Usar dados do v_resumo_dia_semana
+        distribuicaoMuscular = calcularDistribuicaoMuscularResumo(resumoDiaSemana);
+        progressoSemanal = calcularProgressoSemanalResumo(resumoDiaSemana);
+    } else {
+        // Fallback usando sessões e planejamentos
+        distribuicaoMuscular = calcularDistribuicaoMuscular(sessoes);
+        progressoSemanal = calcularProgressoSemanal(planejamentos);
+    }
     
     // Evolução de 1RM com dados reais
     const evolucao1RM = processar1RMEvolucao(rm1Data);
     
-    // Últimos treinos das sessões reais
-    const ultimosTreinos = processarUltimosTreinos(sessoes);
+    // Processar últimos treinos
+    let ultimosTreinos;
+    if (resumoDiaSemana.length > 0) {
+        ultimosTreinos = processarUltimosTreinosResumo(resumoDiaSemana);
+    } else {
+        ultimosTreinos = processarUltimosTreinosPlanejamentos(planejamentos);
+    }
     
     return {
         totalTreinos,
@@ -268,7 +384,65 @@ function processarMetricas(execucoes, planejamentos, rm1Data, estatisticas, sess
     };
 }
 
-// Calcular distribuição por grupo muscular baseada em sessões reais
+// Calcular distribuição por grupo muscular baseada em v_resumo_dia_semana
+function calcularDistribuicaoMuscularResumo(resumoDiaSemana) {
+    const distribuicao = {};
+    
+    // Filtrar apenas treinos concluídos e agrupar por tipo de atividade
+    const treinosConcluidos = resumoDiaSemana.filter(dia => dia.concluido);
+    
+    treinosConcluidos.forEach(dia => {
+        let grupo = 'Outro';
+        
+        // Mapear tipo_atividade para grupos musculares
+        switch (dia.tipo_atividade?.toLowerCase()) {
+            case 'peito':
+            case 'treino a':
+                grupo = 'Peito';
+                break;
+            case 'costas':
+            case 'treino b':
+                grupo = 'Costas';
+                break;
+            case 'pernas':
+            case 'treino c':
+                grupo = 'Pernas';
+                break;
+            case 'ombro':
+            case 'ombros':
+            case 'ombro e braço':
+                grupo = 'Ombros';
+                break;
+            case 'braco':
+            case 'braços':
+                grupo = 'Braços';
+                break;
+            case 'cardio':
+                grupo = 'Cardio';
+                break;
+            default:
+                grupo = dia.tipo_atividade || 'Outro';
+        }
+        
+        distribuicao[grupo] = (distribuicao[grupo] || 0) + (dia.total_exercicios || 1);
+    });
+    
+    // Se não há dados, retornar estrutura padrão
+    if (Object.keys(distribuicao).length === 0) {
+        return {
+            'Peito': 0,
+            'Costas': 0,
+            'Pernas': 0,
+            'Ombros': 0,
+            'Braços': 0
+        };
+    }
+    
+    console.log('[Dashboard] Distribuição muscular calculada do v_resumo_dia_semana:', distribuicao);
+    return distribuicao;
+}
+
+// Calcular distribuição por grupo muscular baseada em sessões reais (fallback)
 function calcularDistribuicaoMuscular(sessoes) {
     const distribuicao = {};
     
@@ -291,7 +465,42 @@ function calcularDistribuicaoMuscular(sessoes) {
     return distribuicao;
 }
 
-// Calcular progresso semanal
+// Calcular progresso semanal usando v_resumo_dia_semana
+function calcularProgressoSemanalResumo(resumoDiaSemana) {
+    const semanas = {};
+    
+    // Agrupar por semana (todos os registros na view foram planejados)
+    resumoDiaSemana.forEach(dia => {
+        const semana = dia.semana;
+        if (!semanas[semana]) {
+            semanas[semana] = { planejado: 0, concluido: 0 };
+        }
+        
+        // Todos na view foram planejados
+        semanas[semana].planejado++;
+        
+        if (dia.concluido) {
+            semanas[semana].concluido++;
+        }
+    });
+    
+    // Pegar últimas 8 semanas
+    const semanasOrdenadas = Object.keys(semanas)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .slice(0, 8)
+        .reverse();
+    
+    const resultado = semanasOrdenadas.map(semana => ({
+        semana,
+        ...semanas[semana]
+    }));
+    
+    console.log('[Dashboard] Progresso semanal calculado do v_resumo_dia_semana:', resultado);
+    return resultado;
+}
+
+// Calcular progresso semanal (fallback)
 function calcularProgressoSemanal(planejamentos) {
     const semanas = {};
     const agora = new Date();
@@ -341,10 +550,10 @@ function processar1RMEvolucao(rm1Data) {
         10: 'Extensão Tríceps'
     };
     
-    // Processar dados reais de 1RM
+    // Processar dados reais de 1RM usando campos corretos
     const evolucaoProcessada = rm1Data.map(item => {
         const nome = exercicioNomes[item.exercicio_id] || `Exercício ${item.exercicio_id}`;
-        const atual = item.peso_maximo || 0;
+        const atual = item.rm_calculado || 0;
         
         // Por enquanto, não temos histórico para calcular mudança real
         // Simular uma pequena evolução baseada no peso atual
@@ -362,7 +571,54 @@ function processar1RMEvolucao(rm1Data) {
     return evolucaoProcessada.slice(0, 6); // Mostrar até 6 exercícios
 }
 
-// Processar últimos treinos usando dados reais das sessões
+// Processar últimos treinos usando v_resumo_dia_semana com campos corretos
+function processarUltimosTreinosResumo(resumoDiaSemana) {
+    if (!resumoDiaSemana || resumoDiaSemana.length === 0) {
+        return [];
+    }
+    
+    // Filtrar apenas treinos concluídos e ordenar por data_conclusao (mais recentes primeiro)
+    const treinosConcluidos = resumoDiaSemana
+        .filter(dia => dia.concluido && dia.data_conclusao)
+        .sort((a, b) => new Date(b.data_conclusao) - new Date(a.data_conclusao))
+        .slice(0, 5); // Pegar apenas os 5 mais recentes
+    
+    const resultado = treinosConcluidos.map(dia => ({
+        data: new Date(dia.data_conclusao),
+        exercicios: dia.total_exercicios || 0,
+        gruposMusculares: dia.tipo_atividade || 'Treino',
+        tempo: dia.tempo_total_segundos ? Math.round(dia.tempo_total_segundos / 60) : 0, // converter para minutos
+        series: dia.total_series || 0,
+        peso: dia.volume_total_kg || 0
+    }));
+    
+    console.log('[Dashboard] Últimos treinos calculados do v_resumo_dia_semana:', resultado);
+    return resultado;
+}
+
+// Processar últimos treinos usando dados reais dos planejamentos
+function processarUltimosTreinosPlanejamentos(planejamentos) {
+    if (!planejamentos || planejamentos.length === 0) {
+        return [];
+    }
+    
+    // Filtrar apenas treinos concluídos e ordenar por data de conclusão
+    const treinosConcluidos = planejamentos
+        .filter(p => p.concluido && p.data_conclusao)
+        .sort((a, b) => new Date(b.data_conclusao) - new Date(a.data_conclusao))
+        .slice(0, 5); // Pegar apenas os 5 mais recentes
+    
+    return treinosConcluidos.map(planejamento => ({
+        data: new Date(planejamento.data_conclusao),
+        exercicios: 0, // Não temos esse dado nos planejamentos
+        gruposMusculares: planejamento.tipo_atividade || 'Treino',
+        tempo: 60, // Estimativa padrão
+        series: 0, // Não temos esse dado nos planejamentos
+        peso: 0 // Não temos esse dado nos planejamentos
+    }));
+}
+
+// Processar últimos treinos usando dados reais das sessões (fallback)
 function processarUltimosTreinos(sessoes) {
     if (!sessoes || sessoes.length === 0) {
         return [];
@@ -385,21 +641,43 @@ function processarUltimosTreinos(sessoes) {
 
 // Renderizar métricas na tela
 function renderizarMetricas(metricas) {
-    // Overview Cards
-    document.getElementById('total-treinos').textContent = metricas.totalTreinos;
-    document.getElementById('percentual-conclusao').textContent = `${metricas.taxaConclusao}%`;
-    document.getElementById('peso-total').textContent = `${metricas.pesoTotal}kg`;
-    document.getElementById('tempo-total').textContent = `${metricas.tempoTotalHoras}h`;
+    // Overview Cards com formatação melhorada
+    const updateElement = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.warn(`[Dashboard] Elemento ${id} não encontrado`);
+        }
+    };
     
-    // Trends
+    updateElement('total-treinos', metricas.totalTreinos);
+    updateElement('percentual-conclusao', `${metricas.taxaConclusao}%`);
+    updateElement('peso-total', `${metricas.pesoTotal.toLocaleString('pt-BR')}kg`);
+    updateElement('tempo-total', `${metricas.tempoTotalHoras}h`);
+    
+    // Trends com formatação melhorada
     const pesoTrend = metricas.pesoSemanaAtual - metricas.pesoSemanaAnterior;
-    const pesoTrendElement = document.querySelector('#peso-total').parentElement.querySelector('.metric-trend');
-    pesoTrendElement.textContent = `${pesoTrend >= 0 ? '+' : ''}${pesoTrend}kg vs semana anterior`;
-    pesoTrendElement.className = `metric-trend ${pesoTrend >= 0 ? 'positive' : 'negative'}`;
+    const pesoTrendElement = document.querySelector('#peso-total')?.parentElement?.querySelector('.metric-trend');
+    if (pesoTrendElement) {
+        const pesoTrendFormatado = Math.abs(pesoTrend).toLocaleString('pt-BR');
+        pesoTrendElement.textContent = `${pesoTrend >= 0 ? '+' : '-'}${pesoTrendFormatado}kg vs semana anterior`;
+        pesoTrendElement.className = `metric-trend ${pesoTrend >= 0 ? 'positive' : 'negative'}`;
+    }
     
-    // Tempo médio
-    const tempoMedioElement = document.querySelector('#tempo-total').parentElement.querySelector('.metric-trend');
-    tempoMedioElement.textContent = `Média: ${metricas.tempoMedioPorTreino}min/treino`;
+    // Tempo médio com formatação melhorada
+    const tempoMedioElement = document.querySelector('#tempo-total')?.parentElement?.querySelector('.metric-trend');
+    if (tempoMedioElement) {
+        tempoMedioElement.textContent = `Média: ${metricas.tempoMedioPorTreino}min/treino`;
+    }
+    
+    console.log('[Dashboard] Métricas renderizadas:', {
+        totalTreinos: metricas.totalTreinos,
+        taxaConclusao: `${metricas.taxaConclusao}%`,
+        pesoTotal: `${metricas.pesoTotal.toLocaleString('pt-BR')}kg`,
+        tempoTotal: `${metricas.tempoTotalHoras}h`,
+        pesoTrend: `${pesoTrend >= 0 ? '+' : ''}${pesoTrend}kg`
+    });
     
     // Gráfico de Progresso Semanal
     renderizarGraficoSemanal(metricas.progressoSemanal);

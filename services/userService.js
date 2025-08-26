@@ -37,6 +37,44 @@ function getMockUsers() {
 }
 
 // Buscar todos os usuários ativos
+/**
+ * Buscar um usuário específico por ID
+ * @param {string|number} userId - ID do usuário
+ * @returns {Object|null} Dados do usuário ou null se não encontrado
+ */
+export async function fetchUser(userId) {
+    console.log('[fetchUser] Buscando usuário por ID:', userId);
+    
+    try {
+        if (!userId) {
+            console.error('[fetchUser] ID do usuário não fornecido');
+            return null;
+        }
+
+        const { data, error } = await query('usuarios', {
+            filter: `id.eq.${userId}`,
+            single: true
+        });
+
+        if (error) {
+            console.error('[fetchUser] Erro ao buscar usuário:', error);
+            return null;
+        }
+
+        if (!data) {
+            console.warn('[fetchUser] Usuário não encontrado:', userId);
+            return null;
+        }
+
+        console.log('[fetchUser] Usuário encontrado:', data);
+        return data;
+
+    } catch (error) {
+        console.error('[fetchUser] Erro na busca do usuário:', error);
+        return null;
+    }
+}
+
 export async function fetchUsuarios() {
     console.log('[fetchUsuarios] Iniciando busca de usuários...');
     

@@ -1,0 +1,300 @@
+/**
+ * 📝 CADASTRO MODAL - Estilos para modal de cadastro de usuário
+ * 
+ * Design baseado na paleta do projeto:
+ * - Primária: #CFFF04 (Verde limão vibrante)
+ * - Secundária: #101010 (Preto profundo)
+ * - Acentos: Gradientes modernos
+ * - Neutros: Tons de cinza equilibrados
+ * 
+ * Características:
+ * - Glassmorphism com efeitos de vidro fosco
+ * - Neumorfismo com sombras suaves
+ * - Gradientes e transições fluidas
+ * - Responsividade mobile-first
+ */
+
+/* === OVERLAY === */
+#cadastro-modal-overlay {
+    background: rgba(16, 16, 16, 0.85);
+    backdrop-filter: blur(12px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 15000; /* assegurar acima dos demais */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+    pointer-events: auto; /* garantir captura de clique */
+}
+
+/* === CONTAINER === */
+#cadastro-modal-overlay .modal-container {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    box-shadow:
+        0 20px 40px rgba(16, 16, 16, 0.2),
+        0 15px 25px rgba(16, 16, 16, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(207, 255, 4, 0.3);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    animation: slideInUp 0.4s ease;
+    position: relative;
+    pointer-events: auto;
+}
+
+/* === HEADER === */
+#cadastro-modal-overlay .modal-header {
+    background: linear-gradient(135deg, #CFFF04, rgba(207, 255, 4, 0.8));
+    color: #101010;
+    padding: 25px 30px;
+    border-radius: 20px 20px 0 0;
+    position: relative;
+    text-align: center;
+}
+
+#cadastro-modal-overlay .modal-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+#cadastro-modal-overlay .modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: rgba(16, 16, 16, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: #101010;
+    transition: all 0.2s ease;
+}
+
+#cadastro-modal-overlay .modal-close:hover {
+    background: rgba(16, 16, 16, 0.2);
+    transform: rotate(90deg);
+}
+
+/* === BODY === */
+#cadastro-modal-overlay .modal-body {
+    padding: 30px;
+    color: #333;
+    overflow-y: auto;
+    max-height: calc(90vh - 200px);
+}
+
+/* === FORMULÁRIO === */
+#cadastro-modal-overlay .form-group {
+    margin-bottom: 20px;
+}
+
+#cadastro-modal-overlay .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+#cadastro-modal-overlay .form-group input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid rgba(207, 255, 4, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+#cadastro-modal-overlay .form-group input:focus {
+    outline: none;
+    border-color: #CFFF04;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 0 0 3px rgba(207, 255, 4, 0.1);
+}
+
+#cadastro-modal-overlay .form-group input::placeholder {
+    color: #666;
+    opacity: 0.7;
+}
+
+/* === MENSAGENS DE ERRO === */
+#cadastro-modal-overlay .error-message {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 5px;
+    display: none;
+    background: rgba(231, 76, 60, 0.1);
+    padding: 6px 10px;
+    border-radius: 6px;
+    border-left: 3px solid #e74c3c;
+}
+
+#cadastro-modal-overlay .error-message[style*="block"] {
+    display: block !important;
+}
+
+/* === FOOTER === */
+#cadastro-modal-overlay .modal-footer {
+    padding: 25px 30px;
+    border-top: 1px solid rgba(207, 255, 4, 0.2);
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    background: rgba(248, 249, 250, 0.5);
+    border-radius: 0 0 20px 20px;
+}
+
+#cadastro-modal-overlay .btn-secondary {
+    padding: 12px 24px;
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    border: 2px solid rgba(108, 117, 125, 0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+#cadastro-modal-overlay .btn-secondary:hover {
+    background: rgba(108, 117, 125, 0.2);
+    border-color: rgba(108, 117, 125, 0.5);
+    transform: translateY(-1px);
+}
+
+#cadastro-modal-overlay .btn-primary {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #CFFF04, #b8e600);
+    color: #101010;
+    border: 2px solid #CFFF04;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    flex: 2;
+    box-shadow: 0 4px 12px rgba(207, 255, 4, 0.3);
+}
+
+#cadastro-modal-overlay .btn-primary:hover {
+    background: linear-gradient(135deg, #b8e600, #CFFF04);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(207, 255, 4, 0.4);
+}
+
+#cadastro-modal-overlay .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* === LOADING STATES === */
+#cadastro-modal-overlay .btn-loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+}
+
+#cadastro-modal-overlay .spinner {
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+}
+
+/* === RESPONSIVIDADE === */
+@media (max-width: 768px) {
+    #cadastro-modal-overlay {
+        padding: 10px;
+    }
+    
+    #cadastro-modal-overlay .modal-container {
+        border-radius: 15px;
+        max-height: 95vh;
+    }
+    
+    #cadastro-modal-overlay .modal-header {
+        padding: 20px 25px;
+        border-radius: 15px 15px 0 0;
+    }
+    
+    #cadastro-modal-overlay .modal-header h2 {
+        font-size: 20px;
+    }
+    
+    #cadastro-modal-overlay .modal-body {
+        padding: 25px 20px;
+    }
+    
+    #cadastro-modal-overlay .modal-footer {
+        padding: 20px;
+        flex-direction: column;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    #cadastro-modal-overlay .btn-secondary,
+    #cadastro-modal-overlay .btn-primary {
+        flex: none;
+    }
+}
+
+/* === ANIMAÇÕES === */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

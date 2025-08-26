@@ -28,7 +28,6 @@
 import { query, insert, update } from './supabaseService.js';
 import { nowUtcISO, getDateInSP, nowInSaoPaulo } from '../utils/dateUtils.js';
 // Compatibilidade com código legado
-const toSaoPauloISOString = (date) => nowUtcISO(); // Converter para UTC
 const toSaoPauloDateString = (date) => getDateInSP(date);
 // import removido para compatibilidade com browser tradicional
 // Utilize window.WeeklyPlanService diretamente quando necessário

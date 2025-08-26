@@ -1,7 +1,7 @@
 // services/calendarioService.js
 // Serviço para gerenciar a tabela d_calendario e atualizar semana atual
 
-import { supabase, safeQuery, queryWithRetry } from './supabaseService.js';
+import { supabase, safeQuery } from './supabaseService.js';
 import { nowUtcISO, getDateInSP } from '../utils/dateUtils.js';
 
 export class CalendarioService {

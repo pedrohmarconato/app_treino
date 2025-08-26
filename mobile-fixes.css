@@ -50,7 +50,7 @@
         top: env(safe-area-inset-top, 0) !important;
         position: fixed !important;
         width: 100% !important;
-        z-index: 999 !important;
+        z-index: var(--z-fixed);
     }
     
     /* Ajuste do conteúdo para não ficar sob o header fixo */
@@ -382,7 +382,7 @@
 /* Garantir que elementos não se sobreponham */
 .training-plan > * {
     position: relative !important;
-    z-index: 1 !important;
+    z-index: var(--z-base);
 }
 
 /* Fix para botões muito próximos */
@@ -392,7 +392,7 @@
 
 /* Garantir que modais fiquem acima de tudo */
 [id*="modal"] {
-    z-index: 9999 !important;
+    z-index: var(--z-modal);
 }
 
 /* Fix específico para modal de conclusão de treino */
@@ -404,7 +404,7 @@
     bottom: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    z-index: 99999 !important;
+    z-index: var(--z-modal-high-priority);
     display: flex !important;
     background: rgba(16, 16, 16, 0.98) !important;
     backdrop-filter: blur(10px) !important;

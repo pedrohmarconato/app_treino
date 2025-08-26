@@ -1,7 +1,7 @@
 // queries/workoutQueries.js - Todas as consultas de treino centralizadas
 // Fonte única de verdade para dados de treino
 
-import { query, supabase } from '../services/supabaseService.js';
+import { query } from '../services/supabaseService.js';
 import { obterSemanaAtivaUsuario } from '../services/weeklyPlanningService.js';
 
 /**

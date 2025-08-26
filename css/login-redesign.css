@@ -1,0 +1,86 @@
+/* Login Redesign - CSS Limpo */
+
+.login-screen {
+    min-height: 100vh;
+    background: #101010;
+    color: white;
+    position: relative;
+}
+
+/* Evitar que overlays invisíveis bloqueiem cliques no login */
+#app, #login-screen {
+    pointer-events: auto;
+}
+
+/* ========== LOGIN OPTIONS ========== */
+.login-options {
+    margin-top: 20px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.login-options .separator {
+    color: #666;
+    font-size: 14px;
+}
+
+.link-button {
+    background: none;
+    border: none;
+    color: #CFFF04;
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.link-button:hover {
+    background-color: rgba(207, 255, 4, 0.1);
+    text-decoration: underline;
+}
+
+.link-button:focus {
+    outline: 2px solid #CFFF04;
+    outline-offset: 2px;
+}
+
+.link-button:active {
+    transform: scale(0.98);
+}
+
+/* Botão esqueci senha (legado) */
+.btn-forgot-password {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-forgot-password:hover {
+    color: #CFFF04;
+    background: rgba(207, 255, 4, 0.1);
+}
+
+/* Garantir que o container de modais de alta prioridade não bloqueie cliques na tela de login */
+#high-priority-modals { pointer-events: none; }
+#high-priority-modals * { pointer-events: auto; }
+
+/* Assegurar que os botões do login sejam clicáveis mesmo com estilos globais */
+#login-screen .btn-forgot-password,
+#login-screen #forgot-password-btn,
+#login-screen #cadastrar-usuario-btn,
+#login-screen .btn-new-user {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 2;
+}

@@ -59,7 +59,7 @@ import { initTemplates, renderTemplate as renderTemplateModule } from '../templa
 // Inicializar aplicação
 async function initApp() {
     console.log('[initApp] 🚀 INICIANDO APLICAÇÃO...');
-    
+
     if (!checkDependencies()) {
         console.error('❌ Falha na verificação de dependências');
         // FALLBACK: Tentar renderizar algo básico mesmo assim
@@ -74,7 +74,7 @@ async function initApp() {
         }
         return;
     }
-    
+
     try {
         console.log('[initApp] ✅ Dependências verificadas');
         // 1. Inicializar sistema de templates se ainda não estiver
@@ -91,68 +91,55 @@ async function initApp() {
                 console.error('[initApp] ❌ Falha ao inicializar templates:', tplErr);
             }
         }
-        
+
         // 1. Aguardar módulos carregarem
         console.log('[initApp] ⏳ Aguardando módulos carregarem...');
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         // 2. Configurar funções globais
         console.log('[initApp] 🔧 Configurando funções globais...');
         setupGlobalFunctions();
         console.log('[initApp] ✅ Funções globais configuradas');
-        
+
         // 2. Inicializar protocolo
         console.log('[initApp] 🔄 Inicializando protocolo...');
         try {
             // Timeout de 5 segundos para evitar travamento
             const protocolPromise = initializeProtocol();
-            const timeoutPromise = new Promise((_, reject) => 
+            const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Timeout na inicialização do protocolo')), 5000)
             );
-            
+
             await Promise.race([protocolPromise, timeoutPromise]);
             console.log('[initApp] ✅ Protocolo inicializado');
         } catch (error) {
             console.error('[initApp] ❌ Erro no protocolo:', error);
             // Continuar mesmo com erro
         }
-        
+
         // 3. Iniciar na tela de login
         console.log('[initApp] 🔑 Iniciando tela de login...');
         console.log('[initApp] 🔍 Verificando window.initLogin:', typeof window.initLogin);
-        
-        if (window.initLogin) {
-            console.log('[initApp] 📞 Chamando window.initLogin()...');
-            try {
-                await window.initLogin();
-                console.log('[initApp] ✅ Login inicializado');
-            } catch (error) {
-                console.error('[initApp] ❌ Erro no initLogin:', error);
-                throw error;
-            }
+
+        if (window.renderTemplate) {
+            console.log('[initApp] 🔄 Tentando renderTemplate login como fallback...');
+            window.renderTemplate('login');
         } else {
-            console.error('[initApp] ❌ window.initLogin não está definido');
-            // FALLBACK: Renderizar login diretamente
-            if (window.renderTemplate) {
-                console.log('[initApp] 🔄 Tentando renderTemplate login como fallback...');
-                window.renderTemplate('login');
-            } else {
-                throw new Error('Nem window.initLogin nem window.renderTemplate estão definidos');
-            }
+            throw new Error('Nem window.initLogin nem window.renderTemplate estão definidos');
         }
-        
+
         // 4. Configurar debug (desenvolvimento)
         console.log('[initApp] 🔧 Configurando sistema de debug...');
         setupDebugSystem();
         console.log('[initApp] ✅ Debug configurado');
-        
+
         console.log('[initApp] 🎉 APLICAÇÃO INICIALIZADA COM SUCESSO!');
-        
+
     } catch (error) {
         console.error('❌ Erro crítico na inicialização:', error);
         console.error('Stack trace:', error.stack);
         showNotification('Erro crítico ao iniciar aplicação: ' + error.message, 'error');
-        
+
         // FALLBACK: Tentar renderizar tela de erro
         const app = document.getElementById('app');
         if (app) {
@@ -166,7 +153,7 @@ async function initApp() {
             `;
         }
     }
-}
+
 
 // === DASHBOARD DE MÉTRICAS (DEFINIÇÃO IMEDIATA) ===
 window.abrirDashboardMetricas = async () => {
@@ -272,6 +259,51 @@ function setupGlobalFunctions() {
         }
     };
     
+    // === RECUPERAÇÃO DE SENHA ===
+    window.abrirRecuperacaoSenha = async (emailPreenchido = '') => {
+        try {
+            console.log('[app.js] 🔐 Abrindo modal de recuperação de senha...');
+            
+            // Carregar o modal de forgot password
+            const { default: ForgotPasswordModal } = await import('../components/ForgotPasswordModal.js');
+            
+            // Carregar CSS se não estiver carregado
+            if (!document.getElementById('forgot-password-styles')) {
+                const link = document.createElement('link');
+                link.id = 'forgot-password-styles';
+                link.rel = 'stylesheet';
+                link.href = './css/forgot-password-modal.css';
+                document.head.appendChild(link);
+            }
+            
+            // Abrir modal
+            const forgotModal = new ForgotPasswordModal();
+            const resultado = await forgotModal.show(emailPreenchido);
+            
+            if (resultado && resultado.success) {
+                console.log('[app.js] ✅ Email de recuperação enviado para:', resultado.email);
+                showNotification(`Email enviado para ${resultado.email}! Verifique sua caixa de entrada.`, 'success');
+                
+                // Track evento sucesso
+                if (window.trackEvent) {
+                    window.trackEvent('forgot_password_global_success', {
+                        timestamp: Date.now(),
+                        email_domain: resultado.email.split('@')[1]
+                    });
+                }
+            } else {
+                console.log('[app.js] ℹ️ Recuperação de senha cancelada');
+            }
+            
+            return resultado;
+            
+        } catch (error) {
+            console.error('[app.js] ❌ Erro ao abrir recuperação de senha:', error);
+            showNotification('Erro ao abrir recuperação de senha: ' + error.message, 'error');
+            return null;
+        }
+    };
+    
     // === DASHBOARD ===
     window.carregarDashboard = async () => {
         try {
@@ -352,6 +384,11 @@ function setupGlobalFunctions() {
             
             console.log('[app.js] ✅ Usuário válido encontrado:', currentUser.nome, `(ID: ${currentUser.id})`);
             
+            // 🆕 VERIFICAR QUESTIONÁRIO E MOSTRAR LEMBRETE
+            setTimeout(async () => {
+                await verificarEMostrarLembreteQuestionario(currentUser);
+            }, 2000); // Aguardar 2s para a home carregar
+            
             // Usar serviço de integração
             const success = await integrationService.initialize();
             
@@ -379,16 +416,24 @@ function setupGlobalFunctions() {
     };
     
     // === PLANEJAMENTO SEMANAL ===
-    window.abrirPlanejamentoParaUsuarioAtual = () => {
+    window.abrirPlanejamentoParaUsuarioAtual = async () => {
         const currentUser = AppState.get('currentUser');
         if (currentUser && currentUser.id) {
-            if (window.renderTemplate) {
-                window.renderTemplate('planejamentoSemanalPage');
-                setTimeout(() => {
-                    if (window.inicializarPlanejamento) {
-                        window.inicializarPlanejamento(currentUser.id);
-                    }
-                }, 100);
+            try {
+                // Usar o fluxo correto através de abrirModalPlanejamento
+                const { abrirModalPlanejamento } = await import('../feature/planning.js');
+                await abrirModalPlanejamento(currentUser.id);
+            } catch (error) {
+                console.error('[app.js] Erro ao abrir planejamento:', error);
+                // Fallback para o método antigo
+                if (window.renderTemplate) {
+                    window.renderTemplate('planejamentoSemanalPage');
+                    setTimeout(() => {
+                        if (window.inicializarPlanejamento) {
+                            window.inicializarPlanejamento(currentUser.id);
+                        }
+                    }, 200);
+                }
             }
         } else {
             showNotification('Faça login para acessar o planejamento.', 'error');
@@ -411,6 +456,67 @@ function setupGlobalFunctions() {
         }
     };
     
+    // === QUESTIONÁRIO DE PERFIL ===
+    window.abrirQuestionarioPerfil = async () => {
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser || !currentUser.id) {
+            showNotification('Faça login para acessar o perfil.', 'error');
+            return;
+        }
+        
+        try {
+            console.log('[app.js] 📋 Abrindo questionário de perfil para:', currentUser.nome);
+            
+            // Verificar se função está disponível
+            if (!window.abrirQuestionarioUsuario) {
+                console.log('[app.js] Carregando sistema de cadastro...');
+                // Carregar sistema de cadastro que contém a função
+                await loadScript('./js/cadastroSystem.js');
+                
+                // Aguardar até a função estar disponível
+                let attempts = 0;
+                while (!window.abrirQuestionarioUsuario && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
+                if (!window.abrirQuestionarioUsuario) {
+                    throw new Error('Não foi possível carregar o sistema de questionário');
+                }
+            }
+            
+            // Verificar se usuário já tem questionário
+            const { verificarQuestionarioExistente } = await import('../services/questionnaireService.js');
+            const jaPreencheu = await verificarQuestionarioExistente(currentUser.id);
+            
+            if (jaPreencheu) {
+                // Se já preencheu, mostrar opção para refazer
+                const confirmar = confirm('Você já preencheu seu perfil. Deseja editá-lo?');
+                if (!confirmar) {
+                    return;
+                }
+            }
+            
+            // Abrir questionário
+            const resultado = await window.abrirQuestionarioUsuario(currentUser);
+            
+            if (resultado) {
+                showNotification(jaPreencheu ? 'Perfil atualizado com sucesso!' : 'Perfil criado com sucesso!', 'success');
+                
+                // Atualizar interface se necessário
+                if (window.carregarDashboard) {
+                    setTimeout(() => {
+                        window.carregarDashboard();
+                    }, 1000);
+                }
+            }
+            
+        } catch (error) {
+            console.error('[app.js] ❌ Erro ao abrir questionário de perfil:', error);
+            showNotification('Erro ao abrir questionário: ' + error.message, 'error');
+        }
+    };
+    
     // === TREINO ===
     // Note: window.iniciarTreino is now defined in protocolIntegration.js
     // This allows the proper flow with disposition modal and workout execution
@@ -426,6 +532,61 @@ function setupHomeEventListeners() {
         console.log('[app.js] Event listener adicionado ao botão #start-workout-btn.');
     } else {
         console.warn('[app.js] Botão #start-workout-btn não encontrado no DOM para adicionar event listener.');
+    }
+}
+
+// Verificar e mostrar lembrete de questionário
+async function verificarEMostrarLembreteQuestionario(user) {
+    try {
+        console.log('[app.js] 🔍 Verificando questionário para:', user.nome);
+        
+        const { verificarQuestionarioExistente } = await import('../services/questionnaireService.js');
+        const jaPreencheu = await verificarQuestionarioExistente(user.id);
+        
+        if (!jaPreencheu) {
+            console.log('[app.js] 📋 Usuário sem questionário, mostrando lembrete');
+            
+            // Atualizar o botão do perfil para chamar atenção
+            const btnPerfil = document.getElementById('btn-questionnaire-perfil');
+            if (btnPerfil) {
+                btnPerfil.classList.add('btn-attention');
+                btnPerfil.title = '⚡ Complete seu perfil para treinos personalizados!';
+                
+                // Adicionar indicador visual
+                if (!btnPerfil.querySelector('.notification-dot')) {
+                    const dot = document.createElement('div');
+                    dot.className = 'notification-dot';
+                    btnPerfil.style.position = 'relative';
+                    btnPerfil.appendChild(dot);
+                }
+            }
+            
+            // Mostrar notificação após 3 segundos
+            setTimeout(() => {
+                showNotification(
+                    '📋 Complete seu perfil para treinos mais personalizados! Clique no botão "Perfil".',
+                    'info'
+                );
+            }, 3000);
+            
+        } else {
+            console.log('[app.js] ✅ Usuário já preencheu questionário');
+            
+            // Remover indicadores se existirem
+            const btnPerfil = document.getElementById('btn-questionnaire-perfil');
+            if (btnPerfil) {
+                btnPerfil.classList.remove('btn-attention');
+                btnPerfil.title = 'Editar Perfil';
+                
+                const dot = btnPerfil.querySelector('.notification-dot');
+                if (dot) {
+                    dot.remove();
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('[app.js] ❌ Erro ao verificar questionário:', error);
     }
 }
 
@@ -566,6 +727,111 @@ function setupDebugSystem() {
             console.log('🔄 Reinicializando serviços...');
             await integrationService.reinitialize();
             console.log('✅ Serviços reinicializados');
+        },
+        
+        // 🔐 FUNÇÕES DE RECUPERAÇÃO DE SENHA
+        forgotPassword: {
+            // Testar modal diretamente
+            test: async (email = 'teste@example.com') => {
+                console.log('🔐 Testando modal de recuperação...');
+                if (window.abrirRecuperacaoSenha) {
+                    const resultado = await window.abrirRecuperacaoSenha(email);
+                    console.log('Resultado:', resultado);
+                    return resultado;
+                } else {
+                    console.error('❌ Função abrirRecuperacaoSenha não disponível');
+                    return null;
+                }
+            },
+            
+            // Verificar disponibilidade
+            check: () => {
+                const checks = {
+                    globalFunction: !!window.abrirRecuperacaoSenha,
+                    cssLoaded: Array.from(document.styleSheets).some(sheet => 
+                        sheet.href && sheet.href.includes('forgot-password-modal.css')
+                    ),
+                    modalInTemplate: !!document.getElementById('forgot-password-btn'),
+                    authService: typeof window.AuthSystem?.resetPassword === 'function'
+                };
+                
+                console.log('🔍 Status do sistema "Esqueci minha senha":');
+                Object.entries(checks).forEach(([key, value]) => {
+                    console.log(`  ${value ? '✅' : '❌'} ${key}:`, value);
+                });
+                
+                return checks;
+            }
+        },
+        
+        // 🆕 FUNÇÕES DE QUESTIONÁRIO
+        questionnaire: {
+            // Forçar questionário para usuário atual
+            forceShow: async () => {
+                const currentUser = AppState.get('currentUser');
+                if (currentUser) {
+                    await window.abrirQuestionarioPerfil();
+                } else {
+                    console.log('❌ Nenhum usuário logado');
+                }
+            },
+            
+            // Verificar status do questionário
+            checkStatus: async () => {
+                const currentUser = AppState.get('currentUser');
+                if (!currentUser) {
+                    console.log('❌ Nenhum usuário logado');
+                    return null;
+                }
+                
+                try {
+                    const { verificarQuestionarioExistente } = await import('../services/questionnaireService.js');
+                    const preenchido = await verificarQuestionarioExistente(currentUser.id);
+                    console.log(`📋 Questionário ${currentUser.nome}: ${preenchido ? '✅ Preenchido' : '❌ Não preenchido'}`);
+                    return preenchido;
+                } catch (error) {
+                    console.error('❌ Erro ao verificar:', error);
+                    return null;
+                }
+            },
+            
+            // Obter dados do questionário
+            getData: async () => {
+                const currentUser = AppState.get('currentUser');
+                if (!currentUser) {
+                    console.log('❌ Nenhum usuário logado');
+                    return null;
+                }
+                
+                try {
+                    const { obterQuestionario } = await import('../services/questionnaireService.js');
+                    const dados = await obterQuestionario(currentUser.id);
+                    console.log('📋 Dados do questionário:', dados);
+                    return dados;
+                } catch (error) {
+                    console.error('❌ Erro ao obter dados:', error);
+                    return null;
+                }
+            },
+            
+            // Obter estatísticas
+            getStats: async () => {
+                const currentUser = AppState.get('currentUser');
+                if (!currentUser) {
+                    console.log('❌ Nenhum usuário logado');
+                    return null;
+                }
+                
+                try {
+                    const { obterEstatisticas } = await import('../services/questionnaireService.js');
+                    const stats = await obterEstatisticas(currentUser.id);
+                    console.log('📊 Estatísticas:', stats);
+                    return stats;
+                } catch (error) {
+                    console.error('❌ Erro ao obter estatísticas:', error);
+                    return null;
+                }
+            }
         }
     };
     
@@ -577,25 +843,62 @@ function setupDebugSystem() {
     console.log('  - window.debugApp.integration() - Status da integração');
     console.log('  - window.debugApp.clearCache() - Limpar cache');
     console.log('  - window.debugApp.reinit() - Reinicializar serviços');
+    console.log('🔐 Comandos de recuperação de senha:');
+    console.log('  - window.debugApp.forgotPassword.test() - Testar modal');
+    console.log('  - window.debugApp.forgotPassword.check() - Verificar status');
+    console.log('  - window.abrirRecuperacaoSenha() - Função global direta');
+    console.log('📋 Comandos do questionário:');
+    console.log('  - window.debugApp.questionnaire.forceShow() - Forçar questionário');
+    console.log('  - window.debugApp.questionnaire.checkStatus() - Verificar status');
+    console.log('  - window.debugApp.questionnaire.getData() - Ver dados');
+    console.log('  - window.debugApp.questionnaire.getStats() - Ver estatísticas');
 }
 
-// Event listeners principais
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[app.js] 📄 DOM carregado, iniciando diagnóstico...');
-    
+    // Garantir que o botão "Esqueci minha senha" abra o modal corretamente
+    document.body.addEventListener('click', async (e) => {
+        // Blindagem: se clique foi originado de um dos botões do login e já tratado, ignore
+        if (e.defaultPrevented) return;
+        if (e.target && (e.target.id === 'forgot-password-btn' || e.target.closest && e.target.closest('#forgot-password-btn'))) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            if (window.abrirRecuperacaoSenha) {
+                await window.abrirRecuperacaoSenha();
+            } else {
+                console.error('[app.js] ❌ Função abrirRecuperacaoSenha não está disponível');
+            }
+            return;
+        }
+
+        // Garantir que o botão "Criar nova conta" abra o modal de cadastro
+        if (e.target && (e.target.id === 'cadastrar-usuario-btn' || (e.target.closest && e.target.closest('#cadastrar-usuario-btn')))) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            if (window.abrirModalCadastro) {
+                await window.abrirModalCadastro(e);
+            } else {
+                console.error('[app.js] ❌ Função abrirModalCadastro não está disponível');
+            }
+            return;
+        }
+    });
+
     // Diagnóstico inicial
     console.log('[app.js] 🔍 Diagnóstico:');
     console.log('  - window.renderTemplate:', !!window.renderTemplate);
     console.log('  - window.SUPABASE_CONFIG:', !!window.SUPABASE_CONFIG);
     console.log('  - window.supabase:', !!window.supabase);
     console.log('  - document.getElementById("app"):', !!document.getElementById('app'));
-    
+
     // Aguardar templates carregarem
     const initTimeout = setTimeout(() => {
         console.log('[app.js] ⏰ Iniciando após timeout de 300ms...');
         initApp();
     }, 300);
-    
+
     // Verificar se templates já estão carregados
     if (window.renderTemplate) {
         clearTimeout(initTimeout);
@@ -682,6 +985,23 @@ function updateElement(id, value) {
     if (element) {
         element.textContent = value;
     }
+}
+
+// Função auxiliar para carregar scripts dinamicamente
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        // Verificar se o script já foi carregado
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
 }
 
 // Adicionar estilos de animação globais

@@ -2,6 +2,7 @@
 // Componente para edição rápida do planejamento semanal na home
 
 import WeeklyPlanService from '../services/weeklyPlanningService.js';
+import WeeklyPlanningValidationService from '../services/weeklyPlanningValidationService.js';
 import AppState from '../state/appState.js';
 import { showNotification } from '../ui/notifications.js';
 
@@ -23,6 +24,8 @@ class QuickEditModal {
         this.currentDay = null;
         this.currentConfig = null;
         this.onSave = null;
+        this.isPastDay = false;
+        this.isDayBlocked = false;
     }
 
     // Renderizar modal de edição rápida
@@ -31,6 +34,12 @@ class QuickEditModal {
         this.currentConfig = config;
         this.onSave = onSaveCallback;
         this.isConcluido = config?.concluido || false;
+        
+        // Verificar se dia pode ser editado usando o serviço de validação
+        const validation = WeeklyPlanningValidationService.canEditDay(dia);
+        this.isPastDay = validation.reason === 'past_day';
+        this.isDayBlocked = validation.reason === 'pending_workout';
+        this.validationResult = validation;
 
         const modal = this.createModalElement();
         document.body.appendChild(modal);
@@ -47,26 +56,46 @@ class QuickEditModal {
         modal.id = 'quick-edit-modal';
         modal.className = 'quick-edit-modal-overlay';
         
+        // Determinar classes e status
+        let containerClasses = '';
+        let statusBadge = '';
+        let isBlocked = false;
+        
+        if (this.isPastDay && !this.isConcluido) {
+            containerClasses = 'past-day';
+            statusBadge = '<div class="status-badge past">📅 Dia Passado</div>';
+            isBlocked = true;
+        } else if (this.isDayBlocked) {
+            containerClasses = 'blocked-day';
+            statusBadge = '<div class="status-badge blocked">🚫 Bloqueado - Treino anterior pendente</div>';
+            isBlocked = true;
+        } else if (this.isConcluido) {
+            containerClasses = 'concluido';
+            statusBadge = '<div class="status-badge concluido">✅ Concluído</div>';
+        } else {
+            statusBadge = '<div class="status-badge pendente">⏳ Pendente</div>';
+        }
+        
         modal.innerHTML = `
-            <div class="quick-edit-modal-container ${this.isConcluido ? 'concluido' : ''}">
+            <div class="quick-edit-modal-container ${containerClasses}">
                 <div class="quick-edit-modal-header">
                     <div class="header-info">
                         <h3>Editar ${DIAS_SEMANA[this.currentDay]}</h3>
-                        ${this.isConcluido ? '<div class="status-badge concluido">✅ Concluído</div>' : '<div class="status-badge pendente">⏳ Pendente</div>'}
+                        ${statusBadge}
                     </div>
                     <button class="quick-edit-close-btn" type="button">&times;</button>
                 </div>
                 
                 <div class="quick-edit-modal-body">
-                    ${this.isConcluido ? this.renderWarningMessage() : ''}
-                    <div class="quick-edit-options">
+                    ${this.renderRestrictionMessage()}
+                    <div class="quick-edit-options ${isBlocked ? 'disabled-options' : ''}">
                         ${this.renderOptions()}
                     </div>
                 </div>
                 
                 <div class="quick-edit-modal-footer">
                     <button class="btn-secondary quick-edit-cancel">Cancelar</button>
-                    <button class="btn-primary quick-edit-save" disabled>Salvar</button>
+                    <button class="btn-primary quick-edit-save" disabled ${isBlocked ? 'style="display: none;"' : ''}>Salvar</button>
                 </div>
             </div>
         `;
@@ -74,34 +103,59 @@ class QuickEditModal {
         return modal;
     }
 
-    // Renderizar mensagem de aviso para dias concluídos
-    renderWarningMessage() {
-        const dataFormatada = this.currentConfig?.data_conclusao ? 
-            new Date(this.currentConfig.data_conclusao).toLocaleDateString('pt-BR') : '';
-        
-        return `
-            <div class="warning-message">
-                <div class="warning-icon">⚠️</div>
-                <div class="warning-content">
-                    <div class="warning-title">Treino Já Concluído</div>
-                    <div class="warning-text">
-                        Este treino foi finalizado ${dataFormatada ? `em ${dataFormatada}` : 'anteriormente'}. 
-                        Alterar o tipo de treino pode afetar o histórico registrado.
+    // Renderizar mensagem de restrição baseada no resultado da validação
+    renderRestrictionMessage() {
+        if (!this.validationResult.canEdit) {
+            const isBlockedByPending = this.validationResult.reason === 'pending_workout';
+            const icon = isBlockedByPending ? '⚠️' : '🚫';
+            
+            return `
+                <div class="warning-message restriction">
+                    <div class="warning-icon">${icon}</div>
+                    <div class="warning-content">
+                        <div class="warning-title">${isBlockedByPending ? 'Dia Bloqueado' : 'Dia Não Editável'}</div>
+                        <div class="warning-text">
+                            ${this.validationResult.message}
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
+        
+        if (this.validationResult.warning && this.isConcluido) {
+            const dataFormatada = this.currentConfig?.data_conclusao ? 
+                new Date(this.currentConfig.data_conclusao).toLocaleDateString('pt-BR') : '';
+            
+            return `
+                <div class="warning-message">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-content">
+                        <div class="warning-title">Treino Já Concluído</div>
+                        <div class="warning-text">
+                            Este treino foi finalizado ${dataFormatada ? `em ${dataFormatada}` : 'anteriormente'}. 
+                            Alterar o tipo de treino pode afetar o histórico registrado.
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        return '';
     }
 
     // Renderizar opções de treino
     renderOptions() {
         let html = '';
+        const isGloballyDisabled = this.isPastDay || this.isDayBlocked;
         
         TIPOS_TREINO.forEach(tipo => {
             const isSelected = this.currentConfig?.tipo === tipo.id;
-            const isDisabled = this.isTypeDisabled(tipo);
+            const isTypeDisabled = this.isTypeDisabled(tipo);
+            const isDisabled = isGloballyDisabled || isTypeDisabled;
             
-            const additionalClasses = this.isConcluido ? 'concluido-warning' : '';
+            let additionalClasses = '';
+            if (this.isConcluido) additionalClasses += ' concluido-warning';
+            if (isGloballyDisabled) additionalClasses += ' globally-disabled';
             
             html += `
                 <div class="quick-edit-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${additionalClasses}" 
@@ -111,7 +165,9 @@ class QuickEditModal {
                     <div class="option-info">
                         <div class="option-name">${tipo.nome}</div>
                         <div class="option-description">${tipo.descricao}</div>
-                        ${isDisabled ? '<div class="option-status">Já utilizado esta semana</div>' : ''}
+                        ${isTypeDisabled && !isGloballyDisabled ? '<div class="option-status">Já utilizado esta semana</div>' : ''}
+                        ${this.isPastDay && !this.isConcluido ? '<div class="option-status blocked">Dia passado não editável</div>' : ''}
+                        ${this.isDayBlocked ? '<div class="option-status blocked">Dia bloqueado</div>' : ''}
                         ${this.isConcluido && isSelected ? '<div class="option-status concluido">Treino já realizado</div>' : ''}
                     </div>
                     ${isSelected ? '<div class="option-check">✓</div>' : ''}
@@ -164,13 +220,15 @@ class QuickEditModal {
             }
         });
 
-        // Selecionar opções
-        const options = modal.querySelectorAll('.quick-edit-option:not(.disabled)');
-        options.forEach(option => {
-            option.addEventListener('click', () => {
-                this.selectOption(option);
+        // Selecionar opções (apenas se não estiver bloqueado globalmente)
+        if (!this.isPastDay && !this.isDayBlocked) {
+            const options = modal.querySelectorAll('.quick-edit-option:not(.disabled)');
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    this.selectOption(option);
+                });
             });
-        });
+        }
 
         // Botão salvar
         const saveBtn = modal.querySelector('.quick-edit-save');
@@ -340,10 +398,11 @@ class QuickEditModal {
 
         if (e.key === 'Escape') {
             this.closeModal();
-        } else if (e.key === 'Enter' && this.selectedType) {
+        } else if (e.key === 'Enter' && this.selectedType && !this.isPastDay && !this.isDayBlocked) {
             this.saveChanges();
         }
     }
+    
 }
 
 // Função auxiliar para abrir modal de edição rápida

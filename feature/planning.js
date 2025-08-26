@@ -152,7 +152,13 @@ async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false) {
                       document.getElementById('modal-planejamento');
         
         if (modal) {
-            popup.classList.add('visible');
+            // Correct variable name: use modal instead of undefined popup
+            modal.classList.add('visible');
+            // Ensure modal is displayed and body scroll is disabled
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '200000';
             document.body.style.overflow = 'hidden';
             console.log('[inicializarPlanejamento] Modal exibido');
         }
@@ -163,7 +169,20 @@ async function inicializarPlanejamento(usuarioId, modoEdicaoParam = false) {
         // 6. Atualizar indicadores de status
         atualizarIndicadoresStatus(semanaAtivaAtual, jaProgramadaAtual, diasEditaveis);
         
-        // 7. Garantir que o modal está visível
+        // 7. Aguardar DOM estar completamente carregado antes de atualizar status
+        console.log('[inicializarPlanejamento] Aguardando DOM carregar antes de atualizar status...');
+        await new Promise(resolve => setTimeout(resolve, 200)); // Aumentar delay
+        
+        // 8. Atualizar status visual dos dias
+        try {
+            await atualizarStatusVisuaisDias(usuarioId, semanaAtivaAtual);
+        } catch (error) {
+            console.error('[inicializarPlanejamento] Erro ao atualizar status visuais:', error);
+            // Mesmo com erro, garantir que os loaders sejam removidos
+            removerTodosLoaders();
+        }
+        
+        // 9. Garantir que o modal está visível
         setTimeout(() => {
             const modal = document.getElementById('modalPlanejamento');
             if (modal) {
@@ -324,12 +343,21 @@ function forcarFechamentoModal() {
 
 function renderizarPlanejamentoExistente() {
     console.log('[renderizarPlanejamentoExistente] Iniciando renderização...');
+    console.log('[renderizarPlanejamentoExistente] Planejamento atual:', planejamentoAtual);
     
     // Garantir que o modal está visível
     const modal = document.getElementById('modalPlanejamento');
     if (!modal) {
         console.error('[renderizarPlanejamentoExistente] Modal não encontrado!');
         return;
+    }
+    
+    // Verificar se os elementos de status existem
+    for (let i = 1; i <= 7; i++) {
+        const statusEl = document.getElementById(`status-${i}`);
+        if (!statusEl) {
+            console.error(`[renderizarPlanejamentoExistente] Elemento status-${i} não encontrado!`);
+        }
     }
     
     // Atualizar contadores
@@ -404,6 +432,330 @@ function atualizarIndicadoresStatus(semanaAtiva, jaProgramada, diasEditaveis = [
     if (subtitle && semanaAtiva.percentual_1rm_calculado) {
         subtitle.textContent = `Configure seus treinos - ${semanaAtiva.percentual_1rm_calculado}% 1RM`;
     }
+}
+
+// Nova função para atualizar status visuais dos dias
+async function atualizarStatusVisuaisDias(usuarioId, semanaAtiva) {
+    console.log('[atualizarStatusVisuaisDias] 🎯 FUNÇÃO CHAMADA!');
+    console.log('[atualizarStatusVisuaisDias] Parâmetros recebidos:', {
+        usuarioId,
+        semanaAtiva,
+        modoEdicao: window.modoEdicao !== undefined ? window.modoEdicao : modoEdicao
+    });
+    
+    // Verificar se o modal está presente
+    const modal = document.getElementById('modalPlanejamento');
+    if (!modal) {
+        console.error('[atualizarStatusVisuaisDias] Modal não encontrado! Abortando...');
+        // Debug: listar todos os elementos com id que contém 'modal'
+        const modals = document.querySelectorAll('[id*="modal"]');
+        console.log('[atualizarStatusVisuaisDias] Modais encontrados no DOM:', modals.length, Array.from(modals).map(m => m.id));
+        return;
+    }
+    
+    console.log('[atualizarStatusVisuaisDias] Modal encontrado:', {
+        id: modal.id,
+        display: modal.style.display,
+        className: modal.className
+    });
+    
+    // Verificar elementos de status
+    console.log('[atualizarStatusVisuaisDias] Verificando elementos de status...');
+    for (let i = 1; i <= 7; i++) {
+        const statusEl = document.getElementById(`status-${i}`);
+        const statusText = statusEl?.querySelector('.status-text');
+        console.log(`[atualizarStatusVisuaisDias] status-${i}:`, {
+            exists: !!statusEl,
+            text: statusText?.textContent || 'não encontrado'
+        });
+    }
+    
+    try {
+        console.log('[atualizarStatusVisuaisDias] Iniciando busca de planejamentos...', {
+            usuarioId,
+            semanaAtiva: semanaAtiva?.semana_atual,
+            modoEdicao
+        });
+        
+        // Verificar se semanaAtiva existe
+        if (!semanaAtiva || !semanaAtiva.semana_atual) {
+            console.error('[atualizarStatusVisuaisDias] semanaAtiva não definida ou sem semana_atual');
+            throw new Error('Semana ativa não disponível');
+        }
+        
+        // Buscar planejamentos da semana atual
+        const { query } = await import('../services/supabaseService.js');
+        const { data: planejamentos, error } = await query('planejamento_semanal', {
+            select: 'dia_semana, tipo_atividade, concluido',
+            eq: {
+                usuario_id: usuarioId,
+                ano: new Date().getFullYear(),
+                semana_treino: semanaAtiva.semana_atual
+            }
+        });
+        
+        if (error) {
+            console.error('[atualizarStatusVisuaisDias] Erro na query:', error);
+            throw error;
+        }
+        
+        console.log('[atualizarStatusVisuaisDias] Planejamentos encontrados:', planejamentos?.length || 0);
+
+        const hoje = new Date();
+        const diaAtualJS = hoje.getDay(); // 0=domingo, 1=segunda...
+        
+        // CORREÇÃO: Mapear para o formato do template (Segunda = index 0)
+        // Template usa: ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+        // Precisamos converter dia JS (0=domingo) para índice do template (0=segunda)
+        const diaAtualTemplate = diaAtualJS === 0 ? 6 : diaAtualJS - 1; // Domingo vira 6, outros diminuem 1
+        
+        console.log('[atualizarStatusVisuaisDias] Dia atual:', { diaAtualJS, diaAtualTemplate, diaNome: ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'][diaAtualJS] });
+        
+        // Array de dias na ordem do template
+        const diasOrdemTemplate = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+        
+        // Atualizar cada dia da semana (na ordem do template)
+        for (let indexTemplate = 0; indexTemplate < 7; indexTemplate++) {
+            // Converter índice do template para dia da semana JS
+            const diaJS = indexTemplate === 6 ? 0 : indexTemplate + 1; // Domingo (index 6) vira 0, outros somam 1
+            const diaDB = diaJS === 0 ? 7 : diaJS; // Converter JS para DB
+            const diaIndex = indexTemplate + 1; // Para os IDs dos elementos (1-7)
+            
+            // Encontrar planejamento para este dia
+            const planejamento = planejamentos?.find(p => p.dia_semana === diaDB);
+            
+            // Elementos do DOM
+            const statusIndicator = document.getElementById(`status-${diaIndex}`);
+            const statusDot = statusIndicator?.querySelector('.status-dot');
+            const statusText = statusIndicator?.querySelector('.status-text');
+            const diaItem = document.getElementById(`dia-${diaIndex}`);
+            const overlay = document.getElementById(`overlay-${diaIndex}`);
+            const botaoAdicionar = document.getElementById(`btn-${diaIndex}`);
+            
+            if (!statusIndicator || !statusDot || !statusText || !diaItem) {
+                console.warn(`[atualizarStatusVisuaisDias] Elementos não encontrados para dia ${diaIndex}`);
+                continue;
+            }
+            
+            // Determinar status do dia
+            let status, statusTexto, bloqueado = false;
+            
+            // Usar indexTemplate para comparação (já está na ordem correta do template)
+            if (indexTemplate < diaAtualTemplate) {
+                // Dia passado
+                if (planejamento && planejamento.concluido) {
+                    status = 'completed';
+                    statusTexto = 'Concluído';
+                } else if (planejamento && planejamento.tipo_atividade === 'folga') {
+                    status = 'rest';
+                    statusTexto = 'Folga';
+                } else if (planejamento) {
+                    status = 'blocked';
+                    statusTexto = 'Perdido';
+                    bloqueado = true;
+                } else {
+                    status = 'blocked';
+                    statusTexto = 'Sem plano';
+                    bloqueado = true;
+                }
+            } else if (indexTemplate === diaAtualTemplate) {
+                // Dia atual
+                if (planejamento && planejamento.concluido) {
+                    status = 'completed';
+                    statusTexto = 'Concluído';
+                } else if (planejamento && planejamento.tipo_atividade === 'folga') {
+                    status = 'rest';
+                    statusTexto = 'Folga';
+                } else if (planejamento) {
+                    status = 'pending';
+                    statusTexto = 'Pendente';
+                } else {
+                    status = 'pending';
+                    statusTexto = 'Disponível';
+                }
+            } else {
+                // Dia futuro
+                if (planejamento && planejamento.tipo_atividade === 'folga') {
+                    status = 'rest';
+                    statusTexto = 'Folga';
+                } else if (planejamento) {
+                    status = 'pending';
+                    statusTexto = 'Planejado';
+                } else {
+                    status = 'pending';
+                    statusTexto = 'Disponível';
+                }
+            }
+            
+            // Aplicar status visual - GARANTIR que o texto seja atualizado
+            if (statusDot) {
+                statusDot.className = `status-dot ${status}`;
+            }
+            
+            if (statusText) {
+                statusText.textContent = statusTexto;
+                // Forçar atualização removendo "Carregando..."
+                if (statusText.textContent === 'Carregando...') {
+                    statusText.textContent = statusTexto || 'Disponível';
+                }
+            }
+            
+            // Aplicar classes ao item do dia
+            diaItem.className = `dia-item ${status}`;
+            if (bloqueado) {
+                diaItem.classList.add('blocked');
+            }
+            
+            console.log(`[atualizarStatusVisuaisDias] Dia ${diasOrdemTemplate[indexTemplate]}:`, {
+                indexTemplate,
+                diaJS,
+                diaDB,
+                diaIndex,
+                status,
+                statusTexto,
+                bloqueado,
+                planejamento: planejamento?.tipo_atividade || 'nenhum'
+            });
+            
+            // NOVA VALIDAÇÃO: Usar WeeklyPlanningValidationService para verificar se o dia pode ser editado
+            // Garantir que modoEdicao tenha um valor padrão
+            const modoEdicaoLocal = modoEdicao !== undefined ? modoEdicao : false;
+            
+            if (modoEdicaoLocal && window.WeeklyPlanningValidationService) {
+                try {
+                    const validationResult = WeeklyPlanningValidationService.canEditDay(diaJS);
+                
+                if (!validationResult.canEdit) {
+                    // Dia não pode ser editado
+                    if (overlay) {
+                        overlay.style.display = 'flex';
+                        const restrictionText = overlay.querySelector('.restriction-text');
+                        if (restrictionText) {
+                            restrictionText.textContent = validationResult.message || 'Não editável';
+                        }
+                    }
+                    
+                    if (botaoAdicionar) {
+                        botaoAdicionar.disabled = true;
+                        botaoAdicionar.style.opacity = '0.5';
+                        botaoAdicionar.style.pointerEvents = 'none';
+                        botaoAdicionar.title = validationResult.message || '';
+                    }
+                } else if (validationResult.warning) {
+                    // Dia pode ser editado mas com aviso
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
+                    
+                    if (botaoAdicionar) {
+                        botaoAdicionar.disabled = false;
+                        botaoAdicionar.style.opacity = '0.8';
+                        botaoAdicionar.style.pointerEvents = 'auto';
+                        botaoAdicionar.classList.add('warning');
+                        botaoAdicionar.title = validationResult.message || '';
+                    }
+                    
+                    // Adicionar indicador de aviso no status
+                    statusText.textContent = statusTexto + ' ⚠️';
+                } else {
+                    // Dia pode ser editado normalmente
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
+                    
+                    if (botaoAdicionar) {
+                        botaoAdicionar.disabled = false;
+                        botaoAdicionar.style.opacity = '1';
+                        botaoAdicionar.style.pointerEvents = 'auto';
+                        botaoAdicionar.classList.remove('warning');
+                        botaoAdicionar.title = '';
+                    }
+                }
+                } catch (error) {
+                    console.error(`[atualizarStatusVisuaisDias] Erro ao validar dia ${diaIndex}:`, error);
+                    // Em caso de erro, aplicar lógica padrão
+                    if (overlay) {
+                        overlay.style.display = bloqueado ? 'flex' : 'none';
+                    }
+                    if (botaoAdicionar) {
+                        botaoAdicionar.disabled = bloqueado;
+                        botaoAdicionar.style.opacity = bloqueado ? '0.5' : '1';
+                        botaoAdicionar.style.pointerEvents = bloqueado ? 'none' : 'auto';
+                    }
+                }
+            } else {
+                // Modo não-edição, aplicar lógica original
+                if (overlay) {
+                    if (bloqueado || indexTemplate < diaAtualTemplate) {
+                        overlay.style.display = 'flex';
+                    } else {
+                        overlay.style.display = 'none';
+                    }
+                }
+                
+                if (botaoAdicionar) {
+                    if (bloqueado || indexTemplate < diaAtualTemplate) {
+                        botaoAdicionar.disabled = true;
+                        botaoAdicionar.style.opacity = '0.5';
+                        botaoAdicionar.style.pointerEvents = 'none';
+                    } else {
+                        botaoAdicionar.disabled = false;
+                        botaoAdicionar.style.opacity = '1';
+                        botaoAdicionar.style.pointerEvents = 'auto';
+                    }
+                }
+            }
+        }
+        
+        console.log('[atualizarStatusVisuaisDias] Status visuais atualizados com sucesso');
+        
+    } catch (error) {
+        console.error('[atualizarStatusVisuaisDias] Erro:', error);
+        
+        // FALLBACK: Mesmo com erro, remover "Carregando..." e colocar estado padrão
+        for (let i = 1; i <= 7; i++) {
+            const statusText = document.querySelector(`#status-${i} .status-text`);
+            const statusDot = document.querySelector(`#status-${i} .status-dot`);
+            const overlay = document.getElementById(`overlay-${i}`);
+            
+            if (statusText && statusText.textContent === 'Carregando...') {
+                statusText.textContent = 'Disponível';
+            }
+            
+            if (statusDot) {
+                statusDot.className = 'status-dot pending';
+            }
+            
+            // Garantir que overlays não fiquem visíveis indefinidamente
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+    }
+}
+
+// Função para remover todos os loaders quando houver erro
+function removerTodosLoaders() {
+    console.log('[removerTodosLoaders] Removendo todos os loaders...');
+    
+    // Remover texto "Carregando..." de todos os status
+    for (let i = 1; i <= 7; i++) {
+        const statusText = document.querySelector(`#status-${i} .status-text`);
+        if (statusText && statusText.textContent === 'Carregando...') {
+            statusText.textContent = 'Disponível';
+        }
+        
+        // Garantir que overlays não fiquem visíveis
+        const overlay = document.getElementById(`overlay-${i}`);
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.style.removeProperty('display'); // Remover inline style
+        }
+    }
+    
+    // Remover qualquer loading overlay global
+    const loadingOverlays = document.querySelectorAll('.loading-overlay');
+    loadingOverlays.forEach(overlay => overlay.remove());
 }
 
 // Adicionar indicador de modo edição (mantido para compatibilidade)
@@ -1487,6 +1839,11 @@ async function abrirCriacaoPlanejamento(usuarioId) {
                 position: window.getComputedStyle(modal).position
             });
             
+            // Mostrar o modal com todas as propriedades necessárias
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '200000';
             modal.classList.add('visible');
             document.body.style.overflow = 'hidden';
             
@@ -1540,6 +1897,49 @@ async function abrirEdicaoPlanejamento(usuarioId) {
             return;
         }
         
+        // NOVA VALIDAÇÃO: Verificar treinos perdidos antes de abrir o modal
+        console.log('[abrirEdicaoPlanejamento] Verificando treinos perdidos...');
+        const validationResult = await WeeklyPlanningValidationService.validateWeeklyPlan();
+        
+        if (validationResult.hasIssues && validationResult.needsAttention) {
+            console.log('[abrirEdicaoPlanejamento] Treinos perdidos detectados, mostrando modal de ajuste...');
+            
+            // Mostrar modal de ajuste primeiro
+            WeeklyPlanningValidationService.showPlanAdjustmentModal(validationResult);
+            
+            // Adicionar listener para quando o modal for fechado
+            const checkModalClosed = setInterval(() => {
+                const modal = document.querySelector('.plan-adjustment-modal-overlay');
+                if (!modal) {
+                    clearInterval(checkModalClosed);
+                    // Continuar com a edição após o modal ser fechado
+                    continuarEdicaoPlanejamento(usuarioId);
+                }
+            }, 100);
+            
+            return; // Parar aqui e continuar apenas após o modal ser tratado
+        }
+        
+        // Se não há problemas, continuar normalmente
+        await continuarEdicaoPlanejamento(usuarioId);
+        
+    } catch (error) {
+        console.error('[abrirEdicaoPlanejamento] Erro:', error);
+        
+        // Tratamento específico de erros
+        if (error.message && error.message.includes('Failed to fetch')) {
+            showNotification('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
+        } else if (error.message && error.message.includes('CORS')) {
+            showNotification('Erro de configuração. Contate o administrador.', 'error');
+        } else {
+            showNotification('Erro ao carregar planejamento para edição: ' + (error.message || error), 'error');
+        }
+    }
+}
+
+// Nova função auxiliar para continuar a edição após validação
+async function continuarEdicaoPlanejamento(usuarioId) {
+    try {
         // Renderizar template de planejamento
         if (window.renderTemplate) {
             await window.renderTemplate('planejamentoSemanalPage');
@@ -1554,22 +1954,19 @@ async function abrirEdicaoPlanejamento(usuarioId) {
         // Exibir modal
         const modal = document.getElementById('modalPlanejamento');
         if (modal) {
+            // Mostrar o modal com todas as propriedades necessárias
             modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.zIndex = '200000';
+            modal.classList.add('visible');
             document.body.style.overflow = 'hidden';
-            console.log('[abrirEdicaoPlanejamento] Modal de edição exibido');
+            console.log('[continuarEdicaoPlanejamento] Modal de edição exibido');
         }
         
     } catch (error) {
-        console.error('[abrirEdicaoPlanejamento] Erro:', error);
-        
-        // Tratamento específico de erros
-        if (error.message && error.message.includes('Failed to fetch')) {
-            showNotification('Erro de conexão. Verifique sua internet e tente novamente.', 'error');
-        } else if (error.message && error.message.includes('CORS')) {
-            showNotification('Erro de configuração. Contate o administrador.', 'error');
-        } else {
-            showNotification('Erro ao carregar planejamento para edição: ' + (error.message || error), 'error');
-        }
+        console.error('[continuarEdicaoPlanejamento] Erro:', error);
+        showNotification('Erro ao continuar edição de planejamento', 'error');
     }
 }
 

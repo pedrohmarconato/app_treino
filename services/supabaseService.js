@@ -20,15 +20,28 @@
  * CONFIGURAÇÃO: Lê credenciais de window.SUPABASE_CONFIG (definido em config.js)
  */
 
-// Verificar se as configurações estão disponíveis
-if (!window.SUPABASE_CONFIG) {
-    console.error('SUPABASE_CONFIG não encontrado!');
+// Aguardar configuração estar disponível
+function waitForSupabaseConfig() {
+    return new Promise((resolve) => {
+        if (window.SUPABASE_CONFIG) {
+            resolve();
+            return;
+        }
+        
+        const checkConfig = () => {
+            if (window.SUPABASE_CONFIG) {
+                console.log('[SUPABASE] Configuração carregada:', {
+                    url: window.SUPABASE_CONFIG.url,
+                    hasKey: !!window.SUPABASE_CONFIG.key
+                });
+                resolve();
+            } else {
+                setTimeout(checkConfig, 50);
+            }
+        };
+        checkConfig();
+    });
 }
-
-console.log('Configuração Supabase:', {
-    url: window.SUPABASE_CONFIG?.url,
-    hasKey: !!window.SUPABASE_CONFIG?.key
-});
 
 // Estado de conectividade
 let connectionStatus = {
@@ -37,25 +50,56 @@ let connectionStatus = {
     retryCount: 0
 };
 
-const supabase = window.supabase.createClient(
-    window.SUPABASE_CONFIG.url, 
-    window.SUPABASE_CONFIG.key,
-    {
-        realtime: {
-            enabled: false
-        },
-        auth: {
-            persistSession: false,
-            autoRefreshToken: false
-        }
+let supabase;
+
+// Função para obter cliente Supabase
+async function getSupabaseClient() {
+    if (supabase) return supabase;
+    
+    await waitForSupabaseConfig();
+    
+    if (!window.SUPABASE_CONFIG.url || !window.SUPABASE_CONFIG.key) {
+        console.warn('[supabaseService] ⚠️ Configuração do Supabase incompleta');
+        return null;
     }
-);
+    
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+        try {
+            supabase = window.supabase.createClient(
+                window.SUPABASE_CONFIG.url,
+                window.SUPABASE_CONFIG.key,
+                {
+                    realtime: { enabled: false },
+                    auth: { persistSession: false, autoRefreshToken: false }
+                }
+            );
+            console.log('[supabaseService] ✅ Cliente Supabase criado com sucesso');
+            return supabase;
+        } catch (error) {
+            console.error('[supabaseService] ❌ Erro ao criar cliente Supabase:', error);
+            return null;
+        }
+    } else if (window.supabase && typeof window.supabase.from === 'function') {
+        // supabase already initialized (client), reuse it
+        supabase.auth.setRedirectUrl('http://localhost:3000');
+        supabase = window.supabase;
+        console.log('[supabaseService] ✅ Reutilizando cliente Supabase existente');
+        return supabase;
+    } else {
+        console.warn('[supabaseService] ⚠️ Biblioteca Supabase não encontrada');
+        return null;
+    }
+}
 
 // Teste inicial de conectividade
 async function testConnection() {
     try {
         console.log('[Supabase] Testando conectividade...');
-        const { error } = await supabase.from('usuarios').select('count').limit(1);
+        const client = await getSupabaseClient();
+        if (!client) {
+            throw new Error('Cliente Supabase não inicializado');
+        }
+        const { error } = await client.from('usuarios').select('count').limit(1);
         
         if (error) {
             console.error('[Supabase] Erro no teste de conectividade:', error);
@@ -185,6 +229,19 @@ export async function safeQuery(queryFn, options = {}) {
 export async function query(table, options = {}) {
     console.log(`[query] Consultando tabela: ${table}`, options);
     
+    // Verificar se o cliente Supabase existe
+    const client = await getSupabaseClient();
+    if (!client) {
+        console.error('[query] Cliente Supabase não está disponível');
+        return {
+            data: null,
+            error: {
+                message: 'Cliente Supabase não inicializado',
+                code: 'CLIENT_NOT_INITIALIZED'
+            }
+        };
+    }
+    
     // Verificar conectividade antes de tentar
     if (!connectionStatus.isOnline && !navigator.onLine) {
         console.warn('[query] Sem conectividade - abortando query');
@@ -199,7 +256,7 @@ export async function query(table, options = {}) {
     }
     
     try {
-        let q = supabase.from(table);
+        let q = client.from(table);
         
         // Sempre usar select() primeiro
         if (options.select) {
@@ -255,6 +312,18 @@ export async function query(table, options = {}) {
 }
 
 export async function insert(table, data) {
+    // Verificar se o cliente Supabase existe
+    if (!supabase) {
+        console.error('[insert] Cliente Supabase não está disponível');
+        return {
+            data: null,
+            error: {
+                message: 'Cliente Supabase não inicializado',
+                code: 'CLIENT_NOT_INITIALIZED'
+            }
+        };
+    }
+    
     try {
         console.log(`[insert] 📤 INICIANDO INSERT na tabela: ${table}`);
         console.log(`[insert] 📄 DADOS PARA INSERIR:`, JSON.stringify(data, null, 2));
@@ -284,6 +353,18 @@ export async function insert(table, data) {
 }
 
 export async function update(table, data, filters) {
+    // Verificar se o cliente Supabase existe
+    if (!supabase) {
+        console.error('[update] Cliente Supabase não está disponível');
+        return {
+            data: null,
+            error: {
+                message: 'Cliente Supabase não inicializado',
+                code: 'CLIENT_NOT_INITIALIZED'
+            }
+        };
+    }
+    
     try {
         console.log(`[supabaseService] update chamado:`, { table, data, filters });
         

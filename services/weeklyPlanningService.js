@@ -26,7 +26,7 @@
  */
 
 import { query, insert, update, supabase } from './supabaseService.js';
-import { nowInSaoPaulo, toSaoPauloDateString, toSaoPauloISOString } from '../utils/timezoneUtils.js';
+import { nowInSaoPaulo, toSaoPauloDateString } from '../utils/timezoneUtils.js';
 import { CalendarioService } from './calendarioService.js';
 
 // Verifica se a semana já está programada para o usuário e semana_treino
@@ -1431,59 +1431,6 @@ async function carregarStatusSemanasComCalendario(userId) {
     }
 }
 
-// Carregar status usando método tradicional
-async function carregarStatusSemanasTradicionais(userId) {
-    try {
-        // Buscar protocolo ativo para saber quantas semanas existem
-        const { fetchProtocoloAtivoUsuario } = await import('./userService.js');
-        const protocoloAtivo = await fetchProtocoloAtivoUsuario(userId);
-        if (!protocoloAtivo) {
-            console.log('[carregarStatusSemanasTradicionais] Nenhum protocolo ativo');
-            return [];
-        }
-        
-        // Buscar planejamentos existentes
-        const { data: planejamentos } = await query('planejamento_semanal', {
-            eq: { usuario_id: userId },
-            select: 'ano, semana, dia_semana, concluido',
-            order: { column: 'ano', ascending: true }
-        });
-        
-        // Agrupar por semana e calcular status
-        const semanas = {};
-        const { ano: anoAtual, semana: semanaAtual } = WeeklyPlanService.getCurrentWeek();
-        
-        if (planejamentos) {
-            planejamentos.forEach(p => {
-                const chave = `${p.ano}_${p.semana}`;
-                if (!semanas[chave]) {
-                    semanas[chave] = {
-                        ano: p.ano,
-                        semana: p.semana,
-                        semana_treino: protocoloAtivo.semana_atual || 1,
-                        semana_programada: true,
-                        eh_semana_atual: p.ano === anoAtual && p.semana === semanaAtual,
-                        dias_concluidos: 0,
-                        total_dias: 0,
-                        fonte: 'tradicional'
-                    };
-                }
-                semanas[chave].total_dias++;
-                if (p.concluido) {
-                    semanas[chave].dias_concluidos++;
-                }
-            });
-        }
-        
-        const resultado = Object.values(semanas);
-        console.log('[carregarStatusSemanasTradicionais] Status calculado:', resultado);
-        
-        return resultado;
-    } catch (error) {
-        console.error('[carregarStatusSemanasTradicionais] Erro:', error);
-        return [];
-    }
-}
 
 // ... (restante do código)
 
@@ -1600,20 +1547,6 @@ export async function testarCorrecoesErro406(userId = null) {
     }
 }
 
-// Obter semana do protocolo do usuário (ao invés da semana do calendário)
-async function obterSemanaProtocoloUsuario(userId) {
-    try {
-        const { data: planoUsuario } = await query('usuario_plano_treino', {
-            select: 'semana_atual',
-            eq: { usuario_id: userId, status: 'ativo' },
-            single: true
-        });
-        return planoUsuario?.semana_atual || 1;
-    } catch (error) {
-        console.warn('[obterSemanaProtocoloUsuario] Erro ao buscar semana do protocolo:', error);
-        return 1; // Default para semana 1
-    }
-}
 
 // Verificar se treino de hoje está concluído (com verificação de exercícios executados)
 export async function verificarTreinoConcluido(userId) {

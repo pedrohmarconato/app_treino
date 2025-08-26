@@ -30,3 +30,34 @@ window.SUPABASE_CONFIG = {
   url: 'https://ktfmktecvllyiqfkavdn.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0Zm1rdGVjdmxseWlxZmthdmRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwNDQ2OTAsImV4cCI6MjA2MzYyMDY5MH0.PgEnBgtdITsb_G_ycSOaXOmkwNfpvIWVOOAsVrm2zCY'
 };
+
+// Inicializar cliente Supabase assim que o script carregar
+if (typeof window !== 'undefined' && window.supabase && window.SUPABASE_CONFIG) {
+  console.log('[config.js] 🔧 Inicializando cliente Supabase...');
+  
+  try {
+    // Criar cliente Supabase
+    window.supabase = window.supabase.createClient(
+      window.SUPABASE_CONFIG.url,
+      window.SUPABASE_CONFIG.key
+    );
+    
+    console.log('[config.js] ✅ Cliente Supabase inicializado com sucesso');
+    
+    // Testar conexão básica
+    window.supabase.from('usuarios').select('count').limit(1).then(result => {
+      if (result.error) {
+        console.warn('[config.js] ⚠️ Teste de conexão falhou:', result.error.message);
+      } else {
+        console.log('[config.js] ✅ Conexão com banco confirmada');
+      }
+    }).catch(error => {
+      console.warn('[config.js] ⚠️ Erro no teste de conexão:', error.message);
+    });
+    
+  } catch (error) {
+    console.error('[config.js] ❌ Erro ao inicializar Supabase:', error);
+  }
+} else {
+  console.warn('[config.js] ⚠️ Supabase library não encontrada ou configuração inválida');
+}

@@ -33,14 +33,41 @@ import { workoutStyles } from './workout.js';
 import { planejamentoSemanalPageTemplate } from './planejamentoSemanalPage.js';
 import { MetricsWidget, metricsWidgetStyles } from '../components/MetricsWidget.js';
 
+// Correção: Inicializar variáveis para evitar ReferenceError caso não estejam definidas
+const safe = (v, fallback) => (typeof v !== 'undefined' ? v : fallback);
+
+const _loginTemplate = safe(loginTemplate, () => '<div>Login template não disponível</div>');
+const _loginStyles = safe(loginStyles, '');
+const _homeTemplate = safe(homeTemplate, () => '<div>Home template não disponível</div>');
+const _homeStyles = safe(homeStyles, '');
+const _workoutTemplate = safe(workoutTemplate, () => '<div>Workout template não disponível</div>');
+const _workoutStyles = safe(workoutStyles, '');
+const _modalPlanejamentoTemplate = safe(modalPlanejamentoTemplate, () => '<div>Modal planejamento não disponível</div>');
+const _modalPlanejamentoStyles = safe(modalPlanejamentoStyles, '');
+const _planejamentoSemanalPageTemplate = safe(planejamentoSemanalPageTemplate, () => '<div>Planejamento semanal não disponível</div>');
+const _metricsWidgetStyles = safe(metricsWidgetStyles, '');
+
+
 // Exportar componentes globalmente
-window.modalPlanejamentoTemplate = modalPlanejamentoTemplate;
-window.modalPlanejamentoStyles = modalPlanejamentoStyles;
-window.planejamentoSemanalPageTemplate = planejamentoSemanalPageTemplate;
+window.modalPlanejamentoTemplate = _modalPlanejamentoTemplate;
+window.modalPlanejamentoStyles = _modalPlanejamentoStyles;
+window.planejamentoSemanalPageTemplate = _planejamentoSemanalPageTemplate;
 window.MetricsWidget = MetricsWidget;
 
 // Função principal para renderizar templates
 export async function renderTemplate(templateName, container = 'app') {
+    // Usar variáveis seguras
+    const loginTemplate = _loginTemplate;
+    const loginStyles = _loginStyles;
+    const homeTemplate = _homeTemplate;
+    const homeStyles = _homeStyles;
+    const workoutTemplate = _workoutTemplate;
+    const workoutStyles = _workoutStyles;
+    const modalPlanejamentoTemplate = _modalPlanejamentoTemplate;
+    const modalPlanejamentoStyles = _modalPlanejamentoStyles;
+    const planejamentoSemanalPageTemplate = _planejamentoSemanalPageTemplate;
+    const metricsWidgetStyles = _metricsWidgetStyles;
+
     console.log('[renderTemplate] Renderizando template:', templateName);
     
     const containerEl = typeof container === 'string' 
@@ -58,16 +85,103 @@ export async function renderTemplate(templateName, container = 'app') {
         
         switch(templateName) {
             case 'login': {
+                // Evitar múltiplas renderizações do login
+                if (document.getElementById('login-screen')) {
+                    console.warn('[renderTemplate] Login já está presente no DOM, ignorando nova renderização.');
+                    break;
+                }
                 console.log('[renderTemplate] Renderizando login');
                 containerEl.innerHTML = loginTemplate();
-                
+
+                // Função auxiliar para anexar handlers dos botões da tela de login
+                const attachLoginHandlers = () => {
+                    try {
+                        const forgotBtn = document.getElementById('forgot-password-btn');
+                        const signupBtn = document.getElementById('cadastrar-usuario-btn');
+                        const emailInput = document.getElementById('email-input');
+
+                        if (forgotBtn) {
+                            // Evitar múltiplos listeners
+                            forgotBtn.replaceWith(forgotBtn.cloneNode(true));
+                            const freshForgotBtn = document.getElementById('forgot-password-btn');
+                            freshForgotBtn.addEventListener('click', async (e) => {
+                                try {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                                    const prefilledEmail = emailInput ? emailInput.value.trim() : '';
+                                    console.log('[login] Clique em "Esqueci minha senha"', { prefilledEmail });
+
+                                    if (typeof window.abrirRecuperacaoSenha === 'function') {
+                                        await window.abrirRecuperacaoSenha(prefilledEmail);
+                                    } else {
+                                        // Fallback: importar modal diretamente
+                                        const { default: ForgotPasswordModal } = await import('../components/ForgotPasswordModal.js');
+                                        const forgotModal = new ForgotPasswordModal();
+                                        const result = await forgotModal.show(prefilledEmail);
+                                        if (result?.success && window.showNotification) {
+                                            window.showNotification(`Email enviado para ${result.email}! Verifique sua caixa de entrada.`, 'success');
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.error('[login] Erro ao abrir recuperação de senha:', err);
+                                    if (window.showNotification) {
+                                        window.showNotification('Erro ao abrir recuperação de senha', 'error');
+                                    }
+                                }
+                            }, { passive: false });
+                        } else {
+                            console.warn('[login] Botão "Esqueci minha senha" não encontrado');
+                        }
+
+                        if (signupBtn) {
+                            // Evitar múltiplos listeners
+                            signupBtn.replaceWith(signupBtn.cloneNode(true));
+                            const freshSignupBtn = document.getElementById('cadastrar-usuario-btn');
+                            freshSignupBtn.addEventListener('click', async (e) => {
+                                try {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                                    console.log('[login] Clique em "Criar nova conta"');
+
+                                    if (typeof window.abrirModalCadastro === 'function') {
+                                        await window.abrirModalCadastro();
+                                    } else {
+                                        // Fallback: importar modal diretamente
+                                        const { default: CadastroUsuarioModal } = await import('../components/CadastroUsuarioModal.js');
+                                        const cadastroModal = new CadastroUsuarioModal();
+                                        await cadastroModal.show();
+                                    }
+                                } catch (err) {
+                                    console.error('[login] Erro ao abrir cadastro:', err);
+                                    if (window.showNotification) {
+                                        window.showNotification('Erro ao abrir cadastro de usuário', 'error');
+                                    }
+                                }
+                            }, { passive: false });
+                        } else {
+                            console.warn('[login] Botão "Criar nova conta" não encontrado');
+                        }
+
+                        console.log('[login] ✅ Handlers anexados aos botões de login');
+                    } catch (error) {
+                        console.error('[login] ❌ Falha ao anexar handlers do login:', error);
+                    }
+                };
+
                 // Garantir que a tela de login fique visível
                 // Força o DOM a ser atualizado antes de procurar o elemento
                 containerEl.offsetHeight; // Força reflow
                 const loginScreen = document.getElementById('login-screen');
                 if (loginScreen) {
                     loginScreen.classList.add('active');
+                    loginScreen.style.pointerEvents = 'auto';
+                    loginScreen.style.position = 'relative';
+                    loginScreen.style.zIndex = '1';
                     console.log('[renderTemplate] ✅ Classe "active" adicionada à tela login');
+                    // Anexar handlers dos botões
+                    attachLoginHandlers();
                 } else {
                     console.warn('[renderTemplate] ⚠️ Elemento #login-screen não encontrado');
                     // Tentar novamente com timeout
@@ -75,7 +189,12 @@ export async function renderTemplate(templateName, container = 'app') {
                         const loginScreenDelayed = document.getElementById('login-screen');
                         if (loginScreenDelayed) {
                             loginScreenDelayed.classList.add('active');
+                            loginScreenDelayed.style.pointerEvents = 'auto';
+                            loginScreenDelayed.style.position = 'relative';
+                            loginScreenDelayed.style.zIndex = '1';
                             console.log('[renderTemplate] ✅ Classe "active" adicionada à tela login (com delay)');
+                            // Anexar handlers após render tardio
+                            attachLoginHandlers();
                         }
                     }, 10);
                 }
@@ -191,7 +310,12 @@ export async function renderTemplate(templateName, container = 'app') {
                     }
                 }, 50);
                 
-                console.log('[renderTemplate] ✅ Template de planejamento renderizado, aguardando inicialização externa');
+                console.log('[renderTemplate] ✅ Template de planejamento renderizado');
+                
+                // NOTA: inicializarPlanejamento deve ser chamado explicitamente após renderTemplate
+                // pelos fluxos que abrem o modal (abrirEdicaoPlanejamento, abrirCriacaoPlanejamento, etc)
+                console.log('[renderTemplate] Aguardando chamada externa de inicializarPlanejamento...');
+                
                 break;
             }
             
@@ -230,7 +354,11 @@ export async function renderTemplate(templateName, container = 'app') {
         
         if (templateName !== 'login') {
             console.log('[renderTemplate] Fallback por erro: renderizando login');
-            setTimeout(() => renderTemplate('login'), 500);
+            if (!document.getElementById('login-screen')) {
+                setTimeout(() => renderTemplate('login'), 500);
+            } else {
+                console.warn('[renderTemplate] (timeout fallback) Login já está presente no DOM, não renderizando novamente.');
+            }
         }
     }
 }
@@ -247,7 +375,11 @@ async function initializeHomeComponents() {
             console.warn('[initializeHomeComponents] ❌ Nenhum usuário logado');
             console.log('[initializeHomeComponents] AppState atual:', window.AppState?.state);
             console.log('[initializeHomeComponents] Redirecionando para login em 500ms...');
-            setTimeout(() => renderTemplate('login'), 500);
+            if (!document.getElementById('login-screen')) {
+                setTimeout(() => renderTemplate('login'), 500);
+            } else {
+                console.warn('[renderTemplate] (timeout fallback) Login já está presente no DOM, não renderizando novamente.');
+            }
             return;
         }
         
@@ -490,6 +622,13 @@ function setupHomeAnimations() {
 
 // Função para injetar estilos dos templates
 export function injectTemplateStyles() {
+    // Usar variáveis seguras
+    const loginStyles = _loginStyles;
+    const homeStyles = _homeStyles;
+    const workoutStyles = _workoutStyles;
+    const modalPlanejamentoStyles = _modalPlanejamentoStyles;
+    const metricsWidgetStyles = _metricsWidgetStyles;
+
     const styleId = 'template-styles';
     
     // Remove estilos anteriores se existirem

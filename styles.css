@@ -1,3 +1,6 @@
+/* Import z-index variables */
+@import url('./css/z-index-variables.css');
+
 :root {
   /* Dark Theme Colors */
   --bg-primary: #101010;
@@ -1239,7 +1242,7 @@ button {
   padding: 16px 24px;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  z-index: 999999;
+  z-index: var(--z-toast);
   transition: transform 0.3s ease;
   min-width: 300px;
   text-align: center;
@@ -2584,6 +2587,273 @@ button {
 }
 
 /* ========================================
+   ESTILOS PARA DIAS PASSADOS E BLOQUEADOS
+   ======================================== */
+
+/* Container para dias passados */
+.quick-edit-modal-container.past-day {
+    border: 2px solid #dc2626;
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.3);
+    opacity: 0.8;
+}
+
+/* Container para dias bloqueados */
+.quick-edit-modal-container.blocked-day {
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+/* Status badges para novos estados */
+.status-badge.past {
+    background: rgba(220, 38, 38, 0.15);
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.status-badge.blocked {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Mensagem de restrição com estilo diferenciado */
+.warning-message.restriction {
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.warning-message.restriction .warning-title {
+    color: #dc2626;
+}
+
+/* Opções desabilitadas globalmente */
+.quick-edit-options.disabled-options {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.quick-edit-option.globally-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-dark);
+}
+
+.quick-edit-option.globally-disabled:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border-dark);
+    transform: none;
+}
+
+/* Status para opções bloqueadas */
+.option-status.blocked {
+    color: #dc2626;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+/* ========================================
+   ESTILOS PARA BOTÕES COM AVISO NO PLANEJAMENTO
+   ======================================== */
+
+.btn-adicionar.warning {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    border-color: #f59e0b !important;
+    color: #f59e0b !important;
+}
+
+.btn-adicionar.warning:hover {
+    background-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+/* ========================================
+   MODAL DE AJUSTE DO PLANO SEMANAL
+   ======================================== */
+
+.plan-adjustment-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+.plan-adjustment-modal {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    border: 2px solid var(--accent-primary);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.plan-adjustment-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.plan-adjustment-modal .modal-header h3 {
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.plan-adjustment-modal .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: var(--transition-fast);
+}
+
+.plan-adjustment-modal .close-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.issues-section, .suggestions-section {
+    margin-bottom: 25px;
+}
+
+.issues-section h4, .suggestions-section h4 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.issues-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.issue-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+}
+
+.issue-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.issue-text {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: var(--radius-sm);
+}
+
+.suggestion-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.suggestion-text {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    flex: 1;
+}
+
+.apply-suggestion-btn {
+    background: var(--accent-secondary);
+    color: var(--bg-primary);
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    white-space: nowrap;
+}
+
+.apply-suggestion-btn:hover {
+    background: #00e676;
+    transform: translateY(-1px);
+}
+
+.apply-suggestion-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.apply-suggestion-btn.applied {
+    background: #22c55e;
+    color: white;
+}
+
+.plan-adjustment-modal .modal-footer {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.auto-adjust-btn {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.auto-adjust-btn:hover {
+    background: var(--accent-primary-bright);
+    box-shadow: var(--shadow-glow);
+}
+
+.auto-adjust-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ========================================
    POPUP STYLES FOR PLANNING SCREEN
    ======================================== */
 
@@ -3906,7 +4176,7 @@ button:focus-visible {
     backdrop-filter: blur(10px);
     padding: 20px;
     box-sizing: border-box;
-    z-index: 999999 !important;
+    z-index: var(--z-critical) !important;
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -5006,7 +5276,7 @@ button:focus-visible {
     bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 999999;
+    z-index: var(--z-toast);
     animation: slideUp 0.3s ease;
 }
 

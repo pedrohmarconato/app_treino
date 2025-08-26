@@ -2,26 +2,59 @@
 export const loginTemplate = () => `
     <div id="login-screen" class="screen">
         <div class="login-container">
+            <!-- Container de efeitos será adicionado via JS -->
+            
             <div class="login-header">
                 <div class="logo-container">
-                    <div class="brand-logos">
-                        <img src="./icons/logo.png" alt="Logo" class="brand-logo main-logo">
-                    </div>
+                    <img src="./icons/logo.png" alt="Logo" class="brand-logo">
                 </div>
                 <p>Bem-vindo ao seu treino</p>
             </div>
             
-            <!-- Container para usuários com estrutura correta -->
-            <div class="users-grid" id="users-grid">
-                <!-- Placeholder temporário -->
-                <div class="loading-users">Carregando usuários...</div>
-            </div>
+            <!-- Formulário de login -->
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="email-input">Email</label>
+                    <input type="email" id="email-input" required placeholder="seu@email.com" autocomplete="email" />
+                </div>
+                <div class="form-group">
+                    <label for="password-input">Senha</label>
+                    <input type="password" id="password-input" required placeholder="••••••••" autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn-login-submit">
+                    <span class="btn-text">Entrar</span>
+                </button>
+                
+                <div class="login-options">
+                    <button type="button" id="forgot-password-btn" class="btn-forgot-password">
+                        Esqueci minha senha
+                    </button>
+                </div>
+                
+                <button type="button" id="cadastrar-usuario-btn" class="btn-new-user">
+                    <span class="btn-icon">+</span>
+                    <span class="btn-text">Criar nova conta</span>
+                </button>
+            </form>
         </div>
     </div>
 `;
 
+
 // ADICIONAR estilos específicos para garantir que apareçam
 export const loginStyles = `
+    /* ===== VARIÁVEIS DE DESIGN ===== */
+    :root {
+        --login-primary: #CFFF04;
+        --login-secondary: #101010;
+        --login-accent: #1a1a1a;
+        --login-glass: rgba(255, 255, 255, 0.05);
+        --login-border: rgba(255, 255, 255, 0.1);
+        --login-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
+        --login-gradient: #0a0a0a;
+    }
+    
+    /* ===== CONTAINER PRINCIPAL ===== */
     .login-container {
         min-height: 100vh;
         display: flex;
@@ -29,427 +62,302 @@ export const loginStyles = `
         align-items: center;
         justify-content: center;
         padding: 24px;
-        background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        background: var(--login-gradient);
+        position: relative;
+        overflow: hidden;
     }
+    
+    /* Fundo limpo sem efeitos */
 
+    /* ===== HEADER E LOGO ===== */
     .login-header {
         text-align: center;
         margin-bottom: 48px;
+        position: relative;
+        z-index: 2;
     }
 
     .logo-container {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 16px;
-        margin-bottom: 8px;
+        margin-bottom: 24px;
+        position: relative;
     }
 
-    .brand-logos {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-    }
-
+    /* Logo com efeito glassmorphism */
     .brand-logo {
-        height: 56px;
-        width: auto;
-        filter: drop-shadow(0 0 15px var(--accent-green)) brightness(1.2);
-        animation: logoPulse 2s ease-in-out infinite;
-        transition: all 0.3s ease;
-    }
-    .main-logo {
         height: 120px;
         width: auto;
-        max-width: 90vw;
+        filter: brightness(1.1);
+        position: relative;
+        z-index: 2;
     }
-
-    .brand-logo:hover {
-        transform: scale(1.1);
-        filter: drop-shadow(0 0 25px var(--accent-green)) brightness(1.4);
-    }
-
-    .ff-logo {
-        animation-delay: 0s;
-    }
-
-    .forca-logo {
-        animation-delay: 0.5s;
-    }
-
-    @keyframes logoPulse {
-        0%, 100% { filter: drop-shadow(0 0 12px var(--accent-green)) brightness(1.2); }
-        50% { filter: drop-shadow(0 0 20px var(--accent-green)) brightness(1.4); }
-    }
-
-    .login-header h1 {
-        margin: 0;
-        background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-green) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 2.5rem;
-        text-shadow: 0 0 20px rgba(207, 255, 4, 0.3);
-        font-weight: 900;
-        letter-spacing: 2px;
-    }
+    
+    /* Logo sem efeitos */
 
     .login-header p {
-        color: var(--text-secondary);
-        font-size: 1.125rem;
-    }
-
-    .users-grid {
-        display: flex;
-        gap: 24px;
-        margin-bottom: 32px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    .loading-users {
-        color: var(--text-secondary);
-        font-size: 1rem;
-        padding: 20px;
-    }
-
-    .user-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-lg);
-        padding: 32px 24px;
-        cursor: pointer;
-        transition: var(--transition);
-        text-align: center;
-        border: 2px solid transparent;
-        position: relative;
-        overflow: hidden;
-        min-width: 200px;
-    }
-
-    .user-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: radial-gradient(circle at center, var(--accent-green-bg) 0%, transparent 70%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .user-card:hover {
-        transform: translateY(-4px);
-        border-color: var(--accent-green);
-        box-shadow: var(--shadow-lg);
-    }
-
-    .user-card:hover::before {
-        opacity: 1;
-    }
-
-    .user-avatar {
-        width: 120px;
-        height: 120px;
-        border-radius: var(--radius-full);
-        margin: 0 auto 16px;
-        overflow: hidden;
-        border: 3px solid var(--border-color);
-        position: relative;
-        z-index: 1;
-    }
-
-    .user-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .user-card h3 {
-        font-size: 1.125rem;
-        margin-bottom: 4px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .user-card p {
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-        position: relative;
-        z-index: 1;
-    }
-
-    .no-users {
-        text-align: center;
-        color: var(--text-secondary);
-        padding: 40px 20px;
-    }
-
-    .no-users p {
-        margin-bottom: 20px;
-        font-size: 1.1rem;
-    }
-    
-    /* ===== ESTILOS DO MODAL DE CADASTRO ===== */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.2s ease;
-    }
-    
-    .modal-container {
-        background: white;
-        border-radius: 12px;
-        max-width: 400px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        animation: slideIn 0.3s ease;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    @keyframes slideIn {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    
-    @keyframes fadeOut {
-        from { opacity: 1; }
-        to { opacity: 0; }
-    }
-    
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-    
-    .modal-header {
-        padding: 20px 24px 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #eee;
-        margin-bottom: 0;
-        padding-bottom: 16px;
-    }
-    
-    .modal-header h2 {
-        margin: 0;
+        color: rgba(255, 255, 255, 0.8);
         font-size: 1.25rem;
-        color: #333;
-        font-weight: 600;
+        font-weight: 300;
+        letter-spacing: 1px;
+        margin: 0;
+        animation: fadeInUp 0.8s ease-out;
     }
     
-    .modal-close {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #666;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        transition: all 0.2s ease;
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ===== FORMULÁRIO DE LOGIN ===== */
+    .login-form {
+        width: 100%;
+        max-width: 400px;
+        background: var(--login-glass);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--login-border);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: var(--login-shadow);
+        position: relative;
+        z-index: 2;
+        /* Sem animação */
     }
     
-    .modal-close:hover {
-        background: #f5f5f5;
-        color: #333;
-    }
+    /* Animação removida */
     
-    .modal-body {
-        padding: 20px 24px;
-    }
+    /* Remover efeito hover do form */
     
+    /* ===== FORM GROUPS ===== */
     .form-group {
-        margin-bottom: 16px;
+        margin-bottom: 24px;
+        position: relative;
     }
     
     .form-group label {
         display: block;
-        margin-bottom: 6px;
-        font-weight: 500;
-        color: #333;
+        color: rgba(255, 255, 255, 0.9);
         font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+        transition: color 0.3s ease;
     }
     
-    .form-group input[type="text"],
-    .form-group input[type="email"],
-    .form-group input[type="date"] {
+    .form-group:focus-within label {
+        color: var(--login-primary);
+    }
+    
+    .form-group input {
         width: 100%;
-        padding: 12px;
-        border: 2px solid #ddd;
-        border-radius: 8px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: white;
         font-size: 16px;
-        transition: border-color 0.2s ease;
-        background: white;
+        transition: all 0.3s ease;
         box-sizing: border-box;
+    }
+    
+    .form-group input::placeholder {
+        color: rgba(255, 255, 255, 0.3);
     }
     
     .form-group input:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        border-color: var(--login-primary);
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 0 4px rgba(207, 255, 4, 0.1);
     }
     
-    .form-group input:invalid {
-        border-color: #dc3545;
+    /* Animação de entrada nos inputs */
+    .form-group input {
+        animation: inputSlideIn 0.5s ease-out both;
     }
     
-    .error-message {
-        color: #dc3545;
-        font-size: 12px;
-        margin-top: 4px;
-        min-height: 16px;
-        display: block;
+    .form-group:nth-child(1) input {
+        animation-delay: 0.3s;
     }
     
-    .checkbox-container {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        line-height: 1.4;
+    .form-group:nth-child(2) input {
+        animation-delay: 0.4s;
     }
     
-    .checkbox-container input[type="checkbox"] {
-        margin: 0;
-        margin-top: 2px;
+    @keyframes inputSlideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
     }
     
-    .checkbox-text {
-        flex: 1;
-        color: #555;
-    }
-    
-    .modal-footer {
-        padding: 0 24px 24px;
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        border-top: 1px solid #eee;
-        margin-top: 0;
-        padding-top: 16px;
-    }
-    
-    .btn-secondary {
-        background: #f8f9fa;
-        color: #6c757d;
-        border: 1px solid #dee2e6;
-        padding: 10px 20px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    
-    .btn-secondary:hover {
-        background: #e9ecef;
-        color: #495057;
-    }
-    
-    .btn-primary {
-        background: #007bff;
-        color: white;
+    /* ===== BOTÕES ===== */
+    .btn-login-submit, .btn-new-user {
+        width: 100%;
+        padding: 16px 24px;
         border: none;
-        padding: 10px 20px;
-        border-radius: 6px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
         cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 16px;
     }
     
-    .btn-primary:hover:not(:disabled) {
-        background: #0056b3;
+    /* ===== OPÇÕES DE LOGIN ===== */
+    .login-options {
+        display: flex;
+        justify-content: center;
+        margin: 16px 0 24px 0;
+    }
+    
+    .btn-forgot-password {
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 8px 16px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        letter-spacing: 0.5px;
+    }
+    
+    .btn-forgot-password:hover {
+        color: var(--login-primary);
+        background: rgba(207, 255, 4, 0.1);
         transform: translateY(-1px);
     }
     
-    .btn-primary:disabled {
-        background: #6c757d;
-        cursor: not-allowed;
-        transform: none;
+    .btn-forgot-password:active {
+        transform: translateY(0);
     }
     
-    .btn-loading {
-        display: none;
+    .btn-login-submit {
+        background: linear-gradient(135deg, var(--login-primary), #b8e000);
+        color: var(--login-secondary);
+        box-shadow: 0 4px 20px rgba(207, 255, 4, 0.4);
+        animation: buttonFadeIn 0.5s ease-out 0.5s both;
     }
     
-    /* Toast notifications */
-    .toast-notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 10001;
-        padding: 12px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        font-size: 14px;
-        font-weight: 500;
-        max-width: 300px;
-        animation: slideInRight 0.3s ease;
+    .btn-login-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 30px rgba(207, 255, 4, 0.6);
     }
     
-    .toast-error {
-        background: #dc3545;
+    .btn-login-submit:active {
+        transform: translateY(0);
+    }
+    
+    /* Efeito de onda nos botões */
+    .btn-login-submit::before, .btn-new-user::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-login-submit:active::before, .btn-new-user:active::before {
+        width: 300px;
+        height: 300px;
+    }
+    
+    .btn-new-user {
+        background: transparent;
+        color: rgba(255, 255, 255, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        margin-bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        animation: buttonFadeIn 0.5s ease-out 0.6s both;
+    }
+    
+    .btn-new-user:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.4);
         color: white;
+        transform: translateY(-2px);
     }
     
-    .toast-success {
-        background: #28a745;
-        color: white;
+    @keyframes buttonFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
     
-    /* Responsividade do modal */
+    /* ===== RESPONSIVIDADE ===== */
     @media (max-width: 480px) {
-        .modal-container {
-            width: 95%;
-            margin: 20px;
+        .login-form {
+            padding: 32px 24px;
+            margin: 0 16px;
         }
         
-        .modal-header {
-            padding: 16px 20px 0;
+        .brand-logo {
+            height: 100px;
         }
         
-        .modal-body {
-            padding: 16px 20px;
+        .logo-container::before {
+            width: 150px;
+            height: 150px;
         }
         
-        .modal-footer {
-            padding: 0 20px 20px;
-            flex-direction: column-reverse;
+        .login-header p {
+            font-size: 1.1rem;
         }
         
-        .btn-secondary,
-        .btn-primary {
-            width: 100%;
-            justify-content: center;
+        .form-group input {
+            padding: 14px;
+            font-size: 15px;
         }
+        
+        .btn-login-submit, .btn-new-user {
+            padding: 14px 20px;
+            font-size: 15px;
+        }
+    }
+    
+    /* ===== ANIMAÇÃO DE LOADING ===== */
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid transparent;
+        border-top-color: currentColor;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
     }
 `;

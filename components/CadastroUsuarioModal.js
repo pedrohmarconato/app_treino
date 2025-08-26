@@ -27,59 +27,109 @@
  * - Foco gerenciado
  */
 
+import BaseModal from './BaseModal.js';
 import { cadastrarNovoUsuario } from '../services/userRegistrationService.js';
 import { logLGPDConsent, detectBotBehavior } from '../services/userValidationService.js';
 
-export default class CadastroUsuarioModal {
+export default class CadastroUsuarioModal extends BaseModal {
     constructor() {
+        super({
+            id: 'cadastro-usuario-modal',
+            title: 'Criar Nova Conta',
+            className: 'cadastro-usuario-modal',
+            closable: true,
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        
         this.startTime = Date.now();
-        this.modal = null;
-        this.resolve = null;
-        this.reject = null;
         this.formStartTime = null;
         this.fieldTimings = {};
+        this.isLoading = false;
+        
+        // Carregar CSS específico do modal
+        this.loadModalCSS();
     }
     
+    /**
+     * Carregar CSS específico do modal
+     */
+    loadModalCSS() {
+        if (!document.getElementById('cadastro-usuario-modal-css')) {
+            const link = document.createElement('link');
+            link.id = 'cadastro-usuario-modal-css';
+            link.rel = 'stylesheet';
+            link.href = 'css/cadastro-usuario-modal.css';
+            document.head.appendChild(link);
+        }
+    }
+
     /**
      * Exibir modal e retornar Promise com resultado
      */
     show() {
-        return new Promise((resolve, reject) => {
-            this.resolve = resolve;
-            this.reject = reject;
-            this.render();
-            this.bindEvents();
-            this.setupFieldTimings();
-            
-            // Track evento abertura modal
-            if (window.trackEvent) {
-                window.trackEvent('cadastro_modal_opened', {
-                    timestamp: Date.now(),
-                    user_agent: navigator.userAgent.slice(0, 50),
-                    viewport: `${window.innerWidth}x${window.innerHeight}`
-                });
+        console.log('[CadastroModal] 🎭 show() chamado');
+        
+        if (window.trackEvent) {
+            window.trackEvent('cadastro_modal_opened', {
+                timestamp: Date.now(),
+                user_agent: navigator.userAgent.slice(0, 50),
+                viewport: `${window.innerWidth}x${window.innerHeight}`
+            });
+        }
+        
+        return super.show({
+            onShow: () => {
+                // Focus no campo nome após exibição
+                const nomeField = this.element.querySelector('#nome');
+                if (nomeField) {
+                    nomeField.focus();
+                    this.formStartTime = Date.now();
+                }
+                
+                // Configurar tracking de timings
+                this.setupFieldTimings();
             }
         });
     }
     
     /**
-     * Renderizar HTML do modal
+     * Obter template HTML do modal
+     * @returns {string} HTML template
      */
-    render() {
-        const modalHTML = `
-            <div id="cadastro-modal-overlay" class="modal-overlay" role="dialog" aria-labelledby="modal-title" aria-modal="true">
-                <div class="modal-container">
-                    <div class="modal-header">
-                        <h2 id="modal-title">Cadastrar Novo Usuário</h2>
-                        <button type="button" class="modal-close" aria-label="Fechar modal" title="Fechar">&times;</button>
+    getTemplate() {
+        return `
+            <div class="modal-content-unified cadastro-usuario-content">
+                <div class="modal-header">
+                    <div class="header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
                     </div>
+                    <div class="header-text">
+                        <h2 id="${this.options.id}-title" class="modal-title">${this.options.title}</h2>
+                        <p class="header-subtitle">Preencha os dados para criar sua conta</p>
+                    </div>
+                    <button type="button" class="modal-close" aria-label="Fechar modal">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                
+                <form id="cadastro-form" class="modal-body" novalidate>
+                    <!-- Honeypot field - invisível para usuários -->
+                    <input type="text" name="website" id="website" class="honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
                     
-                    <form id="cadastro-form" class="modal-body" novalidate>
-                        <!-- Honeypot field - invisível para usuários -->
-                        <input type="text" name="website" id="website" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" tabindex="-1" autocomplete="off" aria-hidden="true">
-                        
-                        <div class="form-group">
-                            <label for="nome">Nome *</label>
+                    <div class="form-group">
+                        <label for="nome">Nome completo</label>
+                        <div class="input-container">
+                            <div class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </div>
                             <input type="text" 
                                    id="nome" 
                                    name="nome" 
@@ -87,12 +137,20 @@ export default class CadastroUsuarioModal {
                                    maxlength="50" 
                                    autocomplete="name" 
                                    aria-describedby="nome-error"
-                                   placeholder="Digite seu nome">
-                            <div id="nome-error" class="error-message" role="alert" aria-live="polite"></div>
+                                   placeholder="Digite seu nome completo">
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="email">Email *</label>
+                        <div id="nome-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <div class="input-container">
+                            <div class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                    <polyline points="22,6 12,13 2,6"/>
+                                </svg>
+                            </div>
                             <input type="email" 
                                    id="email" 
                                    name="email" 
@@ -100,12 +158,22 @@ export default class CadastroUsuarioModal {
                                    maxlength="100"
                                    autocomplete="email" 
                                    aria-describedby="email-error"
-                                   placeholder="Digite seu email">
-                            <div id="email-error" class="error-message" role="alert" aria-live="polite"></div>
+                                   placeholder="seu@email.com">
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="data_nascimento">Data de Nascimento</label>
+                        <div id="email-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="data_nascimento">Data de nascimento</label>
+                        <div class="input-container">
+                            <div class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                            </div>
                             <input type="date" 
                                    id="data_nascimento" 
                                    name="data_nascimento" 
@@ -113,43 +181,45 @@ export default class CadastroUsuarioModal {
                                    aria-describedby="data-error"
                                    min="1920-01-01"
                                    max="${new Date().toISOString().split('T')[0]}">
-                            <div id="data-error" class="error-message" role="alert" aria-live="polite"></div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label class="checkbox-container">
-                                <input type="checkbox" id="consentimento" required>
-                                <span class="checkmark" aria-hidden="true"></span>
-                                <span class="checkbox-text">
-                                    Concordo em fornecer meus dados para personalização de treinos e acompanhamento *
-                                </span>
-                            </label>
-                            <div id="consentimento-error" class="error-message" role="alert" aria-live="polite"></div>
-                        </div>
-                    </form>
-                    
-                    <div class="modal-footer">
-                        <button type="button" class="btn-secondary" id="cancelar-btn">Cancelar</button>
-                        <button type="submit" class="btn-primary" id="cadastrar-btn" form="cadastro-form">
-                            <span class="btn-text">Cadastrar</span>
-                            <span class="btn-loading" style="display:none;">⏳ Cadastrando...</span>
-                        </button>
+                        <div id="data-error" class="error-message" role="alert" aria-live="polite"></div>
                     </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="consentimento" name="consentimento" required>
+                            <span class="checkbox-custom">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <path d="M20 6L9 17l-5-5"/>
+                                </svg>
+                            </span>
+                            <span class="checkbox-text">
+                                Concordo em fornecer meus dados para personalização de treinos e acompanhamento
+                            </span>
+                        </label>
+                        <div id="consentimento-error" class="error-message" role="alert" aria-live="polite"></div>
+                    </div>
+                    
+                    <div id="form-feedback" class="form-feedback" role="alert" aria-live="polite" style="display: none;"></div>
+                </form>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" id="cancelar-btn">Cancelar</button>
+                    <button type="submit" class="btn-primary" id="cadastrar-btn" form="cadastro-form">
+                        <span class="btn-text">Criar Conta</span>
+                        <span class="btn-loading" style="display:none;">
+                            <svg class="spinner" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+                                    <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/>
+                                    <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/>
+                                </circle>
+                            </svg>
+                            Criando conta...
+                        </span>
+                    </button>
                 </div>
             </div>
         `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        this.modal = document.getElementById('cadastro-modal-overlay');
-        
-        // Foco automático após renderização
-        setTimeout(() => {
-            const nomeField = document.getElementById('nome');
-            if (nomeField) {
-                nomeField.focus();
-                this.formStartTime = Date.now();
-            }
-        }, 100);
     }
     
     /**
@@ -175,46 +245,51 @@ export default class CadastroUsuarioModal {
     }
     
     /**
-     * Vincular eventos do modal
+     * Configurar event listeners específicos do modal
      */
-    bindEvents() {
-        // ESC para fechar
-        this.handleKeydown = this.handleKeydown.bind(this);
-        document.addEventListener('keydown', this.handleKeydown);
+    setupEventListeners() {
+        super.setupEventListeners();
         
-        // Botões de fechar/cancelar
-        this.modal.querySelector('.modal-close').addEventListener('click', () => this.close(null));
-        this.modal.querySelector('#cancelar-btn').addEventListener('click', () => this.close(null));
-        
-        // Clique fora do modal
-        this.modal.addEventListener('click', (e) => {
-            if (e.target === this.modal) this.close(null);
-        });
+        // Cancel button
+        const cancelBtn = this.element.querySelector('#cancelar-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.hide(null));
+        }
         
         // Validação em tempo real
-        const emailField = document.getElementById('email');
-        const nomeField = document.getElementById('nome');
-        const dataField = document.getElementById('data_nascimento');
+        const emailField = this.element.querySelector('#email');
+        const nomeField = this.element.querySelector('#nome');
+        const dataField = this.element.querySelector('#data_nascimento');
         
-        emailField.addEventListener('blur', this.validateEmail.bind(this));
-        emailField.addEventListener('input', this.debounce(this.validateEmail.bind(this), 500));
+        if (emailField) {
+            emailField.addEventListener('blur', this.validateEmail.bind(this));
+            emailField.addEventListener('input', this.debounce(this.validateEmail.bind(this), 500));
+        }
         
-        nomeField.addEventListener('input', this.validateNome.bind(this));
-        dataField.addEventListener('change', this.validateDataNascimento.bind(this));
+        if (nomeField) {
+            nomeField.addEventListener('input', this.validateNome.bind(this));
+        }
         
-        // Submit form
-        document.getElementById('cadastro-form').addEventListener('submit', this.handleSubmit.bind(this));
-    }
-    
-    /**
-     * Manipular teclas
-     */
-    handleKeydown(e) {
-        if (e.key === 'Escape') {
-            this.close(null);
+        if (dataField) {
+            dataField.addEventListener('change', this.validateDataNascimento.bind(this));
+        }
+        
+        // Form submit
+        const form = this.element.querySelector('#cadastro-form');
+        if (form) {
+            form.addEventListener('submit', this.handleSubmit.bind(this));
         }
     }
     
+    /**
+     * Manipular teclas - sobrescrever para verificar loading
+     */
+    handleKeydown(e) {
+        if (e.key === 'Escape' && !this.isLoading) {
+            super.handleKeydown(e);
+        }
+    }
+
     /**
      * Debounce para validações
      */
@@ -234,8 +309,8 @@ export default class CadastroUsuarioModal {
      * Validar email em tempo real
      */
     async validateEmail() {
-        const email = document.getElementById('email').value.trim();
-        const errorDiv = document.getElementById('email-error');
+        const email = this.element.querySelector('#email').value.trim();
+        const errorDiv = this.element.querySelector('#email-error');
         
         if (!email) {
             errorDiv.textContent = '';
@@ -275,8 +350,8 @@ export default class CadastroUsuarioModal {
      * Validar nome
      */
     validateNome() {
-        const nome = document.getElementById('nome').value.trim();
-        const errorDiv = document.getElementById('nome-error');
+        const nome = this.element.querySelector('#nome').value.trim();
+        const errorDiv = this.element.querySelector('#nome-error');
         
         if (!nome) {
             errorDiv.textContent = '';
@@ -306,8 +381,8 @@ export default class CadastroUsuarioModal {
      * Validar data de nascimento
      */
     validateDataNascimento() {
-        const data = document.getElementById('data_nascimento').value;
-        const errorDiv = document.getElementById('data-error');
+        const data = this.element.querySelector('#data_nascimento').value;
+        const errorDiv = this.element.querySelector('#data-error');
         
         if (!data) {
             errorDiv.textContent = '';
@@ -339,7 +414,7 @@ export default class CadastroUsuarioModal {
         e.preventDefault();
         
         // Verificar honeypot (proteção anti-bot)
-        if (document.getElementById('website').value) {
+        if (this.element.querySelector('#website').value) {
             console.warn('[Modal] 🤖 Bot detectado via honeypot');
             this.showError('Erro de validação. Tente novamente.');
             return;
@@ -356,19 +431,26 @@ export default class CadastroUsuarioModal {
         
         // Validação consentimento
         if (!dados.consentimento) {
-            document.getElementById('consentimento-error').textContent = 'Consentimento obrigatório';
-            document.getElementById('consentimento').focus();
+            this.element.querySelector('#consentimento-error').textContent = 'Consentimento obrigatório';
+            this.element.querySelector('#consentimento').focus();
             return;
         }
         
-        // Detectar comportamento de bot
+        // Detectar comportamento de bot (temporariamente desabilitado para debug)
         const fillTime = Date.now() - this.formStartTime;
-        const botCheck = detectBotBehavior(dados, { fillTime });
+        console.log('[Modal] 🔍 Tempo de preenchimento:', fillTime, 'ms');
         
-        if (botCheck.isSuspicious && botCheck.riskScore > 2) {
-            console.warn('[Modal] 🚨 Comportamento suspeito:', botCheck.patterns);
-            this.showError('Erro de validação. Aguarde um momento e tente novamente.');
-            return;
+        try {
+            const botCheck = detectBotBehavior(dados, { fillTime });
+            console.log('[Modal] 🤖 Resultado bot check:', botCheck);
+            
+            if (botCheck.isSuspicious && botCheck.riskScore > 2) {
+                console.warn('[Modal] 🚨 Comportamento suspeito:', botCheck.patterns);
+                this.showError('Erro de validação. Aguarde um momento e tente novamente.');
+                return;
+            }
+        } catch (botError) {
+            console.warn('[Modal] ⚠️ Erro na detecção de bot, continuando:', botError);
         }
         
         // Validar todos os campos novamente
@@ -402,7 +484,7 @@ export default class CadastroUsuarioModal {
             
             // Fechar modal após delay para mostrar sucesso
             setTimeout(() => {
-                this.close(resultado.data);
+                this.hide(resultado.data);
             }, 1500);
             
         } catch (error) {
@@ -411,7 +493,7 @@ export default class CadastroUsuarioModal {
             // Tratar erros específicos
             if (error.message === 'EMAIL_ALREADY_EXISTS') {
                 this.showError('Este email já está cadastrado');
-                document.getElementById('email').focus();
+                this.element.querySelector('#email').focus();
             } else if (error.message === 'RATE_LIMIT_EXCEEDED') {
                 this.showError('Muitas tentativas. Tente novamente em 1 hora.');
             } else if (error.message === 'VALIDATION_ERROR' && error.details) {
@@ -439,7 +521,7 @@ export default class CadastroUsuarioModal {
         // Focar no primeiro campo com erro
         const firstErrorField = Object.keys(errors)[0];
         if (firstErrorField) {
-            document.getElementById(firstErrorField)?.focus();
+            this.element.querySelector(`#${firstErrorField}`)?.focus();
         }
     }
     
@@ -447,16 +529,22 @@ export default class CadastroUsuarioModal {
      * Controlar estado de loading
      */
     setLoading(loading) {
-        const btn = document.getElementById('cadastrar-btn');
-        const text = btn.querySelector('.btn-text');
-        const spinner = btn.querySelector('.btn-loading');
+        this.isLoading = loading;
         
-        btn.disabled = loading;
-        text.style.display = loading ? 'none' : 'inline';
-        spinner.style.display = loading ? 'inline' : 'none';
+        const btn = this.element.querySelector('#cadastrar-btn');
+        const text = btn?.querySelector('.btn-text');
+        const spinner = btn?.querySelector('.btn-loading');
+        
+        if (btn) {
+            btn.disabled = loading;
+            if (text && spinner) {
+                text.style.display = loading ? 'none' : 'inline';
+                spinner.style.display = loading ? 'inline-flex' : 'none';
+            }
+        }
         
         // Desabilitar form durante loading
-        const inputs = this.modal.querySelectorAll('input, button');
+        const inputs = this.element.querySelectorAll('input, button');
         inputs.forEach(input => {
             if (input.id !== 'cadastrar-btn') {
                 input.disabled = loading;
@@ -468,81 +556,34 @@ export default class CadastroUsuarioModal {
      * Exibir mensagem de erro
      */
     showError(message) {
-        this.showToast(message, 'error');
+        const feedbackDiv = this.element.querySelector('#form-feedback');
+        if (feedbackDiv) {
+            feedbackDiv.textContent = message;
+            feedbackDiv.className = 'form-feedback error-feedback';
+            feedbackDiv.style.display = 'block';
+        }
     }
     
     /**
      * Exibir mensagem de sucesso
      */
     showSuccess(message) {
-        this.showToast(message, 'success');
+        const feedbackDiv = this.element.querySelector('#form-feedback');
+        if (feedbackDiv) {
+            feedbackDiv.textContent = message;
+            feedbackDiv.className = 'form-feedback success-feedback';
+            feedbackDiv.style.display = 'block';
+        }
     }
     
     /**
-     * Exibir toast notification
+     * Limpar feedback
      */
-    showToast(message, type = 'error') {
-        // Remover toast anterior se existir
-        const existingToast = document.querySelector('.toast-notification');
-        if (existingToast) {
-            existingToast.remove();
+    clearFeedback() {
+        const feedbackDiv = this.element.querySelector('#form-feedback');
+        if (feedbackDiv) {
+            feedbackDiv.style.display = 'none';
         }
-        
-        const toast = document.createElement('div');
-        toast.className = `toast-notification toast-${type}`;
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.textContent = message;
-        
-        const styles = {
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            zIndex: '10001',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            fontSize: '14px',
-            fontWeight: '500',
-            maxWidth: '300px',
-            animation: 'slideInRight 0.3s ease',
-            background: type === 'error' ? '#f44336' : '#4caf50',
-            color: 'white'
-        };
-        
-        Object.assign(toast.style, styles);
-        
-        document.body.appendChild(toast);
-        
-        // Remover após 4 segundos
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.style.animation = 'slideOutRight 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }
-        }, 4000);
     }
     
-    /**
-     * Fechar modal
-     */
-    close(result) {
-        if (this.modal) {
-            // Animação de saída
-            this.modal.style.animation = 'fadeOut 0.2s ease';
-            setTimeout(() => {
-                this.modal.remove();
-            }, 200);
-        }
-        
-        // Limpar event listeners
-        document.removeEventListener('keydown', this.handleKeydown);
-        
-        // Resolver promise
-        if (result) {
-            this.resolve(result);
-        } else {
-            this.resolve(null);
-        }
-    }
 }

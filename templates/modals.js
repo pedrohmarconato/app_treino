@@ -1,7 +1,7 @@
 // Modal de Planejamento Template - Estrutura corrigida
 
 export const modalPlanejamentoTemplate = () => `
-    <div id="modalPlanejamento" class="modal-overlay" style="display: flex !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.9) !important; z-index: 9999 !important; align-items: flex-start !important; justify-content: center !important; overflow-y: auto !important; padding: 20px !important; box-sizing: border-box !important; visibility: visible !important; opacity: 1 !important;">
+    <div id="modalPlanejamentoLegacy" class="modal-overlay" style="display: none !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0,0,0,0.9) !important; z-index: 9999 !important; align-items: flex-start !important; justify-content: center !important; overflow-y: auto !important; padding: 20px !important; box-sizing: border-box !important; visibility: hidden !important; opacity: 0 !important;">
         <div class="modal-content-wrapper" style="background: #1a1a1a; border-radius: 16px; width: 100%; max-width: 900px; min-height: 90vh; position: relative; border: 1px solid #333; box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
         <div id="planning-screen" class="planning-screen-content" style="width: 100%; height: 100%; background: #1a1a1a; position: relative; overflow: visible; display: block !important; color: white;">
         

@@ -788,31 +788,52 @@ if (!window.iniciarTreino) {
     console.log('[dashboard.js] window.iniciarTreino já existe, mantendo versão atual');
 }
 
-// Função para inicializar a página home
+// Função para inicializar a página home - CORRIGIDA para usar HomeService
 window.initializeHomePage = async function() {
-    console.log('[initializeHomePage] Inicializando página home...');
+    console.log('[initializeHomePage] Inicializando página home (versão corrigida)...');
     
     try {
-        // Carregar dados completos
-        const dados = await carregarDadosCompletos();
-        
-        if (dados) {
-            // Renderizar indicadores da semana
-            const semanaExibir = dados.semanaAtiva || dados.semanaAtual;
-            renderizarIndicadoresDoCache(semanaExibir);
-            
-            // Atualizar seletor de semanas
-            atualizarSeletorSemanas();
-            
-            console.log('[initializeHomePage] ✅ Página home inicializada com sucesso!');
-            return true;
-        } else {
-            console.error('[initializeHomePage] ❌ Falha ao carregar dados');
+        const currentUser = AppState.get('currentUser');
+        if (!currentUser) {
+            console.error('[initializeHomePage] Usuário não encontrado');
             return false;
         }
+        
+        // Usar HomeService que já funciona corretamente
+        const { inicializarHome } = await import('../services/homeService.js');
+        await inicializarHome();
+        
+        console.log('[initializeHomePage] ✅ Página home inicializada com sucesso via HomeService!');
+        return true;
+        
     } catch (error) {
         console.error('[initializeHomePage] ❌ Erro ao inicializar:', error);
-        return false;
+        
+        // Fallback: tentar carregamento básico
+        try {
+            console.log('[initializeHomePage] Tentando fallback básico...');
+            const currentUser = AppState.get('currentUser');
+            
+            // Atualizar pelo menos o nome do usuário
+            const userNameEl = document.getElementById('user-name');
+            if (userNameEl && currentUser) {
+                userNameEl.textContent = currentUser.nome || 'Usuário';
+            }
+            
+            // Remover loading se houver
+            const loadingElements = document.querySelectorAll('.loading, [data-loading="true"]');
+            loadingElements.forEach(el => {
+                el.style.display = 'none';
+                el.removeAttribute('data-loading');
+            });
+            
+            console.log('[initializeHomePage] Fallback aplicado');
+            return true;
+            
+        } catch (fallbackError) {
+            console.error('[initializeHomePage] ❌ Erro no fallback:', fallbackError);
+            return false;
+        }
     }
 };
 
@@ -1153,100 +1174,8 @@ async function carregarTreinoAtual() {
     await carregarTreinoAtualDoCache();
 }
 
-// Função auxiliar para formatar nome do treino completo
-function formatarNomeTreinoCompleto(treino) {
-    if (!treino) return 'Sem treino';
-    
-    const tipo = treino.tipo_atividade || treino.tipo;
-    
-    switch(tipo?.toLowerCase()) {
-        case 'folga':
-            return 'Dia de Folga';
-        case 'cardio':
-            return 'Treino Cardiovascular';
-        default:
-            return `Treino ${tipo}`;
-    }
-}
 
-// Função auxiliar para calcular duração estimada
-function calcularDuracaoEstimada(exercicios) {
-    if (!exercicios || exercicios.length === 0) return 0;
-    
-    // Cálculo baseado em: (séries × tempo_descanso) + (séries × 30s execução) por exercício
-    const duracaoTotal = exercicios.reduce((total, exercicio) => {
-        const series = exercicio.series || 3;
-        const descanso = exercicio.tempo_descanso || 60;
-        const tempoExecucao = 30; // segundos estimados por série
-        
-        return total + (series * (descanso + tempoExecucao));
-    }, 0);
-    
-    // Retornar em minutos
-    return Math.round(duracaoTotal / 60);
-}
 
-// Função atualizada para UI do treino atual com informações completas
-function atualizarUITreinoAtualCompleto(treino) {
-    const workoutTypeEl = document.getElementById('workout-type');
-    const workoutNameEl = document.getElementById('workout-name');
-    const workoutExercisesEl = document.getElementById('workout-exercises');
-    const btnTextEl = document.getElementById('btn-text');
-    const progressTextEl = document.getElementById('workout-progress-text');
-    const progressCircleEl = document.getElementById('workout-progress-circle');
-    
-    if (!treino) {
-        // Fallback para função original se não há treino
-        atualizarUITreinoAtual(null);
-        return;
-    }
-    
-    // Configurar baseado no tipo de treino
-    switch(treino.tipo?.toLowerCase()) {
-        case 'folga':
-            updateElement(workoutTypeEl, 'Descanso');
-            updateElement(workoutNameEl, 'Dia de Folga');
-            updateElement(workoutExercisesEl, 'Repouso e recuperação');
-            updateElement(btnTextEl, 'Dia de Descanso');
-            updateElement(progressTextEl, '😴');
-            break;
-            
-        case 'cardio':
-            updateElement(workoutTypeEl, 'Cardio');
-            updateElement(workoutNameEl, 'Treino Cardiovascular');
-            updateElement(workoutExercisesEl, 'Exercícios aeróbicos • 30-45min');
-            updateElement(btnTextEl, 'Iniciar Cardio');
-            updateElement(progressTextEl, getWorkoutIcon('cardio', 'small'));
-            break;
-            
-        default: {
-            // Treino de força com informações detalhadas
-            const grupoMuscular = treino.grupo_muscular;
-            const icon = getWorkoutIcon(TREINO_ICONS[grupoMuscular] || 'peito', 'small');
-            
-            updateElement(workoutTypeEl, `Treino ${grupoMuscular}`);
-            updateElement(workoutNameEl, treino.nome);
-            updateElement(workoutExercisesEl, 
-                `${treino.total_exercicios} exercícios • ${treino.duracao_estimada}min • ${grupoMuscular}`
-            );
-            updateElement(btnTextEl, 'Iniciar Treino');
-            updateElement(progressTextEl, icon);
-            break;
-        }
-    }
-    
-    // Atualizar progresso circular se necessário
-    if (progressCircleEl && treino.tipo?.toLowerCase() !== 'folga') {
-        const hoje = new Date().getDay();
-        const progressoSemanal = Math.min((hoje / 7) * 100, 100);
-        const offset = 251.2 - (progressoSemanal / 100) * 251.2;
-        progressCircleEl.style.strokeDashoffset = offset.toString();
-        
-        if (treino.tipo?.toLowerCase() === 'cardio') {
-            updateElement(progressTextEl, `${Math.round(progressoSemanal)}%`);
-        }
-    }
-}
 
 // Atualizar UI do treino atual
 function atualizarUITreinoAtual(treino) {
@@ -1565,171 +1494,7 @@ async function carregarExerciciosDoDia() {
     }
 }
 
-// Função para renderizar card de exercício individual
-function renderizarExercicioCard(exercicio, index) {
-    // CORRIGIDO: Suporte para nova estrutura de dados
-    const pesos = exercicio.pesos_sugeridos;
-    const percentuais = pesos?.percentuais || { base: 70, min: 65, max: 75 };
-    
-    // Usar dados diretos do exercício se não houver pesos_sugeridos
-    const pesoBase = exercicio.peso_base || pesos?.peso_base || 0;
-    const pesoMin = exercicio.peso_min || pesos?.peso_minimo || 0;
-    const pesoMax = exercicio.peso_max || pesos?.peso_maximo || 0;
-    
-    return `
-        <div class="exercise-preview-card ${index === 0 ? 'first-exercise' : ''}">
-            <div class="exercise-preview-header">
-                <div>
-                    <div class="exercise-name">
-                        <span class="exercise-number">${index + 1}.</span>
-                        ${exercicio.nome || exercicio.exercicio_nome}
-                    </div>
-                    <div class="exercise-group">
-                        ${exercicio.grupo_muscular || exercicio.exercicio_grupo} • ${exercicio.equipamento || exercicio.exercicio_equipamento}
-                    </div>
-                </div>
-                <div class="exercise-rm-info">
-                    <span class="rm-badge">${percentuais.base}% 1RM</span>
-                </div>
-            </div>
-            
-            <div class="exercise-weight-range">
-                <div class="weight-indicator">
-                    <span class="weight-min">${pesoMin}kg</span>
-                    <div class="weight-bar">
-                        <div class="weight-range-fill" 
-                             style="width: ${pesoMax > pesoMin ? ((pesoBase - pesoMin) / (pesoMax - pesoMin)) * 100 : 50}%">
-                        </div>
-                        <div class="weight-target" 
-                             style="left: ${pesoMax > pesoMin ? ((pesoBase - pesoMin) / (pesoMax - pesoMin)) * 100 : 50}%">
-                        </div>
-                    </div>
-                    <span class="weight-max">${pesoMax}kg</span>
-                </div>
-                <div class="weight-target-label">Alvo: ${pesoBase}kg</div>
-            </div>
-            
-            <div class="exercise-preview-details">
-                <div class="exercise-detail">
-                    <div class="exercise-detail-label">Séries</div>
-                    <div class="exercise-detail-value">${exercicio.series || 3}</div>
-                </div>
-                <div class="exercise-detail">
-                    <div class="exercise-detail-label">Repetições</div>
-                    <div class="exercise-detail-value">${exercicio.repeticoes || exercicio.repeticoes_alvo || 10}</div>
-                </div>
-                <div class="exercise-detail">
-                    <div class="exercise-detail-label">Descanso</div>
-                    <div class="exercise-detail-value">${Math.floor((exercicio.tempo_descanso || 60) / 60)}min</div>
-                </div>
-                <div class="exercise-detail">
-                    <div class="exercise-detail-label">Volume</div>
-                    <div class="exercise-detail-value">
-                        ${Math.round(pesoBase * (exercicio.series || 3) * (exercicio.repeticoes || exercicio.repeticoes_alvo || 10))}kg
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
 
-// Funções auxiliares de renderização
-function renderizarDiaDescanso(container) {
-    container.innerHTML = `
-        <div class="exercise-preview-card rest-day-card">
-            <div class="exercise-preview-header">
-                <div>
-                    <div class="exercise-name">Dia de Descanso</div>
-                    <div class="exercise-group">Recuperação muscular ativa</div>
-                </div>
-                <div class="exercise-rm-info">
-                    <span class="rest-icon">😴</span>
-                </div>
-            </div>
-            <div class="rest-day-suggestions">
-                <div class="suggestion-item">
-                    <span class="suggestion-icon">🧘</span>
-                    <span>Alongamento leve</span>
-                </div>
-                <div class="suggestion-item">
-                    <span class="suggestion-icon">🚶</span>
-                    <span>Caminhada relaxante</span>
-                </div>
-                <div class="suggestion-item">
-                    <span class="suggestion-icon">💧</span>
-                    <span>Hidratação adequada</span>
-                </div>
-                <div class="suggestion-item">
-                    <span class="suggestion-icon">😴</span>
-                    <span>8+ horas de sono</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function renderizarTreinoCardio(container) {
-    const cardioSuggestions = [
-        { name: 'Esteira', duration: '20-30min', intensity: 'Moderada', calories: '200-300' },
-        { name: 'Bicicleta', duration: '25-35min', intensity: 'Moderada', calories: '250-350' },
-        { name: 'Elíptico', duration: '20-25min', intensity: 'Moderada-Alta', calories: '220-320' },
-        { name: 'Remo', duration: '15-20min', intensity: 'Alta', calories: '180-280' }
-    ];
-    
-    let html = '';
-    cardioSuggestions.forEach(cardio => {
-        html += `
-            <div class="exercise-preview-card">
-                <div class="exercise-preview-header">
-                    <div>
-                        <div class="exercise-name">${cardio.name}</div>
-                        <div class="exercise-group">Exercício Cardiovascular</div>
-                    </div>
-                    <div class="exercise-rm-info">
-                        <span class="cardio-badge">${cardio.intensity}</span>
-                    </div>
-                </div>
-                <div class="exercise-preview-details">
-                    <div class="exercise-detail">
-                        <div class="exercise-detail-label">Duração</div>
-                        <div class="exercise-detail-value">${cardio.duration}</div>
-                    </div>
-                    <div class="exercise-detail">
-                        <div class="exercise-detail-label">Intensidade</div>
-                        <div class="exercise-detail-value">${cardio.intensity}</div>
-                    </div>
-                    <div class="exercise-detail">
-                        <div class="exercise-detail-label">Calorias</div>
-                        <div class="exercise-detail-value">${cardio.calories}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html;
-}
-
-function renderizarSemExercicios(container) {
-    container.innerHTML = `
-        <div class="exercise-preview-card error-card">
-            <div class="exercise-preview-header">
-                <div>
-                    <div class="exercise-name">Nenhum exercício encontrado</div>
-                    <div class="exercise-group">Configure seu protocolo de treino</div>
-                </div>
-                <div class="exercise-rm-info">
-                    <span>⚠️</span>
-                </div>
-            </div>
-            <div class="error-actions">
-                <button class="btn-secondary" onclick="window.location.reload()">
-                    Recarregar
-                </button>
-            </div>
-        </div>
-    `;
-}
 
 // Carregar estatísticas avançadas do usuário
 async function carregarEstatisticasAvancadas() {
@@ -2367,44 +2132,6 @@ async function verificarTreinoConcluido(userId, dayIndex, ano = null, semana = n
     }
 }
 
-// Sincronizar status de conclusão quando há execuções mas planejamento não está marcado
-async function sincronizarConclusaoTreino(userId, dayIndex) {
-    try {
-        const hoje = new Date();
-        const ano = hoje.getFullYear();
-        const semana = WeeklyPlanService.getWeekNumber(hoje);
-        
-        // Buscar semana_treino da d_calendario para a data atual
-        const dataAtual = hoje.toISOString().split('T')[0];
-        const { data: calendarioHoje, error: calendarioError } = await supabase
-            .from('d_calendario')
-            .select('semana_treino')
-            .eq('data_completa', dataAtual)
-            .single();
-        
-        if (calendarioError) {
-            console.error('[sincronizarConclusaoTreino] Erro ao buscar semana_treino:', calendarioError);
-        }
-        
-        await supabase
-            .from('planejamento_semanal')
-            .update({ 
-                concluido: true, 
-                data_conclusao: new Date().toISOString(),
-                semana_treino: calendarioHoje?.semana_treino || null
-            })
-            .eq('usuario_id', userId)
-            .eq('ano', ano)
-            .eq('semana_treino', calendarioHoje?.semana_treino || semana)  // MUDANÇA: usar semana_treino
-            .eq('dia_semana', WeeklyPlanService.dayToDb(dayIndex));
-        
-        console.log(`[sincronizarConclusaoTreino] Treino do dia ${dayIndex} marcado como concluído`);
-        
-    } catch (error) {
-        console.error('[sincronizarConclusaoTreino] Erro:', error);
-        throw error;
-    }
-}
 
 // ===== HISTÓRICO DE TREINOS =====
 
@@ -2849,123 +2576,6 @@ async function buscarGrupoMuscularPlanejado(userId, dataAlvo) {
         
     } catch (error) {
         console.error('[buscarGrupoMuscularPlanejado] Erro:', error);
-        return null;
-    }
-}
-
-// Buscar treino planejado para um dia específico
-async function buscarTreinoPlanejado(userId, dayIndex) {
-    try {
-        // Usar a semana que está sendo exibida
-        const semanaExibida = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados?.semanaAtual;
-        const anoAtual = new Date().getFullYear();
-        
-        // Calcular data do dia selecionado
-        const hoje = new Date();
-        const semanaAtual = WeeklyPlanService.getWeekNumber(hoje);
-        const diferencaSemanas = semanaExibida - semanaAtual;
-        
-        const dataBase = new Date(hoje.getTime() + (diferencaSemanas * 7 * 24 * 60 * 60 * 1000));
-        const diasParaAjustar = dayIndex - dataBase.getDay();
-        const dataAlvo = new Date(dataBase.getTime() + (diasParaAjustar * 24 * 60 * 60 * 1000));
-        
-        console.log('[buscarTreinoPlanejado] Buscando planejamento:', {
-            userId,
-            dayIndex,
-            semanaExibida,
-            dataAlvo: dataAlvo.toLocaleDateString('pt-BR')
-        });
-        
-        // Buscar planejamento do dia
-        const diaSemana = WeeklyPlanService.dayToDb(dayIndex);
-        
-        const { query } = await import('../services/supabaseService.js');
-        const { data: planejamentoArray, error: planError } = await query('planejamento_semanal', {
-            select: 'tipo_atividade, concluido, data_conclusao',
-            eq: {
-                usuario_id: userId,
-                ano: anoAtual,
-                semana_treino: semanaExibida,
-                dia_semana: diaSemana
-            }
-        });
-        
-        if (planError || !planejamentoArray || planejamentoArray.length === 0) {
-            console.log('[buscarTreinoPlanejado] Nenhum planejamento encontrado');
-            return null;
-        }
-        
-        const planejamento = planejamentoArray[0];
-        
-        // Se for folga ou cardio, retornar informação básica
-        if (planejamento.tipo_atividade === 'folga' || planejamento.tipo_atividade === 'cardio') {
-            return {
-                tipo: planejamento.tipo_atividade,
-                data: dataAlvo,
-                exercicios: []
-            };
-        }
-        
-        // Buscar exercícios do protocolo para este tipo de treino
-        const { WorkoutProtocolService } = await import('../services/workoutProtocolService.js');
-        
-        // Buscar protocolo do usuário
-        const { data: protocoloArray, error: protError } = await query('usuario_plano_treino', {
-            select: 'protocolo_treinamento_id',
-            eq: {
-                usuario_id: userId,
-                ativo: true
-            }
-        });
-        
-        if (protError || !protocoloArray || protocoloArray.length === 0) {
-            console.log('[buscarTreinoPlanejado] Nenhum protocolo ativo encontrado');
-            return null;
-        }
-        
-        const protocoloId = protocoloArray[0].protocolo_treinamento_id;
-        
-        // Buscar exercícios do protocolo para o grupo muscular
-        const { data: exercicios, error: exError } = await query('protocolo_treinos', {
-            select: `
-                exercicio_id,
-                exercicios (
-                    nome,
-                    grupo_muscular,
-                    equipamento
-                ),
-                series,
-                repeticoes_alvo,
-                tempo_descanso,
-                observacoes
-            `,
-            eq: {
-                protocolo_id: protocoloId
-            },
-            // Filtrar por grupo muscular através do JOIN com exercicios
-            order: { column: 'ordem_exercicio', ascending: true }
-        });
-        
-        if (exError) {
-            console.error('[buscarTreinoPlanejado] Erro ao buscar exercícios:', exError);
-            return null;
-        }
-        
-        // Filtrar exercícios pelo grupo muscular correto
-        const exerciciosFiltrados = exercicios ? exercicios.filter(ex => 
-            ex.exercicios && ex.exercicios.grupo_muscular === planejamento.tipo_atividade
-        ) : [];
-        
-        return {
-            tipo: planejamento.tipo_atividade,
-            data: dataAlvo,
-            exercicios: exerciciosFiltrados,
-            protocoloId,
-            planejamento
-        };
-        
-    } catch (error) {
-        console.error('[buscarTreinoPlanejado] Erro:', error);
         return null;
     }
 }
@@ -4618,243 +4228,93 @@ function fecharModalSeletorGrupo(event) {
     if (modal) modal.remove();
 }
 
-// Calcular métricas principais para o header do modal
-function calcularMetricasHeader(historico, somenteplanejamento) {
-    const grupoMuscular = historico.planejamento?.tipo_atividade || 'Treino';
-    let percentualRM = 0;
-    let pesoTotal = 0;
-    const status = somenteplanejamento ? 'planejado' : 'executado';
-    
-    if (somenteplanejamento) {
-        // Para treino planejado, usar dados sugeridos
-        if (historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0) {
-            historico.exerciciosSugeridos.forEach(ex => {
-                const peso = ex.peso_calculado || ex.peso_base || 0;
-                const series = ex.series || 3;
-                const reps = ex.repeticoes || ex.repeticoes_alvo || 10;
-                pesoTotal += peso * series * reps;
-                
-                // Calcular %RM médio (assumindo que peso calculado é baseado em 70-85% do 1RM)
-                const rmEstimado = peso / 0.75; // Assumindo 75% como média
-                percentualRM = Math.max(percentualRM, 75); // Usar o maior valor encontrado
-            });
-        }
-    } else {
-        // Para treino executado, usar dados reais
-        if (historico.execucoes && historico.execucoes.length > 0) {
-            const exerciciosUnicos = new Map();
-            
-            historico.execucoes.forEach(exec => {
-                const peso = exec.peso_utilizado || 0;
-                const reps = exec.repeticoes || 0;
-                pesoTotal += peso * reps;
-                
-                // Agrupar por exercício para calcular %RM
-                const exercicioId = exec.exercicio_id;
-                if (!exerciciosUnicos.has(exercicioId)) {
-                    exerciciosUnicos.set(exercicioId, {
-                        pesoMax: peso,
-                        repsMin: reps
-                    });
-                } else {
-                    const atual = exerciciosUnicos.get(exercicioId);
-                    if (peso > atual.pesoMax) {
-                        atual.pesoMax = peso;
-                        atual.repsMin = reps;
-                    }
-                }
-            });
-            
-            // Calcular %RM médio baseado no peso máximo e repetições
-            let somaRM = 0;
-            exerciciosUnicos.forEach(dados => {
-                // Fórmula de Epley: 1RM = peso × (1 + reps/30)
-                const rm1Estimado = dados.pesoMax * (1 + dados.repsMin / 30);
-                const percentual = (dados.pesoMax / rm1Estimado) * 100;
-                somaRM += percentual;
-            });
-            
-            percentualRM = exerciciosUnicos.size > 0 ? Math.round(somaRM / exerciciosUnicos.size) : 0;
-        }
-    }
-    
-    // Adicionar variações para treino executado
-    let variacaoPeso = 0;
-    let preWorkout = null;
-    let posWorkout = null;
-    
-    if (!somenteplanejamento && historico.exerciciosSugeridos && historico.execucoes) {
-        // Calcular variação entre sugerido e executado
-        let pesoSugerido = 0;
-        let pesoExecutado = 0;
-        
-        historico.exerciciosSugeridos.forEach(sug => {
-            const peso = sug.peso_calculado || sug.peso_base || 0;
-            const series = sug.series || 3;
-            const reps = sug.repeticoes || sug.repeticoes_alvo || 10;
-            pesoSugerido += peso * series * reps;
-        });
-        
-        pesoExecutado = pesoTotal;
-        
-        if (pesoSugerido > 0) {
-            variacaoPeso = ((pesoExecutado - pesoSugerido) / pesoSugerido) * 100;
-        }
-        
-        // Buscar dados de pre/pos workout se disponíveis
-        preWorkout = historico.preWorkout || null;
-        posWorkout = historico.posWorkout || null;
-    }
-    
-    return {
-        grupoMuscular,
-        percentualRM: Math.round(percentualRM),
-        pesoTotal: Math.round(pesoTotal),
-        status,
-        variacaoPeso: Math.round(variacaoPeso),
-        preWorkout,
-        posWorkout
-    };
-}
 
-// Mostrar modal com histórico do treino
+// Mostrar modal com histórico do treino - VERSÃO COMPACTA E RESPONSIVA
 function mostrarModalHistorico(historico, dayIndex) {
     console.log('[mostrarModalHistorico] 🚀 Iniciando função com:', { historico, dayIndex });
     const dayName = DIAS_SEMANA[dayIndex];
     const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
-    console.log('[mostrarModalHistorico] 📅 Data formatada:', dataFormatada);
     
     // Verificar se é apenas planejamento (sem execuções)
     const somenteplanejamento = historico.semExecucoes || (historico.execucoes && historico.execucoes.length === 0);
-    console.log('[mostrarModalHistorico] 📊 Somente planejamento:', somenteplanejamento);
     
-    // Calcular métricas principais para o header
-    const metricas = calcularMetricasHeader(historico, somenteplanejamento);
+    // Preparar dados dos exercícios
+    const exercicios = historico.exerciciosSugeridos || [];
+    console.log('[mostrarModalHistorico] 📋 Exercícios encontrados:', exercicios.length);
     
-    // Log detalhado dos exercícios sugeridos
-    if (historico.exerciciosSugeridos) {
-        console.log('[mostrarModalHistorico] 📋 Exercícios sugeridos encontrados:', historico.exerciciosSugeridos.length);
-        historico.exerciciosSugeridos.forEach((ex, index) => {
-            console.log(`[mostrarModalHistorico] Exercício ${index + 1}:`, {
-                nome: ex.nome || ex.exercicio_nome,
-                series: ex.series,
-                repeticoes: ex.repeticoes || ex.repeticoes_alvo,
-                peso_base: ex.peso_base,
-                peso_calculado: ex.peso_calculado,
-                tempo_descanso: ex.tempo_descanso,
-                descanso_sugerido: ex.descanso_sugerido,
-                equipamento: ex.equipamento || ex.exercicio_equipamento
-            });
-        });
-    } else {
-        console.log('[mostrarModalHistorico] ⚠️ Nenhum exercício sugerido no histórico');
-    }
+    // Determinar o grupo muscular principal
+    const grupoMuscular = historico.planejamento?.tipo_atividade || 'Treino';
     
-    // Calcular estatísticas detalhadas
-    const stats = somenteplanejamento ? null : calcularEstatisticasTreino(historico);
-    console.log('[mostrarModalHistorico] 📈 Stats:', stats);
-    
-    // Detectar se é dispositivo móvel iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isMobile = window.innerWidth <= 428 || 'ontouchstart' in window;
-    
-    // Criar HTML do modal
+    // Criar HTML do modal compacto
     const modalHTML = `
-        <div id="modal-historico" class="modal-overlay-enhanced ${isMobile ? 'mobile' : ''}" onclick="fecharModalHistorico(event)">
-            <div class="modal-content-enhanced" onclick="event.stopPropagation()">
-                <!-- Header Compacto e Informativo -->
-                <div class="modal-header-compact">
-                    <div class="header-main">
-                        <div class="header-left">
-                            <h3 class="grupo-muscular">${metricas.grupoMuscular}</h3>
-                            <div class="header-tags">
-                                <span class="tag tag-rm" style="background: ${metricas.percentualRM >= 80 ? 'var(--accent-red)' : metricas.percentualRM >= 70 ? 'var(--accent-primary)' : 'var(--accent-green)'}">
-                                    ${metricas.percentualRM}% RM
-                                </span>
-                                <span class="tag tag-status ${metricas.status}">
-                                    ${metricas.status === 'planejado' ? '📅 Planejado' : '✅ Executado'}
-                                </span>
-                                <span class="tag tag-peso">
-                                    🏋️ ${(metricas.pesoTotal / 1000).toFixed(1)}t
-                                </span>
-                            </div>
-                        </div>
-                        <button class="btn-close-compact" onclick="fecharModalHistorico()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                        </button>
-                    </div>
+        <div id="modal-historico" class="workout-history-modal-overlay">
+            <div class="workout-history-modal">
+                <!-- Header -->
+                <div class="workout-history-header">
                     <div class="header-info">
-                        <span class="info-date">${dayName} • ${dataFormatada}</span>
-                        ${!somenteplanejamento && metricas.variacaoPeso !== 0 ? `
-                            <span class="info-variation ${metricas.variacaoPeso > 0 ? 'positive' : 'negative'}">
-                                ${metricas.variacaoPeso > 0 ? '↑' : '↓'} ${Math.abs(metricas.variacaoPeso)}% vs planejado
-                            </span>
-                        ` : ''}
+                        <h3 class="workout-title">${grupoMuscular}</h3>
+                        <div class="workout-date">${dayName} • ${dataFormatada}</div>
+                        <div class="workout-status ${somenteplanejamento ? 'planned' : 'completed'}">
+                            ${somenteplanejamento ? '📅 Planejado' : '✅ Executado'}
+                        </div>
                     </div>
+                    <button class="workout-close-btn" onclick="fecharModalHistorico()" type="button">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
                 </div>
                 
-                <!-- Corpo do Modal -->
-                <div class="modal-body-enhanced">
-                    ${!somenteplanejamento && metricas.preWorkout ? `
-                        <!-- Pre-Workout Info -->
-                        <div class="workout-info-bar pre-workout">
-                            <span class="info-label">Pré-treino:</span>
-                            <span class="info-value">${metricas.preWorkout.energia || 'N/A'}/10 energia</span>
-                            <span class="info-value">${metricas.preWorkout.disposicao || 'N/A'}/10 disposição</span>
-                        </div>
-                    ` : ''}
-                    
-                    <!-- Lista de Exercícios Compacta -->
-                    <div class="exercises-container">
-                        ${historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0 ? 
-                            historico.exerciciosSugeridos.map((ex, index) => `
-                                <div class="exercise-row ${somenteplanejamento ? 'planned' : 'executed'}">
-                                    <div class="exercise-main">
+                <!-- Body -->
+                <div class="workout-history-body">
+                    ${exercicios.length > 0 ? `
+                        <div class="exercises-list">
+                            ${exercicios.map((ex, index) => `
+                                <div class="exercise-card">
+                                    <div class="exercise-header">
                                         <span class="exercise-number">${index + 1}</span>
-                                        <div class="exercise-name-equipment">
+                                        <div class="exercise-info">
                                             <h4 class="exercise-name">${ex.nome || ex.exercicio_nome || 'Exercício'}</h4>
                                             <span class="exercise-equipment">${ex.equipamento || ex.exercicio_equipamento || 'Livre'}</span>
                                         </div>
                                     </div>
-                                    <div class="exercise-metrics">
-                                        <div class="metric-item">
-                                            <span class="metric-value">${ex.peso_calculado || ex.peso_base || 0}kg</span>
-                                            <span class="metric-label">Peso</span>
+                                    <div class="exercise-stats">
+                                        <div class="stat-item">
+                                            <span class="stat-value">${Math.round(ex.peso_calculado || ex.peso_base || 0)}</span>
+                                            <span class="stat-label">kg</span>
                                         </div>
-                                        <div class="metric-item">
-                                            <span class="metric-value">${ex.repeticoes || ex.repeticoes_alvo || 0}</span>
-                                            <span class="metric-label">Reps</span>
+                                        <div class="stat-item">
+                                            <span class="stat-value">${ex.repeticoes || ex.repeticoes_alvo || 0}</span>
+                                            <span class="stat-label">reps</span>
                                         </div>
-                                        <div class="metric-item">
-                                            <span class="metric-value">${ex.series || 3}</span>
-                                            <span class="metric-label">Séries</span>
+                                        <div class="stat-item">
+                                            <span class="stat-value">${ex.series || 3}</span>
+                                            <span class="stat-label">séries</span>
                                         </div>
-                                        <div class="metric-item">
-                                            <span class="metric-value">${ex.descanso_sugerido || ex.tempo_descanso || 60}s</span>
-                                            <span class="metric-label">Desc.</span>
+                                        <div class="stat-item">
+                                            <span class="stat-value">${Math.round((ex.descanso_sugerido || ex.tempo_descanso || 60) / 60)}</span>
+                                            <span class="stat-label">min</span>
                                         </div>
                                     </div>
                                 </div>
-                            `).join('')
-                        : historico.execucoes && historico.execucoes.length > 0 ? 
-                            renderizarExerciciosExecutados(historico)
-                        : `
-                            <div class="no-exercises">
-                                <p>Nenhum exercício configurado</p>
-                            </div>
-                        `}
-                    </div>
-                    
-                    ${!somenteplanejamento && metricas.posWorkout ? `
-                        <!-- Pós-Workout Info -->
-                        <div class="workout-info-bar pos-workout">
-                            <span class="info-label">Pós-treino:</span>
-                            <span class="info-value">${metricas.posWorkout.satisfacao || 'N/A'}/10 satisfação</span>
-                            <span class="info-value">${metricas.posWorkout.dificuldade || 'N/A'}/10 dificuldade</span>
+                            `).join('')}
                         </div>
+                    ` : `
+                        <div class="no-exercises">
+                            <div class="no-exercises-icon">📋</div>
+                            <p>Nenhum exercício configurado para este dia</p>
+                        </div>
+                    `}
+                </div>
+                
+                <!-- Footer com ações -->
+                <div class="workout-history-footer">
+                    <button class="btn-secondary" onclick="fecharModalHistorico()">Fechar</button>
+                    ${somenteplanejamento ? `
+                        <button class="btn-primary" onclick="fecharModalHistorico(); window.abrirEdicaoRapidaDia(${dayIndex});">
+                            Editar Treino
+                        </button>
                     ` : ''}
                 </div>
             </div>
@@ -4864,577 +4324,308 @@ function mostrarModalHistorico(historico, dayIndex) {
     // Verificar se já existe um modal e removê-lo
     const modalExistente = document.getElementById('modal-historico');
     if (modalExistente) {
-        console.log('[mostrarModalHistorico] 🗑️ Removendo modal existente');
         modalExistente.remove();
     }
     
     // Adicionar modal ao DOM
-    console.log('[mostrarModalHistorico] 📝 HTML do modal criado, adicionando ao DOM');
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    try {
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        console.log('[mostrarModalHistorico] ✅ Modal adicionado ao DOM');
-    } catch (error) {
-        console.error('[mostrarModalHistorico] ❌ Erro ao adicionar modal ao DOM:', error);
-        // Tentar método alternativo
-        const div = document.createElement('div');
-        div.innerHTML = modalHTML;
-        document.body.appendChild(div.firstElementChild);
-        console.log('[mostrarModalHistorico] ✅ Modal adicionado via método alternativo');
-    }
-    
-    // Adicionar estilos CSS aprimorados
+    // Adicionar estilos CSS compactos
     if (!document.querySelector('style[data-modal-historico-styles]')) {
         const styles = `
             <style data-modal-historico-styles>
-                /* Animações */
-                /* Animações otimizadas para mobile */
+                .workout-history-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                    padding: 16px;
+                    animation: fadeIn 0.3s ease;
+                    backdrop-filter: blur(4px);
+                }
+                
+                .workout-history-modal {
+                    background: var(--bg-card);
+                    border-radius: 16px;
+                    width: 100%;
+                    max-width: 500px;
+                    max-height: 85vh;
+                    display: flex;
+                    flex-direction: column;
+                    border: 1px solid var(--border-color);
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+                    animation: slideUp 0.3s ease-out;
+                    overflow: hidden;
+                }
+                
+                .workout-history-header {
+                    background: var(--bg-secondary);
+                    padding: 20px;
+                    border-bottom: 1px solid var(--border-color);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                }
+                
+                .workout-title {
+                    margin: 0 0 8px 0;
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: var(--text-primary);
+                }
+                
+                .workout-date {
+                    font-size: 0.875rem;
+                    color: var(--text-secondary);
+                    margin-bottom: 8px;
+                }
+                
+                .workout-status {
+                    padding: 4px 12px;
+                    border-radius: 20px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    display: inline-block;
+                }
+                
+                .workout-status.planned {
+                    background: var(--accent-blue);
+                    color: white;
+                }
+                
+                .workout-status.completed {
+                    background: var(--accent-green);
+                    color: white;
+                }
+                
+                .workout-close-btn {
+                    background: var(--bg-primary);
+                    border: 1px solid var(--border-color);
+                    border-radius: 50%;
+                    width: 36px;
+                    height: 36px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    color: var(--text-primary);
+                    transition: all 0.2s ease;
+                }
+                
+                .workout-close-btn:hover {
+                    background: var(--bg-secondary);
+                    transform: scale(1.05);
+                }
+                
+                .workout-close-btn svg {
+                    width: 18px;
+                    height: 18px;
+                }
+                
+                .workout-history-body {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 20px;
+                }
+                
+                .exercises-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                
+                .exercise-card {
+                    background: var(--bg-secondary);
+                    border-radius: 12px;
+                    padding: 16px;
+                    border: 1px solid var(--border-color);
+                    transition: transform 0.2s ease;
+                }
+                
+                .exercise-card:hover {
+                    transform: translateY(-2px);
+                }
+                
+                .exercise-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 12px;
+                }
+                
+                .exercise-number {
+                    background: var(--neon-primary);
+                    color: var(--bg-primary);
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.875rem;
+                    font-weight: 700;
+                    flex-shrink: 0;
+                }
+                
+                .exercise-name {
+                    margin: 0 0 4px 0;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    color: var(--text-primary);
+                }
+                
+                .exercise-equipment {
+                    font-size: 0.8rem;
+                    color: var(--text-secondary);
+                    font-style: italic;
+                }
+                
+                .exercise-stats {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 12px;
+                }
+                
+                .stat-item {
+                    text-align: center;
+                    background: var(--bg-primary);
+                    padding: 8px;
+                    border-radius: 8px;
+                }
+                
+                .stat-value {
+                    display: block;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    color: var(--neon-primary);
+                }
+                
+                .stat-label {
+                    display: block;
+                    font-size: 0.7rem;
+                    color: var(--text-secondary);
+                    text-transform: uppercase;
+                    margin-top: 2px;
+                }
+                
+                .no-exercises {
+                    text-align: center;
+                    padding: 40px 20px;
+                    color: var(--text-secondary);
+                }
+                
+                .no-exercises-icon {
+                    font-size: 3rem;
+                    margin-bottom: 16px;
+                }
+                
+                .workout-history-footer {
+                    padding: 20px;
+                    border-top: 1px solid var(--border-color);
+                    display: flex;
+                    gap: 12px;
+                    justify-content: flex-end;
+                }
+                
+                .btn-secondary, .btn-primary {
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    border: none;
+                }
+                
+                .btn-secondary {
+                    background: var(--bg-secondary);
+                    color: var(--text-primary);
+                    border: 1px solid var(--border-color);
+                }
+                
+                .btn-primary {
+                    background: var(--neon-primary);
+                    color: var(--bg-primary);
+                }
+                
+                .btn-secondary:hover {
+                    background: var(--bg-primary);
+                }
+                
+                .btn-primary:hover {
+                    opacity: 0.9;
+                    transform: translateY(-1px);
+                }
+                
                 @keyframes fadeIn {
                     from { opacity: 0; }
                     to { opacity: 1; }
                 }
                 
-                @keyframes slideUpMobile {
+                @keyframes slideUp {
                     from { 
                         opacity: 0;
-                        transform: translate3d(0, 20px, 0);
+                        transform: translateY(20px);
                     }
                     to { 
                         opacity: 1;
-                        transform: translate3d(0, 0, 0);
+                        transform: translateY(0);
                     }
                 }
                 
-                @keyframes bounce {
-                    0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-10px); }
-                }
-                
-                /* Modal Enhanced Base */
-                .modal-overlay-enhanced {
-                    position: fixed !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    background: rgba(0, 0, 0, 0.95) !important;
-                    backdrop-filter: blur(10px) !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    z-index: 10000 !important;
-                    padding: 20px !important;
-                    box-sizing: border-box !important;
-                    overflow-y: auto !important;
-                    animation: fadeIn 0.3s ease-out !important;
-                }
-                
-                .modal-content-enhanced {
-                    background: var(--bg-card) !important;
-                    border-radius: var(--radius-lg) !important;
-                    width: 100% !important;
-                    max-width: 600px !important;
-                    max-height: 90vh !important;
-                    overflow: hidden !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    border: 1px solid var(--border-color) !important;
-                    box-shadow: var(--shadow-lg) !important;
-                    animation: slideUp 0.4s ease-out !important;
-                }
-                
-                /* Header Compacto */
-                .modal-header-compact {
-                    background: var(--bg-secondary) !important;
-                    padding: 16px 20px !important;
-                    border-bottom: 1px solid var(--border-color) !important;
-                }
-                
-                .header-main {
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: flex-start !important;
-                    margin-bottom: 8px !important;
-                }
-                
-                .header-left h3 {
-                    margin: 0 0 8px 0 !important;
-                    font-size: 1.5rem !important;
-                    font-weight: 700 !important;
-                    color: var(--text-primary) !important;
-                }
-                
-                .header-tags {
-                    display: flex !important;
-                    gap: 8px !important;
-                    flex-wrap: wrap !important;
-                }
-                
-                .tag {
-                    padding: 4px 12px !important;
-                    border-radius: var(--radius-full) !important;
-                    font-size: 0.75rem !important;
-                    font-weight: 600 !important;
-                    display: inline-flex !important;
-                    align-items: center !important;
-                    gap: 4px !important;
-                }
-                
-                .tag-rm {
-                    color: #000 !important;
-                    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
-                }
-                
-                .tag-status {
-                    background: var(--bg-card) !important;
-                    color: var(--text-secondary) !important;
-                    border: 1px solid var(--border-color) !important;
-                }
-                
-                .tag-status.executado {
-                    background: var(--accent-green) !important;
-                    color: #000 !important;
-                    border-color: var(--accent-green) !important;
-                }
-                
-                .tag-peso {
-                    background: var(--bg-primary) !important;
-                    color: var(--accent-primary) !important;
-                    border: 1px solid var(--accent-primary) !important;
-                }
-                
-                .btn-close-compact {
-                    background: var(--bg-card) !important;
-                    border: 1px solid var(--border-color) !important;
-                    color: var(--text-secondary) !important;
-                    width: 36px !important;
-                    height: 36px !important;
-                    border-radius: var(--radius-md) !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    cursor: pointer !important;
-                    transition: var(--transition) !important;
-                }
-                
-                .btn-close-compact:hover {
-                    background: #ef4444 !important;
-                    border-color: #ef4444 !important;
-                    color: white !important;
-                    transform: rotate(90deg) !important;
-                }
-                
-                /* Hover effects para cards de exercício */
-                #modal-historico .exercise-item:hover {
-                    transform: translateY(-4px) !important;
-                    border-color: rgba(33, 150, 243, 0.3) !important;
-                    box-shadow: 
-                        0 12px 32px rgba(0, 0, 0, 0.3),
-                        0 0 40px rgba(33, 150, 243, 0.08) !important;
-                }
-                
-                /* Stats cards aprimorados */
-                #modal-historico .stats-overview {
-                    display: grid !important;
-                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
-                    gap: 20px !important;
-                    margin-bottom: 32px !important;
-                }
-                
-                #modal-historico .stat-card {
-                    background: rgba(255, 255, 255, 0.03) !important;
-                    backdrop-filter: blur(10px) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                    border-radius: 16px !important;
-                    padding: 24px !important;
-                    text-align: center !important;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-                    position: relative !important;
-                    overflow: hidden !important;
-                }
-                
-                #modal-historico .stat-card::before {
-                    content: '' !important;
-                    position: absolute !important;
-                    top: 0 !important;
-                    left: 0 !important;
-                    right: 0 !important;
-                    height: 3px !important;
-                    background: linear-gradient(90deg, transparent, #a8ff00, transparent) !important;
-                    transform: translateX(-100%) !important;
-                    transition: transform 0.6s ease !important;
-                }
-                
-                #modal-historico .stat-card:hover {
-                    transform: translateY(-6px) !important;
-                    border-color: rgba(168, 255, 0, 0.3) !important;
-                    box-shadow: 
-                        0 16px 40px rgba(0, 0, 0, 0.3),
-                        0 0 30px rgba(168, 255, 0, 0.1) !important;
-                }
-                
-                #modal-historico .stat-card:hover::before {
-                    transform: translateX(100%) !important;
-                }
-                
-                #modal-historico .stat-icon {
-                    width: 48px !important;
-                    height: 48px !important;
-                    margin: 0 auto 16px !important;
-                    background: rgba(168, 255, 0, 0.1) !important;
-                    border-radius: 50% !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    color: #a8ff00 !important;
-                    border: 2px solid rgba(168, 255, 0, 0.2) !important;
-                }
-                
-                #modal-historico .stat-value {
-                    font-size: 1.8rem !important;
-                    font-weight: 800 !important;
-                    color: #fff !important;
-                    margin-bottom: 6px !important;
-                    background: linear-gradient(135deg, #a8ff00 0%, #7acc00 100%) !important;
-                    -webkit-background-clip: text !important;
-                    -webkit-text-fill-color: transparent !important;
-                }
-                
-                #modal-historico .stat-label {
-                    font-size: 0.8rem !important;
-                    color: #888 !important;
-                    text-transform: uppercase !important;
-                    font-weight: 600 !important;
-                    letter-spacing: 0.5px !important;
-                }
-                
-                /* Exercises history section */
-                #modal-historico .exercises-history {
-                    background: rgba(255, 255, 255, 0.03) !important;
-                    backdrop-filter: blur(10px) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                    border-radius: 16px !important;
-                    padding: 28px !important;
-                }
-                
-                #modal-historico .exercises-history h3 {
-                    margin: 0 0 24px 0 !important;
-                    color: #fff !important;
-                    font-size: 1.4rem !important;
-                    font-weight: 700 !important;
-                    letter-spacing: -0.5px !important;
-                }
-                
-                
-                .header-info {
-                    display: flex !important;
-                    align-items: center !important;
-                    gap: 12px !important;
-                    font-size: 0.875rem !important;
-                    color: var(--text-secondary) !important;
-                }
-                
-                .info-variation {
-                    font-weight: 600 !important;
-                }
-                
-                .info-variation.positive {
-                    color: var(--accent-green) !important;
-                }
-                
-                .info-variation.negative {
-                    color: #ef4444 !important;
-                }
-                
-                /* Body */
-                .modal-body-enhanced {
-                    flex: 1 !important;
-                    overflow-y: auto !important;
-                    padding: 20px !important;
-                }
-                
-                /* Workout Info Bars */
-                .workout-info-bar {
-                    background: var(--bg-secondary) !important;
-                    border-radius: var(--radius-md) !important;
-                    padding: 12px 16px !important;
-                    margin-bottom: 16px !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    gap: 16px !important;
-                    font-size: 0.875rem !important;
-                }
-                
-                .workout-info-bar.pre-workout {
-                    border-left: 3px solid var(--accent-primary) !important;
-                }
-                
-                .workout-info-bar.pos-workout {
-                    border-left: 3px solid var(--accent-green) !important;
-                }
-                
-                .info-label {
-                    font-weight: 600 !important;
-                    color: var(--text-primary) !important;
-                }
-                
-                .info-value {
-                    color: var(--text-secondary) !important;
-                }
-                
-                /* Exercises Container */
-                .exercises-container {
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 12px !important;
-                }
-                
-                .exercise-row {
-                    background: var(--bg-secondary) !important;
-                    border-radius: var(--radius-md) !important;
-                    padding: 16px !important;
-                    display: flex !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    border: 1px solid var(--border-color) !important;
-                    transition: var(--transition) !important;
-                }
-                
-                .exercise-row.planned {
-                    border-color: var(--accent-primary) !important;
-                    background: var(--accent-primary-bg) !important;
-                }
-                
-                .exercise-row.executed {
-                    border-color: var(--accent-green) !important;
-                }
-                
-                .exercise-row:hover {
-                    transform: translateX(4px) !important;
-                    box-shadow: var(--shadow-md) !important;
-                }
-                
-                .exercise-main {
-                    display: flex !important;
-                    align-items: center !important;
-                    gap: 12px !important;
-                    flex: 1 !important;
-                }
-                
-                .exercise-number {
-                    width: 32px !important;
-                    height: 32px !important;
-                    background: var(--bg-primary) !important;
-                    border-radius: var(--radius-full) !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    font-weight: 700 !important;
-                    font-size: 0.875rem !important;
-                    color: var(--accent-primary) !important;
-                }
-                
-                .exercise-name-equipment {
-                    flex: 1 !important;
-                }
-                
-                .exercise-name {
-                    margin: 0 0 2px 0 !important;
-                    font-size: 1rem !important;
-                    font-weight: 600 !important;
-                    color: var(--text-primary) !important;
-                }
-                
-                .exercise-equipment {
-                    font-size: 0.75rem !important;
-                    color: var(--text-secondary) !important;
-                }
-                
-                .exercise-metrics {
-                    display: flex !important;
-                    gap: 20px !important;
-                }
-                
-                .metric-item {
-                    text-align: center !important;
-                }
-                
-                .metric-value {
-                    display: block !important;
-                    font-size: 1rem !important;
-                    font-weight: 700 !important;
-                    color: var(--text-primary) !important;
-                    margin-bottom: 2px !important;
-                }
-                
-                .metric-label {
-                    font-size: 0.7rem !important;
-                    color: var(--text-muted) !important;
-                    text-transform: uppercase !important;
-                    letter-spacing: 0.5px !important;
-                }
-                
-                .no-exercises {
-                    text-align: center !important;
-                    padding: 40px 20px !important;
-                    color: var(--text-secondary) !important;
-                }
-                
-                /* Responsividade aprimorada */
-                @media (max-width: 768px) {
-                    .modal-content-enhanced {
-                        max-width: 100% !important;
-                        margin: 10px !important;
-                        max-height: calc(100vh - 20px) !important;
+                @media (max-width: 480px) {
+                    .workout-history-modal-overlay {
+                        padding: 8px;
+                        align-items: flex-end;
                     }
                     
-                    .header-main {
-                        flex-direction: column !important;
-                        gap: 12px !important;
+                    .workout-history-modal {
+                        max-height: 90vh;
+                        border-radius: 16px 16px 0 0;
                     }
                     
-                    .exercise-row {
-                        flex-direction: column !important;
-                        gap: 12px !important;
-                        align-items: stretch !important;
+                    .workout-history-header {
+                        padding: 16px;
                     }
                     
-                    .exercise-metrics {
-                        justify-content: space-between !important;
+                    .workout-title {
+                        font-size: 1.25rem;
                     }
                     
-                    .metric-item {
-                        flex: 1 !important;
-                    }
-                }
-                
-                /* Otimizações de performance para mobile */
-                .mobile .modal-content-enhanced {
-                    box-shadow: none !important;
-                }
-                
-                .mobile .exercise-row {
-                    transition: transform 0.1s ease !important;
-                }
-                
-                .mobile .tag,
-                .mobile .btn-close-compact,
-                .mobile .metric-item {
-                    transition: none !important;
-                }
-                
-                /* Touch feedback otimizado */
-                @media (hover: none) {
-                    .exercise-row:active {
-                        transform: scale(0.98) !important;
-                        transition: transform 0.1s ease !important;
+                    .workout-history-body {
+                        padding: 16px;
                     }
                     
-                    .btn-close-compact:active,
-                    .tag:active {
-                        opacity: 0.7 !important;
+                    .exercise-stats {
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 8px;
                     }
-                }
-                
-                /* Prevenir seleção de texto em mobile */
-                .mobile * {
-                    -webkit-user-select: none !important;
-                    -webkit-touch-callout: none !important;
-                    user-select: none !important;
-                }
-                
-                /* Desabilitar animações complexas em mobile e reduced motion */
-                @media (prefers-reduced-motion: reduce) {
-                    * {
-                        animation-duration: 0.01ms !important;
-                        animation-iteration-count: 1 !important;
-                        transition-duration: 0.01ms !important;
+                    
+                    .workout-history-footer {
+                        padding: 16px;
+                        flex-direction: column;
                     }
                 }
             </style>
         `;
         document.head.insertAdjacentHTML('beforeend', styles);
     }
-    // Garantir que o botão de fechar funcione mesmo se o atributo inline estiver bloqueado
-    const btnClose = document.querySelector('#modal-historico .btn-close');
-    if (btnClose) {
-        btnClose.addEventListener('click', (e) => {
-            e.stopPropagation();
-            window.fecharModalHistorico();
-        }, { once: true });
-    }
-    // Se for apenas planejamento, criar contêiner para exibir exercícios planejados
-    if (somenteplanejamento) {
-        const modal = document.getElementById('modal-historico');
-        const body = modal?.querySelector('.modal-body');
-        if (body) {
-            // Evitar duplicação
-            let container = document.getElementById('modal-workout-exercises-list');
-            if (!container) {
-                container = document.createElement('div');
-                container.id = 'modal-workout-exercises-list';
-                container.className = 'workout-exercises-list';
-                container.innerHTML = `
-                    <div class="loading-exercises">
-                        <div class="loading-spinner"></div>
-                        <p>Carregando exercícios...</p>
-                    </div>`;
-                body.appendChild(container);
-            }
-
-            // Carregar exercícios do planejamento para este dia
-            (async () => {
-                try {
-                    const currentUser = AppState.get('currentUser');
-                    if (!currentUser?.id) return;
-                    const { buscarExerciciosTreinoDia } = await import('../services/weeklyPlanningService.js');
-                    const resultado = await buscarExerciciosTreinoDia(currentUser.id, historico.data_treino);
-                    if (resultado?.data && resultado.data.length) {
-                        window.displayExercisesFromProtocol(resultado.data, resultado.planejamento, 'modal-workout-exercises-list');
-                    } else {
-                        container.innerHTML = '<p class="no-exercises-message">Nenhum exercício configurado para este dia.</p>';
-                    }
-                } catch (err) {
-                    console.error('[mostrarModalHistorico] Erro ao carregar exercícios planejados:', err);
-                    const container = document.getElementById('modal-workout-exercises-list');
-                    if (container) container.innerHTML = '<p class="no-exercises-message">Erro ao carregar exercícios.</p>';
-                }
-            })();
-        }
-    }
     
-    // Verificar elementos que podem estar sobrepondo
-    const allModals = document.querySelectorAll('[class*="modal"], [id*="modal"]');
-    console.log('[mostrarModalHistorico] 🔍 Todos os modais no DOM:', allModals.length, Array.from(allModals).map(m => m.id || m.className));
-    
-    // Mostrar modal com animação otimizada
+    // Mostrar modal com animação
     requestAnimationFrame(() => {
         const modal = document.getElementById('modal-historico');
         if (modal) {
-            modal.classList.add('show');
             modal.style.display = 'flex';
-            
-            // Desabilitar scroll do body
             document.body.style.overflow = 'hidden';
-            
-            // Para iOS, prevenir bounce scroll
-            if (isIOS) {
-                document.body.style.position = 'fixed';
-                document.body.style.width = '100%';
-                document.body.style.top = `-${window.scrollY}px`;
-            }
-            
-            // Focar no modal para acessibilidade
-            const modalContent = modal.querySelector('.modal-content-enhanced');
-            if (modalContent) {
-                modalContent.setAttribute('tabindex', '-1');
-                modalContent.focus();
-            }
-            
-            console.log('[mostrarModalHistorico] ✨ Modal visível');
         }
     });
 }
+
 
 // Calcular estatísticas do treino
 function calcularEstatisticasTreino(historico) {
@@ -5499,101 +4690,25 @@ function calcularEstatisticasTreino(historico) {
     };
 }
 
-// Fechar modal de histórico com otimizações para mobile
+// Fechar modal de histórico - VERSÃO SIMPLIFICADA
 function fecharModalHistorico(event) {
     if (event && event.target !== event.currentTarget) return;
     
     const modal = document.getElementById('modal-historico');
     if (modal) {
-        modal.classList.remove('show');
-        
         // Restaurar scroll do body
         document.body.style.overflow = '';
         
-        // Para iOS, restaurar posição do scroll
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIOS) {
-            const scrollY = document.body.style.top;
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            if (scrollY) {
-                window.scrollTo(0, parseInt(scrollY || '0') * -1);
-            }
-        }
-        
-        // Remover modal após animação
+        // Remover modal com animação
+        modal.style.opacity = '0';
         setTimeout(() => {
             modal.remove();
-        }, 200);
+        }, 300);
     }
 }
 
 // Tornar função global
 window.fecharModalHistorico = fecharModalHistorico;
-
-// Renderizar exercícios executados de forma compacta
-function renderizarExerciciosExecutados(historico) {
-    const { execucoes = [], exerciciosSugeridos = [] } = historico;
-    
-    if (!execucoes || execucoes.length === 0) {
-        return '<div class="no-exercises"><p>Nenhum exercício executado</p></div>';
-    }
-    
-    // Agrupar por exercício
-    const exerciciosAgrupados = {};
-    execucoes.forEach(exec => {
-        const id = exec.exercicio_id;
-        if (!exerciciosAgrupados[id]) {
-            exerciciosAgrupados[id] = {
-                nome: exec.exercicios?.nome || 'Exercício',
-                equipamento: exec.exercicios?.equipamento || 'Livre',
-                series: []
-            };
-        }
-        exerciciosAgrupados[id].series.push({
-            peso: exec.peso_utilizado || 0,
-            reps: exec.repeticoes || 0,
-            falhou: exec.falhou || false
-        });
-    });
-    
-    return Object.entries(exerciciosAgrupados).map(([id, exercicio], index) => {
-        const pesoMedio = exercicio.series.reduce((sum, s) => sum + s.peso, 0) / exercicio.series.length;
-        const repsMedio = exercicio.series.reduce((sum, s) => sum + s.reps, 0) / exercicio.series.length;
-        const seriesCompletas = exercicio.series.filter(s => !s.falhou).length;
-        
-        return `
-            <div class="exercise-row executed">
-                <div class="exercise-main">
-                    <span class="exercise-number">${index + 1}</span>
-                    <div class="exercise-name-equipment">
-                        <h4 class="exercise-name">${exercicio.nome}</h4>
-                        <span class="exercise-equipment">${exercicio.equipamento}</span>
-                    </div>
-                </div>
-                <div class="exercise-metrics">
-                    <div class="metric-item">
-                        <span class="metric-value">${Math.round(pesoMedio)}kg</span>
-                        <span class="metric-label">Peso médio</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-value">${Math.round(repsMedio)}</span>
-                        <span class="metric-label">Reps médio</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-value">${seriesCompletas}/${exercicio.series.length}</span>
-                        <span class="metric-label">Séries OK</span>
-                    </div>
-                    <div class="metric-item">
-                        <span class="metric-value">${exercicio.series.length > seriesCompletas ? '⚠️' : '✅'}</span>
-                        <span class="metric-label">Status</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
 
 // Renderizar exercícios do histórico com resumo avançado
 function renderizarExerciciosHistorico(historico) {
@@ -5809,106 +4924,6 @@ window.fecharModalHistorico = function(event) {
         }, 300);
     }
 };
-
-// Função para debug de informações do treino
-async function debugTreinoInfo(userId, dayIndex) {
-    try {
-        // Usar a semana que está sendo exibida, não a semana atual
-        const semanaExibida = dadosGlobaisCache.semanaExibida || dadosGlobaisCache.dados?.semanaAtual;
-        const hoje = new Date();
-        const ano = hoje.getFullYear();
-        const semana = semanaExibida; // Usar semana exibida
-        const semanaAtual = WeeklyPlanService.getWeekNumber(hoje);
-        const diferencaSemanas = semanaExibida - semanaAtual;
-        
-        // Calcular data corretamente
-        const dataBase = new Date(hoje.getTime() + (diferencaSemanas * 7 * 24 * 60 * 60 * 1000));
-        const diasParaAjustar = dayIndex - dataBase.getDay();
-        const dataAlvo = new Date(dataBase.getTime() + (diasParaAjustar * 24 * 60 * 60 * 1000));
-        const dataAlvoStr = dataAlvo.toISOString().split('T')[0];
-        
-        // Validar parâmetros antes da query
-        const validatedUserId = parseInt(userId);
-        const validatedAno = parseInt(ano);
-        const validatedSemana = parseInt(semana);
-        const validatedDiaSemana = WeeklyPlanService.dayToDb(dayIndex);
-        
-        console.log('[debugTreinoInfo] Parâmetros da query:', {
-            userId: validatedUserId,
-            ano: validatedAno,
-            semana: validatedSemana,
-            dia_semana: validatedDiaSemana,
-            dayIndex: dayIndex
-        });
-        
-        // Buscar planejamento
-        const { data: planejamento, error: planError } = await supabase
-            .from('planejamento_semanal')
-            .select('*')
-            .eq('usuario_id', validatedUserId)
-            .eq('ano', validatedAno)
-            .eq('semana_treino', validatedSemana)
-            .eq('dia_semana', validatedDiaSemana)
-            .single();
-            
-        if (planError) {
-            console.error('[debugTreinoInfo] Erro na query planejamento:', planError);
-        }
-        
-        // Buscar execuções (todas do dia, independente do protocolo)
-        const { data: execucoes } = await supabase
-            .from('execucao_exercicio_usuario')
-            .select('id, data_execucao, protocolo_treino_id, exercicio_id, peso_utilizado, repeticoes')
-            .eq('usuario_id', userId)
-            .gte('data_execucao', dataAlvoStr)
-            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-            
-        // Buscar também execuções de protocolos ativos
-        const { data: execucoesAtivas } = await supabase
-            .from('execucao_exercicio_usuario')
-            .select('id, data_execucao, protocolo_treino_id, exercicio_id')
-            .eq('usuario_id', userId)
-            .gte('data_execucao', dataAlvoStr)
-            .lt('data_execucao', new Date(dataAlvo.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-        
-        const protocolosEncontrados = [...new Set(execucoes?.map(e => e.protocolo_treino_id) || [])];
-        
-        const info = [
-            `Dia: ${dayIndex} (${dataAlvoStr})`,
-            `Planejamento: ${planejamento ? 'Existe' : 'Não existe'}`,
-            `Concluído: ${planejamento?.concluido || false}`,
-            `Protocolo ID: ${planejamento?.protocolo_treino_id || 'N/A'}`,
-            `Execuções: ${execucoes?.length || 0}`,
-            `Protocolos das execuções: [${protocolosEncontrados.join(', ')}]`,
-            `Semana: ${semana}, Ano: ${ano}`
-        ].join(' | ');
-        
-        console.log(`[debugTreinoInfo] ${info}`, { 
-            planejamento, 
-            execucoes,
-            planejamento_completo: planejamento,
-            protocolo_treino_id_detalhes: {
-                valor: planejamento?.protocolo_treino_id,
-                tipo: typeof planejamento?.protocolo_treino_id,
-                eh_null: planejamento?.protocolo_treino_id === null,
-                eh_undefined: planejamento?.protocolo_treino_id === undefined
-            },
-            query_params: {
-                userId,
-                ano,
-                semana,
-                dia_semana: WeeklyPlanService.dayToDb(dayIndex),
-                data_busca: dataAlvoStr
-            }
-        });
-        
-        return info;
-        
-    } catch (error) {
-        console.error('[debugTreinoInfo] Erro:', error);
-        return `Erro no debug: ${error.message}`;
-    }
-}
 
 // ===== FUNÇÕES DE RENDERIZAÇÃO DE EXERCÍCIOS =====
 

@@ -1,0 +1,7 @@
+/* Z-Index Variables */
+:root {
+    --z-modal: 10000;
+    --z-dropdown: 1000;
+    --z-tooltip: 9999;
+    --z-header: 100;
+}

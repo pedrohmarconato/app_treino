@@ -35,8 +35,36 @@
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.umd.min.js"></script>
     <script src="./config.js"></script>
     
+    <!-- Sistema de Cadastro de Usuários -->
+    <script type="module" src="./js/cadastroSystem.js"></script>
+    
+    <!-- Sistema de Autenticação -->
+    <script>
+        // Carregar sistema de autenticação quando necessário
+        window.loadAuthSystem = async function() {
+            if (window.AuthSystem) return true;
+            
+            try {
+                const { signIn, signUp, signOut, getCurrentUser, migrateExistingUser, needsMigration, resetPassword } = 
+                    await import('./services/authService.js');
+                
+                window.AuthSystem = {
+                    signIn, signUp, signOut, getCurrentUser, 
+                    migrateExistingUser, needsMigration, resetPassword
+                };
+                
+                console.log('[Auth] ✅ Sistema carregado');
+                return true;
+            } catch (error) {
+                console.error('[Auth] ❌ Erro ao carregar:', error);
+                return false;
+            }
+        };
+    </script>
+    
     <!-- Estilos Base -->
     <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./css/modal-styles.css">
     <link rel="stylesheet" href="week-indicators-redesign.css">
     <link rel="stylesheet" href="header-redesign.css">
     <link rel="stylesheet" href="disposicao-modal-redesign.css">
@@ -47,7 +75,11 @@
     <!-- Estilos do Workout Execution -->
     <link rel="stylesheet" href="./styles/workoutExecution.css">
     <link rel="stylesheet" href="./styles/planning.css">
+    <link rel="stylesheet" href="./styles/muscleGroupIcons.css">
     <link rel="stylesheet" href="./modal-enhanced.css">
+    
+    <!-- Modal de Recuperação de Senha -->
+    <link rel="stylesheet" href="./css/forgot-password-modal.css">
     
     <!-- Mobile Fixes -->
     <link rel="stylesheet" href="./mobile-fixes.css">
@@ -56,6 +88,7 @@
     <link rel="stylesheet" href="./design-enhancements.css">
     <link rel="stylesheet" href="./ui-polish.css">
     <link rel="stylesheet" href="./animations-premium.css">
+    <link rel="stylesheet" href="./css/login-redesign.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="./favicon.png">
@@ -96,14 +129,32 @@
     <script type="module">
         // Importa o sistema de templates
         import { initTemplates, renderTemplate } from './templates/index.js';
-        
+
         // Torna as funções de template disponíveis globalmente
         window.renderTemplate = renderTemplate;
-        
+
         // Inicializa os templates quando o DOM estiver pronto
         document.addEventListener('DOMContentLoaded', () => {
             initTemplates();
         });
+
+        // Rotas simples: reset-password
+        function handleDeepLinkRoutes() {
+            try {
+                const url = new URL(window.location.href);
+                const path = url.pathname;
+                if (path === '/reset-password' || path.endsWith('/reset-password')) {
+                    console.log('[router] 🔐 Rota /reset-password detectada');
+                    import('./routes/resetPasswordRoute.js').then(mod => mod.default()).catch(err => {
+                        console.error('[router] ❌ Erro carregando rota reset-password:', err);
+                    });
+                }
+            } catch (err) {
+                console.warn('[router] Erro ao processar rota:', err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', handleDeepLinkRoutes);
     </script>
     
     <!-- PWA Service Worker (desativado em localhost para evitar erros de cache) -->
@@ -229,26 +280,10 @@
     <!-- app.js é um módulo ES e já importa os demais módulos necessários. -->
 <script type="module" src="./js/app.js"></script>
 
-    <!-- Arquivo de teste para modal de disposição -->
-    <script src="./test-disposicao.js"></script>
-    
-    <!-- Verificador de sintaxe -->
-    <script src="./verificar-sintaxe.js"></script>
-    
-    <!-- Teste de logout -->
-    <script src="./test-logout.js"></script>
-    
-    <!-- Teste de conclusão de treino -->
-    <script src="./test-conclusao-treino.js"></script>
-
     <!-- Test Runner simplificado para testes no navegador -->
     <script src="./tests/simpleTestRunner.js"></script>
     
-    <!-- Debug tools para finalização de treino -->
-    <script type="module" src="./tests/workoutCompletionDebug.js"></script>
-    
     <!-- Preview dos treinos da semana 7 -->
-    <script type="module" src="./preview_semana7.js"></script>
 
     
     <!-- Componentes e Features já são importados via js/app.js (ESM), não carregar aqui -->
@@ -297,5 +332,8 @@
             }
         }, 2000);
     </script>
+    
+    <!-- Login Effects Script -->
+    <script src="./js/loginEffects.js"></script>
 </body>
 </html>

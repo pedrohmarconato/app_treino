@@ -335,6 +335,34 @@ function initializeHomeScreen() {
             }
         }, 200);
         
+        // 3. Verificar e mostrar alertas de validação do plano semanal
+        setTimeout(async () => {
+            try {
+                console.log('[initializeHomeScreen] Verificando validação do plano semanal...');
+                // Importação dinâmica para evitar problemas de dependência circular
+                const { default: WeeklyPlanningValidationService } = await import('../services/weeklyPlanningValidationService.js');
+                
+                // Forçar validação imediata com dados reais do banco
+                const validationResult = await WeeklyPlanningValidationService.validateWeeklyPlan();
+                
+                console.log('[initializeHomeScreen] Resultado da validação:', {
+                    hasIssues: validationResult.hasIssues,
+                    issuesCount: validationResult.issues?.length || 0,
+                    suggestionsCount: validationResult.suggestions?.length || 0
+                });
+                
+                if (validationResult.hasIssues && validationResult.needsAttention) {
+                    console.log('[initializeHomeScreen] 🚨 Treinos perdidos detectados! Mostrando modal...');
+                    WeeklyPlanningValidationService.showPlanAdjustmentModal(validationResult);
+                } else {
+                    console.log('[initializeHomeScreen] ✅ Nenhum treino perdido detectado');
+                }
+                
+            } catch (error) {
+                console.error('[initializeHomeScreen] Erro na validação do plano semanal:', error);
+            }
+        }, 1500); // Aguardar um pouco mais para não conflitar com outras modais
+        
         console.log('[initializeHomeScreen] Inicialização da home concluída');
         
     } catch (error) {
@@ -482,64 +510,6 @@ export function voltarParaHome() {
     mostrarTela('home-screen');
 }
 
-// Fazer logout
-export function logout() {
-    try {
-        console.log('[logout] 🚪 Iniciando logout...');
-        
-        // Limpar timers e intervalos ativos
-        if (window.timerManager && typeof window.timerManager.clearAll === 'function') {
-            window.timerManager.clearAll();
-            console.log('[logout] ⏰ Timers limpos');
-        }
-        
-        // Limpar estado da aplicação
-        if (AppState && typeof AppState.reset === 'function') {
-            AppState.reset();
-            console.log('[logout] 🧹 AppState resetado');
-        }
-        
-        // Limpar localStorage relacionado ao treino (opcional)
-        try {
-            const keys = ['workoutState', 'currentWorkout', 'currentExercises'];
-            keys.forEach(key => localStorage.removeItem(key));
-            console.log('[logout] 💾 Cache local limpo');
-        } catch (e) {
-            console.warn('[logout] ⚠️ Erro ao limpar localStorage:', e);
-        }
-        
-        // Aguardar um frame para garantir que limpeza terminou
-        requestAnimationFrame(() => {
-            // Navegar para login
-            console.log('[logout] 🔄 Navegando para login-screen...');
-            
-            if (typeof mostrarTela === 'function') {
-                mostrarTela('login-screen');
-            } else if (window.renderTemplate) {
-                window.renderTemplate('login');
-            } else {
-                // Fallback direto
-                console.warn('[logout] ⚠️ Sistema de navegação não disponível, usando fallback');
-                forcarNavegacaoLogin();
-            }
-            
-            // Notificação de sucesso após um pequeno delay
-            setTimeout(() => {
-                if (window.showNotification) {
-                    window.showNotification('Logout realizado com sucesso! 👋', 'success');
-                }
-            }, 100);
-            
-            console.log('[logout] ✅ Logout realizado com sucesso');
-        });
-        
-    } catch (error) {
-        console.error('[logout] ❌ Erro no logout:', error);
-        
-        // Fallback robusto em caso de erro
-        forcarNavegacaoLogin();
-    }
-}
 
 // Função auxiliar para forçar navegação para login
 function forcarNavegacaoLogin() {
@@ -603,91 +573,6 @@ function forcarNavegacaoLogin() {
     }
 }
 
-// Função auxiliar para executar logout com múltiplas tentativas
-function executarLogout() {
-    console.log('[executarLogout] 🚪 Iniciando processo de logout...');
-    
-    try {
-        // Primeira tentativa: usar função logout padrão
-        if (typeof logout === 'function') {
-            console.log('[executarLogout] 🎯 Usando função logout padrão');
-            logout();
-            return;
-        }
-        
-        // Segunda tentativa: usar função global
-        if (typeof window.logout === 'function') {
-            console.log('[executarLogout] 🎯 Usando função global window.logout');
-            window.logout();
-            return;
-        }
-        
-        // Terceira tentativa: execução manual
-        console.log('[executarLogout] 🎯 Executando logout manualmente');
-        logoutManual();
-        
-    } catch (error) {
-        console.error('[executarLogout] ❌ Erro ao executar logout:', error);
-        
-        // Última tentativa: força brutal
-        setTimeout(() => {
-            console.log('[executarLogout] 🆘 Forçando logout com recarregamento');
-            window.location.reload();
-        }, 1000);
-    }
-}
-
-// Função de logout manual como backup
-function logoutManual() {
-    console.log('[logoutManual] 🔧 Executando logout manual...');
-    
-    try {
-        // Limpar AppState se disponível
-        if (typeof AppState !== 'undefined' && AppState.reset) {
-            AppState.reset();
-            console.log('[logoutManual] ✅ AppState limpo');
-        }
-        
-        // Limpar localStorage
-        const keys = ['workoutState', 'currentWorkout', 'currentExercises'];
-        keys.forEach(key => localStorage.removeItem(key));
-        console.log('[logoutManual] ✅ localStorage limpo');
-        
-        // Limpar timers se disponível
-        if (window.timerManager && typeof window.timerManager.clearAll === 'function') {
-            window.timerManager.clearAll();
-            console.log('[logoutManual] ✅ Timers limpos');
-        }
-        
-        // Navegar para login
-        setTimeout(() => {
-            if (typeof mostrarTela === 'function') {
-                mostrarTela('login-screen');
-                console.log('[logoutManual] ✅ Navegação via mostrarTela');
-            } else if (window.renderTemplate) {
-                window.renderTemplate('login');
-                console.log('[logoutManual] ✅ Navegação via renderTemplate');
-            } else {
-                forcarNavegacaoLogin();
-                console.log('[logoutManual] ✅ Navegação forçada');
-            }
-            
-            // Notificação
-            if (window.showNotification) {
-                window.showNotification('Logout realizado! 👋', 'success');
-            }
-        }, 100);
-        
-    } catch (error) {
-        console.error('[logoutManual] ❌ Erro no logout manual:', error);
-        forcarNavegacaoLogin();
-    }
-}
-
-// Tornar funções acessíveis globalmente
-window.logout = logout;
-window.executarLogout = executarLogout;
-window.logoutManual = logoutManual;
 
 // Obter tipo de treino baseado no dia da semana
 function obterTipoTreino(diaSemana) {
@@ -886,3 +771,137 @@ function updateElement(id, value) {
         console.error(`[updateElement] Erro ao atualizar ${id}:`, error);
     }
 }
+
+// ===== FUNÇÕES DE LOGOUT RESTAURADAS =====
+
+// Função principal de logout
+export function logout() {
+    try {
+        console.log('[logout] 🚪 Iniciando logout...');
+        
+        // Limpar timers e intervalos ativos
+        if (window.timerManager && typeof window.timerManager.clearAll === 'function') {
+            window.timerManager.clearAll();
+            console.log('[logout] ⏰ Timers limpos');
+        }
+        
+        // Limpar estado da aplicação
+        if (AppState && typeof AppState.reset === 'function') {
+            AppState.reset();
+            console.log('[logout] 🗂️ Estado da aplicação limpo');
+        }
+        
+        // Limpar localStorage
+        const keysToRemove = [
+            'workoutState', 'currentWorkout', 'currentExercises', 
+            'weekPlan', 'lastSyncTime', 'userSession'
+        ];
+        keysToRemove.forEach(key => {
+            try {
+                localStorage.removeItem(key);
+            } catch (error) {
+                console.warn(`[logout] Erro ao remover ${key}:`, error);
+            }
+        });
+        console.log('[logout] 💾 localStorage limpo');
+        
+        // Navegar para tela de login
+        setTimeout(() => {
+            mostrarTela('login-screen');
+            console.log('[logout] ✅ Logout concluído com sucesso');
+        }, 200);
+        
+    } catch (error) {
+        console.error('[logout] ❌ Erro durante logout:', error);
+        
+        // Fallback: recarregar página
+        setTimeout(() => {
+            console.log('[logout] 🔄 Fallback: recarregando página');
+            window.location.reload();
+        }, 1000);
+    }
+}
+
+// Função de logout manual como backup
+function logoutManual() {
+    console.log('[logoutManual] 🔧 Executando logout manual...');
+    
+    try {
+        // Limpar AppState se disponível
+        if (typeof AppState !== 'undefined' && AppState.reset) {
+            AppState.reset();
+            console.log('[logoutManual] ✅ AppState limpo');
+        }
+        
+        // Limpar localStorage
+        const keys = ['workoutState', 'currentWorkout', 'currentExercises'];
+        keys.forEach(key => localStorage.removeItem(key));
+        console.log('[logoutManual] ✅ localStorage limpo');
+        
+        // Limpar timers se disponível
+        if (window.timerManager && typeof window.timerManager.clearAll === 'function') {
+            window.timerManager.clearAll();
+            console.log('[logoutManual] ✅ Timers limpos');
+        }
+        
+        // Navegar para login
+        setTimeout(() => {
+            if (typeof mostrarTela === 'function') {
+                mostrarTela('login-screen');
+                console.log('[logoutManual] ✅ Navegação via mostrarTela');
+            } else if (window.renderTemplate) {
+                window.renderTemplate('login');
+                console.log('[logoutManual] ✅ Navegação via renderTemplate');
+            } else {
+                console.log('[logoutManual] 🔄 Recarregando página como fallback');
+                window.location.reload();
+            }
+        }, 300);
+        
+    } catch (error) {
+        console.error('[logoutManual] ❌ Erro no logout manual:', error);
+        setTimeout(() => window.location.reload(), 1000);
+    }
+}
+
+// Função auxiliar para executar logout com múltiplas tentativas
+function executarLogout() {
+    console.log('[executarLogout] 🚪 Iniciando processo de logout...');
+    
+    try {
+        // Primeira tentativa: usar função logout padrão
+        if (typeof logout === 'function') {
+            console.log('[executarLogout] 🎯 Usando função logout padrão');
+            logout();
+            return;
+        }
+        
+        // Segunda tentativa: usar função global
+        if (typeof window.logout === 'function') {
+            console.log('[executarLogout] 🎯 Usando função global window.logout');
+            window.logout();
+            return;
+        }
+        
+        // Terceira tentativa: execução manual
+        console.log('[executarLogout] 🎯 Executando logout manualmente');
+        logoutManual();
+        
+    } catch (error) {
+        console.error('[executarLogout] ❌ Erro ao executar logout:', error);
+        
+        // Última tentativa: força brutal
+        setTimeout(() => {
+            console.log('[executarLogout] 🆘 Forçando logout com recarregamento');
+            window.location.reload();
+        }, 1000);
+    }
+}
+
+// Tornar funções acessíveis globalmente
+window.logout = logout;
+window.executarLogout = executarLogout;
+window.logoutManual = logoutManual;
+
+// Export additional functions
+export { executarLogout, logoutManual };

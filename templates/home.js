@@ -63,6 +63,13 @@ export const homeTemplate = () => `
                             ${getActionIcon('chart')}
                             <span class="btn-text">Métricas</span>
                         </button>
+                        <button class="btn-secondary btn-questionnaire" onclick="window.abrirQuestionarioPerfil()" id="btn-questionnaire-perfil" title="Completar/Editar Perfil">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            <span class="btn-text">Perfil</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -595,13 +602,48 @@ export const homeStyles = `
 
     /* Botões reestilizados */
     .btn-edit,
-    .btn-dashboard {
+    .btn-dashboard,
+    .btn-questionnaire {
         padding: 8px 12px !important;
         font-size: 0.875rem !important;
         min-height: 36px !important;
         display: flex;
         align-items: center;
         gap: 6px;
+        position: relative;
+    }
+    
+    /* Estilo especial para botão com atenção */
+    .btn-questionnaire.btn-attention {
+        background: linear-gradient(135deg, var(--accent-green), #B8E600) !important;
+        color: var(--bg-primary) !important;
+        animation: pulse-attention 2s infinite;
+        box-shadow: 0 0 10px rgba(207, 255, 4, 0.5);
+    }
+    
+    @keyframes pulse-attention {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    /* Indicador de notificação */
+    .notification-dot {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 12px;
+        height: 12px;
+        background: #ff4444;
+        border-radius: 50%;
+        border: 2px solid var(--bg-secondary);
+        animation: pulse-dot 1.5s infinite;
+        z-index: 10;
+    }
+    
+    @keyframes pulse-dot {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
     }
 
     .edit-icon {
