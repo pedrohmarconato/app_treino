@@ -1,4 +1,4 @@
-/
+/**
   🔐 MODAL DE LOGIN - Login Modal Component
   
   FUNÇÃO: Interface modal para login com email/senha.
@@ -17,11 +17,14 @@
   - Auto-focus e navegação por teclado
   - Feedback visual de erros
   - Loading states durante autenticação
- /
+ */
 
+import BaseModal from './BaseModal.js';
 
-
-
+export default class LoginModal extends BaseModal {
+    constructor() {
+        super();
+        this.resolve = null;
         this.reject = null;
         this.isMigrationMode = false;
 
@@ -353,4 +356,5 @@
             }
         }, 200);
     }
+}
 
