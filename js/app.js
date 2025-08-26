@@ -18,6 +18,25 @@
  * IMPORTANTE: Este arquivo é carregado pelo index.html e deve manter 
  * compatibilidade com browsers sem suporte total a ES6 modules.
  */
+
+// Global error handler to catch regex errors
+window.addEventListener('error', function(event) {
+    if (event.error && event.error.message.includes('regular expression')) {
+        console.error('🚨 REGEX ERROR CAUGHT:', {
+            message: event.error.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            stack: event.error.stack,
+            error: event.error
+        });
+        // Also show in UI for debugging
+        if (window.showNotification) {
+            window.showNotification(`Regex Error: ${event.error.message} at ${event.filename}:${event.lineno}`, 'error');
+        }
+    }
+});
+
 import AppState from '../state/appState.js';
 // Importar apenas o que é necessário, resto será acessado via window
 import '../feature/planning.js';

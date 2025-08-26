@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Regex Debug Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+</head>
+<body>
+    <h1>Regex Debug Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        const output = document.getElementById('output');
+        
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.style.color = isError ? 'red' : 'green';
+            div.style.fontFamily = 'monospace';
+            div.textContent = message;
+            output.appendChild(div);
+        }
+        
+        // Test 1: Basic regex patterns
+        try {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            log('✅ Email regex test passed');
+        } catch (error) {
+            log(`❌ Email regex failed: ${error.message}`, true);
+        }
+        
+        // Test 2: Dynamic regex construction
+        try {
+            const pattern = '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$';
+            const dynamicRegex = new RegExp(pattern);
+            log('✅ Dynamic regex construction passed');
+        } catch (error) {
+            log(`❌ Dynamic regex failed: ${error.message}`, true);
+        }
+        
+        // Test 3: Template literal with division
+        try {
+            const testDiv = `Result: ${10 / 2}`;
+            log(`✅ Template division: ${testDiv}`);
+        } catch (error) {
+            log(`❌ Template division failed: ${error.message}`, true);
+        }
+        
+        // Test 4: Step-by-step module loading
+        async function testModuleLoading() {
+            const modules = [
+                './services/authService.js',
+                './feature/login.js', 
+                './components/LoginModal.js'
+            ];
+            
+            for (const module of modules) {
+                try {
+                    await import(module);
+                    log(`✅ Module loaded: ${module}`);
+                } catch (error) {
+                    log(`❌ Module failed: ${module} - ${error.message}`, true);
+                    break;
+                }
+            }
+        }
+        
+        // Test 5: Config validation
+        try {
+            if (window.SUPABASE_CONFIG && window.supabase) {
+                log('✅ Supabase config loaded');
+            } else {
+                log('❌ Supabase config missing', true);
+            }
+        } catch (error) {
+            log(`❌ Config test failed: ${error.message}`, true);
+        }
+        
+        // Run tests
+        setTimeout(async () => {
+            await testModuleLoading();
+        }, 1000);
+    </script>
+</body>
+</html>
