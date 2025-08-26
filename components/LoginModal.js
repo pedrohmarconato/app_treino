@@ -20,6 +20,7 @@
  */
 
 import BaseModal from './BaseModal.js';
+import { signIn, migrateExistingUser } from '../services/authService.js';
 
 export default class LoginModal extends BaseModal {
     constructor() {

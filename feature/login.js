@@ -1,6 +1,6 @@
 import LoginModal from '../components/LoginModal.js';
 import { fetchUser } from '../services/userService.js';
-import { inicializarHome } from '../templates/home.js';
+import { inicializarHome } from '../services/homeService.js';
 import AppState from '../state/appState.js';
 
 /**
@@ -39,7 +39,7 @@ async function handleLoginSuccess(user) {
             throw new Error('Não foi possível carregar os dados do usuário.');
         }
 
-        AppState.getInstance().setCurrentUser(usuarioCompleto);
+        AppState.set('currentUser', usuarioCompleto);
         console.log('[LoginFlow] 👤 Usuário completo carregado e salvo no estado:', usuarioCompleto);
 
         // Navega para a tela principal
