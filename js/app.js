@@ -153,7 +153,7 @@ async function initApp() {
             `;
         }
     }
-
+}
 
 // === DASHBOARD DE MÉTRICAS (DEFINIÇÃO IMEDIATA) ===
 window.abrirDashboardMetricas = async () => {

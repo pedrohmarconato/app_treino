@@ -2246,10 +2246,10 @@ button {
     font-size: 0.9rem;
   }
 }
-  .plan-validation.show {
-    margin: 12px 16px 20px;
-    padding: 14px 16px;
-  }
+
+.plan-validation.show {
+  margin: 12px 16px 20px;
+  padding: 14px 16px;
 }
 
 @media (max-width: 480px) {
