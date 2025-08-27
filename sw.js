@@ -1,8 +1,8 @@
 // Service Worker para App Treino
 // Versão: 1.0.0
 
-const CACHE_NAME = 'app-treino-v1';
-const CACHE_VERSION = '1.0.0';
+const CACHE_NAME = 'app-treino-v1.1';
+const CACHE_VERSION = '1.1.0';
 
 // Arquivos essenciais para cache (offline-first)
 const CORE_FILES = [
