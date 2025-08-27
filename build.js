@@ -35,7 +35,20 @@ const filesToCopy = [
     'config.js',
     'manifest.json',
     'favicon.png',
-    'sw.js'
+    'sw.js',
+    // Arquivos CSS da raiz
+    'week-indicators-redesign.css',
+    'header-redesign.css',
+    'disposicao-modal-redesign.css',
+    'workout-expand-redesign.css',
+    'workout-execution-redesign.css',
+    'week-carousel-infinite.css',
+    'modal-enhanced.css',
+    'mobile-fixes.css',
+    'design-enhancements.css',
+    'ui-polish.css',
+    'animations-premium.css',
+    'styles.css'
 ];
 
 filesToCopy.forEach(file => {
@@ -69,7 +82,30 @@ function copyRecursiveSync(src, dest) {
 }
 
 // Copiar diretórios essenciais
-const dirsToCopy = ['icons', 'css', 'styles', 'templates', 'components', 'services', 'js', 'SVG_MUSCLE'];
+const dirsToCopy = [
+    'icons', 
+    'css', 
+    'styles', 
+    'templates', 
+    'components', 
+    'services', 
+    'js', 
+    'SVG_MUSCLE',
+    'state',
+    'ui',
+    'utils',
+    'feature',
+    'core',
+    'controllers',
+    'integration',
+    'assets',
+    'routes',
+    'queries',
+    'hooks',
+    'fixes',
+    'patches',
+    'screens'
+];
 
 dirsToCopy.forEach(dir => {
     const srcDir = path.join(__dirname, dir);

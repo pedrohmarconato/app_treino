@@ -81,8 +81,8 @@ async function getSupabaseClient() {
         }
     } else if (window.supabase && typeof window.supabase.from === 'function') {
         // supabase already initialized (client), reuse it
-        supabase.auth.setRedirectUrl('http://localhost:3000');
         supabase = window.supabase;
+        supabase.auth.setRedirectUrl('http://localhost:3000');
         console.log('[supabaseService] ✅ Reutilizando cliente Supabase existente');
         return supabase;
     } else {

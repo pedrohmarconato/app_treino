@@ -10,24 +10,9 @@ const CORE_FILES = [
   '/index.html',
   '/styles.css',
   '/config.js',
-  '/js/app.js',
-  '/templates/index.js',
-  '/templates/home.js',
-  '/templates/login.js',
-  '/templates/workout.js',
-  '/templates/modals.js',
-  '/services/supabaseService.js',
-  '/services/homeService.js',
-  '/services/userService.js',
-  '/services/workoutService.js',
-  '/services/weeklyPlanningService.js',
-  '/state/appState.js',
-  '/ui/navigation.js',
-  '/ui/notifications.js',
-  '/pedro.png',
-  '/japa.png',
-  '/vini.png',
-  '/favicon.png'
+  '/favicon.png',
+  '/manifest.json',
+  '/icons/icon-144x144.png'
 ];
 
 // Arquivos de funcionalidades (cache when needed)
