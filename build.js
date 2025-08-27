@@ -22,7 +22,7 @@ const indexContent = fs.readFileSync(indexPath, 'utf8');
 // Substituir o caminho do app.js para a versão minificada
 const updatedIndex = indexContent.replace(
     '<script type="module" src="./js/app.js"></script>',
-    '<script type="module" src="./dist/app.min.js"></script>'
+    '<script type="module" src="./app.min.js"></script>'
 );
 
 // Salvar index.html atualizado
@@ -50,29 +50,33 @@ filesToCopy.forEach(file => {
     }
 });
 
+// Função para copiar diretórios recursivamente
+function copyRecursiveSync(src, dest) {
+    if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+    }
+    
+    fs.readdirSync(src).forEach(file => {
+        const srcFile = path.join(src, file);
+        const destFile = path.join(dest, file);
+        
+        if (fs.statSync(srcFile).isDirectory()) {
+            copyRecursiveSync(srcFile, destFile);
+        } else {
+            fs.copyFileSync(srcFile, destFile);
+        }
+    });
+}
+
 // Copiar diretórios essenciais
-const dirsToCopy = ['icons', 'css', 'styles'];
+const dirsToCopy = ['icons', 'css', 'styles', 'templates', 'components', 'services', 'js', 'SVG_MUSCLE'];
 
 dirsToCopy.forEach(dir => {
     const srcDir = path.join(__dirname, dir);
     const destDir = path.join(distDir, dir);
     
     if (fs.existsSync(srcDir)) {
-        // Criar diretório de destino
-        if (!fs.existsSync(destDir)) {
-            fs.mkdirSync(destDir, { recursive: true });
-        }
-        
-        // Copiar arquivos recursivamente (simplificado - apenas primeiro nível)
-        fs.readdirSync(srcDir).forEach(file => {
-            const srcFile = path.join(srcDir, file);
-            const destFile = path.join(destDir, file);
-            
-            if (fs.statSync(srcFile).isFile()) {
-                fs.copyFileSync(srcFile, destFile);
-            }
-        });
-        
+        copyRecursiveSync(srcDir, destDir);
         console.log(`✅ Copiado diretório: ${dir}`);
     }
 });
