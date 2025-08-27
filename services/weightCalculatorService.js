@@ -93,15 +93,7 @@ export class WeightCalculatorService {
             
             // 1. Buscar exercícios do treino para a semana usando JOIN
             const { data: exerciciosTreino, error } = await query('protocolo_treinos', {
-                select: `
-                    *,
-                    exercicios!inner (
-                        id,
-                        nome,
-                        grupo_muscular,
-                        equipamento
-                    )
-                `,
+                select: '*, exercicios!inner ( id, nome, grupo_muscular, equipamento )',
                 eq: {
                     'exercicios.grupo_muscular': tipoAtividade,
                     protocolo_id: parseInt(protocoloId),

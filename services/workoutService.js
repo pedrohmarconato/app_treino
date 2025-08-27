@@ -100,28 +100,7 @@ export async function fetchProximoTreino(userId, protocoloId, semanaAtual = 1) {
 // Buscar exercícios de um treino
 export async function fetchExerciciosTreino(grupoMuscular, protocoloId) {
     const { data } = await query('protocolo_treinos', {
-        select: `
-            id,
-            protocolo_id,
-            exercicio_id,
-            semana_referencia,
-            dia_semana,
-            percentual_1rm_base,
-            percentual_1rm_min,
-            percentual_1rm_max,
-            series,
-            repeticoes_alvo,
-            tempo_descanso,
-            ordem_exercicio,
-            observacoes,
-            exercicios!inner (
-                id,
-                nome,
-                grupo_muscular,
-                equipamento,
-                tempo_descanso_padrao
-            )
-        `,
+        select: 'id, protocolo_id, exercicio_id, semana_referencia, dia_semana, percentual_1rm_base, percentual_1rm_min, percentual_1rm_max, series, repeticoes_alvo, tempo_descanso, ordem_exercicio, observacoes, exercicios!inner ( id, nome, grupo_muscular, equipamento, tempo_descanso_padrao )',
         eq: {
             'exercicios.grupo_muscular': grupoMuscular,
             protocolo_id: protocoloId
@@ -156,12 +135,7 @@ export async function carregarPesosSugeridos(userId, protocoloTreinoId) {
         
         // Buscar dados do protocolo de treino
         const { data: protocoloTreino, error: protocoloError } = await query('protocolo_treinos', {
-            select: `
-                exercicio_id,
-                percentual_1rm_base,
-                percentual_1rm_min,
-                percentual_1rm_max
-            `,
+            select: 'exercicio_id, percentual_1rm_base, percentual_1rm_min, percentual_1rm_max',
             eq: { id: protocoloTreinoId },
             single: true
         });

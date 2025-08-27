@@ -37,7 +37,7 @@
   "scripts": {
     "start": "serve -s . -l 3000",
     "dev": "serve -s . -l 3000 --cors",
-    "build": "npm run minify:css && npm run minify:js",
+    "build": "npm run minify:css && npm run minify:js && node build.js",
     "preview": "serve -s dist -l 4173",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -50,7 +50,7 @@
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
     "minify:css": "cleancss -o dist/styles.min.css styles.css",
-    "minify:js": "terser js/app.js -o dist/app.min.js",
+    "minify:js": "terser js/app.js -o dist/app.min.js --config-file terser.config.json",
     "security:audit": "npm audit --audit-level moderate",
     "security:fix": "npm audit fix",
     "deps:check": "ncu",

@@ -68,14 +68,7 @@ export async function carregarDashboardMetricas() {
 async function buscarExecucoes(query, userId) {
     try {
         const { data, error } = await query('execucao_exercicio_usuario', {
-            select: `
-                id,
-                data_execucao,
-                peso_utilizado,
-                repeticoes,
-                serie_numero,
-                exercicio_id
-            `,
+            select: 'id, data_execucao, peso_utilizado, repeticoes, serie_numero, exercicio_id',
             eq: { usuario_id: userId },
             limit: 1000
         });
@@ -92,14 +85,7 @@ async function buscarExecucoes(query, userId) {
 async function buscarPlanejamentos(query, userId) {
     try {
         const { data, error } = await query('planejamento_semanal', {
-            select: `
-                id,
-                semana_treino,
-                dia_semana,
-                tipo_atividade,
-                concluido,
-                data_conclusao
-            `,
+            select: 'id, semana_treino, dia_semana, tipo_atividade, concluido, data_conclusao',
             eq: { usuario_id: userId },
             limit: 100
         });
@@ -116,11 +102,7 @@ async function buscarPlanejamentos(query, userId) {
 async function buscar1RMData(query, userId) {
     try {
         const { data, error } = await query('usuario_1rm', {
-            select: `
-                exercicio_id,
-                rm_calculado,
-                data_teste
-            `,
+            select: 'exercicio_id, rm_calculado, data_teste',
             eq: { usuario_id: userId }
         });
         
@@ -141,27 +123,7 @@ async function buscarResumoDiaSemana(query, userId) {
         dataLimite.setMonth(dataLimite.getMonth() - 3);
         
         const { data, error } = await query('v_resumo_dia_semana', {
-            select: `
-                usuario_id,
-                ano,
-                semana,
-                dia_semana,
-                tipo_atividade,
-                status_treino,
-                concluido,
-                data_conclusao,
-                pre_workout,
-                post_workout,
-                semana_treino,
-                total_exercicios,
-                total_series,
-                total_repeticoes,
-                peso_medio,
-                volume_total_kg,
-                tempo_total_segundos,
-                tempo_formatado,
-                exercicios_lista
-            `,
+            select: 'usuario_id, ano, semana, dia_semana, tipo_atividade, status_treino, concluido, data_conclusao, pre_workout, post_workout, semana_treino, total_exercicios, total_series, total_repeticoes, peso_medio, volume_total_kg, tempo_total_segundos, tempo_formatado, exercicios_lista',
             eq: { usuario_id: userId }
         });
         

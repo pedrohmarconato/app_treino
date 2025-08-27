@@ -150,10 +150,7 @@ class WeeklyPlanningValidationService {
 
             // Buscar planejamento semanal real do banco usando semana_treino
             const { data: planejamentos, error } = await query('planejamento_semanal', {
-                select: `
-                    id, dia_semana, tipo_atividade, concluido, data_conclusao,
-                    ano, semana, semana_treino, usuario_id
-                `,
+                select: 'id, dia_semana, tipo_atividade, concluido, data_conclusao, ano, semana, semana_treino, usuario_id',
                 eq: { 
                     usuario_id: currentUser.id,
                     ano: ano,

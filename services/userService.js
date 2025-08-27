@@ -258,11 +258,7 @@ export async function salvar1RMUsuario(userId, exercicioId, pesoTeste, repeticoe
 // Buscar histórico de treinos do usuário
 export async function fetchHistoricoTreinos(userId, limit = 10) {
     const { data } = await query('execucao_exercicio_usuario', {
-        select: `
-            *,
-            exercicios (nome, grupo_muscular),
-            protocolo_treinos (semana_referencia, dia_semana)
-        `,
+        select: '*, exercicios (nome, grupo_muscular), protocolo_treinos (semana_referencia, dia_semana)',
         eq: { usuario_id: userId },
         order: { column: 'data_execucao', ascending: false },
         limit

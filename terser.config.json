@@ -1,0 +1,36 @@
+{
+  "compress": {
+    "drop_console": false,
+    "drop_debugger": true,
+    "pure_funcs": ["console.log"],
+    "passes": 2,
+    "unsafe": false,
+    "unsafe_regexp": false,
+    "keep_fargs": true,
+    "keep_fnames": true
+  },
+  "mangle": {
+    "keep_fnames": true,
+    "reserved": ["$", "exports", "require"]
+  },
+  "format": {
+    "comments": false,
+    "beautify": false,
+    "safari10": true,
+    "webkit": true,
+    "keep_quoted_props": true,
+    "quote_style": 0
+  },
+  "sourceMap": false,
+  "ecma": 2020,
+  "module": true,
+  "toplevel": false,
+  "parse": {
+    "bare_returns": false,
+    "ecma": 2020,
+    "shebang": true
+  },
+  "keep_classnames": true,
+  "keep_fnames": true,
+  "safari10": true
+}

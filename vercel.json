@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "outputDirectory": ".",
+  "outputDirectory": "dist",
+  "buildCommand": "npm run build",
   "name": "app-treino",
   "headers": [
     {
