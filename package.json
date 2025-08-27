@@ -104,23 +104,7 @@
       "maxSize": "50 kB"
     }
   ],
-  "type": "module",
-  "jest": {
-    "preset": "default",
-    "testEnvironment": "jsdom",
-    "extensionsToTreatAsEsm": [
-      ".js"
-    ],
-    "globals": {
-      "TextEncoder": "TextEncoder",
-      "TextDecoder": "TextDecoder"
-    },
-    "transform": {
-      "^.+\\.js$": [
-        "babel-jest",
-        {
-          "presets": [
-            [
+  "type": "module"
               "@babel/preset-env",
               {
                 "targets": {
