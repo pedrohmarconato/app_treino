@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "buildCommand": "npm run build",
   "name": "app-treino",
+  "public": true,
   "headers": [
     {
       "source": "/sw.js",
@@ -66,6 +67,16 @@
     {
       "source": "/((?!.*\\.).*)",
       "destination": "/index.html"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/manifest.json",
+      "dest": "/manifest.json",
+      "headers": { 
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "application/manifest+json"
+      }
     }
   ]
 }

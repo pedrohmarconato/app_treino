@@ -44,16 +44,36 @@ self.addEventListener('install', event => {
   
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
+      .then(async cache => {
         console.log('[SW] Cacheando arquivos essenciais');
-        return cache.addAll(CORE_FILES);
+        
+        // Tentar cachear cada arquivo individualmente para evitar falhas totais
+        const cachePromises = CORE_FILES.map(async url => {
+          try {
+            const response = await fetch(url, {
+              credentials: 'omit' // Não enviar cookies/auth
+            });
+            
+            if (response.ok) {
+              await cache.put(url, response);
+              console.log('[SW] ✅ Cacheado:', url);
+            } else {
+              console.warn('[SW] ⚠️ Não foi possível cachear:', url, response.status);
+            }
+          } catch (error) {
+            console.warn('[SW] ⚠️ Erro ao cachear:', url, error);
+          }
+        });
+        
+        await Promise.all(cachePromises);
+        console.log('[SW] ✅ Cache inicial concluído');
       })
       .then(() => {
-        console.log('[SW] ✅ Arquivos essenciais cacheados');
+        console.log('[SW] ✅ Service Worker pronto');
         return self.skipWaiting(); // Ativa imediatamente
       })
       .catch(error => {
-        console.error('[SW] ❌ Erro ao cachear arquivos essenciais:', error);
+        console.error('[SW] ❌ Erro durante instalação:', error);
       })
   );
 });
