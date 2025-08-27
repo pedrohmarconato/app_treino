@@ -280,23 +280,21 @@
     <!-- app.js é um módulo ES e já importa os demais módulos necessários. -->
 <script type="module" src="./js/app.js"></script>
 
-    <!-- Test Runner simplificado para testes no navegador -->
-    <script src="./tests/simpleTestRunner.js"></script>
-    
+
     <!-- Preview dos treinos da semana 7 -->
 
-    
+
     <!-- Componentes e Features já são importados via js/app.js (ESM), não carregar aqui -->
-    
+
     <!-- Script para toggle de exercícios -->
     <script src="./js/exerciseToggle.js"></script>
-    
+
     <!-- Script para toggle do workout principal -->
     <script src="./js/workoutToggle.js"></script>
-    
+
     <!-- Script do Carrossel Infinito -->
     <script src="./js/weekCarouselInfinite.js?v=2.1"></script>
-    
+
     <!-- Fallback de emergência se nada funcionar -->
     <script>
         // Aguardar 2 segundos e verificar se algo foi renderizado
@@ -322,9 +320,6 @@
                         <button onclick="location.reload()" style="padding: 12px 20px; background: #CFFF04; color: black; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
                             Recarregar Página
                         </button>
-                        <button onclick="window.open('/test_simple.html', '_blank')" style="padding: 12px 20px; background: #666; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-left: 10px;">
-                            Teste Simples
-                        </button>
                     </div>
                 `;
             } else {
@@ -332,7 +327,7 @@
             }
         }, 2000);
     </script>
-    
+
     <!-- Login Effects Script -->
     <script src="./js/loginEffects.js"></script>
 </body>

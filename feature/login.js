@@ -1,16 +1,26 @@
-import LoginModal from '../components/LoginModal.js';
 import { fetchUser } from '../services/userService.js';
 import { inicializarHome } from '../services/homeService.js';
 import AppState from '../state/appState.js';
 
 /**
  * 🔐 Ponto de Entrada para Autenticação
- * 
+ *
  * Esta função gerencia todo o fluxo de login, exibindo o modal de login
  * e tratando o resultado (sucesso ou cancelamento).
  */
 async function showLoginFlow() {
     console.log('[LoginFlow] 🚀 Iniciando fluxo de login...');
+
+    // Importar o modal dinamicamente para evitar parse antes da hora
+    let LoginModal;
+    try {
+        const mod = await import('../components/LoginModal.js');
+        LoginModal = mod.default;
+    } catch (err) {
+        console.error('[LoginFlow] ❌ Erro ao importar LoginModal:', err);
+        throw err;
+    }
+
     const loginModal = new LoginModal();
 
     try {
