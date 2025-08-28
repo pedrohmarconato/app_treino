@@ -2,53 +2,60 @@
 // Modal simples de pré-treino para coletar nível de energia (Likert 1-5)
 
 export class PreWorkoutModal {
-    // Exibe o modal e resolve a Promise com o valor (1-5)
-    static exibir () {
-        return new Promise(resolve => {
-            // Já existe? remover para evitar duplicado
-            const existente = document.getElementById('modal-pre-workout');
-            if (existente) existente.remove();
+  // Exibe o modal e resolve a Promise com o valor (1-5)
+  static exibir() {
+    return new Promise((resolve) => {
+      // Já existe? remover para evitar duplicado
+      const existente = document.getElementById('modal-pre-workout');
+      if (existente) existente.remove();
 
-            const overlay = document.createElement('div');
-            overlay.id = 'modal-pre-workout';
-            overlay.className = 'modal-overlay pre-workout-modal';
-            overlay.innerHTML = this._html();
-            document.body.appendChild(overlay);
+      const overlay = document.createElement('div');
+      overlay.id = 'modal-pre-workout';
+      overlay.className = 'modal-overlay pre-workout-modal';
+      overlay.innerHTML = this._html();
+      document.body.appendChild(overlay);
 
-            // Botões escala
-            overlay.querySelectorAll('.likert-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    // limpar seleção anterior
-                    overlay.querySelectorAll('.likert-btn').forEach(b => b.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    overlay.dataset.valorSelecionado = btn.dataset.value;
-                    overlay.querySelector('#btn-iniciar-treino').disabled = false;
-                });
-            });
-
-            // Botão iniciar treino
-            overlay.querySelector('#btn-iniciar-treino').addEventListener('click', () => {
-                const valor = parseInt(overlay.dataset.valorSelecionado || '0');
-                limpar();
-                resolve(isNaN(valor) ? null : valor);
-            });
-
-            // Fechar com ESC ou click fora
-            const fechar = () => { limpar(); resolve(null); };
-            overlay.addEventListener('click', e => { if (e.target === overlay) fechar(); });
-            document.addEventListener('keydown', escHandler);
-
-            function escHandler (e) { if (e.key === 'Escape') fechar(); }
-            function limpar () {
-                document.removeEventListener('keydown', escHandler);
-                overlay.remove();
-            }
+      // Botões escala
+      overlay.querySelectorAll('.likert-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          // limpar seleção anterior
+          overlay.querySelectorAll('.likert-btn').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          overlay.dataset.valorSelecionado = btn.dataset.value;
+          overlay.querySelector('#btn-iniciar-treino').disabled = false;
         });
-    }
+      });
 
-    static _html () {
-        // Estilos básicos inline para evitar dependência externa
-        return `
+      // Botão iniciar treino
+      overlay.querySelector('#btn-iniciar-treino').addEventListener('click', () => {
+        const valor = parseInt(overlay.dataset.valorSelecionado || '0');
+        limpar();
+        resolve(isNaN(valor) ? null : valor);
+      });
+
+      // Fechar com ESC ou click fora
+      const fechar = () => {
+        limpar();
+        resolve(null);
+      };
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) fechar();
+      });
+      document.addEventListener('keydown', escHandler);
+
+      function escHandler(e) {
+        if (e.key === 'Escape') fechar();
+      }
+      function limpar() {
+        document.removeEventListener('keydown', escHandler);
+        overlay.remove();
+      }
+    });
+  }
+
+  static _html() {
+    // Estilos básicos inline para evitar dependência externa
+    return `
             <style>
                 .modal-overlay.pre-workout-modal {position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;box-sizing:border-box;backdrop-filter:blur(8px);opacity:1 !important;transition:none;}
                 .pre-workout-container {background:var(--bg-card);border-radius:var(--radius-lg);max-width:480px;width:100%;padding:32px;text-align:center;box-shadow:var(--shadow-card);} 
@@ -63,12 +70,12 @@ export class PreWorkoutModal {
             <div class="pre-workout-container" onclick="event.stopPropagation()">
                 <h2>Como está sua energia hoje?</h2>
                 <div class="likert-row">
-                    ${[1,2,3,4,5].map(v=>`<button class="likert-btn" data-value="${v}">${v}</button>`).join('')}
+                    ${[1, 2, 3, 4, 5].map((v) => `<button class="likert-btn" data-value="${v}">${v}</button>`).join('')}
                 </div>
                 <button id="btn-iniciar-treino" disabled>Iniciar Treino</button>
             </div>
         `;
-    }
+  }
 }
 
 export default PreWorkoutModal;

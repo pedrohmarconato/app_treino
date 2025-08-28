@@ -35,7 +35,9 @@ export const planejamentoSemanalPageTemplate = () => `
                         </div>
                     </div>
                     <div class="dias-lista">
-                        ${['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map((dia, index) => `
+                        ${['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+                          .map(
+                            (dia, index) => `
                             <div class="dia-item" id="dia-${index + 1}" data-day-index="${index + 1}">
                                 <div class="dia-header">
                                     <span class="dia-label">${dia.toUpperCase()}</span>
@@ -57,7 +59,9 @@ export const planejamentoSemanalPageTemplate = () => `
                                     <div class="restriction-text">Não editável</div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `
+                          )
+                          .join('')}
                     </div>
                 </div>
                 

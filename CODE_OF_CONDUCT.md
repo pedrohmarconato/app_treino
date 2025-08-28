@@ -11,6 +11,7 @@ Comprometemo-nos a agir e interagir de maneiras que contribuam para uma comunida
 Exemplos de comportamento que contribuem para um ambiente positivo para nossa comunidade incluem:
 
 ### ✅ Comportamentos Esperados
+
 - Demonstrar empatia e bondade com outras pessoas
 - Ser respeitoso com opiniões, pontos de vista e experiências diferentes
 - Dar e aceitar graciosamente feedback construtivo
@@ -20,6 +21,7 @@ Exemplos de comportamento que contribuem para um ambiente positivo para nossa co
 - Ser paciente com iniciantes e contribuidores novos
 
 ### ❌ Comportamentos Inaceitáveis
+
 - O uso de linguagem ou imagens sexualizadas e atenção sexual indesejada
 - Trolling, comentários insultuosos/depreciativos e ataques pessoais ou políticos
 - Assédio público ou privado
@@ -60,21 +62,25 @@ Todos os líderes da comunidade são obrigados a respeitar a privacidade e a seg
 Os líderes da comunidade seguirão estas Diretrizes de Impacto na Comunidade ao determinar as consequências para qualquer ação que considerem violadora deste Código de Conduta:
 
 ### 1. 📝 Correção
+
 **Impacto na Comunidade**: Uso de linguagem inadequada ou outro comportamento considerado não profissional ou indesejado na comunidade.
 
 **Consequência**: Um aviso privado por escrito dos líderes da comunidade, fornecendo clareza sobre a natureza da violação e uma explicação de por que o comportamento foi inadequado. Um pedido público de desculpas pode ser solicitado.
 
 ### 2. ⚠️ Aviso
+
 **Impacto na Comunidade**: Uma violação através de um único incidente ou série de ações.
 
 **Consequência**: Um aviso com consequências para comportamento continuado. Nenhuma interação com as pessoas envolvidas, incluindo interação não solicitada com aqueles que aplicam o Código de Conduta, por um período especificado de tempo. Isso inclui evitar interações em espaços da comunidade, bem como canais externos como mídias sociais. Violar estes termos pode levar a um banimento temporário ou permanente.
 
 ### 3. 🚫 Banimento Temporário
+
 **Impacto na Comunidade**: Uma violação séria dos padrões da comunidade, incluindo comportamento inadequado sustentado.
 
 **Consequência**: Um banimento temporário de qualquer tipo de interação ou comunicação pública com a comunidade por um período especificado de tempo. Nenhuma interação pública ou privada com as pessoas envolvidas, incluindo interação não solicitada com aqueles que aplicam o Código de Conduta, é permitida durante este período. Violar estes termos pode levar a um banimento permanente.
 
 ### 4. 🔒 Banimento Permanente
+
 **Impacto na Comunidade**: Demonstrar um padrão de violação dos padrões da comunidade, incluindo comportamento inadequado sustentado, assédio de um indivíduo, ou agressão ou depreciação de classes de indivíduos.
 
 **Consequência**: Um banimento permanente de qualquer tipo de interação pública dentro da comunidade.

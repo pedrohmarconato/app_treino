@@ -1,12 +1,15 @@
 # Pull Request
 
 ## 📋 Descrição
+
 Breve descrição das mudanças implementadas.
 
 ## 🔗 Issue Relacionada
+
 Fixes #(issue number)
 
 ## 🚀 Tipo de Mudança
+
 Marque as opções relevantes:
 
 - [ ] 🐛 Bug fix (mudança que corrige um problema)
@@ -19,6 +22,7 @@ Marque as opções relevantes:
 - [ ] 🧪 Test (adiciona ou corrige testes)
 
 ## 🧪 Como Foi Testado?
+
 Descreva os testes que você executou para verificar suas mudanças:
 
 - [ ] Teste unitário
@@ -28,15 +32,18 @@ Descreva os testes que você executou para verificar suas mudanças:
 - [ ] Teste em dispositivos móveis
 
 **Configuração de Teste:**
+
 - Firmware version:
 - Hardware:
 - Toolchain:
 - SDK:
 
 ## 📱 Screenshots (se aplicável)
+
 Adicione screenshots para demonstrar as mudanças visuais.
 
 ## ✅ Checklist
+
 Confirme que você:
 
 - [ ] Meu código segue as diretrizes de estilo deste projeto
@@ -49,6 +56,7 @@ Confirme que você:
 - [ ] Qualquer mudança dependente foi mergeada e publicada
 
 ## 🔍 Revisão Específica
+
 Áreas que precisam de atenção especial durante a revisão:
 
 - [ ] Lógica de negócio complexa
@@ -59,4 +67,5 @@ Confirme que você:
 - [ ] Compatibilidade de browsers
 
 ## 📋 Notas Adicionais
+
 Qualquer informação adicional que possa ser útil para os revisores.

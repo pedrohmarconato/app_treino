@@ -40,7 +40,6 @@ export const loginTemplate = () => `
     </div>
 `;
 
-
 // ADICIONAR estilos específicos para garantir que apareçam
 export const loginStyles = `
     /* ===== VARIÁVEIS DE DESIGN ===== */

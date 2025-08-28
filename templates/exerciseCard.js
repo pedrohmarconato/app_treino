@@ -1,8 +1,8 @@
 /**
  * 🏋️ TEMPLATE DE CARD DE EXERCÍCIO - Exercise Card Template
- * 
+ *
  * FUNÇÃO: Renderizar interface completa para execução individual de exercícios durante treinos.
- * 
+ *
  * RESPONSABILIDADES:
  * - Exibir informações completas do exercício (nome, grupo, equipamento)
  * - Mostrar dados do protocolo (séries, repetições, descanso, intensidade)
@@ -12,7 +12,7 @@
  * - Exibir histórico da última execução do exercício
  * - Implementar validação e confirmação de séries
  * - Aplicar estilos responsivos e acessíveis
- * 
+ *
  * COMPONENTES DO CARD:
  * - Header: nome, grupo muscular, equipamento, contador de exercícios
  * - Protocolo: estatísticas do protocolo (séries, reps, descanso, %1RM)
@@ -21,24 +21,24 @@
  * - Observações: notas técnicas do protocolo quando disponíveis
  * - Séries: interface para execução com inputs de peso/reps
  * - Ações: botões para histórico e conclusão do exercício
- * 
+ *
  * FUNCIONALIDADES INTERATIVAS:
  * - Botões +/- para ajuste rápido de valores
  * - Confirmação visual de séries completadas
  * - Progresso dinâmico de séries executadas
  * - Validação de dados antes da confirmação
  * - Estados visuais para séries concluídas
- * 
+ *
  * INTEGRAÇÃO: Usado pelo workout.js durante execução de treinos
  */
 
 // templates/exerciseCard.js - Template para card de exercício individual
 export function exerciseCardTemplate(exercicio, index, total) {
-    const pesos = exercicio.pesos_sugeridos || {};
-    const execucoesAnteriores = exercicio.execucoes_anteriores || [];
-    const ultimaExecucao = execucoesAnteriores[0];
-    
-    return `
+  const pesos = exercicio.pesos_sugeridos || {};
+  const execucoesAnteriores = exercicio.execucoes_anteriores || [];
+  const ultimaExecucao = execucoesAnteriores[0];
+
+  return `
         <div class="exercise-card" data-exercise-id="${exercicio.exercicio_id}" id="exercise-${exercicio.exercicio_id}">
             <!-- Header do Exercício -->
             <div class="exercise-header">
@@ -95,7 +95,9 @@ export function exerciseCardTemplate(exercicio, index, total) {
                 </div>
 
                 <!-- Última Execução -->
-                ${ultimaExecucao ? `
+                ${
+                  ultimaExecucao
+                    ? `
                     <div class="last-execution">
                         <h4>Última Execução</h4>
                         <div class="execution-data">
@@ -103,16 +105,22 @@ export function exerciseCardTemplate(exercicio, index, total) {
                             <span class="execution-date">${window.dateUtils ? window.dateUtils.formatInSP(ultimaExecucao.data_execucao, 'dd/MM/yyyy') : new Date(ultimaExecucao.data_execucao).toLocaleDateString('pt-BR')}</span>
                         </div>
                     </div>
-                ` : ''}
+                `
+                    : ''
+                }
             </div>
 
             <!-- Observações do Protocolo -->
-            ${exercicio.observacoes ? `
+            ${
+              exercicio.observacoes
+                ? `
                 <div class="exercise-notes">
                     <h4>Observações Técnicas</h4>
                     <p>${exercicio.observacoes}</p>
                 </div>
-            ` : ''}
+            `
+                : ''
+            }
 
             <!-- Container de Séries -->
             <div class="series-container">
@@ -160,21 +168,21 @@ export function exerciseCardTemplate(exercicio, index, total) {
 
 // Gerar lista inicial de séries
 function generateSeriesList(exercicio) {
-    const pesos = exercicio.pesos_sugeridos || {};
-    const pesoSugerido = pesos.peso_base || 0;
-    const repsAlvo = exercicio.repeticoes_alvo || 10;
-    
-    let html = '';
-    
-    // Criar primeira série automaticamente
-    html += generateSeriesItem(exercicio.exercicio_id, 1, pesoSugerido, repsAlvo);
-    
-    return html;
+  const pesos = exercicio.pesos_sugeridos || {};
+  const pesoSugerido = pesos.peso_base || 0;
+  const repsAlvo = exercicio.repeticoes_alvo || 10;
+
+  let html = '';
+
+  // Criar primeira série automaticamente
+  html += generateSeriesItem(exercicio.exercicio_id, 1, pesoSugerido, repsAlvo);
+
+  return html;
 }
 
 // Gerar item individual de série
 function generateSeriesItem(exercicioId, serieNumero, pesoSugerido = 0, repsAlvo = 10) {
-    return `
+  return `
         <div class="series-item" id="series-${exercicioId}-${serieNumero}">
             <div class="series-number">${serieNumero}</div>
             

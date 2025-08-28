@@ -16,7 +16,9 @@ export default async function resetPasswordRoute() {
     if (hash.includes('access_token')) {
       console.log('[resetPasswordRoute] Token de redefinição detectado no hash');
       // Pedir nova senha do usuário
-      const { default: ResetNewPasswordModal } = await import('../components/ResetNewPasswordModal.js');
+      const { default: ResetNewPasswordModal } = await import(
+        '../components/ResetNewPasswordModal.js'
+      );
       const modal = new ResetNewPasswordModal({ email });
       const result = await modal.show();
 
@@ -30,7 +32,9 @@ export default async function resetPasswordRoute() {
     }
 
     // Caso 2: Não há token no hash -> mostrar instruções
-    const { default: ResetPasswordInfoPage } = await import('../components/ResetPasswordInfoPage.js');
+    const { default: ResetPasswordInfoPage } = await import(
+      '../components/ResetPasswordInfoPage.js'
+    );
     const info = new ResetPasswordInfoPage({ email });
     info.render();
   } catch (err) {

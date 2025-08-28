@@ -53,7 +53,7 @@
           "value": "nosniff"
         },
         {
-          "key": "X-Frame-Options", 
+          "key": "X-Frame-Options",
           "value": "DENY"
         },
         {
@@ -67,16 +67,6 @@
     {
       "source": "/((?!.*\\.).*)",
       "destination": "/index.html"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/manifest.json",
-      "dest": "/manifest.json",
-      "headers": { 
-        "cache-control": "public, max-age=0, must-revalidate",
-        "content-type": "application/manifest+json"
-      }
     }
   ]
 }

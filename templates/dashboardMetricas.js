@@ -536,5 +536,5 @@ export default dashboardMetricasTemplate;
 
 // Também disponibilizar globalmente para compatibilidade
 if (typeof window !== 'undefined') {
-    window.dashboardMetricasTemplate = dashboardMetricasTemplate;
+  window.dashboardMetricasTemplate = dashboardMetricasTemplate;
 }

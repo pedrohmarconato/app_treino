@@ -1,68 +1,69 @@
 /* Estilos para os ícones de grupos musculares */
 .muscle-icon-container {
-    position: relative;
-    display: inline-block;
-    transition: all 0.3s ease;
+  position: relative;
+  display: inline-block;
+  transition: all 0.3s ease;
 }
 
 .muscle-icon {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    transition: all 0.3s ease;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: all 0.3s ease;
 }
 
 /* Efeito hover */
 .muscle-icon-container:hover {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
 .muscle-icon-container:hover .muscle-icon {
-    filter: drop-shadow(0 0 20px var(--accent-primary)) !important;
+  filter: drop-shadow(0 0 20px var(--accent-primary)) !important;
 }
 
 /* Label dos músculos */
 .muscle-label {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 /* Container para múltiplas variantes */
 .muscle-variants {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .muscle-variants .muscle-icon-container {
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
 }
 
 .muscle-variants .muscle-icon-container:hover {
-    opacity: 1;
+  opacity: 1;
 }
 
 /* Integração com cards de treino */
 .workout-day-card .muscle-icon-primary {
-    margin-bottom: 16px;
+  margin-bottom: 16px;
 }
 
 .workout-day-card.active .muscle-icon {
-    animation: pulse-glow 2s infinite;
+  animation: pulse-glow 2s infinite;
 }
 
 @keyframes pulse-glow {
-    0%, 100% {
-        filter: drop-shadow(0 0 10px currentColor);
-    }
-    50% {
-        filter: drop-shadow(0 0 25px currentColor);
-    }
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 25px currentColor);
+  }
 }
 
 /* Sombra branca para todos os ícones */
@@ -72,25 +73,25 @@
 .muscle-icon-ombro,
 .muscle-icon-braco,
 .muscle-icon-core {
-    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
 }
 
 /* Modo escuro */
 @media (prefers-color-scheme: dark) {
-    .muscle-icon {
-        filter: brightness(1.2) contrast(1.1);
-    }
+  .muscle-icon {
+    filter: brightness(1.2) contrast(1.1);
+  }
 }
 
 /* Responsivo */
 @media (max-width: 768px) {
-    .muscle-icon-container {
-        width: 48px !important;
-        height: 48px !important;
-    }
-    
-    .muscle-variants .muscle-icon-container {
-        width: 32px !important;
-        height: 32px !important;
-    }
+  .muscle-icon-container {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .muscle-variants .muscle-icon-container {
+    width: 32px !important;
+    height: 32px !important;
+  }
 }

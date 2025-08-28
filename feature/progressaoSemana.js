@@ -6,11 +6,11 @@ import { supabase } from '../services/supabaseService.js';
 
 // Pequeno utilitário para exibir notificações. Usa toast se existir, senão fallback
 function showToast(message, type = 'success') {
-    if (window.toast && typeof window.toast[type] === 'function') {
-        window.toast[type](message);
-    } else {
-        alert(message); // fallback simples
-    }
+  if (window.toast && typeof window.toast[type] === 'function') {
+    window.toast[type](message);
+  } else {
+    alert(message); // fallback simples
+  }
 }
 
 /**
@@ -20,11 +20,11 @@ function showToast(message, type = 'success') {
  * @param {string|number} usuarioId
  */
 function renderCard(container, status, usuarioId) {
-    // Insere CSS uma única vez
-    if (!document.getElementById('progressao-semana-styles')) {
-        const style = document.createElement('style');
-        style.id = 'progressao-semana-styles';
-        style.textContent = `
+  // Insere CSS uma única vez
+  if (!document.getElementById('progressao-semana-styles')) {
+    const style = document.createElement('style');
+    style.id = 'progressao-semana-styles';
+    style.textContent = `
             .progressao-card {
                 background: var(--bg-card, #232323);
                 border-radius: var(--radius-md, 12px);
@@ -102,14 +102,14 @@ function renderCard(container, status, usuarioId) {
                 color: #ffcc00;
             }
         `;
-        document.head.appendChild(style);
-    }
+    document.head.appendChild(style);
+  }
 
-    const percentual = status.percentual_concluido || 0;
-    const corBarra = percentual >= 80 ? 'var(--accent-green, #CFFF04)' : '#ffcc00';
+  const percentual = status.percentual_concluido || 0;
+  const corBarra = percentual >= 80 ? 'var(--accent-green, #CFFF04)' : '#ffcc00';
 
-    // Construir HTML
-    container.innerHTML = `
+  // Construir HTML
+  container.innerHTML = `
         <div class="progressao-card">
             <h3>Progressão da Semana</h3>
             <div class="status-treinos">
@@ -126,58 +126,61 @@ function renderCard(container, status, usuarioId) {
         </div>
     `;
 
-    // Bind de botões (se existir acoes)
-    if (status.pode_avancar) {
-        const btnCompleto = container.querySelector('#btn-avancar-completo');
-        const btnParcialBom = container.querySelector('#btn-avancar-parcial');
-        const btnDomingo = container.querySelector('#btn-avancar-domingo');
+  // Bind de botões (se existir acoes)
+  if (status.pode_avancar) {
+    const btnCompleto = container.querySelector('#btn-avancar-completo');
+    const btnParcialBom = container.querySelector('#btn-avancar-parcial');
+    const btnDomingo = container.querySelector('#btn-avancar-domingo');
 
-        if (btnCompleto) btnCompleto.addEventListener('click', () => avancarSemana(usuarioId, container, false));
-        if (btnParcialBom) btnParcialBom.addEventListener('click', () => avancarSemana(usuarioId, container, false));
-        if (btnDomingo) btnDomingo.addEventListener('click', () => avancarSemana(usuarioId, container, true));
-    }
+    if (btnCompleto)
+      btnCompleto.addEventListener('click', () => avancarSemana(usuarioId, container, false));
+    if (btnParcialBom)
+      btnParcialBom.addEventListener('click', () => avancarSemana(usuarioId, container, false));
+    if (btnDomingo)
+      btnDomingo.addEventListener('click', () => avancarSemana(usuarioId, container, true));
+  }
 }
 
 function gerarAcoesHTML(status) {
-    switch (status.tipo_avanco) {
-        case 'completo':
-            return `<div class="acoes"><button id="btn-avancar-completo" class="btn-primary">Avançar para Próxima Semana ✅</button></div>`;
-        case 'parcial_bom':
-            return `<div class="acoes"><button id="btn-avancar-parcial" class="btn-secondary">Avançar Semana (80% concluído)</button></div>`;
-        case 'parcial_domingo':
-            return `<div class="acoes"><div class="aviso-domingo">${status.sugestao}</div><button id="btn-avancar-domingo" class="btn-warning">Sim, quero avançar mesmo assim</button></div>`;
-        default:
-            return '';
-    }
+  switch (status.tipo_avanco) {
+    case 'completo':
+      return `<div class="acoes"><button id="btn-avancar-completo" class="btn-primary">Avançar para Próxima Semana ✅</button></div>`;
+    case 'parcial_bom':
+      return `<div class="acoes"><button id="btn-avancar-parcial" class="btn-secondary">Avançar Semana (80% concluído)</button></div>`;
+    case 'parcial_domingo':
+      return `<div class="acoes"><div class="aviso-domingo">${status.sugestao}</div><button id="btn-avancar-domingo" class="btn-warning">Sim, quero avançar mesmo assim</button></div>`;
+    default:
+      return '';
+  }
 }
 
 async function avancarSemana(usuarioId, container, forcar = false) {
-    // Mostrar estado de loading
-    const botones = container.querySelectorAll('button');
-    botones.forEach(b => (b.disabled = true));
+  // Mostrar estado de loading
+  const botones = container.querySelectorAll('button');
+  botones.forEach((b) => (b.disabled = true));
 
-    try {
-        const { data, error } = await supabase.rpc('fn_avancar_semana_usuario', {
-            p_usuario_id: usuarioId,
-            p_forcar_avanco: forcar,
-        });
+  try {
+    const { data, error } = await supabase.rpc('fn_avancar_semana_usuario', {
+      p_usuario_id: usuarioId,
+      p_forcar_avanco: forcar,
+    });
 
-        if (error) throw error;
+    if (error) throw error;
 
-        const result = data[0];
-        if (result?.sucesso) {
-            showToast(result.mensagem || 'Semana avançada com sucesso', 'success');
-            // Recarregar página para refletir nova semana
-            window.location.reload();
-        } else {
-            showToast(result?.mensagem || 'Não foi possível avançar a semana', 'error');
-        }
-    } catch (err) {
-        console.error('[progressaoSemana] Erro ao avançar semana:', err);
-        showToast('Erro ao avançar semana', 'error');
-    } finally {
-        botones.forEach(b => (b.disabled = false));
+    const result = data[0];
+    if (result?.sucesso) {
+      showToast(result.mensagem || 'Semana avançada com sucesso', 'success');
+      // Recarregar página para refletir nova semana
+      window.location.reload();
+    } else {
+      showToast(result?.mensagem || 'Não foi possível avançar a semana', 'error');
     }
+  } catch (err) {
+    console.error('[progressaoSemana] Erro ao avançar semana:', err);
+    showToast('Erro ao avançar semana', 'error');
+  } finally {
+    botones.forEach((b) => (b.disabled = false));
+  }
 }
 
 /**
@@ -185,34 +188,35 @@ async function avancarSemana(usuarioId, container, forcar = false) {
  * Cria container se não existir.
  */
 export async function mostrarProgressaoSemana(usuarioId) {
-    if (!usuarioId) return;
+  if (!usuarioId) return;
 
-    let container = document.getElementById('progressao-semana-container');
-    if (!container) {
-        // Como fallback, adicionar no final do conteúdo principal
-        const homeContent = document.querySelector('.home-content') || document.body;
-        container = document.createElement('div');
-        container.id = 'progressao-semana-container';
-        homeContent.appendChild(container);
+  let container = document.getElementById('progressao-semana-container');
+  if (!container) {
+    // Como fallback, adicionar no final do conteúdo principal
+    const homeContent = document.querySelector('.home-content') || document.body;
+    container = document.createElement('div');
+    container.id = 'progressao-semana-container';
+    homeContent.appendChild(container);
+  }
+
+  container.innerHTML = '<div class="progressao-card">Carregando informações...</div>';
+
+  try {
+    const { data, error } = await supabase.rpc('fn_analisar_progressao_semana', {
+      p_usuario_id: usuarioId,
+    });
+    if (error) throw error;
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML =
+        '<div class="progressao-card">Nenhum dado de progressão disponível.</div>';
+      return;
     }
-
-    container.innerHTML = '<div class="progressao-card">Carregando informações...</div>';
-
-    try {
-        const { data, error } = await supabase.rpc('fn_analisar_progressao_semana', {
-            p_usuario_id: usuarioId,
-        });
-        if (error) throw error;
-        if (!Array.isArray(data) || data.length === 0) {
-            container.innerHTML = '<div class="progressao-card">Nenhum dado de progressão disponível.</div>';
-            return;
-        }
-        const status = data[0];
-        renderCard(container, status, usuarioId);
-    } catch (err) {
-        console.error('[progressaoSemana] Erro ao carregar status:', err);
-        container.innerHTML = '<div class="progressao-card">Erro ao carregar dados.</div>';
-    }
+    const status = data[0];
+    renderCard(container, status, usuarioId);
+  } catch (err) {
+    console.error('[progressaoSemana] Erro ao carregar status:', err);
+    container.innerHTML = '<div class="progressao-card">Erro ao carregar dados.</div>';
+  }
 }
 
 // Para debug manual no console

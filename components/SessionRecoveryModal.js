@@ -6,221 +6,221 @@
 import { ComponentConfig } from '../templates/COMPONENT_CONFIG.js';
 
 export class SessionRecoveryModal {
-    constructor(cachedSession = {}) {
-        this.sessionData = cachedSession;
-        this.preview = this.generatePreview(cachedSession);
-        this.modalElement = null;
-        this.isVisible = false;
-        this.resolve = null;
-        this.focusTrap = null;
-        
-        // Configuração das opções do modal
-        this.options = [
-            { 
-                id: 'recover', 
-                text: 'Recuperar Treino', 
-                primary: true,
-                icon: '🔄',
-                description: 'Continua o treino do ponto onde parou'
-            },
-            { 
-                id: 'discard', 
-                text: 'Descartar e Reiniciar', 
-                destructive: true,
-                icon: '🗑️',
-                description: 'Remove os dados salvos e inicia um novo treino'
-            },
-            { 
-                id: 'cancel', 
-                text: 'Cancelar', 
-                neutral: true,
-                icon: '↩️',
-                description: 'Volta para a tela anterior'
-            }
-        ];
-        
-        // Bind methods
-        this.handleKeydown = this.handleKeydown.bind(this);
-        this.handleOutsideClick = this.handleOutsideClick.bind(this);
+  constructor(cachedSession = {}) {
+    this.sessionData = cachedSession;
+    this.preview = this.generatePreview(cachedSession);
+    this.modalElement = null;
+    this.isVisible = false;
+    this.resolve = null;
+    this.focusTrap = null;
+
+    // Configuração das opções do modal
+    this.options = [
+      {
+        id: 'recover',
+        text: 'Recuperar Treino',
+        primary: true,
+        icon: '🔄',
+        description: 'Continua o treino do ponto onde parou',
+      },
+      {
+        id: 'discard',
+        text: 'Descartar e Reiniciar',
+        destructive: true,
+        icon: '🗑️',
+        description: 'Remove os dados salvos e inicia um novo treino',
+      },
+      {
+        id: 'cancel',
+        text: 'Cancelar',
+        neutral: true,
+        icon: '↩️',
+        description: 'Volta para a tela anterior',
+      },
+    ];
+
+    // Bind methods
+    this.handleKeydown = this.handleKeydown.bind(this);
+    this.handleOutsideClick = this.handleOutsideClick.bind(this);
+  }
+
+  /**
+   * Gera preview da sessão salva
+   */
+  generatePreview(session) {
+    const defaultPreview = {
+      timeElapsed: 'Indisponível',
+      exercisesCompleted: '0 de 0',
+      lastActivity: 'Indisponível',
+      progress: 0,
+      workoutName: 'Treino Salvo',
+      isValid: false,
+    };
+
+    if (!session || !session.currentWorkout) {
+      return defaultPreview;
     }
 
-    /**
-     * Gera preview da sessão salva
-     */
-    generatePreview(session) {
-        const defaultPreview = {
-            timeElapsed: 'Indisponível',
-            exercisesCompleted: '0 de 0',
-            lastActivity: 'Indisponível',
-            progress: 0,
-            workoutName: 'Treino Salvo',
-            isValid: false
-        };
+    try {
+      // Calcular tempo decorrido
+      const startTime = session.startTime || session.metadata?.savedAt;
+      const elapsed = startTime
+        ? Math.round((Date.now() - new Date(startTime).getTime()) / 60000)
+        : 0;
 
-        if (!session || !session.currentWorkout) {
-            return defaultPreview;
-        }
+      // Calcular exercícios e séries completados
+      const seriesCompleted = session.exerciciosExecutados?.length || 0;
+      const exerciciosUnicos = new Set(
+        session.exerciciosExecutados?.map((e) => e.exercicio_id) || []
+      );
+      const uniqueExercisesCompleted = exerciciosUnicos.size;
 
-        try {
-            // Calcular tempo decorrido
-            const startTime = session.startTime || session.metadata?.savedAt;
-            const elapsed = startTime 
-                ? Math.round((Date.now() - new Date(startTime).getTime()) / 60000)
-                : 0;
+      // Total de exercícios do treino
+      const totalExercises = session.currentWorkout?.exercicios?.length || 0;
 
-            // Calcular exercícios e séries completados
-            const seriesCompleted = session.exerciciosExecutados?.length || 0;
-            const exerciciosUnicos = new Set(session.exerciciosExecutados?.map(e => e.exercicio_id) || []);
-            const uniqueExercisesCompleted = exerciciosUnicos.size;
-            
-            // Total de exercícios do treino
-            const totalExercises = session.currentWorkout?.exercicios?.length || 0;
-            
-            // Calcular total de séries esperadas
-            let totalSeries = 0;
-            if (session.currentWorkout?.exercicios) {
-                session.currentWorkout.exercicios.forEach(ex => {
-                    totalSeries += (ex.series || 3); // Default 3 séries se não especificado
-                });
-            }
-            
-            // Se não temos informação do workout, estimar baseado nos dados existentes
-            if (totalExercises === 0 && uniqueExercisesCompleted > 0) {
-                // Assumir que cada exercício tem 3 séries em média
-                totalSeries = Math.max(uniqueExercisesCompleted * 3, seriesCompleted + 2);
-            }
-            
-            // Calcular progresso baseado em exercícios únicos (mais intuitivo para o usuário)
-            const progress = totalExercises > 0 
-                ? Math.round((uniqueExercisesCompleted / totalExercises) * 100) 
-                : 0;
-            
-            // Texto de progresso mostrando séries
-            const exercisesCompletedText = totalSeries > 0 
-                ? `${seriesCompleted}/${totalSeries} séries (${uniqueExercisesCompleted}/${totalExercises} exercícios)`
-                : `${seriesCompleted} séries completadas`;
-
-            // Última atividade
-            const lastUpdate = session.metadata?.savedAt || session.timestamp;
-            const lastActivity = lastUpdate 
-                ? this.formatTimestamp(lastUpdate)
-                : 'Indisponível';
-
-            return {
-                timeElapsed: this.formatDuration(elapsed),
-                exercisesCompleted: exercisesCompletedText,
-                lastActivity,
-                progress,
-                workoutName: session.currentWorkout?.nome || 'Treino em Andamento',
-                isValid: true,
-                // Dados adicionais para debug
-                debugInfo: {
-                    uniqueExercisesCompleted,
-                    totalExercises,
-                    seriesCompleted,
-                    totalSeries
-                }
-            };
-        } catch (error) {
-            console.error('[SessionRecoveryModal] Erro ao gerar preview:', error);
-            return defaultPreview;
-        }
-    }
-
-    /**
-     * Formata duração em minutos para string legível
-     */
-    formatDuration(minutes) {
-        if (minutes <= 0) return '< 1 min';
-        if (minutes < 60) return `${minutes} min`;
-        
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
-        
-        if (remainingMinutes === 0) {
-            return `${hours}h`;
-        }
-        
-        return `${hours}h ${remainingMinutes}min`;
-    }
-
-    /**
-     * Formata timestamp para string legível
-     */
-    formatTimestamp(timestamp) {
-        try {
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMinutes = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMinutes / 60);
-            const diffDays = Math.floor(diffHours / 24);
-
-            if (diffMinutes < 1) return 'Agora mesmo';
-            if (diffMinutes < 60) return `${diffMinutes} min atrás`;
-            if (diffHours < 24) return `${diffHours}h atrás`;
-            if (diffDays === 1) return 'Ontem';
-            if (diffDays < 7) return `${diffDays} dias atrás`;
-            
-            return window.dateUtils ? 
-                window.dateUtils.formatInSP(date, 'dd/MM/yyyy') : 
-                date.toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
-        } catch (error) {
-            console.error('[SessionRecoveryModal] Erro ao formatar timestamp:', error);
-            return 'Indisponível';
-        }
-    }
-
-    /**
-     * Exibe o modal e retorna uma Promise com a escolha do usuário
-     * @returns {Promise<string>} 'recover' | 'discard' | 'cancel'
-     */
-    async show() {
-        return new Promise((resolve) => {
-            this.resolve = resolve;
-            this.render();
-            this.setupEventListeners();
-            this.setupFocusTrap();
-            this.announceToScreenReader();
+      // Calcular total de séries esperadas
+      let totalSeries = 0;
+      if (session.currentWorkout?.exercicios) {
+        session.currentWorkout.exercicios.forEach((ex) => {
+          totalSeries += ex.series || 3; // Default 3 séries se não especificado
         });
+      }
+
+      // Se não temos informação do workout, estimar baseado nos dados existentes
+      if (totalExercises === 0 && uniqueExercisesCompleted > 0) {
+        // Assumir que cada exercício tem 3 séries em média
+        totalSeries = Math.max(uniqueExercisesCompleted * 3, seriesCompleted + 2);
+      }
+
+      // Calcular progresso baseado em exercícios únicos (mais intuitivo para o usuário)
+      const progress =
+        totalExercises > 0 ? Math.round((uniqueExercisesCompleted / totalExercises) * 100) : 0;
+
+      // Texto de progresso mostrando séries
+      const exercisesCompletedText =
+        totalSeries > 0
+          ? `${seriesCompleted}/${totalSeries} séries (${uniqueExercisesCompleted}/${totalExercises} exercícios)`
+          : `${seriesCompleted} séries completadas`;
+
+      // Última atividade
+      const lastUpdate = session.metadata?.savedAt || session.timestamp;
+      const lastActivity = lastUpdate ? this.formatTimestamp(lastUpdate) : 'Indisponível';
+
+      return {
+        timeElapsed: this.formatDuration(elapsed),
+        exercisesCompleted: exercisesCompletedText,
+        lastActivity,
+        progress,
+        workoutName: session.currentWorkout?.nome || 'Treino em Andamento',
+        isValid: true,
+        // Dados adicionais para debug
+        debugInfo: {
+          uniqueExercisesCompleted,
+          totalExercises,
+          seriesCompleted,
+          totalSeries,
+        },
+      };
+    } catch (error) {
+      console.error('[SessionRecoveryModal] Erro ao gerar preview:', error);
+      return defaultPreview;
+    }
+  }
+
+  /**
+   * Formata duração em minutos para string legível
+   */
+  formatDuration(minutes) {
+    if (minutes <= 0) return '< 1 min';
+    if (minutes < 60) return `${minutes} min`;
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    if (remainingMinutes === 0) {
+      return `${hours}h`;
     }
 
-    /**
-     * Renderiza o modal no DOM
-     */
-    render() {
-        const existingModal = document.getElementById('session-recovery-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
+    return `${hours}h ${remainingMinutes}min`;
+  }
 
-        this.modalElement = this.createElement();
-        document.body.appendChild(this.modalElement);
-        
-        // Delay para animação
-        setTimeout(() => {
-            this.modalElement.classList.add('visible');
-            this.isVisible = true;
-        }, ComponentConfig.performance.modalDisplayTarget);
+  /**
+   * Formata timestamp para string legível
+   */
+  formatTimestamp(timestamp) {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMinutes = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMinutes / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMinutes < 1) return 'Agora mesmo';
+      if (diffMinutes < 60) return `${diffMinutes} min atrás`;
+      if (diffHours < 24) return `${diffHours}h atrás`;
+      if (diffDays === 1) return 'Ontem';
+      if (diffDays < 7) return `${diffDays} dias atrás`;
+
+      return window.dateUtils
+        ? window.dateUtils.formatInSP(date, 'dd/MM/yyyy')
+        : date.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+    } catch (error) {
+      console.error('[SessionRecoveryModal] Erro ao formatar timestamp:', error);
+      return 'Indisponível';
+    }
+  }
+
+  /**
+   * Exibe o modal e retorna uma Promise com a escolha do usuário
+   * @returns {Promise<string>} 'recover' | 'discard' | 'cancel'
+   */
+  async show() {
+    return new Promise((resolve) => {
+      this.resolve = resolve;
+      this.render();
+      this.setupEventListeners();
+      this.setupFocusTrap();
+      this.announceToScreenReader();
+    });
+  }
+
+  /**
+   * Renderiza o modal no DOM
+   */
+  render() {
+    const existingModal = document.getElementById('session-recovery-modal');
+    if (existingModal) {
+      existingModal.remove();
     }
 
-    /**
-     * Cria o elemento do modal
-     */
-    createElement() {
-        const modal = document.createElement('div');
-        modal.id = 'session-recovery-modal';
-        modal.className = 'modal-overlay';
-        modal.setAttribute('role', 'dialog');
-        modal.setAttribute('aria-modal', 'true');
-        modal.setAttribute('aria-labelledby', 'recovery-title');
-        modal.setAttribute('aria-describedby', 'recovery-description');
+    this.modalElement = this.createElement();
+    document.body.appendChild(this.modalElement);
 
-        modal.innerHTML = `
+    // Delay para animação
+    setTimeout(() => {
+      this.modalElement.classList.add('visible');
+      this.isVisible = true;
+    }, ComponentConfig.performance.modalDisplayTarget);
+  }
+
+  /**
+   * Cria o elemento do modal
+   */
+  createElement() {
+    const modal = document.createElement('div');
+    modal.id = 'session-recovery-modal';
+    modal.className = 'modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'recovery-title');
+    modal.setAttribute('aria-describedby', 'recovery-description');
+
+    modal.innerHTML = `
             <div class="modal-backdrop" aria-hidden="true"></div>
             <div class="modal-container">
                 <div class="modal-content">
@@ -315,15 +315,15 @@ export class SessionRecoveryModal {
             </div>
         `;
 
-        this.applyStyles(modal);
-        return modal;
-    }
+    this.applyStyles(modal);
+    return modal;
+  }
 
-    /**
-     * Renderiza aviso para dados corrompidos
-     */
-    renderWarning() {
-        return `
+  /**
+   * Renderiza aviso para dados corrompidos
+   */
+  renderWarning() {
+    return `
             <div class="warning-box">
                 <div class="warning-icon">⚠️</div>
                 <div class="warning-content">
@@ -332,16 +332,17 @@ export class SessionRecoveryModal {
                 </div>
             </div>
         `;
-    }
+  }
 
-    /**
-     * Renderiza os botões de ação
-     */
-    renderActionButtons() {
-        return this.options.map(option => {
-            const isDisabled = !this.preview.isValid && option.id === 'recover';
-            
-            return `
+  /**
+   * Renderiza os botões de ação
+   */
+  renderActionButtons() {
+    return this.options
+      .map((option) => {
+        const isDisabled = !this.preview.isValid && option.id === 'recover';
+
+        return `
                 <button 
                     type="button"
                     class="modal-btn ${this.getButtonClass(option)} ${isDisabled ? 'btn-disabled' : ''}"
@@ -357,169 +358,170 @@ export class SessionRecoveryModal {
                     </span>
                 </button>
             `;
-        }).join('');
-    }
+      })
+      .join('');
+  }
 
-    /**
-     * Retorna a classe CSS apropriada para cada botão
-     */
-    getButtonClass(option) {
-        if (option.primary) return 'btn-primary';
-        if (option.destructive) return 'btn-destructive';
-        if (option.neutral) return 'btn-neutral';
-        return 'btn-secondary';
-    }
+  /**
+   * Retorna a classe CSS apropriada para cada botão
+   */
+  getButtonClass(option) {
+    if (option.primary) return 'btn-primary';
+    if (option.destructive) return 'btn-destructive';
+    if (option.neutral) return 'btn-neutral';
+    return 'btn-secondary';
+  }
 
-    /**
-     * Configura event listeners
-     */
-    setupEventListeners() {
-        // Click nos botões
-        this.modalElement.addEventListener('click', (e) => {
-            const button = e.target.closest('[data-action]');
-            if (button && !button.disabled) {
-                const action = button.dataset.action;
-                this.handleAction(action);
-            }
-        });
+  /**
+   * Configura event listeners
+   */
+  setupEventListeners() {
+    // Click nos botões
+    this.modalElement.addEventListener('click', (e) => {
+      const button = e.target.closest('[data-action]');
+      if (button && !button.disabled) {
+        const action = button.dataset.action;
+        this.handleAction(action);
+      }
+    });
 
-        // Keyboard navigation
-        document.addEventListener('keydown', this.handleKeydown);
+    // Keyboard navigation
+    document.addEventListener('keydown', this.handleKeydown);
 
-        // Click fora do modal
-        this.modalElement.addEventListener('click', this.handleOutsideClick);
-    }
+    // Click fora do modal
+    this.modalElement.addEventListener('click', this.handleOutsideClick);
+  }
 
-    /**
-     * Configura focus trap para acessibilidade
-     */
-    setupFocusTrap() {
-        const focusableElements = this.modalElement.querySelectorAll(
-            'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
+  /**
+   * Configura focus trap para acessibilidade
+   */
+  setupFocusTrap() {
+    const focusableElements = this.modalElement.querySelectorAll(
+      'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
 
-        this.focusTrap = {
-            firstElement,
-            lastElement,
-            elements: focusableElements
-        };
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
 
-        // Focar no primeiro elemento
-        setTimeout(() => {
-            firstElement?.focus();
-        }, ComponentConfig.accessibility.focusTrapDelay);
-    }
+    this.focusTrap = {
+      firstElement,
+      lastElement,
+      elements: focusableElements,
+    };
 
-    /**
-     * Manipula navegação por teclado
-     */
-    handleKeydown(e) {
-        if (!this.isVisible) return;
+    // Focar no primeiro elemento
+    setTimeout(() => {
+      firstElement?.focus();
+    }, ComponentConfig.accessibility.focusTrapDelay);
+  }
 
-        switch (e.key) {
-            case 'Escape':
-                e.preventDefault();
-                this.handleAction('cancel');
-                break;
-                
-            case 'Tab':
-                this.handleTabNavigation(e);
-                break;
-                
-            case 'Enter':
-                if (e.target.dataset.action && !e.target.disabled) {
-                    e.preventDefault();
-                    this.handleAction(e.target.dataset.action);
-                }
-                break;
+  /**
+   * Manipula navegação por teclado
+   */
+  handleKeydown(e) {
+    if (!this.isVisible) return;
+
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        this.handleAction('cancel');
+        break;
+
+      case 'Tab':
+        this.handleTabNavigation(e);
+        break;
+
+      case 'Enter':
+        if (e.target.dataset.action && !e.target.disabled) {
+          e.preventDefault();
+          this.handleAction(e.target.dataset.action);
         }
+        break;
     }
+  }
 
-    /**
-     * Manipula navegação por Tab (focus trap)
-     */
-    handleTabNavigation(e) {
-        const { firstElement, lastElement } = this.focusTrap;
-        
-        if (e.shiftKey && document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement.focus();
-        } else if (!e.shiftKey && document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement.focus();
-        }
+  /**
+   * Manipula navegação por Tab (focus trap)
+   */
+  handleTabNavigation(e) {
+    const { firstElement, lastElement } = this.focusTrap;
+
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement.focus();
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement.focus();
     }
+  }
 
-    /**
-     * Manipula cliques fora do modal
-     */
-    handleOutsideClick(e) {
-        if (e.target.classList.contains('modal-backdrop')) {
-            this.handleAction('cancel');
-        }
+  /**
+   * Manipula cliques fora do modal
+   */
+  handleOutsideClick(e) {
+    if (e.target.classList.contains('modal-backdrop')) {
+      this.handleAction('cancel');
     }
+  }
 
-    /**
-     * Processa a ação selecionada pelo usuário
-     */
-    handleAction(action) {
-        if (!this.resolve) return;
+  /**
+   * Processa a ação selecionada pelo usuário
+   */
+  handleAction(action) {
+    if (!this.resolve) return;
 
-        console.log('[SessionRecoveryModal] Ação selecionada:', action);
-        
-        this.close();
-        this.resolve(action);
-    }
+    console.log('[SessionRecoveryModal] Ação selecionada:', action);
 
-    /**
-     * Fecha o modal e limpa recursos
-     */
-    close() {
-        if (!this.isVisible) return;
+    this.close();
+    this.resolve(action);
+  }
 
-        this.isVisible = false;
-        
-        // Remover event listeners
-        document.removeEventListener('keydown', this.handleKeydown);
-        
-        // Animação de saída
-        this.modalElement.classList.remove('visible');
-        
-        setTimeout(() => {
-            if (this.modalElement && this.modalElement.parentNode) {
-                this.modalElement.parentNode.removeChild(this.modalElement);
-            }
-            this.modalElement = null;
-        }, ComponentConfig.modals.animationDuration);
-    }
+  /**
+   * Fecha o modal e limpa recursos
+   */
+  close() {
+    if (!this.isVisible) return;
 
-    /**
-     * Anuncia o modal para leitores de tela
-     */
-    announceToScreenReader() {
-        setTimeout(() => {
-            const announcement = document.createElement('div');
-            announcement.setAttribute('aria-live', 'polite');
-            announcement.setAttribute('aria-atomic', 'true');
-            announcement.className = 'sr-only';
-            announcement.textContent = `Modal de recuperação de sessão aberto. Treino ${this.preview.isValid ? 'válido' : 'corrompido'} detectado. Use Tab para navegar.`;
-            
-            document.body.appendChild(announcement);
-            
-            setTimeout(() => {
-                document.body.removeChild(announcement);
-            }, ComponentConfig.accessibility.announceDelay);
-        }, ComponentConfig.accessibility.announceDelay);
-    }
+    this.isVisible = false;
 
-    /**
-     * Aplica estilos CSS ao modal
-     */
-    applyStyles(modal) {
-        const styles = `
+    // Remover event listeners
+    document.removeEventListener('keydown', this.handleKeydown);
+
+    // Animação de saída
+    this.modalElement.classList.remove('visible');
+
+    setTimeout(() => {
+      if (this.modalElement && this.modalElement.parentNode) {
+        this.modalElement.parentNode.removeChild(this.modalElement);
+      }
+      this.modalElement = null;
+    }, ComponentConfig.modals.animationDuration);
+  }
+
+  /**
+   * Anuncia o modal para leitores de tela
+   */
+  announceToScreenReader() {
+    setTimeout(() => {
+      const announcement = document.createElement('div');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.setAttribute('aria-atomic', 'true');
+      announcement.className = 'sr-only';
+      announcement.textContent = `Modal de recuperação de sessão aberto. Treino ${this.preview.isValid ? 'válido' : 'corrompido'} detectado. Use Tab para navegar.`;
+
+      document.body.appendChild(announcement);
+
+      setTimeout(() => {
+        document.body.removeChild(announcement);
+      }, ComponentConfig.accessibility.announceDelay);
+    }, ComponentConfig.accessibility.announceDelay);
+  }
+
+  /**
+   * Aplica estilos CSS ao modal
+   */
+  applyStyles(modal) {
+    const styles = `
             .session-preview {
                 background: var(--bg-secondary, #2a2a2a);
                 border-radius: 12px;
@@ -707,22 +709,22 @@ export class SessionRecoveryModal {
             }
         `;
 
-        // Reutilizar estilos base do SaveExitModal se existirem
-        if (!document.getElementById('session-recovery-modal-styles')) {
-            const baseStyles = document.getElementById('save-exit-modal-styles');
-            
-            const styleSheet = document.createElement('style');
-            styleSheet.id = 'session-recovery-modal-styles';
-            styleSheet.textContent = (baseStyles ? '' : this.getBaseModalStyles()) + styles;
-            document.head.appendChild(styleSheet);
-        }
-    }
+    // Reutilizar estilos base do SaveExitModal se existirem
+    if (!document.getElementById('session-recovery-modal-styles')) {
+      const baseStyles = document.getElementById('save-exit-modal-styles');
 
-    /**
-     * Retorna estilos base do modal (caso SaveExitModal não tenha sido carregado)
-     */
-    getBaseModalStyles() {
-        return `
+      const styleSheet = document.createElement('style');
+      styleSheet.id = 'session-recovery-modal-styles';
+      styleSheet.textContent = (baseStyles ? '' : this.getBaseModalStyles()) + styles;
+      document.head.appendChild(styleSheet);
+    }
+  }
+
+  /**
+   * Retorna estilos base do modal (caso SaveExitModal não tenha sido carregado)
+   */
+  getBaseModalStyles() {
+    return `
             .modal-overlay {
                 position: fixed;
                 top: 0;
@@ -915,13 +917,13 @@ export class SessionRecoveryModal {
                 border: 0;
             }
         `;
-    }
+  }
 }
 
 // Função utilitária para uso direto
 export async function showSessionRecoveryModal(cachedSession) {
-    const modal = new SessionRecoveryModal(cachedSession);
-    return await modal.show();
+  const modal = new SessionRecoveryModal(cachedSession);
+  return await modal.show();
 }
 
 export default SessionRecoveryModal;

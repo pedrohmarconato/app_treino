@@ -67,8 +67,14 @@ export default class ResetNewPasswordModal {
       const err2 = this.modal.querySelector('#confirm-pass-error');
       err1.textContent = '';
       err2.textContent = '';
-      if (!pass || pass.length < 6) { err1.textContent = 'Senha deve ter ao menos 6 caracteres'; return; }
-      if (pass !== confirm) { err2.textContent = 'As senhas não coincidem'; return; }
+      if (!pass || pass.length < 6) {
+        err1.textContent = 'Senha deve ter ao menos 6 caracteres';
+        return;
+      }
+      if (pass !== confirm) {
+        err2.textContent = 'As senhas não coincidem';
+        return;
+      }
       try {
         // Atualizar senha via Supabase (usuário já autenticado via link mágico de reset)
         const { data, error } = await window.supabase.auth.updateUser({ password: pass });

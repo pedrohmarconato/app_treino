@@ -1,8 +1,8 @@
 /**
  * 🧹 MODAL CLEAN REDESIGNED - Clean History Modal
- * 
+ *
  * FUNÇÃO: Exibir histórico de treinos e planejamentos com design limpo e moderno.
- * 
+ *
  * RESPONSABILIDADES:
  * - Renderizar modais de histórico com design consistente e acessível
  * - Diferenciar entre treinos executados e apenas planejados
@@ -11,7 +11,7 @@
  * - Calcular e mostrar métricas de desempenho (volume, duração, performance)
  * - Aplicar estilos responsivos e animações suaves
  * - Fornecer navegação acessível com foco trap e ARIA labels
- * 
+ *
  * RECURSOS:
  * - Design clean com gradientes e efeitos modernos
  * - Cards informativos com ícones SVG vetoriais
@@ -19,13 +19,13 @@
  * - Efeitos de hover e transições suaves
  * - Suporte a backdrop blur e glassmorphism
  * - Validação de dados com fallbacks seguros
- * 
+ *
  * TIPOS DE CONTEÚDO:
  * - Treinos Executados: histórico completo com estatísticas de performance
  * - Treinos Planejados: preview de exercícios sugeridos e configurações
  * - Estatísticas: volume total, exercícios completados, duração estimada
  * - Performance: percentual de conclusão com indicadores visuais
- * 
+ *
  * INTEGRAÇÃO: Usado pelo sistema de calendário e dashboard para exibir detalhes históricos
  */
 
@@ -33,16 +33,17 @@
 
 // Função para criar modal de histórico com design clean e moderno
 function criarModalHistoricoClean(historico, dayIndex) {
-    const dayName = DIAS_SEMANA[dayIndex];
-    const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
-    
-    // Verificar se é apenas planejamento (sem execuções)
-    const somenteplanejamento = historico.semExecucoes || (historico.execucoes && historico.execucoes.length === 0);
-    
-    // Calcular estatísticas
-    const stats = somenteplanejamento ? null : calcularEstatisticasTreino(historico);
-    
-    return `
+  const dayName = DIAS_SEMANA[dayIndex];
+  const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
+
+  // Verificar se é apenas planejamento (sem execuções)
+  const somenteplanejamento =
+    historico.semExecucoes || (historico.execucoes && historico.execucoes.length === 0);
+
+  // Calcular estatísticas
+  const stats = somenteplanejamento ? null : calcularEstatisticasTreino(historico);
+
+  return `
         <div id="modal-historico" class="modal-overlay-clean" onclick="fecharModalHistorico(event)">
             <div class="modal-content-clean workout-history-modal-clean" onclick="event.stopPropagation()">
                 <!-- Header Clean -->
@@ -233,7 +234,7 @@ function criarModalHistoricoClean(historico, dayIndex) {
 
 // Função para criar conteúdo do planejamento
 function criarConteudoPlanejamento(historico) {
-    return `
+  return `
         <div class="planning-section-clean">
             <div class="planning-card-clean">
                 <div class="planning-header-clean">
@@ -252,8 +253,10 @@ function criarConteudoPlanejamento(historico) {
                 </div>
             </div>
             
-            ${historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0 ? 
-                criarExerciciosSugeridos(historico.exerciciosSugeridos) : ''
+            ${
+              historico.exerciciosSugeridos && historico.exerciciosSugeridos.length > 0
+                ? criarExerciciosSugeridos(historico.exerciciosSugeridos)
+                : ''
             }
         </div>
         
@@ -352,44 +355,64 @@ function criarConteudoPlanejamento(historico) {
 
 // Função para criar exercícios sugeridos
 function criarExerciciosSugeridos(exercicios) {
-    return `
+  return `
         <div class="suggested-exercises-clean">
             <h3 class="exercises-title-clean">💪 Exercícios Sugeridos</h3>
             <div class="exercises-grid-clean">
-                ${exercicios.map(ex => `
+                ${exercicios
+                  .map(
+                    (ex) => `
                     <div class="exercise-card-clean">
                         <div class="exercise-header-clean">
                             <h4 class="exercise-name-clean">${ex.nome}</h4>
                             <span class="exercise-equipment-clean">${ex.equipamento || 'Livre'}</span>
                         </div>
                         <div class="exercise-stats-clean">
-                            ${ex.series ? `
+                            ${
+                              ex.series
+                                ? `
                                 <div class="stat-item-clean">
                                     <span class="stat-value-clean">${ex.series}</span>
                                     <span class="stat-label-clean">Séries</span>
                                 </div>
-                            ` : ''}
-                            ${ex.repeticoes ? `
+                            `
+                                : ''
+                            }
+                            ${
+                              ex.repeticoes
+                                ? `
                                 <div class="stat-item-clean">
                                     <span class="stat-value-clean">${ex.repeticoes}</span>
                                     <span class="stat-label-clean">Reps</span>
                                 </div>
-                            ` : ''}
-                            ${ex.peso_calculado ? `
+                            `
+                                : ''
+                            }
+                            ${
+                              ex.peso_calculado
+                                ? `
                                 <div class="stat-item-clean">
                                     <span class="stat-value-clean">${Math.round(ex.peso_calculado)}kg</span>
                                     <span class="stat-label-clean">Peso</span>
                                 </div>
-                            ` : ''}
-                            ${ex.descanso_sugerido ? `
+                            `
+                                : ''
+                            }
+                            ${
+                              ex.descanso_sugerido
+                                ? `
                                 <div class="stat-item-clean">
                                     <span class="stat-value-clean">${ex.descanso_sugerido}s</span>
                                     <span class="stat-label-clean">Descanso</span>
                                 </div>
-                            ` : ''}
+                            `
+                                : ''
+                            }
                         </div>
                     </div>
-                `).join('')}
+                `
+                  )
+                  .join('')}
             </div>
         </div>
         
@@ -528,7 +551,7 @@ function criarExerciciosSugeridos(exercicios) {
 
 // Função para criar conteúdo do histórico
 function criarConteudoHistorico(historico, stats) {
-    return `
+  return `
         <div class="history-section-clean">
             <div class="stats-overview-clean">
                 <div class="stat-card-clean">

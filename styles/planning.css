@@ -1,6 +1,6 @@
 /* Estilos para a classe .visible, que força a exibição de um elemento */
 .visible {
-    display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }

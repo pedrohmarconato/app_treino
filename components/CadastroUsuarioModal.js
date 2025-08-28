@@ -1,8 +1,8 @@
 /**
  * 🆕 MODAL DE CADASTRO DE USUÁRIO - User Registration Modal
- * 
+ *
  * FUNÇÃO: Interface modal para cadastro de novos usuários.
- * 
+ *
  * RESPONSABILIDADES:
  * - Renderizar modal responsivo com acessibilidade
  * - Validar campos em tempo real
@@ -10,7 +10,7 @@
  * - Gerenciar estados de loading e erro
  * - Integrar com serviços de cadastro e validação
  * - Garantir compliance LGPD
- * 
+ *
  * FUNCIONALIDADES:
  * - show(): Exibir modal e retornar Promise
  * - Validação inline de email e nome
@@ -18,7 +18,7 @@
  * - Feedback visual de erros por campo
  * - Loading states durante submissão
  * - Auto-focus no primeiro campo
- * 
+ *
  * ACESSIBILIDADE:
  * - ARIA labels e roles
  * - Screen reader support
@@ -32,74 +32,74 @@ import { cadastrarNovoUsuario } from '../services/userRegistrationService.js';
 import { logLGPDConsent, detectBotBehavior } from '../services/userValidationService.js';
 
 export default class CadastroUsuarioModal extends BaseModal {
-    constructor() {
-        super({
-            id: 'cadastro-usuario-modal',
-            title: 'Criar Nova Conta',
-            className: 'cadastro-usuario-modal',
-            closable: true,
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-        
-        this.startTime = Date.now();
-        this.formStartTime = null;
-        this.fieldTimings = {};
-        this.isLoading = false;
-        
-        // Carregar CSS específico do modal
-        this.loadModalCSS();
+  constructor() {
+    super({
+      id: 'cadastro-usuario-modal',
+      title: 'Criar Nova Conta',
+      className: 'cadastro-usuario-modal',
+      closable: true,
+      backdrop: true,
+      keyboard: true,
+      focus: true,
+    });
+
+    this.startTime = Date.now();
+    this.formStartTime = null;
+    this.fieldTimings = {};
+    this.isLoading = false;
+
+    // Carregar CSS específico do modal
+    this.loadModalCSS();
+  }
+
+  /**
+   * Carregar CSS específico do modal
+   */
+  loadModalCSS() {
+    if (!document.getElementById('cadastro-usuario-modal-css')) {
+      const link = document.createElement('link');
+      link.id = 'cadastro-usuario-modal-css';
+      link.rel = 'stylesheet';
+      link.href = 'css/cadastro-usuario-modal.css';
+      document.head.appendChild(link);
     }
-    
-    /**
-     * Carregar CSS específico do modal
-     */
-    loadModalCSS() {
-        if (!document.getElementById('cadastro-usuario-modal-css')) {
-            const link = document.createElement('link');
-            link.id = 'cadastro-usuario-modal-css';
-            link.rel = 'stylesheet';
-            link.href = 'css/cadastro-usuario-modal.css';
-            document.head.appendChild(link);
-        }
+  }
+
+  /**
+   * Exibir modal e retornar Promise com resultado
+   */
+  show() {
+    console.log('[CadastroModal] 🎭 show() chamado');
+
+    if (window.trackEvent) {
+      window.trackEvent('cadastro_modal_opened', {
+        timestamp: Date.now(),
+        user_agent: navigator.userAgent.slice(0, 50),
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+      });
     }
 
-    /**
-     * Exibir modal e retornar Promise com resultado
-     */
-    show() {
-        console.log('[CadastroModal] 🎭 show() chamado');
-        
-        if (window.trackEvent) {
-            window.trackEvent('cadastro_modal_opened', {
-                timestamp: Date.now(),
-                user_agent: navigator.userAgent.slice(0, 50),
-                viewport: `${window.innerWidth}x${window.innerHeight}`
-            });
+    return super.show({
+      onShow: () => {
+        // Focus no campo nome após exibição
+        const nomeField = this.element.querySelector('#nome');
+        if (nomeField) {
+          nomeField.focus();
+          this.formStartTime = Date.now();
         }
-        
-        return super.show({
-            onShow: () => {
-                // Focus no campo nome após exibição
-                const nomeField = this.element.querySelector('#nome');
-                if (nomeField) {
-                    nomeField.focus();
-                    this.formStartTime = Date.now();
-                }
-                
-                // Configurar tracking de timings
-                this.setupFieldTimings();
-            }
-        });
-    }
-    
-    /**
-     * Obter template HTML do modal
-     * @returns {string} HTML template
-     */
-    getTemplate() {
-        return `
+
+        // Configurar tracking de timings
+        this.setupFieldTimings();
+      },
+    });
+  }
+
+  /**
+   * Obter template HTML do modal
+   * @returns {string} HTML template
+   */
+  getTemplate() {
+    return `
             <div class="modal-content-unified cadastro-usuario-content">
                 <div class="modal-header">
                     <div class="header-icon">
@@ -220,370 +220,367 @@ export default class CadastroUsuarioModal extends BaseModal {
                 </div>
             </div>
         `;
-    }
-    
-    /**
-     * Configurar tracking de timings dos campos
-     */
-    setupFieldTimings() {
-        ['nome', 'email', 'data_nascimento'].forEach(fieldId => {
-            const field = document.getElementById(fieldId);
-            if (field) {
-                field.addEventListener('focus', () => {
-                    this.fieldTimings[fieldId] = { focusTime: Date.now() };
-                });
-                
-                field.addEventListener('blur', () => {
-                    if (this.fieldTimings[fieldId]) {
-                        this.fieldTimings[fieldId].blurTime = Date.now();
-                        this.fieldTimings[fieldId].duration = 
-                            this.fieldTimings[fieldId].blurTime - this.fieldTimings[fieldId].focusTime;
-                    }
-                });
-            }
+  }
+
+  /**
+   * Configurar tracking de timings dos campos
+   */
+  setupFieldTimings() {
+    ['nome', 'email', 'data_nascimento'].forEach((fieldId) => {
+      const field = document.getElementById(fieldId);
+      if (field) {
+        field.addEventListener('focus', () => {
+          this.fieldTimings[fieldId] = { focusTime: Date.now() };
         });
-    }
-    
-    /**
-     * Configurar event listeners específicos do modal
-     */
-    setupEventListeners() {
-        super.setupEventListeners();
-        
-        // Cancel button
-        const cancelBtn = this.element.querySelector('#cancelar-btn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => this.hide(null));
-        }
-        
-        // Validação em tempo real
-        const emailField = this.element.querySelector('#email');
-        const nomeField = this.element.querySelector('#nome');
-        const dataField = this.element.querySelector('#data_nascimento');
-        
-        if (emailField) {
-            emailField.addEventListener('blur', this.validateEmail.bind(this));
-            emailField.addEventListener('input', this.debounce(this.validateEmail.bind(this), 500));
-        }
-        
-        if (nomeField) {
-            nomeField.addEventListener('input', this.validateNome.bind(this));
-        }
-        
-        if (dataField) {
-            dataField.addEventListener('change', this.validateDataNascimento.bind(this));
-        }
-        
-        // Form submit
-        const form = this.element.querySelector('#cadastro-form');
-        if (form) {
-            form.addEventListener('submit', this.handleSubmit.bind(this));
-        }
-    }
-    
-    /**
-     * Manipular teclas - sobrescrever para verificar loading
-     */
-    handleKeydown(e) {
-        if (e.key === 'Escape' && !this.isLoading) {
-            super.handleKeydown(e);
-        }
+
+        field.addEventListener('blur', () => {
+          if (this.fieldTimings[fieldId]) {
+            this.fieldTimings[fieldId].blurTime = Date.now();
+            this.fieldTimings[fieldId].duration =
+              this.fieldTimings[fieldId].blurTime - this.fieldTimings[fieldId].focusTime;
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Configurar event listeners específicos do modal
+   */
+  setupEventListeners() {
+    super.setupEventListeners();
+
+    // Cancel button
+    const cancelBtn = this.element.querySelector('#cancelar-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => this.hide(null));
     }
 
-    /**
-     * Debounce para validações
-     */
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
+    // Validação em tempo real
+    const emailField = this.element.querySelector('#email');
+    const nomeField = this.element.querySelector('#nome');
+    const dataField = this.element.querySelector('#data_nascimento');
+
+    if (emailField) {
+      emailField.addEventListener('blur', this.validateEmail.bind(this));
+      emailField.addEventListener('input', this.debounce(this.validateEmail.bind(this), 500));
     }
-    
-    /**
-     * Validar email em tempo real
-     */
-    async validateEmail() {
-        const email = this.element.querySelector('#email').value.trim();
-        const errorDiv = this.element.querySelector('#email-error');
-        
-        if (!email) {
-            errorDiv.textContent = '';
-            return true;
-        }
-        
-        // Validação formato
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            errorDiv.textContent = 'Formato de email inválido';
-            return false;
-        }
-        
-        // Verificar domínios suspeitos
-        const suspiciousDomains = ['tempmail', 'throwaway', 'guerrillamail'];
-        const domain = email.split('@')[1];
-        if (suspiciousDomains.some(sus => domain.includes(sus))) {
-            errorDiv.textContent = 'Por favor, use um email válido';
-            return false;
-        }
-        
-        errorDiv.textContent = '';
-        
-        // Track validação
-        if (window.trackEvent) {
-            window.trackEvent('campo_validado', {
-                campo: 'email',
-                valido: true,
-                tempo_preenchimento: this.fieldTimings.email?.duration || 0
-            });
-        }
-        
-        return true;
+
+    if (nomeField) {
+      nomeField.addEventListener('input', this.validateNome.bind(this));
     }
-    
-    /**
-     * Validar nome
-     */
-    validateNome() {
-        const nome = this.element.querySelector('#nome').value.trim();
-        const errorDiv = this.element.querySelector('#nome-error');
-        
-        if (!nome) {
-            errorDiv.textContent = '';
-            return true;
-        }
-        
-        if (nome.length < 2) {
-            errorDiv.textContent = 'Nome deve ter pelo menos 2 caracteres';
-            return false;
-        }
-        
-        if (nome.length > 50) {
-            errorDiv.textContent = 'Nome muito longo (máximo 50 caracteres)';
-            return false;
-        }
-        
-        if (!/^[a-zA-ZÀ-ÿ\u00f1\u00d1\s]+$/.test(nome)) {
-            errorDiv.textContent = 'Nome deve conter apenas letras e espaços';
-            return false;
-        }
-        
-        errorDiv.textContent = '';
-        return true;
+
+    if (dataField) {
+      dataField.addEventListener('change', this.validateDataNascimento.bind(this));
     }
-    
-    /**
-     * Validar data de nascimento
-     */
-    validateDataNascimento() {
-        const data = this.element.querySelector('#data_nascimento').value;
-        const errorDiv = this.element.querySelector('#data-error');
-        
-        if (!data) {
-            errorDiv.textContent = '';
-            return true;
-        }
-        
-        const nascimento = new Date(data);
-        const hoje = new Date();
-        const idade = hoje.getFullYear() - nascimento.getFullYear();
-        
-        if (idade < 13) {
-            errorDiv.textContent = 'Idade mínima: 13 anos';
-            return false;
-        }
-        
-        if (idade > 100) {
-            errorDiv.textContent = 'Idade máxima: 100 anos';
-            return false;
-        }
-        
-        errorDiv.textContent = '';
-        return true;
+
+    // Form submit
+    const form = this.element.querySelector('#cadastro-form');
+    if (form) {
+      form.addEventListener('submit', this.handleSubmit.bind(this));
     }
-    
-    /**
-     * Manipular submissão do formulário
-     */
-    async handleSubmit(e) {
-        e.preventDefault();
-        
-        // Verificar honeypot (proteção anti-bot)
-        if (this.element.querySelector('#website').value) {
-            console.warn('[Modal] 🤖 Bot detectado via honeypot');
-            this.showError('Erro de validação. Tente novamente.');
-            return;
-        }
-        
-        const formData = new FormData(e.target);
-        const dados = {
-            nome: formData.get('nome'),
-            email: formData.get('email'),
-            data_nascimento: formData.get('data_nascimento'),
-            consentimento: formData.get('consentimento') === 'on',
-            _startTime: this.startTime
-        };
-        
-        // Validação consentimento
-        if (!dados.consentimento) {
-            this.element.querySelector('#consentimento-error').textContent = 'Consentimento obrigatório';
-            this.element.querySelector('#consentimento').focus();
-            return;
-        }
-        
-        // Detectar comportamento de bot (temporariamente desabilitado para debug)
-        const fillTime = Date.now() - this.formStartTime;
-        console.log('[Modal] 🔍 Tempo de preenchimento:', fillTime, 'ms');
-        
-        try {
-            const botCheck = detectBotBehavior(dados, { fillTime });
-            console.log('[Modal] 🤖 Resultado bot check:', botCheck);
-            
-            if (botCheck.isSuspicious && botCheck.riskScore > 2) {
-                console.warn('[Modal] 🚨 Comportamento suspeito:', botCheck.patterns);
-                this.showError('Erro de validação. Aguarde um momento e tente novamente.');
-                return;
-            }
-        } catch (botError) {
-            console.warn('[Modal] ⚠️ Erro na detecção de bot, continuando:', botError);
-        }
-        
-        // Validar todos os campos novamente
-        const nomeValido = this.validateNome();
-        const emailValido = await this.validateEmail();
-        const dataValida = this.validateDataNascimento();
-        
-        if (!nomeValido || !emailValido || !dataValida) {
-            this.showError('Por favor, corrija os erros antes de continuar');
-            return;
-        }
-        
-        this.setLoading(true);
-        
-        try {
-            console.log('[Modal] 🚀 Submetendo cadastro...');
-            const resultado = await cadastrarNovoUsuario(dados);
-            
-            if (resultado.error) {
-                throw resultado.error;
-            }
-            
-            // Log consentimento LGPD
-            logLGPDConsent(resultado.data.id, true, {
-                modal_version: '1.0',
-                form_completion_time: Date.now() - this.formStartTime
-            });
-            
-            // Feedback de sucesso
-            this.showSuccess(`Usuário ${resultado.data.nome} cadastrado com sucesso!`);
-            
-            // Fechar modal após delay para mostrar sucesso
-            setTimeout(() => {
-                this.hide(resultado.data);
-            }, 1500);
-            
-        } catch (error) {
-            console.error('[Modal] ❌ Erro no cadastro:', error);
-            
-            // Tratar erros específicos
-            if (error.message === 'EMAIL_ALREADY_EXISTS') {
-                this.showError('Este email já está cadastrado');
-                this.element.querySelector('#email').focus();
-            } else if (error.message === 'RATE_LIMIT_EXCEEDED') {
-                this.showError('Muitas tentativas. Tente novamente em 1 hora.');
-            } else if (error.message === 'VALIDATION_ERROR' && error.details) {
-                this.showValidationErrors(error.details);
-            } else {
-                this.showError('Erro no cadastro. Verifique os dados e tente novamente.');
-            }
-            
-        } finally {
-            this.setLoading(false);
-        }
+  }
+
+  /**
+   * Manipular teclas - sobrescrever para verificar loading
+   */
+  handleKeydown(e) {
+    if (e.key === 'Escape' && !this.isLoading) {
+      super.handleKeydown(e);
     }
-    
-    /**
-     * Exibir erros de validação específicos
-     */
-    showValidationErrors(errors) {
-        Object.entries(errors).forEach(([field, message]) => {
-            const errorDiv = document.getElementById(`${field}-error`);
-            if (errorDiv) {
-                errorDiv.textContent = message;
-            }
-        });
-        
-        // Focar no primeiro campo com erro
-        const firstErrorField = Object.keys(errors)[0];
-        if (firstErrorField) {
-            this.element.querySelector(`#${firstErrorField}`)?.focus();
-        }
+  }
+
+  /**
+   * Debounce para validações
+   */
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  /**
+   * Validar email em tempo real
+   */
+  async validateEmail() {
+    const email = this.element.querySelector('#email').value.trim();
+    const errorDiv = this.element.querySelector('#email-error');
+
+    if (!email) {
+      errorDiv.textContent = '';
+      return true;
     }
-    
-    /**
-     * Controlar estado de loading
-     */
-    setLoading(loading) {
-        this.isLoading = loading;
-        
-        const btn = this.element.querySelector('#cadastrar-btn');
-        const text = btn?.querySelector('.btn-text');
-        const spinner = btn?.querySelector('.btn-loading');
-        
-        if (btn) {
-            btn.disabled = loading;
-            if (text && spinner) {
-                text.style.display = loading ? 'none' : 'inline';
-                spinner.style.display = loading ? 'inline-flex' : 'none';
-            }
-        }
-        
-        // Desabilitar form durante loading
-        const inputs = this.element.querySelectorAll('input, button');
-        inputs.forEach(input => {
-            if (input.id !== 'cadastrar-btn') {
-                input.disabled = loading;
-            }
-        });
+
+    // Validação formato
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      errorDiv.textContent = 'Formato de email inválido';
+      return false;
     }
-    
-    /**
-     * Exibir mensagem de erro
-     */
-    showError(message) {
-        const feedbackDiv = this.element.querySelector('#form-feedback');
-        if (feedbackDiv) {
-            feedbackDiv.textContent = message;
-            feedbackDiv.className = 'form-feedback error-feedback';
-            feedbackDiv.style.display = 'block';
-        }
+
+    // Verificar domínios suspeitos
+    const suspiciousDomains = ['tempmail', 'throwaway', 'guerrillamail'];
+    const domain = email.split('@')[1];
+    if (suspiciousDomains.some((sus) => domain.includes(sus))) {
+      errorDiv.textContent = 'Por favor, use um email válido';
+      return false;
     }
-    
-    /**
-     * Exibir mensagem de sucesso
-     */
-    showSuccess(message) {
-        const feedbackDiv = this.element.querySelector('#form-feedback');
-        if (feedbackDiv) {
-            feedbackDiv.textContent = message;
-            feedbackDiv.className = 'form-feedback success-feedback';
-            feedbackDiv.style.display = 'block';
-        }
+
+    errorDiv.textContent = '';
+
+    // Track validação
+    if (window.trackEvent) {
+      window.trackEvent('campo_validado', {
+        campo: 'email',
+        valido: true,
+        tempo_preenchimento: this.fieldTimings.email?.duration || 0,
+      });
     }
-    
-    /**
-     * Limpar feedback
-     */
-    clearFeedback() {
-        const feedbackDiv = this.element.querySelector('#form-feedback');
-        if (feedbackDiv) {
-            feedbackDiv.style.display = 'none';
-        }
+
+    return true;
+  }
+
+  /**
+   * Validar nome
+   */
+  validateNome() {
+    const nome = this.element.querySelector('#nome').value.trim();
+    const errorDiv = this.element.querySelector('#nome-error');
+
+    if (!nome) {
+      errorDiv.textContent = '';
+      return true;
     }
-    
+
+    if (nome.length < 2) {
+      errorDiv.textContent = 'Nome deve ter pelo menos 2 caracteres';
+      return false;
+    }
+
+    if (nome.length > 50) {
+      errorDiv.textContent = 'Nome muito longo (máximo 50 caracteres)';
+      return false;
+    }
+
+    if (!/^[a-zA-ZÀ-ÿ\u00f1\u00d1\s]+$/.test(nome)) {
+      errorDiv.textContent = 'Nome deve conter apenas letras e espaços';
+      return false;
+    }
+
+    errorDiv.textContent = '';
+    return true;
+  }
+
+  /**
+   * Validar data de nascimento
+   */
+  validateDataNascimento() {
+    const data = this.element.querySelector('#data_nascimento').value;
+    const errorDiv = this.element.querySelector('#data-error');
+
+    if (!data) {
+      errorDiv.textContent = '';
+      return true;
+    }
+
+    const nascimento = new Date(data);
+    const hoje = new Date();
+    const idade = hoje.getFullYear() - nascimento.getFullYear();
+
+    if (idade < 13) {
+      errorDiv.textContent = 'Idade mínima: 13 anos';
+      return false;
+    }
+
+    if (idade > 100) {
+      errorDiv.textContent = 'Idade máxima: 100 anos';
+      return false;
+    }
+
+    errorDiv.textContent = '';
+    return true;
+  }
+
+  /**
+   * Manipular submissão do formulário
+   */
+  async handleSubmit(e) {
+    e.preventDefault();
+
+    // Verificar honeypot (proteção anti-bot)
+    if (this.element.querySelector('#website').value) {
+      console.warn('[Modal] 🤖 Bot detectado via honeypot');
+      this.showError('Erro de validação. Tente novamente.');
+      return;
+    }
+
+    const formData = new FormData(e.target);
+    const dados = {
+      nome: formData.get('nome'),
+      email: formData.get('email'),
+      data_nascimento: formData.get('data_nascimento'),
+      consentimento: formData.get('consentimento') === 'on',
+      _startTime: this.startTime,
+    };
+
+    // Validação consentimento
+    if (!dados.consentimento) {
+      this.element.querySelector('#consentimento-error').textContent = 'Consentimento obrigatório';
+      this.element.querySelector('#consentimento').focus();
+      return;
+    }
+
+    // Detectar comportamento de bot (temporariamente desabilitado para debug)
+    const fillTime = Date.now() - this.formStartTime;
+    console.log('[Modal] 🔍 Tempo de preenchimento:', fillTime, 'ms');
+
+    try {
+      const botCheck = detectBotBehavior(dados, { fillTime });
+      console.log('[Modal] 🤖 Resultado bot check:', botCheck);
+
+      if (botCheck.isSuspicious && botCheck.riskScore > 2) {
+        console.warn('[Modal] 🚨 Comportamento suspeito:', botCheck.patterns);
+        this.showError('Erro de validação. Aguarde um momento e tente novamente.');
+        return;
+      }
+    } catch (botError) {
+      console.warn('[Modal] ⚠️ Erro na detecção de bot, continuando:', botError);
+    }
+
+    // Validar todos os campos novamente
+    const nomeValido = this.validateNome();
+    const emailValido = await this.validateEmail();
+    const dataValida = this.validateDataNascimento();
+
+    if (!nomeValido || !emailValido || !dataValida) {
+      this.showError('Por favor, corrija os erros antes de continuar');
+      return;
+    }
+
+    this.setLoading(true);
+
+    try {
+      console.log('[Modal] 🚀 Submetendo cadastro...');
+      const resultado = await cadastrarNovoUsuario(dados);
+
+      if (resultado.error) {
+        throw resultado.error;
+      }
+
+      // Log consentimento LGPD
+      logLGPDConsent(resultado.data.id, true, {
+        modal_version: '1.0',
+        form_completion_time: Date.now() - this.formStartTime,
+      });
+
+      // Feedback de sucesso
+      this.showSuccess(`Usuário ${resultado.data.nome} cadastrado com sucesso!`);
+
+      // Fechar modal após delay para mostrar sucesso
+      setTimeout(() => {
+        this.hide(resultado.data);
+      }, 1500);
+    } catch (error) {
+      console.error('[Modal] ❌ Erro no cadastro:', error);
+
+      // Tratar erros específicos
+      if (error.message === 'EMAIL_ALREADY_EXISTS') {
+        this.showError('Este email já está cadastrado');
+        this.element.querySelector('#email').focus();
+      } else if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        this.showError('Muitas tentativas. Tente novamente em 1 hora.');
+      } else if (error.message === 'VALIDATION_ERROR' && error.details) {
+        this.showValidationErrors(error.details);
+      } else {
+        this.showError('Erro no cadastro. Verifique os dados e tente novamente.');
+      }
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  /**
+   * Exibir erros de validação específicos
+   */
+  showValidationErrors(errors) {
+    Object.entries(errors).forEach(([field, message]) => {
+      const errorDiv = document.getElementById(`${field}-error`);
+      if (errorDiv) {
+        errorDiv.textContent = message;
+      }
+    });
+
+    // Focar no primeiro campo com erro
+    const firstErrorField = Object.keys(errors)[0];
+    if (firstErrorField) {
+      this.element.querySelector(`#${firstErrorField}`)?.focus();
+    }
+  }
+
+  /**
+   * Controlar estado de loading
+   */
+  setLoading(loading) {
+    this.isLoading = loading;
+
+    const btn = this.element.querySelector('#cadastrar-btn');
+    const text = btn?.querySelector('.btn-text');
+    const spinner = btn?.querySelector('.btn-loading');
+
+    if (btn) {
+      btn.disabled = loading;
+      if (text && spinner) {
+        text.style.display = loading ? 'none' : 'inline';
+        spinner.style.display = loading ? 'inline-flex' : 'none';
+      }
+    }
+
+    // Desabilitar form durante loading
+    const inputs = this.element.querySelectorAll('input, button');
+    inputs.forEach((input) => {
+      if (input.id !== 'cadastrar-btn') {
+        input.disabled = loading;
+      }
+    });
+  }
+
+  /**
+   * Exibir mensagem de erro
+   */
+  showError(message) {
+    const feedbackDiv = this.element.querySelector('#form-feedback');
+    if (feedbackDiv) {
+      feedbackDiv.textContent = message;
+      feedbackDiv.className = 'form-feedback error-feedback';
+      feedbackDiv.style.display = 'block';
+    }
+  }
+
+  /**
+   * Exibir mensagem de sucesso
+   */
+  showSuccess(message) {
+    const feedbackDiv = this.element.querySelector('#form-feedback');
+    if (feedbackDiv) {
+      feedbackDiv.textContent = message;
+      feedbackDiv.className = 'form-feedback success-feedback';
+      feedbackDiv.style.display = 'block';
+    }
+  }
+
+  /**
+   * Limpar feedback
+   */
+  clearFeedback() {
+    const feedbackDiv = this.element.querySelector('#form-feedback');
+    if (feedbackDiv) {
+      feedbackDiv.style.display = 'none';
+    }
+  }
 }

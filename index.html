@@ -1,289 +1,320 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>App Treino - Sistema de Treinamento</title>
-    <meta name="description" content="Sistema completo de planejamento e execução de treinos">
-    
+    <meta name="description" content="Sistema completo de planejamento e execução de treinos" />
+
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#CFFF04">
-    <meta name="background-color" content="#101010">
-    <link rel="manifest" href="/manifest.json">
-    
+    <meta name="theme-color" content="#CFFF04" />
+    <meta name="background-color" content="#101010" />
+    <link rel="manifest" href="/manifest.json" />
+
     <!-- iOS PWA Tags -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="App Treino">
-    <link rel="apple-touch-icon" href="/icons/icon-144x144.png">
-    <link rel="apple-touch-startup-image" href="/icons/icon-144x144.png">
-    
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="App Treino" />
+    <link rel="apple-touch-icon" href="/icons/icon-144x144.png" />
+    <link rel="apple-touch-startup-image" href="/icons/icon-144x144.png" />
+
     <!-- Meta Tags para SEO -->
-    <meta name="keywords" content="treino, fitness, academia, exercicios, planejamento">
-    <meta name="author" content="App Treino">
-    <meta name="robots" content="index, follow">
-    
+    <meta name="keywords" content="treino, fitness, academia, exercicios, planejamento" />
+    <meta name="author" content="App Treino" />
+    <meta name="robots" content="index, follow" />
+
     <!-- Open Graph -->
-    <meta property="og:title" content="App Treino - Sistema de Treinamento">
-    <meta property="og:description" content="Sistema completo de planejamento e execução de treinos">
-    <meta property="og:type" content="website">
-    <meta property="og:image" content="/icons/icon-144x144.png">
-    
+    <meta property="og:title" content="App Treino - Sistema de Treinamento" />
+    <meta
+      property="og:description"
+      content="Sistema completo de planejamento e execução de treinos"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icons/icon-144x144.png" />
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- date-fns v4.1.0 - última versão estável -->
     <script src="https://cdn.jsdelivr.net/npm/date-fns@4.1.0/cdn.min.js"></script>
     <script src="./config.js"></script>
-    
+
     <!-- Sistema de Cadastro de Usuários -->
     <script type="module" src="./js/cadastroSystem.js"></script>
-    
+
     <!-- Sistema de Autenticação -->
     <script>
-        // Carregar sistema de autenticação quando necessário
-        window.loadAuthSystem = async function() {
-            if (window.AuthSystem) return true;
-            
-            try {
-                const { signIn, signUp, signOut, getCurrentUser, migrateExistingUser, needsMigration, resetPassword } = 
-                    await import('./services/authService.js');
-                
-                window.AuthSystem = {
-                    signIn, signUp, signOut, getCurrentUser, 
-                    migrateExistingUser, needsMigration, resetPassword
-                };
-                
-                console.log('[Auth] ✅ Sistema carregado');
-                return true;
-            } catch (error) {
-                console.error('[Auth] ❌ Erro ao carregar:', error);
-                return false;
-            }
-        };
+      // Carregar sistema de autenticação quando necessário
+      window.loadAuthSystem = async function () {
+        if (window.AuthSystem) return true;
+
+        try {
+          const {
+            signIn,
+            signUp,
+            signOut,
+            getCurrentUser,
+            migrateExistingUser,
+            needsMigration,
+            resetPassword,
+          } = await import('./services/authService.js');
+
+          window.AuthSystem = {
+            signIn,
+            signUp,
+            signOut,
+            getCurrentUser,
+            migrateExistingUser,
+            needsMigration,
+            resetPassword,
+          };
+
+          console.log('[Auth] ✅ Sistema carregado');
+          return true;
+        } catch (error) {
+          console.error('[Auth] ❌ Erro ao carregar:', error);
+          return false;
+        }
+      };
     </script>
-    
+
     <!-- Estilos Base -->
-    <link rel="stylesheet" href="./styles.css">
-    <link rel="stylesheet" href="./css/modal-styles.css">
-    <link rel="stylesheet" href="week-indicators-redesign.css">
-    <link rel="stylesheet" href="header-redesign.css">
-    <link rel="stylesheet" href="disposicao-modal-redesign.css">
-    <link rel="stylesheet" href="workout-expand-redesign.css">
-    <link rel="stylesheet" href="workout-execution-redesign.css">
-    <link rel="stylesheet" href="week-carousel-infinite.css">
-    
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./css/modal-styles.css" />
+    <link rel="stylesheet" href="week-indicators-redesign.css" />
+    <link rel="stylesheet" href="header-redesign.css" />
+    <link rel="stylesheet" href="disposicao-modal-redesign.css" />
+    <link rel="stylesheet" href="workout-expand-redesign.css" />
+    <link rel="stylesheet" href="workout-execution-redesign.css" />
+    <link rel="stylesheet" href="week-carousel-infinite.css" />
+
     <!-- Estilos do Workout Execution -->
-    <link rel="stylesheet" href="./styles/workoutExecution.css">
-    <link rel="stylesheet" href="./styles/planning.css">
-    <link rel="stylesheet" href="./styles/muscleGroupIcons.css">
-    <link rel="stylesheet" href="./modal-enhanced.css">
-    
+    <link rel="stylesheet" href="./styles/workoutExecution.css" />
+    <link rel="stylesheet" href="./styles/planning.css" />
+    <link rel="stylesheet" href="./styles/muscleGroupIcons.css" />
+    <link rel="stylesheet" href="./modal-enhanced.css" />
+
     <!-- Modal de Recuperação de Senha -->
-    <link rel="stylesheet" href="./css/forgot-password-modal.css">
-    
+    <link rel="stylesheet" href="./css/forgot-password-modal.css" />
+
     <!-- Mobile Fixes -->
-    <link rel="stylesheet" href="./mobile-fixes.css">
-    
+    <link rel="stylesheet" href="./mobile-fixes.css" />
+
     <!-- Visual Design Enhancements -->
-    <link rel="stylesheet" href="./design-enhancements.css">
-    <link rel="stylesheet" href="./ui-polish.css">
-    <link rel="stylesheet" href="./animations-premium.css">
-    <link rel="stylesheet" href="./css/login-redesign.css">
-    
+    <link rel="stylesheet" href="./design-enhancements.css" />
+    <link rel="stylesheet" href="./ui-polish.css" />
+    <link rel="stylesheet" href="./animations-premium.css" />
+    <link rel="stylesheet" href="./css/login-redesign.css" />
+
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="./favicon.png">
-    <link rel="shortcut icon" type="image/png" href="./favicon.png">
-</head>
-<body>
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="./favicon.png" />
+  </head>
+  <body>
     <!-- Container principal da aplicação -->
     <div id="app">
-        <!-- Os templates serão renderizados aqui -->
+      <!-- Os templates serão renderizados aqui -->
     </div>
-    
+
     <!-- Container para modais dinâmicos -->
-    <div id="modals-container" style="position: relative; z-index: 999999;">
-        <div id="seletorTreinoPopup" class="popup-overlay" style="display: none;">
-            <div class="popup-content">
-                <div class="popup-header">
-                    <h3 id="popup-day-title">Selecionar Treino</h3>
-                    <button class="popup-close-btn" onclick="fecharSeletorTreino()">×</button>
-                </div>
-                <div id="treino-options" class="popup-body">
-                    <!-- As opções de treino serão inseridas aqui pelo JavaScript -->
-                </div>
-            </div>
+    <div id="modals-container" style="position: relative; z-index: 999999">
+      <div id="seletorTreinoPopup" class="popup-overlay" style="display: none">
+        <div class="popup-content">
+          <div class="popup-header">
+            <h3 id="popup-day-title">Selecionar Treino</h3>
+            <button class="popup-close-btn" onclick="fecharSeletorTreino()">×</button>
+          </div>
+          <div id="treino-options" class="popup-body">
+            <!-- As opções de treino serão inseridas aqui pelo JavaScript -->
+          </div>
         </div>
+      </div>
     </div>
-    
+
     <!-- Container específico para modais de alto z-index -->
-    <div id="high-priority-modals" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1000000;">
-        <!-- Modais críticos (avaliação, disposição) serão inseridos aqui -->
+    <div
+      id="high-priority-modals"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 1000000;
+      "
+    >
+      <!-- Modais críticos (avaliação, disposição) serão inseridos aqui -->
     </div>
-    
+
     <!-- Loading Global -->
-    <div id="global-loading" class="loading-overlay" style="display: none;">
-        <div class="loading-spinner"></div>
+    <div id="global-loading" class="loading-overlay" style="display: none">
+      <div class="loading-spinner"></div>
     </div>
-    
+
     <!-- Scripts -->
     <script type="module">
-        // Importa o sistema de templates
-        import { initTemplates, renderTemplate } from './templates/index.js';
+      // Importa o sistema de templates
+      import { initTemplates, renderTemplate } from './templates/index.js';
 
-        // Torna as funções de template disponíveis globalmente
-        window.renderTemplate = renderTemplate;
+      // Torna as funções de template disponíveis globalmente
+      window.renderTemplate = renderTemplate;
 
-        // Inicializa os templates quando o DOM estiver pronto
-        document.addEventListener('DOMContentLoaded', () => {
-            initTemplates();
-        });
+      // Inicializa os templates quando o DOM estiver pronto
+      document.addEventListener('DOMContentLoaded', () => {
+        initTemplates();
+      });
 
-        // Rotas simples: reset-password
-        function handleDeepLinkRoutes() {
-            try {
-                const url = new URL(window.location.href);
-                const path = url.pathname;
-                if (path === '/reset-password' || path.endsWith('/reset-password')) {
-                    console.log('[router] 🔐 Rota /reset-password detectada');
-                    import('./routes/resetPasswordRoute.js').then(mod => mod.default()).catch(err => {
-                        console.error('[router] ❌ Erro carregando rota reset-password:', err);
-                    });
-                }
-            } catch (err) {
-                console.warn('[router] Erro ao processar rota:', err);
-            }
+      // Rotas simples: reset-password
+      function handleDeepLinkRoutes() {
+        try {
+          const url = new URL(window.location.href);
+          const path = url.pathname;
+          if (path === '/reset-password' || path.endsWith('/reset-password')) {
+            console.log('[router] 🔐 Rota /reset-password detectada');
+            import('./routes/resetPasswordRoute.js')
+              .then((mod) => mod.default())
+              .catch((err) => {
+                console.error('[router] ❌ Erro carregando rota reset-password:', err);
+              });
+          }
+        } catch (err) {
+          console.warn('[router] Erro ao processar rota:', err);
         }
+      }
 
-        document.addEventListener('DOMContentLoaded', handleDeepLinkRoutes);
+      document.addEventListener('DOMContentLoaded', handleDeepLinkRoutes);
     </script>
-    
+
     <!-- PWA Service Worker (desativado em localhost para evitar erros de cache) -->
     <script>
-        // Registrar Service Worker para PWA
-        if ('serviceWorker' in navigator && !(location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-            window.addEventListener('load', async () => {
-                try {
-                    const registration = await navigator.serviceWorker.register('/sw.js', {
-                        scope: '/'
-                    });
-                    
-                    console.log('[PWA] ✅ Service Worker registrado:', registration.scope);
-                    
-                    // Verificar atualizações
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        console.log('[PWA] 🔄 Nova versão encontrada');
-                        
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed') {
-                                if (navigator.serviceWorker.controller) {
-                                    // Nova versão disponível
-                                    console.log('[PWA] 🆕 Nova versão disponível');
-                                    if (window.showNotification) {
-                                        window.showNotification('Nova versão disponível! Recarregue a página.', 'info');
-                                    }
-                                } else {
-                                    // Primeira instalação
-                                    console.log('[PWA] ✅ App está pronto para funcionar offline');
-                                    if (window.showNotification) {
-                                        window.showNotification('App instalado! Agora funciona offline.', 'success');
-                                    }
-                                }
-                            }
-                        });
-                    });
-                    
-                    // Verificar por atualizações periodicamente
-                    setInterval(() => {
-                        registration.update();
-                    }, 60000); // Verifica a cada minuto
-                    
-                } catch (error) {
-                    console.error('[PWA] ❌ Erro ao registrar Service Worker:', error);
-                }
+      // Registrar Service Worker para PWA
+      if (
+        'serviceWorker' in navigator &&
+        !(location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ) {
+        window.addEventListener('load', async () => {
+          try {
+            const registration = await navigator.serviceWorker.register('/sw.js', {
+              scope: '/',
             });
-            
-            // Escutar mensagens do Service Worker
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                console.log('[PWA] Mensagem do SW:', event.data);
-                
-                if (event.data && event.data.type === 'CACHE_UPDATED') {
+
+            console.log('[PWA] ✅ Service Worker registrado:', registration.scope);
+
+            // Verificar atualizações
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              console.log('[PWA] 🔄 Nova versão encontrada');
+
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed') {
+                  if (navigator.serviceWorker.controller) {
+                    // Nova versão disponível
+                    console.log('[PWA] 🆕 Nova versão disponível');
                     if (window.showNotification) {
-                        window.showNotification('Cache atualizado!', 'info');
+                      window.showNotification(
+                        'Nova versão disponível! Recarregue a página.',
+                        'info'
+                      );
                     }
+                  } else {
+                    // Primeira instalação
+                    console.log('[PWA] ✅ App está pronto para funcionar offline');
+                    if (window.showNotification) {
+                      window.showNotification('App instalado! Agora funciona offline.', 'success');
+                    }
+                  }
                 }
+              });
             });
+
+            // Verificar por atualizações periodicamente
+            setInterval(() => {
+              registration.update();
+            }, 60000); // Verifica a cada minuto
+          } catch (error) {
+            console.error('[PWA] ❌ Erro ao registrar Service Worker:', error);
+          }
+        });
+
+        // Escutar mensagens do Service Worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          console.log('[PWA] Mensagem do SW:', event.data);
+
+          if (event.data && event.data.type === 'CACHE_UPDATED') {
+            if (window.showNotification) {
+              window.showNotification('Cache atualizado!', 'info');
+            }
+          }
+        });
+      }
+
+      // Detectar quando o app é adicionado à tela inicial
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('[PWA] 📱 Prompt de instalação disponível');
+        e.preventDefault();
+        deferredPrompt = e;
+
+        // Mostrar botão de instalação customizado (se existir)
+        const installButton = document.getElementById('install-app-btn');
+        if (installButton) {
+          installButton.style.display = 'block';
+          installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              const result = await deferredPrompt.userChoice;
+              console.log('[PWA] Resultado da instalação:', result.outcome);
+              deferredPrompt = null;
+              installButton.style.display = 'none';
+            }
+          });
         }
-        
-        // Detectar quando o app é adicionado à tela inicial
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('[PWA] 📱 Prompt de instalação disponível');
-            e.preventDefault();
-            deferredPrompt = e;
-            
-            // Mostrar botão de instalação customizado (se existir)
-            const installButton = document.getElementById('install-app-btn');
-            if (installButton) {
-                installButton.style.display = 'block';
-                installButton.addEventListener('click', async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const result = await deferredPrompt.userChoice;
-                        console.log('[PWA] Resultado da instalação:', result.outcome);
-                        deferredPrompt = null;
-                        installButton.style.display = 'none';
-                    }
-                });
-            }
-        });
-        
-        // Detectar quando o app foi instalado
-        window.addEventListener('appinstalled', (evt) => {
-            console.log('[PWA] ✅ App foi instalado na tela inicial');
-            if (window.showNotification) {
-                window.showNotification('App instalado com sucesso! 🎉', 'success');
-            }
-        });
-        
-        // Detectar modo standalone (quando aberto como PWA)
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-            console.log('[PWA] 📱 Executando como PWA');
-            document.body.classList.add('pwa-mode');
+      });
+
+      // Detectar quando o app foi instalado
+      window.addEventListener('appinstalled', (evt) => {
+        console.log('[PWA] ✅ App foi instalado na tela inicial');
+        if (window.showNotification) {
+          window.showNotification('App instalado com sucesso! 🎉', 'success');
         }
-        
-        // Detectar mudanças de conectividade
-        window.addEventListener('online', () => {
-            console.log('[PWA] 🌐 Conectado à internet');
-            if (window.showNotification) {
-                window.showNotification('Conectado! Sincronizando dados...', 'success');
-            }
-            
-            // Trigger sync se disponível
-            if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-                navigator.serviceWorker.ready.then(registration => {
-                    registration.sync.register('workout-data-sync');
-                    registration.sync.register('planning-data-sync');
-                });
-            }
-        });
-        
-        window.addEventListener('offline', () => {
-            console.log('[PWA] 📴 Sem conexão - modo offline');
-            if (window.showNotification) {
-                window.showNotification('Sem conexão. Funcionando offline.', 'warning');
-            }
-        });
+      });
+
+      // Detectar modo standalone (quando aberto como PWA)
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        console.log('[PWA] 📱 Executando como PWA');
+        document.body.classList.add('pwa-mode');
+      }
+
+      // Detectar mudanças de conectividade
+      window.addEventListener('online', () => {
+        console.log('[PWA] 🌐 Conectado à internet');
+        if (window.showNotification) {
+          window.showNotification('Conectado! Sincronizando dados...', 'success');
+        }
+
+        // Trigger sync se disponível
+        if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.sync.register('workout-data-sync');
+            registration.sync.register('planning-data-sync');
+          });
+        }
+      });
+
+      window.addEventListener('offline', () => {
+        console.log('[PWA] 📴 Sem conexão - modo offline');
+        if (window.showNotification) {
+          window.showNotification('Sem conexão. Funcionando offline.', 'warning');
+        }
+      });
     </script>
-    
+
     <!-- Script principal da aplicação (ES Module) -->
     <!-- app.js é um módulo ES e já importa os demais módulos necessários. -->
-<script type="module" src="./js/app.js"></script>
-
+    <script type="module" src="./js/app.js"></script>
 
     <!-- Preview dos treinos da semana 7 -->
-
 
     <!-- Componentes e Features já são importados via js/app.js (ESM), não carregar aqui -->
 
@@ -298,12 +329,12 @@
 
     <!-- Fallback de emergência se nada funcionar -->
     <script>
-        // Aguardar 2 segundos e verificar se algo foi renderizado
-        setTimeout(() => {
-            const app = document.getElementById('app');
-            if (!app || !app.innerHTML.trim()) {
-                console.warn('[FALLBACK] Aplicação não carregou, renderizando fallback de emergência...');
-                app.innerHTML = `
+      // Aguardar 2 segundos e verificar se algo foi renderizado
+      setTimeout(() => {
+        const app = document.getElementById('app');
+        if (!app || !app.innerHTML.trim()) {
+          console.warn('[FALLBACK] Aplicação não carregou, renderizando fallback de emergência...');
+          app.innerHTML = `
                     <div style="padding: 20px; color: white; background: #101010; min-height: 100vh; font-family: Arial, sans-serif;">
                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                             <img src="./icons/black-dumbbell.svg" alt="App Treino" style="width: 32px; height: 32px; filter: drop-shadow(0 0 8px #CFFF04);">
@@ -323,13 +354,13 @@
                         </button>
                     </div>
                 `;
-            } else {
-                console.log('[FALLBACK] ✅ Aplicação carregou corretamente, fallback cancelado');
-            }
-        }, 2000);
+        } else {
+          console.log('[FALLBACK] ✅ Aplicação carregou corretamente, fallback cancelado');
+        }
+      }, 2000);
     </script>
 
     <!-- Login Effects Script -->
     <script src="./js/loginEffects.js"></script>
-</body>
+  </body>
 </html>

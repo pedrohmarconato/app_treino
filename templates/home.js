@@ -1,6 +1,11 @@
-    // templates/home.js - Template da tela home COMPLETO
+// templates/home.js - Template da tela home COMPLETO
 // import homeService from '../services/homeService.js'; // Temporariamente comentado para debug
-import { getWorkoutIcon, getActionIcon, getNavigationIcon, getAchievementIcon } from '../utils/icons.js';
+import {
+  getWorkoutIcon,
+  getActionIcon,
+  getNavigationIcon,
+  getAchievementIcon,
+} from '../utils/icons.js';
 
 export const homeTemplate = () => `
     <div id="home-screen" class="screen">
@@ -4141,117 +4146,122 @@ export const homeStyles = `
 
 // Função para inicializar animações e efeitos
 export const initializeHomeAnimations = () => {
-    // Animar o círculo de progresso
-    setTimeout(() => {
-        const progressCircle = document.querySelector('.progress-ring-progress');
-        if (progressCircle) {
-            const progressValue = parseInt(document.getElementById('progress-percentage')?.textContent || '0');
-            const circumference = 2 * Math.PI * 54; // raio = 54
-            const offset = circumference - (progressValue / 100) * circumference;
-            progressCircle.style.strokeDasharray = circumference;
-            progressCircle.style.strokeDashoffset = offset;
-            progressCircle.style.stroke = 'var(--neon-primary)';
-            progressCircle.style.filter = 'drop-shadow(0 0 10px var(--neon-primary))';
-        }
-
-        // Animar mini círculos de progresso
-        document.querySelectorAll('.mini-progress-fill').forEach(circle => {
-            const progress = circle.style.getPropertyValue('--progress');
-            if (progress) {
-                const circumference = 2 * Math.PI * 16; // raio = 16
-                const offset = circumference - (parseInt(progress) / 100) * circumference;
-                circle.style.strokeDasharray = circumference;
-                circle.style.strokeDashoffset = offset;
-                circle.style.stroke = 'var(--neon-primary)';
-            }
-        });
-    }, 500);
-
-    // Adicionar efeito ripple aos botões
-    document.querySelectorAll('button, .action-chip').forEach(button => {
-        button.addEventListener('click', function(e) {
-            const ripple = document.createElement('span');
-            const rect = this.getBoundingClientRect();
-            const size = Math.max(rect.width, rect.height);
-            const x = e.clientX - rect.left - size / 2;
-            const y = e.clientY - rect.top - size / 2;
-            
-            ripple.style.width = ripple.style.height = size + 'px';
-            ripple.style.left = x + 'px';
-            ripple.style.top = y + 'px';
-            ripple.classList.add('ripple-effect');
-            
-            this.style.position = 'relative';
-            this.style.overflow = 'hidden';
-            this.appendChild(ripple);
-            
-            setTimeout(() => ripple.remove(), 600);
-        });
-    });
-
-    // Marcar dia atual
-    const today = new Date().getDay();
-    const dayIndicator = document.querySelector(`.day-indicator[data-day="${today}"]`);
-    if (dayIndicator) {
-        dayIndicator.classList.add('today');
+  // Animar o círculo de progresso
+  setTimeout(() => {
+    const progressCircle = document.querySelector('.progress-ring-progress');
+    if (progressCircle) {
+      const progressValue = parseInt(
+        document.getElementById('progress-percentage')?.textContent || '0'
+      );
+      const circumference = 2 * Math.PI * 54; // raio = 54
+      const offset = circumference - (progressValue / 100) * circumference;
+      progressCircle.style.strokeDasharray = circumference;
+      progressCircle.style.strokeDashoffset = offset;
+      progressCircle.style.stroke = 'var(--neon-primary)';
+      progressCircle.style.filter = 'drop-shadow(0 0 10px var(--neon-primary))';
     }
 
-    // Atualizar saudação baseada no horário
-    const updateGreeting = () => {
-        const hour = new Date().getHours();
-        const greetingEl = document.querySelector('.user-greeting h4');
-        if (greetingEl) {
-            if (hour < 12) {
-                greetingEl.textContent = 'Bom dia,';
-            } else if (hour < 18) {
-                greetingEl.textContent = 'Boa tarde,';
-            } else {
-                greetingEl.textContent = 'Boa noite,';
-            }
-        }
-    };
-    updateGreeting();
+    // Animar mini círculos de progresso
+    document.querySelectorAll('.mini-progress-fill').forEach((circle) => {
+      const progress = circle.style.getPropertyValue('--progress');
+      if (progress) {
+        const circumference = 2 * Math.PI * 16; // raio = 16
+        const offset = circumference - (parseInt(progress) / 100) * circumference;
+        circle.style.strokeDasharray = circumference;
+        circle.style.strokeDashoffset = offset;
+        circle.style.stroke = 'var(--neon-primary)';
+      }
+    });
+  }, 500);
 
-    // Sistema de notificações
-    window.showNotification = (message, type = 'info') => {
-        const notification = document.createElement('div');
-        notification.className = `notification-toast ${type}`;
-        notification.innerHTML = `
+  // Adicionar efeito ripple aos botões
+  document.querySelectorAll('button, .action-chip').forEach((button) => {
+    button.addEventListener('click', function (e) {
+      const ripple = document.createElement('span');
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = e.clientX - rect.left - size / 2;
+      const y = e.clientY - rect.top - size / 2;
+
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.classList.add('ripple-effect');
+
+      this.style.position = 'relative';
+      this.style.overflow = 'hidden';
+      this.appendChild(ripple);
+
+      setTimeout(() => ripple.remove(), 600);
+    });
+  });
+
+  // Marcar dia atual
+  const today = new Date().getDay();
+  const dayIndicator = document.querySelector(`.day-indicator[data-day="${today}"]`);
+  if (dayIndicator) {
+    dayIndicator.classList.add('today');
+  }
+
+  // Atualizar saudação baseada no horário
+  const updateGreeting = () => {
+    const hour = new Date().getHours();
+    const greetingEl = document.querySelector('.user-greeting h4');
+    if (greetingEl) {
+      if (hour < 12) {
+        greetingEl.textContent = 'Bom dia,';
+      } else if (hour < 18) {
+        greetingEl.textContent = 'Boa tarde,';
+      } else {
+        greetingEl.textContent = 'Boa noite,';
+      }
+    }
+  };
+  updateGreeting();
+
+  // Sistema de notificações
+  window.showNotification = (message, type = 'info') => {
+    const notification = document.createElement('div');
+    notification.className = `notification-toast ${type}`;
+    notification.innerHTML = `
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : 
-                  type === 'error' ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' :
-                  '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'}
+                ${
+                  type === 'success'
+                    ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+                    : type === 'error'
+                      ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'
+                      : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
+                }
             </svg>
             <span>${message}</span>
         `;
-        document.body.appendChild(notification);
+    document.body.appendChild(notification);
 
-        setTimeout(() => {
-            notification.style.animation = 'slide-in 0.3s ease reverse';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
-    };
+    setTimeout(() => {
+      notification.style.animation = 'slide-in 0.3s ease reverse';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  };
 };
 
 // Função para inicializar a home com dados dinâmicos
 export async function inicializarHome() {
-    try {
-        console.log('[templates/home.js] Inicializando home...');
-        
-        // Aguardar um pouco para garantir que o template foi renderizado
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Inicializar animações
-        initializeHomeAnimations();
-        
-        // Chamar o homeService
-        // await homeService.inicializarHome();
-        
-        console.log('[templates/home.js] ✓ Home inicializada com sucesso');
-        
-    } catch (error) {
-        console.error('[templates/home.js] ✗ Erro ao inicializar home:', error);
-    }
+  try {
+    console.log('[templates/home.js] Inicializando home...');
+
+    // Aguardar um pouco para garantir que o template foi renderizado
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Inicializar animações
+    initializeHomeAnimations();
+
+    // Chamar o homeService
+    // await homeService.inicializarHome();
+
+    console.log('[templates/home.js] ✓ Home inicializada com sucesso');
+  } catch (error) {
+    console.error('[templates/home.js] ✗ Erro ao inicializar home:', error);
+  }
 }
 
 // REMOVIDO: toggleWorkoutCard - delegado para workoutToggle.js
@@ -4263,25 +4273,25 @@ window.initializeHomeAnimations = initializeHomeAnimations;
 
 // Fallback: registrar window.iniciarTreino caso ainda não exista
 if (!window.iniciarTreino) {
-    window.iniciarTreino = async () => {
-        try {
-            console.log('[home.js] 🏋️ Iniciando treino...');
-            
-            // IMPORTANTE: Usar workout.js original ao invés do bugado workoutExecution.js
-            const module = await import('../feature/workout.js');
-            
-            // O workout.js exporta a função iniciarTreino e também a coloca no window
-            if (module.iniciarTreino) {
-                console.log('[home.js] ✅ Usando workout.js original');
-                return module.iniciarTreino();
-            }
-            
-            console.error('[home.js] ❌ Não foi possível carregar função iniciarTreino');
-        } catch (err) {
-            console.error('[home.js] ❌ Erro ao importar workout.js:', err);
-            if (window.showNotification) {
-                window.showNotification('Erro ao carregar tela de treino', 'error');
-            }
-        }
-    };
+  window.iniciarTreino = async () => {
+    try {
+      console.log('[home.js] 🏋️ Iniciando treino...');
+
+      // IMPORTANTE: Usar workout.js original ao invés do bugado workoutExecution.js
+      const module = await import('../feature/workout.js');
+
+      // O workout.js exporta a função iniciarTreino e também a coloca no window
+      if (module.iniciarTreino) {
+        console.log('[home.js] ✅ Usando workout.js original');
+        return module.iniciarTreino();
+      }
+
+      console.error('[home.js] ❌ Não foi possível carregar função iniciarTreino');
+    } catch (err) {
+      console.error('[home.js] ❌ Erro ao importar workout.js:', err);
+      if (window.showNotification) {
+        window.showNotification('Erro ao carregar tela de treino', 'error');
+      }
+    }
+  };
 }

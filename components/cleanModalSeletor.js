@@ -2,10 +2,10 @@
 
 // Função para criar modal de seletor de grupo muscular com design clean e moderno
 function criarModalSeletorClean(historico, dayIndex) {
-    const dayName = DIAS_SEMANA[dayIndex];
-    const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
-    
-    return `
+  const dayName = DIAS_SEMANA[dayIndex];
+  const dataFormatada = historico.data_treino.toLocaleDateString('pt-BR');
+
+  return `
         <div id="modal-seletor-grupo" class="modal-overlay-seletor-clean" onclick="fecharModalSeletorGrupo(event)">
             <div class="modal-content-seletor-clean" onclick="event.stopPropagation()">
                 <!-- Header Clean -->
@@ -45,7 +45,9 @@ function criarModalSeletorClean(historico, dayIndex) {
                     </div>
                     
                     <div class="grupos-grid-clean">
-                        ${historico.grupos_disponiveis.map((grupo, index) => `
+                        ${historico.grupos_disponiveis
+                          .map(
+                            (grupo, index) => `
                             <div class="grupo-card-clean" onclick="selecionarGrupoMuscular('${grupo.grupo_muscular}', ${dayIndex})" style="animation-delay: ${index * 0.1}s">
                                 <div class="grupo-header-clean">
                                     <div class="grupo-icon-clean">
@@ -76,7 +78,9 @@ function criarModalSeletorClean(historico, dayIndex) {
                                     </svg>
                                 </div>
                             </div>
-                        `).join('')}
+                        `
+                          )
+                          .join('')}
                     </div>
                 </div>
             </div>
@@ -464,39 +468,39 @@ function criarModalSeletorClean(historico, dayIndex) {
 
 // Função para obter ícone do grupo muscular
 function getGrupoMuscularIcon(grupoMuscular) {
-    const icons = {
-        'Peito': '💪',
-        'Costas': '🦵',
-        'Pernas': '🦵',
-        'Ombros': '🏋️',
-        'Braços': '💪',
-        'Core': '🔥',
-        'Cardio': '❤️',
-        'Funcional': '⚡',
-        'Ombro e Braço': '🏋️‍♂️',
-        'Peito e Tríceps': '💪',
-        'Costas e Bíceps': '🦵',
-        'Pernas e Glúteos': '🦵',
-        'default': '🏋️‍♂️'
-    };
-    
-    return icons[grupoMuscular] || icons['default'];
+  const icons = {
+    Peito: '💪',
+    Costas: '🦵',
+    Pernas: '🦵',
+    Ombros: '🏋️',
+    Braços: '💪',
+    Core: '🔥',
+    Cardio: '❤️',
+    Funcional: '⚡',
+    'Ombro e Braço': '🏋️‍♂️',
+    'Peito e Tríceps': '💪',
+    'Costas e Bíceps': '🦵',
+    'Pernas e Glúteos': '🦵',
+    default: '🏋️‍♂️',
+  };
+
+  return icons[grupoMuscular] || icons['default'];
 }
 
 // Função para fechar modal seletor
-window.fecharModalSeletorGrupo = function(event) {
-    if (event && event.target !== event.currentTarget) return;
-    
-    const modal = document.getElementById('modal-seletor-grupo');
-    if (modal) {
-        modal.style.opacity = '0';
-        modal.style.transform = 'scale(0.95)';
-        document.body.style.overflow = '';
-        
-        setTimeout(() => {
-            modal.remove();
-        }, 300);
-    }
+window.fecharModalSeletorGrupo = function (event) {
+  if (event && event.target !== event.currentTarget) return;
+
+  const modal = document.getElementById('modal-seletor-grupo');
+  if (modal) {
+    modal.style.opacity = '0';
+    modal.style.transform = 'scale(0.95)';
+    document.body.style.overflow = '';
+
+    setTimeout(() => {
+      modal.remove();
+    }, 300);
+  }
 };
 
 // Exportar a função principal

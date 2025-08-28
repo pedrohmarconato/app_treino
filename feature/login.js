@@ -9,66 +9,65 @@ import AppState from '../state/appState.js';
  * e tratando o resultado (sucesso ou cancelamento).
  */
 async function showLoginFlow() {
-    console.log('[LoginFlow] 🚀 Iniciando fluxo de login...');
+  console.log('[LoginFlow] 🚀 Iniciando fluxo de login...');
 
-    // Importar o modal dinamicamente para evitar parse antes da hora
-    let LoginModal;
-    try {
-        const mod = await import('../components/LoginModal.js');
-        LoginModal = mod.default;
-    } catch (err) {
-        console.error('[LoginFlow] ❌ Erro ao importar LoginModal:', err);
-        throw err;
+  // Importar o modal dinamicamente para evitar parse antes da hora
+  let LoginModal;
+  try {
+    const mod = await import('../components/LoginModal.js');
+    LoginModal = mod.default;
+  } catch (err) {
+    console.error('[LoginFlow] ❌ Erro ao importar LoginModal:', err);
+    throw err;
+  }
+
+  const loginModal = new LoginModal();
+
+  try {
+    const result = await loginModal.show();
+
+    if (result && result.user) {
+      console.log('[LoginFlow] ✅ Login bem-sucedido', result.user);
+      await handleLoginSuccess(result.user);
+    } else {
+      console.log('[LoginFlow] 🛑 Fluxo de login cancelado ou fechado.');
     }
-
-    const loginModal = new LoginModal();
-
-    try {
-        const result = await loginModal.show();
-
-        if (result && result.user) {
-            console.log('[LoginFlow] ✅ Login bem-sucedido', result.user);
-            await handleLoginSuccess(result.user);
-        } else {
-            console.log('[LoginFlow] 🛑 Fluxo de login cancelado ou fechado.');
-        }
-    } catch (error) {
-        console.error('[LoginFlow] ❌ Erro no fluxo de login:', error);
-    }
+  } catch (error) {
+    console.error('[LoginFlow] ❌ Erro no fluxo de login:', error);
+  }
 }
 
 /**
  * 🚀 Manipulador de Sucesso de Login
- * 
+ *
  * Após o login, busca os dados completos do usuário e inicializa a tela principal.
  */
 async function handleLoginSuccess(user) {
-    try {
-        const usuarioCompleto = await fetchUser(user.id);
-        if (!usuarioCompleto) {
-            throw new Error('Não foi possível carregar os dados do usuário.');
-        }
-
-        AppState.set('currentUser', usuarioCompleto);
-        console.log('[LoginFlow] 👤 Usuário completo carregado e salvo no estado:', usuarioCompleto);
-
-        // Navega para a tela principal
-        await inicializarHome();
-
-    } catch (error) {
-        console.error('[LoginFlow] ❌ Erro ao processar o pós-login:', error);
+  try {
+    const usuarioCompleto = await fetchUser(user.id);
+    if (!usuarioCompleto) {
+      throw new Error('Não foi possível carregar os dados do usuário.');
     }
+
+    AppState.set('currentUser', usuarioCompleto);
+    console.log('[LoginFlow] 👤 Usuário completo carregado e salvo no estado:', usuarioCompleto);
+
+    // Navega para a tela principal
+    await inicializarHome();
+  } catch (error) {
+    console.error('[LoginFlow] ❌ Erro ao processar o pós-login:', error);
+  }
 }
 
 /**
  * 🎬 Função de Inicialização
- * 
+ *
  * Ponto de partida para a tela de login, que agora simplesmente
  * invoca o fluxo de login principal.
  */
 export function initLoginScreen() {
-    console.log('[initLoginScreen] 🎬 Disparando o fluxo de login...');
-    showLoginFlow();
+  console.log('[initLoginScreen] 🎬 Disparando o fluxo de login...');
+  showLoginFlow();
 }
 
 // Disponibiliza a função globalmente para ser chamada pelo `init.js` ou `app.js`

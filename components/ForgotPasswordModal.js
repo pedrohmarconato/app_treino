@@ -1,8 +1,8 @@
 /**
  * 🔐 MODAL ESQUECI MINHA SENHA - Forgot Password Modal
- * 
+ *
  * FUNÇÃO: Interface modal para recuperação de senha via email.
- * 
+ *
  * RESPONSABILIDADES:
  * - Renderizar modal responsivo e acessível
  * - Validar email em tempo real
@@ -10,7 +10,7 @@
  * - Gerenciar estados de loading, sucesso e erro
  * - Feedback visual claro para o usuário
  * - Design moderno seguindo paleta do projeto
- * 
+ *
  * FUNCIONALIDADES:
  * - show(): Exibir modal e retornar Promise
  * - Validação inline de email
@@ -18,7 +18,7 @@
  * - Estados visuais de carregamento
  * - Mensagens contextuais de feedback
  * - Auto-focus no campo email
- * 
+ *
  * INTEGRAÇÃO:
  * - Supabase Auth resetPasswordForEmail()
  * - AuthService resetPassword()
@@ -28,73 +28,73 @@
 import BaseModal from './BaseModal.js';
 
 export default class ForgotPasswordModal extends BaseModal {
-    constructor() {
-        super({
-            id: 'forgot-password-modal',
-            title: 'Recuperar Senha',
-            className: 'forgot-password-modal',
-            closable: true,
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-        
-        this.prefilledEmail = '';
-        this.isLoading = false;
-        
-        // Carregar CSS específico do modal
-        this.loadModalCSS();
+  constructor() {
+    super({
+      id: 'forgot-password-modal',
+      title: 'Recuperar Senha',
+      className: 'forgot-password-modal',
+      closable: true,
+      backdrop: true,
+      keyboard: true,
+      focus: true,
+    });
+
+    this.prefilledEmail = '';
+    this.isLoading = false;
+
+    // Carregar CSS específico do modal
+    this.loadModalCSS();
+  }
+
+  /**
+   * Carregar CSS específico do modal
+   */
+  loadModalCSS() {
+    if (!document.getElementById('forgot-password-modal-css')) {
+      const link = document.createElement('link');
+      link.id = 'forgot-password-modal-css';
+      link.rel = 'stylesheet';
+      link.href = 'css/forgot-password-modal.css';
+      document.head.appendChild(link);
     }
-    
-    /**
-     * Carregar CSS específico do modal
-     */
-    loadModalCSS() {
-        if (!document.getElementById('forgot-password-modal-css')) {
-            const link = document.createElement('link');
-            link.id = 'forgot-password-modal-css';
-            link.rel = 'stylesheet';
-            link.href = 'css/forgot-password-modal.css';
-            document.head.appendChild(link);
+  }
+
+  /**
+   * Exibir modal e retornar Promise com resultado
+   * @param {string} prefilledEmail - Email pré-preenchido (opcional)
+   */
+  show(prefilledEmail = '') {
+    console.log('[ForgotPasswordModal] 🎭 show() called with email:', prefilledEmail);
+    this.prefilledEmail = prefilledEmail;
+
+    if (window.trackEvent) {
+      window.trackEvent('forgot_password_modal_opened', {
+        timestamp: Date.now(),
+        prefilled: !!prefilledEmail,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+      });
+    }
+
+    return super.show({
+      onShow: () => {
+        // Focus no campo email após exibição
+        const emailField = this.element.querySelector('#reset-email');
+        if (emailField) {
+          emailField.focus();
+          if (this.prefilledEmail) {
+            emailField.select();
+          }
         }
-    }
-    
-    /**
-     * Exibir modal e retornar Promise com resultado
-     * @param {string} prefilledEmail - Email pré-preenchido (opcional)
-     */
-    show(prefilledEmail = '') {
-        console.log('[ForgotPasswordModal] 🎭 show() called with email:', prefilledEmail);
-        this.prefilledEmail = prefilledEmail;
-        
-        if (window.trackEvent) {
-            window.trackEvent('forgot_password_modal_opened', {
-                timestamp: Date.now(),
-                prefilled: !!prefilledEmail,
-                viewport: `${window.innerWidth}x${window.innerHeight}`
-            });
-        }
-        
-        return super.show({
-            onShow: () => {
-                // Focus no campo email após exibição
-                const emailField = this.element.querySelector('#reset-email');
-                if (emailField) {
-                    emailField.focus();
-                    if (this.prefilledEmail) {
-                        emailField.select();
-                    }
-                }
-            }
-        });
-    }
-    
-    /**
-     * Obter template HTML do modal
-     * @returns {string} HTML template
-     */
-    getTemplate() {
-        return `
+      },
+    });
+  }
+
+  /**
+   * Obter template HTML do modal
+   * @returns {string} HTML template
+   */
+  getTemplate() {
+    return `
             <div class="modal-content-unified forgot-password-content">
                 <div class="modal-header">
                     <div class="header-icon">
@@ -158,156 +158,154 @@ export default class ForgotPasswordModal extends BaseModal {
                 </div>
             </div>
         `;
+  }
+
+  /**
+   * Configurar event listeners específicos do modal
+   */
+  setupEventListeners() {
+    super.setupEventListeners();
+
+    // Cancel button
+    const cancelBtn = this.element.querySelector('#cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => this.hide(null));
     }
-    
-    /**
-     * Configurar event listeners específicos do modal
-     */
-    setupEventListeners() {
-        super.setupEventListeners();
-        
-        // Cancel button
-        const cancelBtn = this.element.querySelector('#cancel-btn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => this.hide(null));
-        }
-        
-        // Email validation
-        const emailField = this.element.querySelector('#reset-email');
-        if (emailField) {
-            emailField.addEventListener('input', this.validateEmail.bind(this));
-            emailField.addEventListener('blur', this.validateEmail.bind(this));
-        }
-        
-        // Form submit
-        const form = this.element.querySelector('#forgot-password-form');
-        if (form) {
-            form.addEventListener('submit', this.handleSubmit.bind(this));
-        }
+
+    // Email validation
+    const emailField = this.element.querySelector('#reset-email');
+    if (emailField) {
+      emailField.addEventListener('input', this.validateEmail.bind(this));
+      emailField.addEventListener('blur', this.validateEmail.bind(this));
     }
-    
-    /**
-     * Manipular teclas - sobrescrever para verificar loading
-     */
-    handleKeydown(e) {
-        if (e.key === 'Escape' && !this.isLoading) {
-            super.handleKeydown(e);
-        }
+
+    // Form submit
+    const form = this.element.querySelector('#forgot-password-form');
+    if (form) {
+      form.addEventListener('submit', this.handleSubmit.bind(this));
     }
-    
-    /**
-     * Validar email
-     */
-    validateEmail() {
-        const email = document.getElementById('reset-email').value.trim();
-        const errorDiv = document.getElementById('email-error');
-        errorDiv.textContent = '';
-        errorDiv.style.display = 'none';
-        if (!email) {
-            return true; // empty allowed, will be caught on submit
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            this.showFieldError('email-error', 'Formato de email inválido');
-            return false;
-        }
-        const common = ['gmail.com','hotmail.com','outlook.com','yahoo.com','icloud.com'];
-        const domain = email.split('@')[1];
-        if (domain && !common.includes(domain)) {
-            this.showFieldInfo('email-error', 'Verifique se o domínio está correto', 'info');
-        }
-        return true;
+  }
+
+  /**
+   * Manipular teclas - sobrescrever para verificar loading
+   */
+  handleKeydown(e) {
+    if (e.key === 'Escape' && !this.isLoading) {
+      super.handleKeydown(e);
     }
-    
-    /**
-     * Manipular submissão do formulário
-     */
-    async handleSubmit(e) {
-        e.preventDefault();
-        
-        if (this.isLoading) return;
-        
-        const email = document.getElementById('reset-email').value.trim();
-        
-        // Validações finais
-        if (!email) {
-            this.showFieldError('email-error', 'Email é obrigatório');
-            document.getElementById('reset-email').focus();
-            return;
-        }
-        
-        if (!this.validateEmail()) {
-            document.getElementById('reset-email').focus();
-            return;
-        }
-        
-        // Iniciar processo de reset
-        this.setLoading(true);
-        this.clearFeedback();
-        
-        try {
-            console.log('[ForgotPasswordModal] 📧 Enviando email de recuperação para:', email);
-            
-            // Importar serviço de autenticação
-            const { resetPassword } = await import('../services/authService.js');
-            
-            // Enviar email de recuperação
-            const resultado = await resetPassword(email);
-            
-            if (resultado.error) {
-                throw resultado.error;
-            }
-            
-            // Sucesso
-            console.log('[ForgotPasswordModal] ✅ Email enviado com sucesso');
-            this.showSuccess(email);
-            
-            // Track evento sucesso
-            if (window.trackEvent) {
-                window.trackEvent('forgot_password_success', {
-                    timestamp: Date.now(),
-                    email_domain: email.split('@')[1]
-                });
-            }
-            
-        } catch (error) {
-            console.error('[ForgotPasswordModal] ❌ Erro ao enviar email:', error);
-            
-            // Tratar diferentes tipos de erro
-            let errorMessage = 'Erro ao enviar email de recuperação';
-            
-            if (error.message?.includes('User not found')) {
-                errorMessage = 'Email não encontrado em nosso sistema';
-            } else if (error.message?.includes('Email rate limit')) {
-                errorMessage = 'Muitas tentativas. Aguarde alguns minutos';
-            } else if (error.message?.includes('Invalid email')) {
-                errorMessage = 'Email inválido';
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            this.showError(errorMessage);
-            
-            // Track evento erro
-            if (window.trackEvent) {
-                window.trackEvent('forgot_password_error', {
-                    timestamp: Date.now(),
-                    error: error.message || 'Unknown error'
-                });
-            }
-            
-        } finally {
-            this.setLoading(false);
-        }
+  }
+
+  /**
+   * Validar email
+   */
+  validateEmail() {
+    const email = document.getElementById('reset-email').value.trim();
+    const errorDiv = document.getElementById('email-error');
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    if (!email) {
+      return true; // empty allowed, will be caught on submit
     }
-    
-    /**
-     * Mostrar tela de sucesso
-     */
-    showSuccess(email) {
-        const domain = email.split('@')[1];
-        
-        const successHTML = `
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.showFieldError('email-error', 'Formato de email inválido');
+      return false;
+    }
+    const common = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com'];
+    const domain = email.split('@')[1];
+    if (domain && !common.includes(domain)) {
+      this.showFieldInfo('email-error', 'Verifique se o domínio está correto', 'info');
+    }
+    return true;
+  }
+
+  /**
+   * Manipular submissão do formulário
+   */
+  async handleSubmit(e) {
+    e.preventDefault();
+
+    if (this.isLoading) return;
+
+    const email = document.getElementById('reset-email').value.trim();
+
+    // Validações finais
+    if (!email) {
+      this.showFieldError('email-error', 'Email é obrigatório');
+      document.getElementById('reset-email').focus();
+      return;
+    }
+
+    if (!this.validateEmail()) {
+      document.getElementById('reset-email').focus();
+      return;
+    }
+
+    // Iniciar processo de reset
+    this.setLoading(true);
+    this.clearFeedback();
+
+    try {
+      console.log('[ForgotPasswordModal] 📧 Enviando email de recuperação para:', email);
+
+      // Importar serviço de autenticação
+      const { resetPassword } = await import('../services/authService.js');
+
+      // Enviar email de recuperação
+      const resultado = await resetPassword(email);
+
+      if (resultado.error) {
+        throw resultado.error;
+      }
+
+      // Sucesso
+      console.log('[ForgotPasswordModal] ✅ Email enviado com sucesso');
+      this.showSuccess(email);
+
+      // Track evento sucesso
+      if (window.trackEvent) {
+        window.trackEvent('forgot_password_success', {
+          timestamp: Date.now(),
+          email_domain: email.split('@')[1],
+        });
+      }
+    } catch (error) {
+      console.error('[ForgotPasswordModal] ❌ Erro ao enviar email:', error);
+
+      // Tratar diferentes tipos de erro
+      let errorMessage = 'Erro ao enviar email de recuperação';
+
+      if (error.message?.includes('User not found')) {
+        errorMessage = 'Email não encontrado em nosso sistema';
+      } else if (error.message?.includes('Email rate limit')) {
+        errorMessage = 'Muitas tentativas. Aguarde alguns minutos';
+      } else if (error.message?.includes('Invalid email')) {
+        errorMessage = 'Email inválido';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      this.showError(errorMessage);
+
+      // Track evento erro
+      if (window.trackEvent) {
+        window.trackEvent('forgot_password_error', {
+          timestamp: Date.now(),
+          error: error.message || 'Unknown error',
+        });
+      }
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  /**
+   * Mostrar tela de sucesso
+   */
+  showSuccess(email) {
+    const domain = email.split('@')[1];
+
+    const successHTML = `
             <div class="modal-content-unified forgot-password-content success-content">
                 <div class="modal-header success-header">
                     <div class="header-icon success-icon">
@@ -359,86 +357,84 @@ export default class ForgotPasswordModal extends BaseModal {
                 </div>
             </div>
         `;
-        
-        // Atualizar conteúdo do modal
-        this.element.innerHTML = successHTML;
-        
-        // Bind evento do botão fechar
-        this.element.querySelector('#close-success-btn').addEventListener('click', () => {
-            this.hide({ success: true, email });
-        });
+
+    // Atualizar conteúdo do modal
+    this.element.innerHTML = successHTML;
+
+    // Bind evento do botão fechar
+    this.element.querySelector('#close-success-btn').addEventListener('click', () => {
+      this.hide({ success: true, email });
+    });
+  }
+
+  /**
+   * Controlar estado de loading
+   */
+  setLoading(loading) {
+    this.isLoading = loading;
+
+    const btn = document.getElementById('reset-btn');
+    const text = btn?.querySelector('.btn-text');
+    const spinner = btn?.querySelector('.btn-loading');
+    const emailField = document.getElementById('reset-email');
+    const cancelBtn = document.getElementById('cancel-btn');
+
+    if (btn) {
+      btn.disabled = loading;
+      if (text && spinner) {
+        text.style.display = loading ? 'none' : 'inline';
+        spinner.style.display = loading ? 'inline-flex' : 'none';
+      }
     }
-    
-    /**
-     * Controlar estado de loading
-     */
-    setLoading(loading) {
-        this.isLoading = loading;
-        
-        const btn = document.getElementById('reset-btn');
-        const text = btn?.querySelector('.btn-text');
-        const spinner = btn?.querySelector('.btn-loading');
-        const emailField = document.getElementById('reset-email');
-        const cancelBtn = document.getElementById('cancel-btn');
-        
-        if (btn) {
-            btn.disabled = loading;
-            if (text && spinner) {
-                text.style.display = loading ? 'none' : 'inline';
-                spinner.style.display = loading ? 'inline-flex' : 'none';
-            }
-        }
-        
-        // Desabilitar campos durante loading
-        if (emailField) emailField.disabled = loading;
-        if (cancelBtn) cancelBtn.disabled = loading;
+
+    // Desabilitar campos durante loading
+    if (emailField) emailField.disabled = loading;
+    if (cancelBtn) cancelBtn.disabled = loading;
+  }
+
+  /**
+   * Mostrar erro no campo específico
+   */
+  showFieldError(fieldId, message) {
+    const errorDiv = document.getElementById(fieldId);
+    if (errorDiv) {
+      errorDiv.textContent = message;
+      errorDiv.className = 'error-message';
+      errorDiv.style.display = 'block';
     }
-    
-    /**
-     * Mostrar erro no campo específico
-     */
-    showFieldError(fieldId, message) {
-        const errorDiv = document.getElementById(fieldId);
-        if (errorDiv) {
-            errorDiv.textContent = message;
-            errorDiv.className = 'error-message';
-            errorDiv.style.display = 'block';
-        }
+  }
+
+  /**
+   * Mostrar informação no campo
+   */
+  showFieldInfo(fieldId, message, type = 'info') {
+    const errorDiv = document.getElementById(fieldId);
+    if (errorDiv) {
+      errorDiv.textContent = message;
+      errorDiv.className = `${type}-message`;
+      errorDiv.style.display = 'block';
     }
-    
-    /**
-     * Mostrar informação no campo
-     */
-    showFieldInfo(fieldId, message, type = 'info') {
-        const errorDiv = document.getElementById(fieldId);
-        if (errorDiv) {
-            errorDiv.textContent = message;
-            errorDiv.className = `${type}-message`;
-            errorDiv.style.display = 'block';
-        }
+  }
+
+  /**
+   * Mostrar feedback geral
+   */
+  showError(message) {
+    const feedbackDiv = document.getElementById('form-feedback');
+    if (feedbackDiv) {
+      feedbackDiv.textContent = message;
+      feedbackDiv.className = 'form-feedback error-feedback';
+      feedbackDiv.style.display = 'block';
     }
-    
-    /**
-     * Mostrar feedback geral
-     */
-    showError(message) {
-        const feedbackDiv = document.getElementById('form-feedback');
-        if (feedbackDiv) {
-            feedbackDiv.textContent = message;
-            feedbackDiv.className = 'form-feedback error-feedback';
-            feedbackDiv.style.display = 'block';
-        }
+  }
+
+  /**
+   * Limpar feedback
+   */
+  clearFeedback() {
+    const feedbackDiv = document.getElementById('form-feedback');
+    if (feedbackDiv) {
+      feedbackDiv.style.display = 'none';
     }
-    
-    /**
-     * Limpar feedback
-     */
-    clearFeedback() {
-        const feedbackDiv = document.getElementById('form-feedback');
-        if (feedbackDiv) {
-            feedbackDiv.style.display = 'none';
-        }
-    }
-    
-    
+  }
 }

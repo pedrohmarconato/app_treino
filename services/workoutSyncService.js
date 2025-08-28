@@ -52,7 +52,7 @@ export default class WorkoutSyncService {
   async trySendOrQueue(session) {
     const ok = await this._sendSession({
       ...session,
-      session_id: crypto.randomUUID()
+      session_id: crypto.randomUUID(),
     });
     if (!ok) {
       this.enqueue(session);
@@ -69,28 +69,29 @@ export default class WorkoutSyncService {
     try {
       // 1. Insere avaliações no planejamento_semanal
       if (session.avaliacoes) {
-        const { error: planningError } = await supabase
-          .from('planejamento_semanal')
-          .upsert({
+        const { error: planningError } = await supabase.from('planejamento_semanal').upsert(
+          {
             usuario_id: session.user_id,
             semana: session.semana,
             pre_workout: session.avaliacoes.pre,
-            post_workout: session.avaliacoes.post
-          }, { onConflict: 'usuario_id,semana' });
+            post_workout: session.avaliacoes.post,
+          },
+          { onConflict: 'usuario_id,semana' }
+        );
 
         if (planningError) throw planningError;
       }
 
       // 2. Insere execuções individuais
       if (session.exercicios?.length > 0) {
-        const exercisesToInsert = session.exercicios.flatMap(ex => 
-          ex.series.map(serie => ({
+        const exercisesToInsert = session.exercicios.flatMap((ex) =>
+          ex.series.map((serie) => ({
             usuario_id: session.user_id,
             exercicio_id: ex.id,
             repeticoes: serie.reps,
             peso_utilizado: serie.carga,
             data_execucao: new Date().toISOString(),
-            session_id: session.session_id
+            session_id: session.session_id,
           }))
         );
 

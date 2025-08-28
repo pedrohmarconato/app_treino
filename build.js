@@ -10,8 +10,8 @@ const __dirname = path.dirname(__filename);
 // Criar diretório dist se não existir
 const distDir = path.join(__dirname, 'dist');
 if (!fs.existsSync(distDir)) {
-    fs.mkdirSync(distDir);
-    console.log('✅ Diretório dist criado');
+  fs.mkdirSync(distDir);
+  console.log('✅ Diretório dist criado');
 }
 
 // Copiar index.html para dist e atualizar o caminho do app.js
@@ -21,8 +21,8 @@ const indexContent = fs.readFileSync(indexPath, 'utf8');
 
 // Substituir o caminho do app.js para a versão minificada
 const updatedIndex = indexContent.replace(
-    '<script type="module" src="./js/app.js"></script>',
-    '<script type="module" src="./app.min.js"></script>'
+  '<script type="module" src="./js/app.js"></script>',
+  '<script type="module" src="./app.min.js"></script>'
 );
 
 // Salvar index.html atualizado
@@ -32,89 +32,89 @@ console.log('✅ index.html preparado para produção');
 
 // Copiar outros arquivos essenciais para dist
 const filesToCopy = [
-    'config.js',
-    'manifest.json',
-    'favicon.png',
-    'sw.js',
-    // Arquivos CSS da raiz
-    'week-indicators-redesign.css',
-    'header-redesign.css',
-    'disposicao-modal-redesign.css',
-    'workout-expand-redesign.css',
-    'workout-execution-redesign.css',
-    'week-carousel-infinite.css',
-    'modal-enhanced.css',
-    'mobile-fixes.css',
-    'design-enhancements.css',
-    'ui-polish.css',
-    'animations-premium.css',
-    'styles.css'
+  'config.js',
+  'manifest.json',
+  'favicon.png',
+  'sw.js',
+  // Arquivos CSS da raiz
+  'week-indicators-redesign.css',
+  'header-redesign.css',
+  'disposicao-modal-redesign.css',
+  'workout-expand-redesign.css',
+  'workout-execution-redesign.css',
+  'week-carousel-infinite.css',
+  'modal-enhanced.css',
+  'mobile-fixes.css',
+  'design-enhancements.css',
+  'ui-polish.css',
+  'animations-premium.css',
+  'styles.css',
 ];
 
-filesToCopy.forEach(file => {
-    const srcPath = path.join(__dirname, file);
-    const destPath = path.join(distDir, file);
-    
-    if (fs.existsSync(srcPath)) {
-        fs.copyFileSync(srcPath, destPath);
-        console.log(`✅ Copiado: ${file}`);
-    } else {
-        console.warn(`⚠️  Arquivo não encontrado: ${file}`);
-    }
+filesToCopy.forEach((file) => {
+  const srcPath = path.join(__dirname, file);
+  const destPath = path.join(distDir, file);
+
+  if (fs.existsSync(srcPath)) {
+    fs.copyFileSync(srcPath, destPath);
+    console.log(`✅ Copiado: ${file}`);
+  } else {
+    console.warn(`⚠️  Arquivo não encontrado: ${file}`);
+  }
 });
 
 // Função para copiar diretórios recursivamente
 function copyRecursiveSync(src, dest) {
-    if (!fs.existsSync(dest)) {
-        fs.mkdirSync(dest, { recursive: true });
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+
+  fs.readdirSync(src).forEach((file) => {
+    const srcFile = path.join(src, file);
+    const destFile = path.join(dest, file);
+
+    if (fs.statSync(srcFile).isDirectory()) {
+      copyRecursiveSync(srcFile, destFile);
+    } else {
+      fs.copyFileSync(srcFile, destFile);
     }
-    
-    fs.readdirSync(src).forEach(file => {
-        const srcFile = path.join(src, file);
-        const destFile = path.join(dest, file);
-        
-        if (fs.statSync(srcFile).isDirectory()) {
-            copyRecursiveSync(srcFile, destFile);
-        } else {
-            fs.copyFileSync(srcFile, destFile);
-        }
-    });
+  });
 }
 
 // Copiar diretórios essenciais
 const dirsToCopy = [
-    'icons', 
-    'css', 
-    'styles', 
-    'templates', 
-    'components', 
-    'services', 
-    'js', 
-    'SVG_MUSCLE',
-    'state',
-    'ui',
-    'utils',
-    'feature',
-    'core',
-    'controllers',
-    'integration',
-    'assets',
-    'routes',
-    'queries',
-    'hooks',
-    'fixes',
-    'patches',
-    'screens'
+  'icons',
+  'css',
+  'styles',
+  'templates',
+  'components',
+  'services',
+  'js',
+  'SVG_MUSCLE',
+  'state',
+  'ui',
+  'utils',
+  'feature',
+  'core',
+  'controllers',
+  'integration',
+  'assets',
+  'routes',
+  'queries',
+  'hooks',
+  'fixes',
+  'patches',
+  'screens',
 ];
 
-dirsToCopy.forEach(dir => {
-    const srcDir = path.join(__dirname, dir);
-    const destDir = path.join(distDir, dir);
-    
-    if (fs.existsSync(srcDir)) {
-        copyRecursiveSync(srcDir, destDir);
-        console.log(`✅ Copiado diretório: ${dir}`);
-    }
+dirsToCopy.forEach((dir) => {
+  const srcDir = path.join(__dirname, dir);
+  const destDir = path.join(distDir, dir);
+
+  if (fs.existsSync(srcDir)) {
+    copyRecursiveSync(srcDir, destDir);
+    console.log(`✅ Copiado diretório: ${dir}`);
+  }
 });
 
 console.log('\n🚀 Build para produção concluído!');

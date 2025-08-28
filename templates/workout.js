@@ -306,7 +306,9 @@ export const exerciseCardTemplate = (exercise, index, total) => `
             </button>
         </div>
 
-        ${exercise.observacoes ? `
+        ${
+          exercise.observacoes
+            ? `
         <div class="exercise-notes">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -317,13 +319,17 @@ export const exerciseCardTemplate = (exercise, index, total) => `
             </svg>
             <span>${exercise.observacoes}</span>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
 
         <div class="series-container" id="series-container-${index}">
             ${generateSeriesHTML(exercise)}
         </div>
 
-        ${exercise.tempo_descanso ? `
+        ${
+          exercise.tempo_descanso
+            ? `
         <div class="rest-info">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
@@ -331,15 +337,17 @@ export const exerciseCardTemplate = (exercise, index, total) => `
             </svg>
             <span>Descanso: ${exercise.tempo_descanso}s entre séries</span>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
     </div>
 `;
 
 // Template para cada série
 function generateSeriesHTML(exercise) {
-    const series = [];
-    for (let i = 0; i < (exercise.series || 4); i++) {
-        series.push(`
+  const series = [];
+  for (let i = 0; i < (exercise.series || 4); i++) {
+    series.push(`
             <div class="series-item" data-series-index="${i}">
                 <div class="series-number">${i + 1}</div>
                 <div class="series-inputs">
@@ -377,8 +385,8 @@ function generateSeriesHTML(exercise) {
                 </button>
             </div>
         `);
-    }
-    return series.join('');
+  }
+  return series.join('');
 }
 
 // Estilos específicos do novo layout (mantendo identidade visual do app)

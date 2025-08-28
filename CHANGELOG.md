@@ -8,6 +8,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### 🎨 Adicionado
+
 - Modal de pré-treino para avaliação de energia (Likert 1-5)
 - Card de treino expandível remodelado com design moderno
 - Sistema de carregamento com animação pulsante
@@ -16,6 +17,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - README.md completo com documentação do projeto
 
 ### 🔧 Melhorado
+
 - **Interface Home**: Design mais limpo e moderno
 - **Card de Treino**: Visual remodelado com badge tipo e glow effect
 - **Botão Expandir**: Novo design com hover effects
@@ -23,16 +25,19 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Responsividade**: Melhor adaptação para diferentes telas
 
 ### 🗑️ Removido
+
 - Seção de preparação do treino (dicas e preview)
 - Elementos CSS descontinuados (.workout-preparation, .preparation-tips, etc)
 - Código legado não utilizado
 
 ### 🚀 Performance
+
 - Otimização de transições CSS
 - Redução de código desnecessário
 - Melhor organização de componentes
 
 ### 📝 Documentação
+
 - README.md criado com documentação completa
 - CHANGELOG.md atualizado com mudanças recentes
 - Estrutura do projeto documentada
@@ -40,6 +45,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [5.6.1] - 2025-01-13
 
 ### 🎨 Adicionado
+
 - Sistema completo de ícones SVG customizados (`utils/icons.js`)
 - Ícones categorizados: workouts, actions, achievements, navigation, feedback
 - Funções auxiliares: `getWorkoutIcon`, `getActionIcon`, `getAchievementIcon`
@@ -47,6 +53,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - Estados visuais: active, disabled, completed
 
 ### 🔧 Melhorado
+
 - **Dashboard**: Nova lógica de verificação de conclusão de treinos
 - **Templates**: Substituição completa de emojis por ícones SVG
 - **Planning**: Sistema de ícones para seleção de treinos
@@ -54,12 +61,14 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **CSS**: Estilos responsivos para ícones SVG
 
 ### 🐛 Corrigido
+
 - Inconsistência na verificação de treinos concluídos
 - Erro PGRST116 em queries do Supabase
 - Conflitos de especificidade CSS em dias concluídos
 - Problemas de performance com emojis
 
 ### 🚀 Performance
+
 - Substituição de emojis por SVGs otimizados
 - Redução do uso de fontes externas
 - Melhoria na renderização de ícones
@@ -67,16 +76,19 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [5.6.0] - 2025-01-10
 
 ### 🎨 Adicionado
+
 - Sistema de conclusão de treinos melhorado
 - Lógica de verificação baseada em `planejamento_semanal`
 - Indicadores visuais de progresso semanal
 
 ### 🔧 Melhorado
+
 - Interface de execução de treinos
 - Feedback visual para usuário
 - Sistema de notificações
 
 ### 🐛 Corrigido
+
 - Bugs na navegação entre semanas
 - Problemas de sincronização de dados
 - Inconsistências na UI
@@ -84,11 +96,13 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [5.5.x] - 2024-12-XX
 
 ### 🎨 Adicionado
+
 - Sistema de planejamento semanal
 - Interface de dashboard
 - Métricas de treino
 
 ### 🔧 Melhorado
+
 - Performance geral da aplicação
 - Responsividade mobile
 - Experiência do usuário
@@ -96,11 +110,13 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [5.4.x] - 2024-11-XX
 
 ### 🎨 Adicionado
+
 - Sistema de autenticação
 - Integração com Supabase
 - CRUD de exercícios
 
 ### 🔧 Melhorado
+
 - Arquitetura da aplicação
 - Gerenciamento de estado
 - Modularização do código
@@ -108,23 +124,27 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [2.0.1] - 2025-06-17
 
 ### 🔒 Remoção Segura
+
 - Backup criado: `feature/workoutExecution.js.bak`
 - Funções obsoletas marcadas para remoção em 2025-06-24
 - Verificação completa: 0 dependências ativas encontradas
 
 ### Arquivos Modificados
+
 - `feature/workoutExecution.js` (Estágio 1: Comentário)
 - `services/treinoCacheService.js` (Aprimorado)
 
 ## [1.5.0] - 2025-06-17
 
 ### 🔧 Melhorado
+
 - **Arquitetura de Cache**:
   - Removidas funções duplicadas de cache local
   - Centralizado todo o gerenciamento no `TreinoCacheService`
   - Adicionado novo sistema de persistência de estado
 
 ### 🗑️ Removido
+
 - Funções obsoletas:
   - `saveToLocalStorage()`
   - `loadFromLocalStorage()`
@@ -133,6 +153,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [5.0.0] - 2024-10-XX
 
 ### 🎨 Adicionado
+
 - Versão inicial da aplicação
 - Sistema básico de treinos
 - Interface web responsiva
@@ -142,7 +163,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## 📋 Tipos de Mudanças
 
 - 🎨 **Adicionado** para novas funcionalidades
-- 🔧 **Melhorado** para mudanças em funcionalidades existentes  
+- 🔧 **Melhorado** para mudanças em funcionalidades existentes
 - 🐛 **Corrigido** para correções de bugs
 - 🚀 **Performance** para melhorias de performance
 - 🔒 **Segurança** para correções de vulnerabilidades

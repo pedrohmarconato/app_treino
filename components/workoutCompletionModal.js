@@ -1,8 +1,8 @@
 class WorkoutCompletionModal {
-    constructor() {
-        this.modal = document.createElement('div');
-        this.modal.className = 'workout-completion-overlay';
-        this.modal.innerHTML = `
+  constructor() {
+    this.modal = document.createElement('div');
+    this.modal.className = 'workout-completion-overlay';
+    this.modal.innerHTML = `
             <div class="completion-content">
                 <div class="completion-animation">
                     <div class="trophy-container">
@@ -66,44 +66,45 @@ class WorkoutCompletionModal {
                 </div>
             </div>
         `;
-        
-        this.finishButton = null;
-        this.shareButton = null;
-        this.onFinishCallback = null;
+
+    this.finishButton = null;
+    this.shareButton = null;
+    this.onFinishCallback = null;
+  }
+
+  show(stats = {}) {
+    document.body.appendChild(this.modal);
+
+    // Atualizar estatísticas
+    if (stats.time) document.getElementById('completion-time').textContent = stats.time;
+    if (stats.exercises)
+      document.getElementById('completion-exercises').textContent = stats.exercises;
+    if (stats.series) document.getElementById('completion-series').textContent = stats.series;
+
+    // Configurar botões
+    this.finishButton = document.getElementById('completion-finish-btn');
+    this.shareButton = document.getElementById('completion-share-btn');
+
+    this.finishButton.addEventListener('click', () => {
+      this.hide();
+      if (this.onFinishCallback) this.onFinishCallback();
+    });
+
+    this.shareButton.addEventListener('click', () => {
+      // Lógica para compartilhar
+      console.log('Compartilhar treino');
+    });
+  }
+
+  hide() {
+    if (this.modal.parentNode) {
+      this.modal.parentNode.removeChild(this.modal);
     }
-    
-    show(stats = {}) {
-        document.body.appendChild(this.modal);
-        
-        // Atualizar estatísticas
-        if(stats.time) document.getElementById('completion-time').textContent = stats.time;
-        if(stats.exercises) document.getElementById('completion-exercises').textContent = stats.exercises;
-        if(stats.series) document.getElementById('completion-series').textContent = stats.series;
-        
-        // Configurar botões
-        this.finishButton = document.getElementById('completion-finish-btn');
-        this.shareButton = document.getElementById('completion-share-btn');
-        
-        this.finishButton.addEventListener('click', () => {
-            this.hide();
-            if(this.onFinishCallback) this.onFinishCallback();
-        });
-        
-        this.shareButton.addEventListener('click', () => {
-            // Lógica para compartilhar
-            console.log('Compartilhar treino');
-        });
-    }
-    
-    hide() {
-        if(this.modal.parentNode) {
-            this.modal.parentNode.removeChild(this.modal);
-        }
-    }
-    
-    onFinish(callback) {
-        this.onFinishCallback = callback;
-    }
+  }
+
+  onFinish(callback) {
+    this.onFinishCallback = callback;
+  }
 }
 
 // Expor globalmente para uso nos templates

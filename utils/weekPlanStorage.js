@@ -1,8 +1,8 @@
 /**
  * 📅 ARMAZENAMENTO DE PLANOS SEMANAIS - Week Plan Storage
- * 
+ *
  * FUNÇÃO: Gerenciar armazenamento local de planos de treino semanais com sistema de chaves inteligente.
- * 
+ *
  * RESPONSABILIDADES:
  * - Calcular números de semana baseados em data (domingo como primeiro dia)
  * - Gerar chaves únicas para localStorage por usuário e semana
@@ -10,20 +10,20 @@
  * - Manter histórico de planos anteriores organizados por ano/semana
  * - Fornecer funções de compatibilidade global para código legado
  * - Implementar verificações de integridade dos dados
- * 
+ *
  * SISTEMA DE CHAVES:
  * - Formato: weekPlan_{userId}_{year}_{week}
  * - Semana baseada em domingo=0, sábado=6
  * - Cálculo considera primeiro dia do ano para numeração
  * - Suporte a semanas customizadas para testes
- * 
+ *
  * FUNCIONALIDADES:
  * - saveWeekPlan(): salva plano no localStorage com tratamento de erros
  * - getWeekPlan(): carrega plano atual com logs informativos
  * - clearWeekPlan(): remove plano específico do localStorage
  * - hasWeekPlan(): verifica existência sem carregar dados
  * - getAllUserWeekPlans(): obtém histórico completo ordenado
- * 
+ *
  * NOTA: Funcionalidade principal migrada para services/weeklyPlanningService.js
  * Este arquivo mantém utilitários de baixo nível para compatibilidade.
  */
@@ -34,125 +34,125 @@
 
 // Calcular número da semana do ano (domingo = 0, sábado = 6)
 export function getWeekNumber(date) {
-    // Semana começa no domingo (0)
-    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+  // Semana começa no domingo (0)
+  const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+  const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 }
 
 // Obter chave da semana atual para localStorage
 export function getWeekKey() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const week = getWeekNumber(now);
-    return `${year}_${week}`;
+  const now = new Date();
+  const year = now.getFullYear();
+  const week = getWeekNumber(now);
+  return `${year}_${week}`;
 }
 
 // Obter chave específica para usuário e semana
 export function getUserWeekKey(userId, customWeek = null) {
-    if (customWeek) {
-        return `weekPlan_${userId}_${customWeek}`;
-    }
-    const weekKey = getWeekKey();
-    return `weekPlan_${userId}_${weekKey}`;
+  if (customWeek) {
+    return `weekPlan_${userId}_${customWeek}`;
+  }
+  const weekKey = getWeekKey();
+  return `weekPlan_${userId}_${weekKey}`;
 }
 
 // ==================== FUNÇÕES PRINCIPAIS DE LOCALSTORAGE ====================
 
 // Salvar plano semanal no localStorage
 export function saveWeekPlan(userId, planData) {
-    try {
-        const key = getUserWeekKey(userId);
-        localStorage.setItem(key, JSON.stringify(planData));
-        console.log('[saveWeekPlan] ✅ Plano salvo no localStorage:', key);
-        return true;
-    } catch (error) {
-        console.error('[saveWeekPlan] ❌ Erro ao salvar no localStorage:', error);
-        return false;
-    }
+  try {
+    const key = getUserWeekKey(userId);
+    localStorage.setItem(key, JSON.stringify(planData));
+    console.log('[saveWeekPlan] ✅ Plano salvo no localStorage:', key);
+    return true;
+  } catch (error) {
+    console.error('[saveWeekPlan] ❌ Erro ao salvar no localStorage:', error);
+    return false;
+  }
 }
 
 // Obter plano semanal do localStorage
 export function getWeekPlan(userId) {
-    try {
-        const key = getUserWeekKey(userId);
-        const data = localStorage.getItem(key);
-        
-        if (!data) {
-            console.log('[getWeekPlan] 📭 Nenhum plano encontrado no localStorage para:', key);
-            return null;
-        }
-        
-        const plan = JSON.parse(data);
-        console.log('[getWeekPlan] ✅ Plano carregado do localStorage:', key, plan);
-        return plan;
-    } catch (error) {
-        console.error('[getWeekPlan] ❌ Erro ao carregar do localStorage:', error);
-        return null;
+  try {
+    const key = getUserWeekKey(userId);
+    const data = localStorage.getItem(key);
+
+    if (!data) {
+      console.log('[getWeekPlan] 📭 Nenhum plano encontrado no localStorage para:', key);
+      return null;
     }
+
+    const plan = JSON.parse(data);
+    console.log('[getWeekPlan] ✅ Plano carregado do localStorage:', key, plan);
+    return plan;
+  } catch (error) {
+    console.error('[getWeekPlan] ❌ Erro ao carregar do localStorage:', error);
+    return null;
+  }
 }
 
 // Limpar plano semanal do localStorage
 export function clearWeekPlan(userId) {
-    try {
-        const key = getUserWeekKey(userId);
-        localStorage.removeItem(key);
-        console.log('[clearWeekPlan] ✅ Plano removido do localStorage:', key);
-        return true;
-    } catch (error) {
-        console.error('[clearWeekPlan] ❌ Erro ao remover do localStorage:', error);
-        return false;
-    }
+  try {
+    const key = getUserWeekKey(userId);
+    localStorage.removeItem(key);
+    console.log('[clearWeekPlan] ✅ Plano removido do localStorage:', key);
+    return true;
+  } catch (error) {
+    console.error('[clearWeekPlan] ❌ Erro ao remover do localStorage:', error);
+    return false;
+  }
 }
 
 // Verificar se existe plano no localStorage
 export function hasWeekPlan(userId) {
-    try {
-        const key = getUserWeekKey(userId);
-        return localStorage.getItem(key) !== null;
-    } catch (error) {
-        console.error('[hasWeekPlan] ❌ Erro ao verificar localStorage:', error);
-        return false;
-    }
+  try {
+    const key = getUserWeekKey(userId);
+    return localStorage.getItem(key) !== null;
+  } catch (error) {
+    console.error('[hasWeekPlan] ❌ Erro ao verificar localStorage:', error);
+    return false;
+  }
 }
 
 // Obter todos os planos do usuário do localStorage (histórico)
 export function getAllUserWeekPlans(userId) {
-    const plans = [];
-    const prefix = `weekPlan_${userId}_`;
-    
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(prefix)) {
-            try {
-                const plan = JSON.parse(localStorage.getItem(key));
-                const [year, week] = key.replace(prefix, '').split('_');
-                plans.push({
-                    year: parseInt(year),
-                    week: parseInt(week),
-                    plan
-                });
-            } catch (error) {
-                console.error(`Erro ao ler plano ${key}:`, error);
-            }
-        }
+  const plans = [];
+  const prefix = `weekPlan_${userId}_`;
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(prefix)) {
+      try {
+        const plan = JSON.parse(localStorage.getItem(key));
+        const [year, week] = key.replace(prefix, '').split('_');
+        plans.push({
+          year: parseInt(year),
+          week: parseInt(week),
+          plan,
+        });
+      } catch (error) {
+        console.error(`Erro ao ler plano ${key}:`, error);
+      }
     }
-    
-    return plans.sort((a, b) => {
-        if (a.year !== b.year) return b.year - a.year;
-        return b.week - a.week;
-    });
+  }
+
+  return plans.sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year;
+    return b.week - a.week;
+  });
 }
 
 // ==================== COMPATIBILIDADE GLOBAL ====================
 // Disponibilizar funções globalmente para compatibilidade com código existente
 if (typeof window !== 'undefined') {
-    window.getWeekPlan = getWeekPlan;
-    window.saveWeekPlan = saveWeekPlan;
-    window.clearWeekPlan = clearWeekPlan;
-    window.hasWeekPlan = hasWeekPlan;
-    window.getUserWeekKey = getUserWeekKey;
-    window.getWeekKey = getWeekKey;
-    window.getWeekNumber = getWeekNumber;
-    window.getAllUserWeekPlans = getAllUserWeekPlans;
+  window.getWeekPlan = getWeekPlan;
+  window.saveWeekPlan = saveWeekPlan;
+  window.clearWeekPlan = clearWeekPlan;
+  window.hasWeekPlan = hasWeekPlan;
+  window.getUserWeekKey = getUserWeekKey;
+  window.getWeekKey = getWeekKey;
+  window.getWeekNumber = getWeekNumber;
+  window.getAllUserWeekPlans = getAllUserWeekPlans;
 }

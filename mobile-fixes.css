@@ -4,456 +4,458 @@
 
 /* Week indicators adaptativo para telas extra pequenas */
 @media (max-width: 375px) {
-    .week-indicators {
-        grid-template-columns: repeat(4, 1fr) !important;
-        grid-template-rows: repeat(2, 1fr) !important;
-        gap: 6px !important;
-        margin-bottom: 16px !important;
-    }
-    
-    .day-indicator {
-        padding: 8px 4px !important;
-        min-height: 76px !important;
-        font-size: 0.75rem !important;
-    }
-    
-    .day-indicator .day-name {
-        font-size: 0.75rem !important;
-    }
-    
-    .day-indicator .day-type {
-        font-size: 0.85rem !important;
-    }
+  .week-indicators {
+    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-rows: repeat(2, 1fr) !important;
+    gap: 6px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .day-indicator {
+    padding: 8px 4px !important;
+    min-height: 76px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .day-indicator .day-name {
+    font-size: 0.75rem !important;
+  }
+
+  .day-indicator .day-type {
+    font-size: 0.85rem !important;
+  }
 }
 
 /* Correções gerais para mobile */
 @media (max-width: 428px) {
-    /* Prevenir scroll horizontal */
-    body {
-        overflow-x: hidden !important;
-        width: 100vw !important;
-    }
-    
-    .app-container,
-    .screen {
-        width: 100% !important;
-        overflow-x: hidden !important;
-    }
-    
-    /* Header da Home com safe area completa */
-    .home-header {
-        padding: 16px !important;
-        padding-top: calc(16px + env(safe-area-inset-top)) !important;
-        padding-left: calc(16px + env(safe-area-inset-left)) !important;
-        padding-right: calc(16px + env(safe-area-inset-right)) !important;
-        /* Fix para conflito com header do iOS */
-        top: env(safe-area-inset-top, 0) !important;
-        position: fixed !important;
-        width: 100% !important;
-        z-index: var(--z-fixed);
-    }
-    
-    /* Ajuste do conteúdo para não ficar sob o header fixo */
-    .home-screen.active .home-content {
-        padding-top: calc(var(--header-height, 64px) + env(safe-area-inset-top) + 16px) !important;
-    }
-    
-    .header-content {
-        gap: 12px !important;
-        flex-wrap: nowrap !important;
-    }
-    
-    .user-info {
-        flex: 0 0 auto !important;
-        min-width: 0 !important;
-    }
-    
-    .user-greeting h4,
-    .user-greeting p {
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        max-width: 140px !important;
-    }
-    
-    /* Logo no header */
-    .app-logo-secondary {
-        flex: 1 !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        min-width: 0 !important;
-    }
-    
-    .brand-logos-mini {
-        display: flex !important;
-        justify-content: center !important;
-        width: 100% !important;
-    }
-    
-    .secondary-logo {
-        height: 50px !important;
-        width: auto !important;
-        max-width: 120px !important;
-    }
-    
-    /* Botão de logout */
-    .header-actions {
-        flex: 0 0 auto !important;
-    }
-    
-    .logout-btn {
-        width: 44px !important;
-        height: 44px !important;
-        min-width: 44px !important;
-        min-height: 44px !important;
-        padding: 0 !important;
-    }
-    
-    /* Conteúdo principal com safe area completa */
-    .home-content {
-        padding: 16px !important;
-        padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
-        padding-left: calc(16px + env(safe-area-inset-left)) !important;
-        padding-right: calc(16px + env(safe-area-inset-right)) !important;
-    }
-    
-    /* Section header */
-    .section-header {
-        flex-direction: column !important;
-        gap: 12px !important;
-        align-items: stretch !important;
-        margin-bottom: 16px !important;
-    }
-    
-    .section-header h2 {
-        font-size: 1.5rem !important;
-        text-align: center !important;
-    }
-    
-    .header-actions {
-        justify-content: space-between !important;
-        width: 100% !important;
-    }
-    
-    /* Week selector */
-    .week-selector {
-        flex: 1 !important;
-        max-width: none !important;
-        justify-content: space-between !important;
-        padding: 4px !important;
-    }
-    
-    .week-nav {
-        width: 44px !important;
-        height: 44px !important;
-        min-width: 44px !important;
-        min-height: 44px !important;
-    }
-    
-    .current-week-info {
-        flex: 1 !important;
-        text-align: center !important;
-        min-width: 0 !important;
-    }
-    
-    .week-number {
-        font-size: 0.9rem !important;
-    }
-    
-    .week-status {
-        font-size: 0.75rem !important;
-        padding: 2px 6px !important;
-    }
-    
-    /* Botão editar */
-    .btn-edit {
-        padding: 8px 12px !important;
-        font-size: 0.8rem !important;
-    }
-    
-    .btn-edit .btn-text {
-        display: none !important;
-    }
-    
-    /* Week indicators */
-    .week-indicators {
-        grid-template-columns: repeat(7, 1fr) !important;
-        gap: 8px !important;
-        margin-bottom: 20px !important;
-    }
-    
-    .day-indicator {
-        padding: 12px 4px !important;
-        min-height: 88px !important;
-        min-width: 44px !important;
-    }
-    
-    .day-indicator .day-name {
-        font-size: 0.8rem !important;
-    }
-    
-    .day-indicator .day-type {
-        font-size: 0.9rem !important;
-    }
-    
-    /* Workout card */
-    .workout-card-wrapper {
-        margin-top: 20px !important;
-        margin-bottom: 20px !important;
-    }
-    
-    .workout-card {
-        padding: 20px !important;
-        min-height: auto !important;
-    }
-    
-    .workout-header {
-        flex-direction: column !important;
-        gap: 16px !important;
-    }
-    
-    .workout-info {
-        width: 100% !important;
-    }
-    
-    #workout-name {
-        font-size: 1.3rem !important;
-    }
-    
-    .workout-meta {
-        flex-direction: column !important;
-        gap: 8px !important;
-        align-items: flex-start !important;
-    }
-    
-    .meta-item {
-        font-size: 0.85rem !important;
-    }
-    
-    /* Botão iniciar treino */
-    .btn-primary {
-        width: 100% !important;
-        padding: 14px 20px !important;
-        font-size: 1rem !important;
-    }
-    
-    /* Card expandível */
-    .workout-expandable-card {
-        margin-top: 20px !important;
-    }
-    
-    .workout-card-header {
-        padding: 16px !important;
-    }
-    
-    .workout-header-content {
-        gap: 12px !important;
-    }
-    
-    .workout-type-badge {
-        font-size: 0.8rem !important;
-        padding: 6px 12px !important;
-    }
-    
-    .workout-card-title {
-        font-size: 1.1rem !important;
-    }
-    
-    .workout-card-subtitle {
-        font-size: 0.8rem !important;
-    }
-    
-    /* Lista de exercícios */
-    .exercise-item {
-        padding: 12px !important;
-        margin-bottom: 8px !important;
-    }
-    
-    .exercise-name {
-        font-size: 0.95rem !important;
-    }
-    
-    .exercise-details {
-        font-size: 0.75rem !important;
-    }
-    
-    .exercise-stats {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-    }
-    
-    .stat-item {
-        padding: 8px !important;
-    }
-    
-    .stat-value {
-        font-size: 0.9rem !important;
-    }
-    
-    .stat-label {
-        font-size: 0.65rem !important;
-    }
-    
-    /* Prevenir sobreposição do modal */
-    .modal-overlay,
-    .modal-overlay-enhanced {
-        padding: 0 !important;
-        align-items: flex-start !important;
-    }
-    
-    .modal-content,
-    .modal-content-enhanced {
-        margin: 0 !important;
-        max-height: 100vh !important;
-        border-radius: 0 !important;
-        padding-left: calc(16px + env(safe-area-inset-left)) !important;
-        padding-right: calc(16px + env(safe-area-inset-right)) !important;
-        padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
-    }
-    
-    /* Estados de toque aprimorados */
+  /* Prevenir scroll horizontal */
+  body {
+    overflow-x: hidden !important;
+    width: 100vw !important;
+  }
+
+  .app-container,
+  .screen {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Header da Home com safe area completa */
+  .home-header {
+    padding: 16px !important;
+    padding-top: calc(16px + env(safe-area-inset-top)) !important;
+    padding-left: calc(16px + env(safe-area-inset-left)) !important;
+    padding-right: calc(16px + env(safe-area-inset-right)) !important;
+    /* Fix para conflito com header do iOS */
+    top: env(safe-area-inset-top, 0) !important;
+    position: fixed !important;
+    width: 100% !important;
+    z-index: var(--z-fixed);
+  }
+
+  /* Ajuste do conteúdo para não ficar sob o header fixo */
+  .home-screen.active .home-content {
+    padding-top: calc(var(--header-height, 64px) + env(safe-area-inset-top) + 16px) !important;
+  }
+
+  .header-content {
+    gap: 12px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .user-info {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+  }
+
+  .user-greeting h4,
+  .user-greeting p {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 140px !important;
+  }
+
+  /* Logo no header */
+  .app-logo-secondary {
+    flex: 1 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-width: 0 !important;
+  }
+
+  .brand-logos-mini {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .secondary-logo {
+    height: 50px !important;
+    width: auto !important;
+    max-width: 120px !important;
+  }
+
+  /* Botão de logout */
+  .header-actions {
+    flex: 0 0 auto !important;
+  }
+
+  .logout-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+  }
+
+  /* Conteúdo principal com safe area completa */
+  .home-content {
+    padding: 16px !important;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    padding-left: calc(16px + env(safe-area-inset-left)) !important;
+    padding-right: calc(16px + env(safe-area-inset-right)) !important;
+  }
+
+  /* Section header */
+  .section-header {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+    margin-bottom: 16px !important;
+  }
+
+  .section-header h2 {
+    font-size: 1.5rem !important;
+    text-align: center !important;
+  }
+
+  .header-actions {
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  /* Week selector */
+  .week-selector {
+    flex: 1 !important;
+    max-width: none !important;
+    justify-content: space-between !important;
+    padding: 4px !important;
+  }
+
+  .week-nav {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .current-week-info {
+    flex: 1 !important;
+    text-align: center !important;
+    min-width: 0 !important;
+  }
+
+  .week-number {
+    font-size: 0.9rem !important;
+  }
+
+  .week-status {
+    font-size: 0.75rem !important;
+    padding: 2px 6px !important;
+  }
+
+  /* Botão editar */
+  .btn-edit {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .btn-edit .btn-text {
+    display: none !important;
+  }
+
+  /* Week indicators */
+  .week-indicators {
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .day-indicator {
+    padding: 12px 4px !important;
+    min-height: 88px !important;
+    min-width: 44px !important;
+  }
+
+  .day-indicator .day-name {
+    font-size: 0.8rem !important;
+  }
+
+  .day-indicator .day-type {
+    font-size: 0.9rem !important;
+  }
+
+  /* Workout card */
+  .workout-card-wrapper {
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .workout-card {
+    padding: 20px !important;
+    min-height: auto !important;
+  }
+
+  .workout-header {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .workout-info {
+    width: 100% !important;
+  }
+
+  #workout-name {
+    font-size: 1.3rem !important;
+  }
+
+  .workout-meta {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: flex-start !important;
+  }
+
+  .meta-item {
+    font-size: 0.85rem !important;
+  }
+
+  /* Botão iniciar treino */
+  .btn-primary {
+    width: 100% !important;
+    padding: 14px 20px !important;
+    font-size: 1rem !important;
+  }
+
+  /* Card expandível */
+  .workout-expandable-card {
+    margin-top: 20px !important;
+  }
+
+  .workout-card-header {
+    padding: 16px !important;
+  }
+
+  .workout-header-content {
+    gap: 12px !important;
+  }
+
+  .workout-type-badge {
+    font-size: 0.8rem !important;
+    padding: 6px 12px !important;
+  }
+
+  .workout-card-title {
+    font-size: 1.1rem !important;
+  }
+
+  .workout-card-subtitle {
+    font-size: 0.8rem !important;
+  }
+
+  /* Lista de exercícios */
+  .exercise-item {
+    padding: 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .exercise-name {
+    font-size: 0.95rem !important;
+  }
+
+  .exercise-details {
+    font-size: 0.75rem !important;
+  }
+
+  .exercise-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .stat-item {
+    padding: 8px !important;
+  }
+
+  .stat-value {
+    font-size: 0.9rem !important;
+  }
+
+  .stat-label {
+    font-size: 0.65rem !important;
+  }
+
+  /* Prevenir sobreposição do modal */
+  .modal-overlay,
+  .modal-overlay-enhanced {
+    padding: 0 !important;
+    align-items: flex-start !important;
+  }
+
+  .modal-content,
+  .modal-content-enhanced {
+    margin: 0 !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    padding-left: calc(16px + env(safe-area-inset-left)) !important;
+    padding-right: calc(16px + env(safe-area-inset-right)) !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Estados de toque aprimorados */
+  .btn,
+  .week-nav,
+  .day-indicator,
+  .logout-btn,
+  .btn-primary,
+  .btn-edit {
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation !important;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease !important;
+  }
+
+  .btn:active,
+  .week-nav:active,
+  .day-indicator:active,
+  .logout-btn:active,
+  .btn-primary:active,
+  .btn-edit:active {
+    transform: scale(0.96) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Otimização de animações com reduce-motion - menos agressiva */
+  @media (prefers-reduced-motion: reduce) {
     .btn,
     .week-nav,
     .day-indicator,
     .logout-btn,
     .btn-primary,
-    .btn-edit {
-        -webkit-tap-highlight-color: transparent !important;
-        touch-action: manipulation !important;
-        transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+    .btn-edit,
+    .modal-content,
+    .modal-content-enhanced,
+    .workout-card,
+    .exercise-item {
+      transition-duration: 0.15s !important;
+      animation-duration: 0.15s !important;
     }
-    
-    .btn:active,
-    .week-nav:active,
-    .day-indicator:active,
-    .logout-btn:active,
-    .btn-primary:active,
-    .btn-edit:active {
-        transform: scale(0.96) !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
-    }
-    
-    /* Otimização de animações com reduce-motion - menos agressiva */
-    @media (prefers-reduced-motion: reduce) {
-        .btn,
-        .week-nav,
-        .day-indicator,
-        .logout-btn,
-        .btn-primary,
-        .btn-edit,
-        .modal-content,
-        .modal-content-enhanced,
-        .workout-card,
-        .exercise-item {
-            transition-duration: 0.15s !important;
-            animation-duration: 0.15s !important;
-        }
-    }
+  }
 }
 
 /* Correções específicas para navegação */
 .screen {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    min-height: 100vh;
-    display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100vh;
+  display: none;
 }
 
 .screen.active {
-    display: block !important;
-    position: relative !important;
+  display: block !important;
+  position: relative !important;
 }
 
 /* Correções para scroll em iOS */
 @supports (-webkit-touch-callout: none) {
-    .screen {
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    .home-content,
-    .modal-body-enhanced {
-        -webkit-overflow-scrolling: touch;
-    }
+  .screen {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .home-content,
+  .modal-body-enhanced {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Garantir que elementos não se sobreponham */
 .training-plan > * {
-    position: relative !important;
-    z-index: var(--z-base);
+  position: relative !important;
+  z-index: var(--z-base);
 }
 
 /* Fix para botões muito próximos */
 .header-actions > * + * {
-    margin-left: 8px !important;
+  margin-left: 8px !important;
 }
 
 /* Garantir que modais fiquem acima de tudo */
-[id*="modal"] {
-    z-index: var(--z-modal);
+[id*='modal'] {
+  z-index: var(--z-modal);
 }
 
 /* Fix específico para modal de conclusão de treino */
 .workout-completion-overlay {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: var(--z-modal-high-priority);
-    display: flex !important;
-    background: rgba(16, 16, 16, 0.98) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: var(--z-modal-high-priority);
+  display: flex !important;
+  background: rgba(16, 16, 16, 0.98) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 .workout-completion-overlay .completion-content {
-    width: 100% !important;
-    max-width: calc(100vw - 32px) !important;
-    margin: auto !important;
-    padding: 20px !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+  width: 100% !important;
+  max-width: calc(100vw - 32px) !important;
+  margin: auto !important;
+  padding: 20px !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
 }
 
 /* Ajustar tamanhos no modal de conclusão */
 .trophy-icon {
-    width: 80px !important;
-    height: 80px !important;
+  width: 80px !important;
+  height: 80px !important;
 }
 
 .completion-title {
-    font-size: 1.8rem !important;
-    margin-bottom: 8px !important;
+  font-size: 1.8rem !important;
+  margin-bottom: 8px !important;
 }
 
 .completion-subtitle {
-    font-size: 1rem !important;
-    margin-bottom: 20px !important;
+  font-size: 1rem !important;
+  margin-bottom: 20px !important;
 }
 
 .completion-stats {
-    gap: 12px !important;
-    margin-bottom: 24px !important;
+  gap: 12px !important;
+  margin-bottom: 24px !important;
 }
 
 .stat-card {
-    padding: 12px !important;
+  padding: 12px !important;
 }
 
 .completion-actions {
-    gap: 12px !important;
+  gap: 12px !important;
 }
 
 .btn-completion {
-    padding: 14px 24px !important;
-    font-size: 1rem !important;
-    min-height: 48px !important;
+  padding: 14px 24px !important;
+  font-size: 1rem !important;
+  min-height: 48px !important;
 }
 
 /* Animações reduzidas removidas - experiência mais natural no mobile */

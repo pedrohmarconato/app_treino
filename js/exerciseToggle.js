@@ -1,39 +1,39 @@
 // Função para expandir/contrair exercícios
-window.toggleExercises = function() {
-    const expandBtn = document.getElementById('expand-exercises');
-    const exercisesExpanded = document.getElementById('exercises-expanded');
-    const expandText = expandBtn.querySelector('.expand-text');
-    
-    if (!expandBtn || !exercisesExpanded) return;
-    
-    const isExpanded = exercisesExpanded.style.display !== 'none';
-    
-    if (isExpanded) {
-        // Contrair
-        exercisesExpanded.style.display = 'none';
-        expandBtn.classList.remove('expanded');
-        expandText.textContent = 'Ver treino completo';
-    } else {
-        // Expandir
-        exercisesExpanded.style.display = 'block';
-        expandBtn.classList.add('expanded');
-        expandText.textContent = 'Ocultar treino';
-        
-        // Carregar treino completo se ainda não foi carregado
-        loadFullWorkout();
-    }
+window.toggleExercises = function () {
+  const expandBtn = document.getElementById('expand-exercises');
+  const exercisesExpanded = document.getElementById('exercises-expanded');
+  const expandText = expandBtn.querySelector('.expand-text');
+
+  if (!expandBtn || !exercisesExpanded) return;
+
+  const isExpanded = exercisesExpanded.style.display !== 'none';
+
+  if (isExpanded) {
+    // Contrair
+    exercisesExpanded.style.display = 'none';
+    expandBtn.classList.remove('expanded');
+    expandText.textContent = 'Ver treino completo';
+  } else {
+    // Expandir
+    exercisesExpanded.style.display = 'block';
+    expandBtn.classList.add('expanded');
+    expandText.textContent = 'Ocultar treino';
+
+    // Carregar treino completo se ainda não foi carregado
+    loadFullWorkout();
+  }
 };
 
 // Função para carregar treino completo
 function loadFullWorkout() {
-    const expandedContainer = document.getElementById('exercises-expanded');
-    if (!expandedContainer) return;
-    
-    // Se já tem conteúdo, não recarregar
-    if (expandedContainer.innerHTML.trim()) return;
-    
-    // Exemplo de treino completo - substituir pela lógica real
-    const fullWorkout = `
+  const expandedContainer = document.getElementById('exercises-expanded');
+  if (!expandedContainer) return;
+
+  // Se já tem conteúdo, não recarregar
+  if (expandedContainer.innerHTML.trim()) return;
+
+  // Exemplo de treino completo - substituir pela lógica real
+  const fullWorkout = `
         <div class="full-workout">
             <h5>Treino Completo - Peito</h5>
             <div class="exercise-item">
@@ -54,8 +54,8 @@ function loadFullWorkout() {
             </div>
         </div>
     `;
-    
-    expandedContainer.innerHTML = fullWorkout;
+
+  expandedContainer.innerHTML = fullWorkout;
 }
 
 // Estilos para o treino completo

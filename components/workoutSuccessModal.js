@@ -1,65 +1,64 @@
 /**
  * 🎉 MODAL DE SUCESSO DO TREINO
- * 
+ *
  * Modal moderno e motivacional para celebrar a conclusão do treino
  * Seguindo melhores práticas de UX para fitness apps
  */
 
 export class WorkoutSuccessModal {
-    
-    /**
-     * Mostrar modal de sucesso com estatísticas do treino
-     */
-    static mostrar(dadosTreino) {
-        return new Promise((resolve) => {
-            const modal = this.criarModal(dadosTreino);
-            document.body.appendChild(modal);
-            
-            // Animar entrada
-            requestAnimationFrame(() => {
-                modal.classList.add('show');
-            });
-            
-            // Vibração de sucesso (se disponível)
-            if ('vibrate' in navigator) {
-                navigator.vibrate([200, 100, 200]);
-            }
-            
-            // Auto-fechar após 8 segundos (ou quando usuário clicar)
-            const autoClose = setTimeout(() => {
-                this.fechar(modal);
-                resolve();
-            }, 8000);
-            
-            // Event listeners
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal || e.target.classList.contains('btn-continue')) {
-                    clearTimeout(autoClose);
-                    this.fechar(modal);
-                    resolve();
-                }
-            });
-            
-            // ESC para fechar
-            const handleEsc = (e) => {
-                if (e.key === 'Escape') {
-                    clearTimeout(autoClose);
-                    this.fechar(modal);
-                    document.removeEventListener('keydown', handleEsc);
-                    resolve();
-                }
-            };
-            document.addEventListener('keydown', handleEsc);
-        });
-    }
-    
-    /**
-     * Criar HTML do modal
-     */
-    static criarModal(dados) {
-        const modal = document.createElement('div');
-        modal.className = 'workout-success-modal';
-        modal.innerHTML = `
+  /**
+   * Mostrar modal de sucesso com estatísticas do treino
+   */
+  static mostrar(dadosTreino) {
+    return new Promise((resolve) => {
+      const modal = this.criarModal(dadosTreino);
+      document.body.appendChild(modal);
+
+      // Animar entrada
+      requestAnimationFrame(() => {
+        modal.classList.add('show');
+      });
+
+      // Vibração de sucesso (se disponível)
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200]);
+      }
+
+      // Auto-fechar após 8 segundos (ou quando usuário clicar)
+      const autoClose = setTimeout(() => {
+        this.fechar(modal);
+        resolve();
+      }, 8000);
+
+      // Event listeners
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal || e.target.classList.contains('btn-continue')) {
+          clearTimeout(autoClose);
+          this.fechar(modal);
+          resolve();
+        }
+      });
+
+      // ESC para fechar
+      const handleEsc = (e) => {
+        if (e.key === 'Escape') {
+          clearTimeout(autoClose);
+          this.fechar(modal);
+          document.removeEventListener('keydown', handleEsc);
+          resolve();
+        }
+      };
+      document.addEventListener('keydown', handleEsc);
+    });
+  }
+
+  /**
+   * Criar HTML do modal
+   */
+  static criarModal(dados) {
+    const modal = document.createElement('div');
+    modal.className = 'workout-success-modal';
+    modal.innerHTML = `
             <div class="success-modal-content">
                 <!-- Ícone de sucesso animado -->
                 <div class="success-icon-container">
@@ -145,72 +144,72 @@ export class WorkoutSuccessModal {
                 </div>
             </div>
         `;
-        
-        return modal;
-    }
-    
-    /**
-     * Fechar modal com animação
-     */
-    static fechar(modal) {
-        modal.classList.add('closing');
-        setTimeout(() => {
-            if (modal.parentNode) {
-                modal.parentNode.removeChild(modal);
-            }
-        }, 300);
-    }
-    
-    /**
-     * Formatar tempo em minutos para string legível
-     */
-    static formatarTempo(minutos) {
-        if (minutos < 1) return '< 1 min';
-        if (minutos < 60) return `${minutos} min`;
-        
-        const horas = Math.floor(minutos / 60);
-        const mins = minutos % 60;
-        return `${horas}h ${mins}m`;
-    }
-    
-    /**
-     * Obter conquista baseada nos dados do treino
-     */
-    static obterConquista(dados) {
-        const tempo = dados.tempo_total_minutos || 0;
-        const series = dados.total_series || 0;
-        const peso = dados.peso_total_levantado || 0;
-        
-        if (tempo >= 60) return 'Guerreiro da Resistência';
-        if (series >= 20) return 'Máquina de Séries';
-        if (peso >= 1000) return 'Levantador de Peso';
-        if (tempo >= 45) return 'Consistência Total';
-        if (series >= 15) return 'Força Crescente';
-        return 'Objetivo Cumprido';
-    }
-    
-    /**
-     * Obter mensagem motivacional
-     */
-    static obterMensagemMotivacional(dados) {
-        const mensagens = [
-            'Cada treino te deixa mais forte!',
-            'Você está no caminho certo!',
-            'Consistência é a chave do sucesso!',
-            'Seu corpo agradece o esforço!',
-            'Mais um passo rumo ao objetivo!',
-            'Disciplina hoje, resultados amanhã!',
-            'Você é mais forte do que imagina!'
-        ];
-        
-        // Escolher mensagem baseada no desempenho
-        const tempo = dados.tempo_total_minutos || 0;
-        if (tempo >= 60) return 'Treino épico! Você superou os limites!';
-        if (tempo >= 45) return 'Excelente consistência! Continue assim!';
-        if (tempo >= 30) return 'Ótimo treino! Cada minuto conta!';
-        
-        return mensagens[Math.floor(Math.random() * mensagens.length)];
-    }
+
+    return modal;
+  }
+
+  /**
+   * Fechar modal com animação
+   */
+  static fechar(modal) {
+    modal.classList.add('closing');
+    setTimeout(() => {
+      if (modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+      }
+    }, 300);
+  }
+
+  /**
+   * Formatar tempo em minutos para string legível
+   */
+  static formatarTempo(minutos) {
+    if (minutos < 1) return '< 1 min';
+    if (minutos < 60) return `${minutos} min`;
+
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    return `${horas}h ${mins}m`;
+  }
+
+  /**
+   * Obter conquista baseada nos dados do treino
+   */
+  static obterConquista(dados) {
+    const tempo = dados.tempo_total_minutos || 0;
+    const series = dados.total_series || 0;
+    const peso = dados.peso_total_levantado || 0;
+
+    if (tempo >= 60) return 'Guerreiro da Resistência';
+    if (series >= 20) return 'Máquina de Séries';
+    if (peso >= 1000) return 'Levantador de Peso';
+    if (tempo >= 45) return 'Consistência Total';
+    if (series >= 15) return 'Força Crescente';
+    return 'Objetivo Cumprido';
+  }
+
+  /**
+   * Obter mensagem motivacional
+   */
+  static obterMensagemMotivacional(dados) {
+    const mensagens = [
+      'Cada treino te deixa mais forte!',
+      'Você está no caminho certo!',
+      'Consistência é a chave do sucesso!',
+      'Seu corpo agradece o esforço!',
+      'Mais um passo rumo ao objetivo!',
+      'Disciplina hoje, resultados amanhã!',
+      'Você é mais forte do que imagina!',
+    ];
+
+    // Escolher mensagem baseada no desempenho
+    const tempo = dados.tempo_total_minutos || 0;
+    if (tempo >= 60) return 'Treino épico! Você superou os limites!';
+    if (tempo >= 45) return 'Excelente consistência! Continue assim!';
+    if (tempo >= 30) return 'Ótimo treino! Cada minuto conta!';
+
+    return mensagens[Math.floor(Math.random() * mensagens.length)];
+  }
 }
 
 // Estilos CSS para o modal
@@ -575,10 +574,10 @@ const styles = `
 
 // Injetar estilos se ainda não existirem
 if (!document.getElementById('workout-success-styles')) {
-    const styleElement = document.createElement('div');
-    styleElement.id = 'workout-success-styles';
-    styleElement.innerHTML = styles;
-    document.head.appendChild(styleElement);
+  const styleElement = document.createElement('div');
+  styleElement.id = 'workout-success-styles';
+  styleElement.innerHTML = styles;
+  document.head.appendChild(styleElement);
 }
 
 export default WorkoutSuccessModal;

@@ -5,50 +5,48 @@ import { exerciseCardStyles } from '../templates/exerciseCard.js';
 
 // Classe para integrar o protocolo completo no app
 export class ProtocolIntegration {
-    
-    // Inicializar sistema completo
-    static async init() {
-        console.log('[ProtocolIntegration] 🚀 Inicializando protocolo completo...');
-        
-        try {
-            // 1. Injetar estilos dos exercícios
-            console.log('[ProtocolIntegration] 1/4 - Injetando estilos...');
-            this.injectExerciseStyles();
-            
-            // 2. Configurar funções globais
-            console.log('[ProtocolIntegration] 2/4 - Configurando funções globais...');
-            this.setupGlobalFunctions();
-            
-            // 3. Configurar event listeners
-            console.log('[ProtocolIntegration] 3/4 - Configurando event listeners...');
-            this.setupEventListeners();
-            
-            // 4. Atualizar dashboard com protocolo
-            console.log('[ProtocolIntegration] 4/4 - Integrando com dashboard...');
-            this.integrateWithDashboard();
-            
-            console.log('[ProtocolIntegration] ✅ Protocolo integrado com sucesso!');
-            
-        } catch (error) {
-            console.error('[ProtocolIntegration] Erro na integração:', error);
-            throw error; // Re-throw para o caller detectar
-        }
+  // Inicializar sistema completo
+  static async init() {
+    console.log('[ProtocolIntegration] 🚀 Inicializando protocolo completo...');
+
+    try {
+      // 1. Injetar estilos dos exercícios
+      console.log('[ProtocolIntegration] 1/4 - Injetando estilos...');
+      this.injectExerciseStyles();
+
+      // 2. Configurar funções globais
+      console.log('[ProtocolIntegration] 2/4 - Configurando funções globais...');
+      this.setupGlobalFunctions();
+
+      // 3. Configurar event listeners
+      console.log('[ProtocolIntegration] 3/4 - Configurando event listeners...');
+      this.setupEventListeners();
+
+      // 4. Atualizar dashboard com protocolo
+      console.log('[ProtocolIntegration] 4/4 - Integrando com dashboard...');
+      this.integrateWithDashboard();
+
+      console.log('[ProtocolIntegration] ✅ Protocolo integrado com sucesso!');
+    } catch (error) {
+      console.error('[ProtocolIntegration] Erro na integração:', error);
+      throw error; // Re-throw para o caller detectar
     }
-    
-    // Injetar estilos dos exercícios
-    static injectExerciseStyles() {
-        const styleId = 'exercise-card-styles';
-        
-        // Remove estilos anteriores se existirem
-        const existingStyles = document.getElementById(styleId);
-        if (existingStyles) {
-            existingStyles.remove();
-        }
-        
-        // Cria novo elemento de estilo
-        const styleElement = document.createElement('style');
-        styleElement.id = styleId;
-        styleElement.textContent = `
+  }
+
+  // Injetar estilos dos exercícios
+  static injectExerciseStyles() {
+    const styleId = 'exercise-card-styles';
+
+    // Remove estilos anteriores se existirem
+    const existingStyles = document.getElementById(styleId);
+    if (existingStyles) {
+      existingStyles.remove();
+    }
+
+    // Cria novo elemento de estilo
+    const styleElement = document.createElement('style');
+    styleElement.id = styleId;
+    styleElement.textContent = `
             ${exerciseCardStyles}
             
             /* Estilos adicionais para treino */
@@ -348,238 +346,246 @@ export class ProtocolIntegration {
                 }
             }
         `;
-        
-        document.head.appendChild(styleElement);
-        console.log('[ProtocolIntegration] ✅ Estilos injetados');
-    }
-    
-    // Configurar funções globais
-    static setupGlobalFunctions() {
-        // Função principal para iniciar treino - usar implementação original
-        // O workoutExecution.js tem muitos problemas, vamos usar o workout.js original
-        // que funcionava corretamente
-        if (!window.iniciarTreino) {
-            // Importar a função original do workout.js
-            import('../feature/workout.js').then(module => {
-                console.log('[ProtocolIntegration] ✅ Função iniciarTreino original carregada do workout.js');
-            }).catch(error => {
-                console.error('[ProtocolIntegration] ❌ Erro ao carregar workout.js:', error);
-            });
-        }
-        
-        // Funções auxiliares
-        window.voltarParaHome = function() {
-            // Resetar estado do treino usando AppState
-            if (window.AppState) {
-                window.AppState.resetWorkout();
-            }
-            if (window.renderTemplate) {
-                window.renderTemplate('home');
-            }
-        };
-        
-        // Funções de cálculo de peso (para uso em outros módulos)
-        window.calcularPesosSugeridos = async function(userId, exercicioId, semanaAtual) {
-            return await WeightCalculatorService.calcularPesosExercicio(userId, exercicioId, semanaAtual, 1, 1);
-        };
-        
-        // Função para obter estatísticas
-        window.obterEstatisticasProtocolo = async function(userId) {
-            return await WorkoutProtocolService.obterEstatisticasUsuario(userId);
-        };
-        
-        console.log('[ProtocolIntegration] ✅ Funções globais configuradas');
-    }
-    
-    // Configurar event listeners
-    static setupEventListeners() {
-        // Listener para mudanças de usuário
-        if (window.AppState) {
-            window.AppState.subscribe('currentUser', (newUser) => {
-                if (newUser) {
-                    console.log('[ProtocolIntegration] Usuário alterado, recarregando protocolo...');
-                    this.loadUserProtocolData(newUser.id);
-                }
-            });
-        }
-        
-        // Listener para teclas de atalho
-        document.addEventListener('keydown', (e) => {
-            // ESC para voltar da tela de treino
-            const currentWorkout = window.AppState?.get('currentWorkout');
-            if (e.key === 'Escape' && currentWorkout) {
-                window.voltarParaHome();
-            }
-            
-            // Espaço para pular descanso
-            const timerInterval = window.AppState?.get('timerInterval');
-            if (e.code === 'Space' && timerInterval) {
-                e.preventDefault();
-                window.pularDescanso();
-            }
+
+    document.head.appendChild(styleElement);
+    console.log('[ProtocolIntegration] ✅ Estilos injetados');
+  }
+
+  // Configurar funções globais
+  static setupGlobalFunctions() {
+    // Função principal para iniciar treino - usar implementação original
+    // O workoutExecution.js tem muitos problemas, vamos usar o workout.js original
+    // que funcionava corretamente
+    if (!window.iniciarTreino) {
+      // Importar a função original do workout.js
+      import('../feature/workout.js')
+        .then((module) => {
+          console.log(
+            '[ProtocolIntegration] ✅ Função iniciarTreino original carregada do workout.js'
+          );
+        })
+        .catch((error) => {
+          console.error('[ProtocolIntegration] ❌ Erro ao carregar workout.js:', error);
         });
-        
-        console.log('[ProtocolIntegration] ✅ Event listeners configurados');
     }
-    
-    // Integrar com dashboard
-    static integrateWithDashboard() {
-        // Substituir função original de carregarDashboard para incluir dados do protocolo
-        const originalCarregarDashboard = window.carregarDashboard;
-        
-        window.carregarDashboard = async function() {
-            try {
-                // Carregar dashboard original
-                if (originalCarregarDashboard) {
-                    await originalCarregarDashboard();
-                }
-                
-                // Adicionar dados do protocolo
-                await ProtocolIntegration.enrichDashboardWithProtocol();
-                
-            } catch (error) {
-                console.error('[ProtocolIntegration] Erro ao integrar dashboard:', error);
-            }
-        };
-        
-        console.log('[ProtocolIntegration] ✅ Dashboard integrado');
-    }
-    
-    // Enriquecer dashboard com dados do protocolo
-    static async enrichDashboardWithProtocol() {
-        try {
-            const currentUser = window.AppState?.get('currentUser');
-            if (!currentUser) return;
-            
-            // Obter estatísticas do protocolo
-            const stats = await WorkoutProtocolService.obterEstatisticasUsuario(currentUser.id);
-            
-            // Atualizar elementos da UI
-            this.updateElement('current-week', stats.semana_atual || 1);
-            this.updateElement('completed-workouts', stats.total_treinos_realizados || 0);
-            this.updateElement('progress-percentage', `${Math.round(stats.percentual_progresso || 0)}%`);
-            
-            // Atualizar barra de progresso semanal
-            const progressBar = document.getElementById('user-progress-bar');
-            if (progressBar) {
-                const semanalProgress = ((stats.semana_atual || 1) / 12) * 100;
-                progressBar.style.width = `${semanalProgress}%`;
-            }
-            
-            console.log('[ProtocolIntegration] ✅ Dashboard enriquecido com dados do protocolo');
-            
-        } catch (error) {
-            console.error('[ProtocolIntegration] Erro ao enriquecer dashboard:', error);
+
+    // Funções auxiliares
+    window.voltarParaHome = function () {
+      // Resetar estado do treino usando AppState
+      if (window.AppState) {
+        window.AppState.resetWorkout();
+      }
+      if (window.renderTemplate) {
+        window.renderTemplate('home');
+      }
+    };
+
+    // Funções de cálculo de peso (para uso em outros módulos)
+    window.calcularPesosSugeridos = async function (userId, exercicioId, semanaAtual) {
+      return await WeightCalculatorService.calcularPesosExercicio(
+        userId,
+        exercicioId,
+        semanaAtual,
+        1,
+        1
+      );
+    };
+
+    // Função para obter estatísticas
+    window.obterEstatisticasProtocolo = async function (userId) {
+      return await WorkoutProtocolService.obterEstatisticasUsuario(userId);
+    };
+
+    console.log('[ProtocolIntegration] ✅ Funções globais configuradas');
+  }
+
+  // Configurar event listeners
+  static setupEventListeners() {
+    // Listener para mudanças de usuário
+    if (window.AppState) {
+      window.AppState.subscribe('currentUser', (newUser) => {
+        if (newUser) {
+          console.log('[ProtocolIntegration] Usuário alterado, recarregando protocolo...');
+          this.loadUserProtocolData(newUser.id);
         }
+      });
     }
-    
-    // Carregar dados do protocolo para um usuário
-    static async loadUserProtocolData(userId) {
-        try {
-            const stats = await WorkoutProtocolService.obterEstatisticasUsuario(userId);
-            
-            // Salvar no estado global
-            if (window.AppState) {
-                window.AppState.set('userProtocolStats', stats);
-            }
-            
-            console.log(`[ProtocolIntegration] ✅ Dados do protocolo carregados para usuário ${userId}`);
-            
-        } catch (error) {
-            console.error('[ProtocolIntegration] Erro ao carregar dados do protocolo:', error);
+
+    // Listener para teclas de atalho
+    document.addEventListener('keydown', (e) => {
+      // ESC para voltar da tela de treino
+      const currentWorkout = window.AppState?.get('currentWorkout');
+      if (e.key === 'Escape' && currentWorkout) {
+        window.voltarParaHome();
+      }
+
+      // Espaço para pular descanso
+      const timerInterval = window.AppState?.get('timerInterval');
+      if (e.code === 'Space' && timerInterval) {
+        e.preventDefault();
+        window.pularDescanso();
+      }
+    });
+
+    console.log('[ProtocolIntegration] ✅ Event listeners configurados');
+  }
+
+  // Integrar com dashboard
+  static integrateWithDashboard() {
+    // Substituir função original de carregarDashboard para incluir dados do protocolo
+    const originalCarregarDashboard = window.carregarDashboard;
+
+    window.carregarDashboard = async function () {
+      try {
+        // Carregar dashboard original
+        if (originalCarregarDashboard) {
+          await originalCarregarDashboard();
         }
+
+        // Adicionar dados do protocolo
+        await ProtocolIntegration.enrichDashboardWithProtocol();
+      } catch (error) {
+        console.error('[ProtocolIntegration] Erro ao integrar dashboard:', error);
+      }
+    };
+
+    console.log('[ProtocolIntegration] ✅ Dashboard integrado');
+  }
+
+  // Enriquecer dashboard com dados do protocolo
+  static async enrichDashboardWithProtocol() {
+    try {
+      const currentUser = window.AppState?.get('currentUser');
+      if (!currentUser) return;
+
+      // Obter estatísticas do protocolo
+      const stats = await WorkoutProtocolService.obterEstatisticasUsuario(currentUser.id);
+
+      // Atualizar elementos da UI
+      this.updateElement('current-week', stats.semana_atual || 1);
+      this.updateElement('completed-workouts', stats.total_treinos_realizados || 0);
+      this.updateElement('progress-percentage', `${Math.round(stats.percentual_progresso || 0)}%`);
+
+      // Atualizar barra de progresso semanal
+      const progressBar = document.getElementById('user-progress-bar');
+      if (progressBar) {
+        const semanalProgress = ((stats.semana_atual || 1) / 12) * 100;
+        progressBar.style.width = `${semanalProgress}%`;
+      }
+
+      console.log('[ProtocolIntegration] ✅ Dashboard enriquecido com dados do protocolo');
+    } catch (error) {
+      console.error('[ProtocolIntegration] Erro ao enriquecer dashboard:', error);
     }
-    
-    // Função auxiliar para atualizar elementos
-    static updateElement(id, value) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = value;
-        }
+  }
+
+  // Carregar dados do protocolo para um usuário
+  static async loadUserProtocolData(userId) {
+    try {
+      const stats = await WorkoutProtocolService.obterEstatisticasUsuario(userId);
+
+      // Salvar no estado global
+      if (window.AppState) {
+        window.AppState.set('userProtocolStats', stats);
+      }
+
+      console.log(`[ProtocolIntegration] ✅ Dados do protocolo carregados para usuário ${userId}`);
+    } catch (error) {
+      console.error('[ProtocolIntegration] Erro ao carregar dados do protocolo:', error);
     }
-    
-    // Verificar se protocolo está funcionando
-    static async testProtocol(userId) {
-        try {
-            console.log('[ProtocolIntegration] 🧪 Testando protocolo...');
-            
-            // Teste 1: Carregar treino
-            const treino = await WorkoutProtocolService.carregarTreinoParaExecucao(userId);
-            console.log('✅ Teste 1 - Carregar treino:', treino.nome);
-            
-            // Teste 2: Calcular pesos
-            if (treino.exercicios.length > 0) {
-                const exercicio = treino.exercicios[0];
-                const pesos = await WeightCalculatorService.calcularPesosExercicio(
-                    userId, 
-                    exercicio.exercicio_id, 
-                    treino.semana_atual,
-                    treino.semana_referencia,
-                    treino.protocolo_id
-                );
-                console.log('✅ Teste 2 - Calcular pesos:', pesos);
-            }
-            
-            // Teste 3: Obter estatísticas
-            const stats = await WorkoutProtocolService.obterEstatisticasUsuario(userId);
-            console.log('✅ Teste 3 - Estatísticas:', stats);
-            
-            console.log('[ProtocolIntegration] ✅ Protocolo funcionando perfeitamente!');
-            return true;
-            
-        } catch (error) {
-            console.error('[ProtocolIntegration] ❌ Erro no teste do protocolo:', error);
-            return false;
-        }
+  }
+
+  // Função auxiliar para atualizar elementos
+  static updateElement(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = value;
     }
+  }
+
+  // Verificar se protocolo está funcionando
+  static async testProtocol(userId) {
+    try {
+      console.log('[ProtocolIntegration] 🧪 Testando protocolo...');
+
+      // Teste 1: Carregar treino
+      const treino = await WorkoutProtocolService.carregarTreinoParaExecucao(userId);
+      console.log('✅ Teste 1 - Carregar treino:', treino.nome);
+
+      // Teste 2: Calcular pesos
+      if (treino.exercicios.length > 0) {
+        const exercicio = treino.exercicios[0];
+        const pesos = await WeightCalculatorService.calcularPesosExercicio(
+          userId,
+          exercicio.exercicio_id,
+          treino.semana_atual,
+          treino.semana_referencia,
+          treino.protocolo_id
+        );
+        console.log('✅ Teste 2 - Calcular pesos:', pesos);
+      }
+
+      // Teste 3: Obter estatísticas
+      const stats = await WorkoutProtocolService.obterEstatisticasUsuario(userId);
+      console.log('✅ Teste 3 - Estatísticas:', stats);
+
+      console.log('[ProtocolIntegration] ✅ Protocolo funcionando perfeitamente!');
+      return true;
+    } catch (error) {
+      console.error('[ProtocolIntegration] ❌ Erro no teste do protocolo:', error);
+      return false;
+    }
+  }
 }
 
 // Função para inicializar o protocolo quando o app carrega
 export async function initializeProtocol() {
-    console.log('[initializeProtocol] 🚀 Inicializando protocolo...');
-    
-    try {
-        await ProtocolIntegration.init();
-        console.log('[initializeProtocol] ✅ Protocolo inicializado com sucesso!');
-        
-        // Teste com usuário atual se disponível
-        const currentUser = window.AppState?.get('currentUser');
-        if (currentUser) {
-            setTimeout(async () => {
-                const testResult = await ProtocolIntegration.testProtocol(currentUser.id);
-                if (testResult) {
-                    if (window.showNotification) {
-                        window.showNotification('Protocolo carregado e funcionando! 💪', 'success');
-                    }
-                }
-            }, 2000);
+  console.log('[initializeProtocol] 🚀 Inicializando protocolo...');
+
+  try {
+    await ProtocolIntegration.init();
+    console.log('[initializeProtocol] ✅ Protocolo inicializado com sucesso!');
+
+    // Teste com usuário atual se disponível
+    const currentUser = window.AppState?.get('currentUser');
+    if (currentUser) {
+      setTimeout(async () => {
+        const testResult = await ProtocolIntegration.testProtocol(currentUser.id);
+        if (testResult) {
+          if (window.showNotification) {
+            window.showNotification('Protocolo carregado e funcionando! 💪', 'success');
+          }
         }
-        
-    } catch (error) {
-        console.error('[initializeProtocol] Erro:', error);
-        if (window.showNotification) {
-            window.showNotification('Erro ao carregar protocolo. Algumas funcionalidades podem estar limitadas.', 'error');
-        }
+      }, 2000);
     }
-    
-    console.log('[initializeProtocol] 🏁 Função initializeProtocol concluída');
+  } catch (error) {
+    console.error('[initializeProtocol] Erro:', error);
+    if (window.showNotification) {
+      window.showNotification(
+        'Erro ao carregar protocolo. Algumas funcionalidades podem estar limitadas.',
+        'error'
+      );
+    }
+  }
+
+  console.log('[initializeProtocol] 🏁 Função initializeProtocol concluída');
 }
 
 // Função global para testar protocolo
-window.testarProtocolo = async function() {
-    const currentUser = window.AppState?.get('currentUser');
-    if (!currentUser) {
-        console.error('Nenhum usuário logado para teste');
-        return;
-    }
-    
-    const resultado = await ProtocolIntegration.testProtocol(currentUser.id);
-    if (window.showNotification) {
-        const mensagem = resultado ? 
-            'Protocolo testado com sucesso! ✅' : 
-            'Erro no teste do protocolo ❌';
-        window.showNotification(mensagem, resultado ? 'success' : 'error');
-    }
+window.testarProtocolo = async function () {
+  const currentUser = window.AppState?.get('currentUser');
+  if (!currentUser) {
+    console.error('Nenhum usuário logado para teste');
+    return;
+  }
+
+  const resultado = await ProtocolIntegration.testProtocol(currentUser.id);
+  if (window.showNotification) {
+    const mensagem = resultado
+      ? 'Protocolo testado com sucesso! ✅'
+      : 'Erro no teste do protocolo ❌';
+    window.showNotification(mensagem, resultado ? 'success' : 'error');
+  }
 };
 
 // ✅ EXPORT ÚNICO - removida duplicata

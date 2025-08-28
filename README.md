@@ -7,24 +7,28 @@ App Treino é uma aplicação web progressiva (PWA) desenvolvida para acompanham
 ## ✨ Recursos Principais
 
 ### 🏋️‍♂️ Sistema de Treinos
+
 - **Protocolo de Treinos Inteligente**: Sistema de periodização baseado em semanas
 - **Cálculo Automático de Cargas**: Baseado em percentuais da 1RM
 - **Progressão Adaptativa**: Ajuste automático de pesos conforme evolução
 - **Divisão de Treinos**: Treino A, B, C e D com grupos musculares específicos
 
 ### 📊 Acompanhamento
+
 - **Dashboard Interativo**: Visualização do progresso semanal
 - **Métricas Detalhadas**: Treinos concluídos, evolução de cargas, etc
 - **Histórico Completo**: Registro detalhado de cada execução
 - **Sistema de Avaliação**: Auto-avaliação de esforço (RPE)
 
 ### 🎨 Interface Moderna
+
 - **Design Neon Sóbrio**: Visual moderno com elementos neon sutis
 - **Cards Expandíveis**: Interface limpa e organizada
 - **Animações Suaves**: Transições fluidas e micro-interações
 - **Totalmente Responsivo**: Adaptado para todos os dispositivos
 
 ### 🔧 Funcionalidades Técnicas
+
 - **PWA**: Funciona offline e pode ser instalado
 - **Service Worker**: Cache inteligente e sync em background
 - **LocalStorage**: Persistência de dados localmente
@@ -43,23 +47,27 @@ App Treino é uma aplicação web progressiva (PWA) desenvolvida para acompanham
 ## 📱 Instalação
 
 1. Clone o repositório:
+
 ```bash
 git clone https://github.com/pedrohmarconato/app_treino.git
 cd app_treino
 ```
 
 2. Instale as dependências:
+
 ```bash
 npm install
 ```
 
 3. Configure as variáveis de ambiente:
+
 ```bash
 cp .env.example .env
 # Edite o arquivo .env com suas credenciais
 ```
 
 4. Execute o projeto:
+
 ```bash
 npm start
 ```
@@ -97,6 +105,7 @@ app_treino/
 ## 🔄 Atualizações Recentes
 
 ### v2.0.0 - Design Overhaul
+
 - ✅ Nova interface com design neon sóbrio
 - ✅ Card de treino expandível remodelado
 - ✅ Remoção de elementos descontinuados

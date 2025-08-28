@@ -4,421 +4,424 @@
 
 /* Variáveis de Design System */
 :root {
-    /* Desktop */
-    --header-height: 70px;
-    --header-padding-x: 24px;
-    --header-max-width: 1400px;
-    
-    /* Elementos */
-    --avatar-size: 40px;
-    --logo-height: 32px;
-    --action-btn-size: 40px;
-    
-    /* Cores */
-    --header-bg: rgba(16, 16, 16, 0.85);
-    --header-border: rgba(255, 255, 255, 0.06);
-    --header-shadow: 0 2px 32px rgba(0, 0, 0, 0.5);
+  /* Desktop */
+  --header-height: 70px;
+  --header-padding-x: 24px;
+  --header-max-width: 1400px;
+
+  /* Elementos */
+  --avatar-size: 40px;
+  --logo-height: 32px;
+  --action-btn-size: 40px;
+
+  /* Cores */
+  --header-bg: rgba(16, 16, 16, 0.85);
+  --header-border: rgba(255, 255, 255, 0.06);
+  --header-shadow: 0 2px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* Reset do container existente */
 .app-header {
-    display: none; /* Esconder o antigo por enquanto */
+  display: none; /* Esconder o antigo por enquanto */
 }
 
 /* Header Container Premium */
 .home-header {
-    position: sticky;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: var(--header-height);
-    background: var(--header-bg);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid var(--header-border);
-    box-shadow: var(--header-shadow);
-    z-index: 1000;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  background: var(--header-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: var(--header-shadow);
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Efeito de scroll */
 .home-header.scrolled {
-    height: 68px;
-    background: rgba(16, 16, 16, 0.95);
-    box-shadow: 0 4px 40px rgba(0, 0, 0, 0.8);
+  height: 68px;
+  background: rgba(16, 16, 16, 0.95);
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.8);
 }
 
 /* Header Content - Layout Moderno */
 .header-content {
-    height: 100%;
-    max-width: var(--header-max-width);
-    margin: 0 auto;
-    padding: 0 var(--header-padding-x);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 40px;
-} 
+  height: 100%;
+  max-width: var(--header-max-width);
+  margin: 0 auto;
+  padding: 0 var(--header-padding-x);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+}
 
 /* Seção Esquerda - User Info */
 .user-info {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 16px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 /* Avatar Premium Design */
 .user-avatar-wrapper {
-    position: relative;
-    cursor: pointer;
+  position: relative;
+  cursor: pointer;
 }
 
 .user-avatar-small {
-    width: var(--avatar-size);
-    height: var(--avatar-size);
-    border-radius: 50%;
-    overflow: hidden;
-    position: relative;
-    background: rgba(255,255,255,0.08);
-    padding: 2px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .user-avatar-small::before {
-    content: '';
-    position: absolute;
-    inset: 2px;
-    border-radius: 50%;
-    background: var(--bg-primary);
-    z-index: 1;
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  z-index: 1;
 }
 
 .user-avatar-small img {
-    position: relative;
-    width: calc(100% - 4px);
-    height: calc(100% - 4px);
-    object-fit: cover;
-    border-radius: 50%;
-    z-index: 2;
+  position: relative;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  object-fit: cover;
+  border-radius: 50%;
+  z-index: 2;
 }
 
 .user-avatar-wrapper:hover .user-avatar-small {
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(19, 241, 252, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(19, 241, 252, 0.4);
 }
 
 /* Status Indicator */
 .avatar-status-indicator {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 12px;
-    height: 12px;
-    background: #10b981;
-    border: 3px solid var(--header-bg);
-    border-radius: 50%;
-    z-index: 3;
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #10b981;
+  border: 3px solid var(--header-bg);
+  border-radius: 50%;
+  z-index: 3;
 }
 
 /* User Greeting - Otimizado */
 .user-greeting {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .user-greeting h4 {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .user-greeting p {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
 }
 
 /* Logo Central - Melhorado */
 .app-logo-secondary {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .secondary-logo {
-    height: var(--logo-height);
-    width: auto;
-    object-fit: contain;
-    filter: brightness(1) drop-shadow(0 0 20px rgba(255, 229, 0, 0.3));
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
+  height: var(--logo-height);
+  width: auto;
+  object-fit: contain;
+  filter: brightness(1) drop-shadow(0 0 20px rgba(255, 229, 0, 0.3));
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 }
 
 .secondary-logo:hover {
-    transform: scale(1.05);
-    filter: brightness(1.1) drop-shadow(0 0 30px rgba(255, 229, 0, 0.5));
+  transform: scale(1.05);
+  filter: brightness(1.1) drop-shadow(0 0 30px rgba(255, 229, 0, 0.5));
 }
 
 /* Ações do Header - Redesenhado */
 .header-actions {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* Botões de Ação Modernos */
 .btn-icon {
-    width: var(--action-btn-size);
-    height: var(--action-btn-size);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+  width: var(--action-btn-size);
+  height: var(--action-btn-size);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .btn-icon::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at center, var(--neon-primary) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--neon-primary) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .btn-icon:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .btn-icon:hover::before {
-    opacity: 0.1;
+  opacity: 0.1;
 }
 
 .btn-icon:active {
-    transform: translateY(0);
+  transform: translateY(0);
 }
 
 .btn-icon svg {
-    width: 20px;
-    height: 20px;
-    stroke: var(--text-secondary);
-    stroke-width: 2;
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 1;
+  width: 20px;
+  height: 20px;
+  stroke: var(--text-secondary);
+  stroke-width: 2;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .btn-icon:hover svg {
-    stroke: var(--text-primary);
-    transform: scale(1.1);
+  stroke: var(--text-primary);
+  transform: scale(1.1);
 }
 
 /* Logout específico */
 .logout-btn:hover {
-    border-color: rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
 }
 
 .logout-btn:hover::before {
-    background: radial-gradient(circle at center, #ef4444 0%, transparent 70%);
+  background: radial-gradient(circle at center, #ef4444 0%, transparent 70%);
 }
 
 .logout-btn:hover svg {
-    stroke: #ef4444;
+  stroke: #ef4444;
 }
 
 /* Animações Premium */
 @keyframes pulse-status {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-    }
-    50% {
-        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
-    }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
 }
 
 @keyframes header-fade-in {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .home-header {
-    animation: header-fade-in 0.5s ease-out;
+  animation: header-fade-in 0.5s ease-out;
 }
 
 /* Tablet Responsiveness */
 @media (max-width: 1024px) {
-    :root {
-        --header-height: 72px;
-        --header-padding-x: 24px;
-        --avatar-size: 40px;
-        --logo-height: 32px;
-        --action-btn-size: 40px;
-    }
+  :root {
+    --header-height: 72px;
+    --header-padding-x: 24px;
+    --avatar-size: 40px;
+    --logo-height: 32px;
+    --action-btn-size: 40px;
+  }
 }
 
 /* Mobile Premium Design */
 @media (max-width: 768px) {
-    :root {
-        --header-height: 64px;
-        --header-padding-x: 16px;
-        --avatar-size: 36px;
-        --logo-height: 28px;
-        --action-btn-size: 36px;
-    }
-    
-    /* Scroll effect mais sutil no mobile */
-    .home-header.scrolled {
-        height: 60px;
-    }
-    
-    /* Layout mobile otimizado */
-    .header-content {
-        gap: 16px;
-        position: relative;
-    }
-    
-    /* User info compacto */
-    .user-info {
-        gap: 12px;
-    }
-    
-    .user-greeting h4 {
-        font-size: 0.7rem;
-    }
-    
-    .user-greeting p {
-        font-size: 0.875rem;
-    }
-    
-    /* Logo mobile */
-    .app-logo-secondary {
-        position: static;
-        transform: none;
-        flex: 1;
-        justify-content: center;
-    }
-    
-    .secondary-logo {
-        height: calc(var(--logo-height) * 1.2);
-    }
-    
-    /* Botões menores */
-    .btn-icon {
-        border-radius: 10px;
-    }
-    
-    .btn-icon svg {
-        width: 18px;
-        height: 18px;
-    }
+  :root {
+    --header-height: 64px;
+    --header-padding-x: 16px;
+    --avatar-size: 36px;
+    --logo-height: 28px;
+    --action-btn-size: 36px;
+  }
+
+  /* Scroll effect mais sutil no mobile */
+  .home-header.scrolled {
+    height: 60px;
+  }
+
+  /* Layout mobile otimizado */
+  .header-content {
+    gap: 16px;
+    position: relative;
+  }
+
+  /* User info compacto */
+  .user-info {
+    gap: 12px;
+  }
+
+  .user-greeting h4 {
+    font-size: 0.7rem;
+  }
+
+  .user-greeting p {
+    font-size: 0.875rem;
+  }
+
+  /* Logo mobile */
+  .app-logo-secondary {
+    position: static;
+    transform: none;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .secondary-logo {
+    height: calc(var(--logo-height) * 1.2);
+  }
+
+  /* Botões menores */
+  .btn-icon {
+    border-radius: 10px;
+  }
+
+  .btn-icon svg {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 /* Extra Small - Design Minimalista */
 @media (max-width: 480px) {
-    :root {
-        --header-height: 56px;
-        --header-padding-x: 12px;
-        --avatar-size: 32px;
-        --logo-height: 24px;
-        --action-btn-size: 32px;
-    }
-    
-    /* Layout ultra compacto */
-    .header-content {
-        gap: 12px;
-    }
-    
-    /* Esconder saudação */
-    .user-greeting {
-        display: none;
-    }
-    
-    /* Avatar menor */
-    .user-avatar-small {
-        width: var(--avatar-size);
-        height: var(--avatar-size);
-    }
-    
-    /* Status menor */
-    .avatar-status-indicator {
-        width: 10px;
-        height: 10px;
-        border-width: 2px;
-    }
-    
-    /* Logo responsivo */
-    .secondary-logo {
-        max-height: 32px;
-    }
-    
-    /* Ações compactas */
-    .header-actions {
-        gap: 8px;
-    }
-    
-    .btn-icon {
-        border-radius: 8px;
-    }
-    
-    .btn-icon svg {
-        width: 16px;
-        height: 16px;
-    }
+  :root {
+    --header-height: 56px;
+    --header-padding-x: 12px;
+    --avatar-size: 32px;
+    --logo-height: 24px;
+    --action-btn-size: 32px;
+  }
+
+  /* Layout ultra compacto */
+  .header-content {
+    gap: 12px;
+  }
+
+  /* Esconder saudação */
+  .user-greeting {
+    display: none;
+  }
+
+  /* Avatar menor */
+  .user-avatar-small {
+    width: var(--avatar-size);
+    height: var(--avatar-size);
+  }
+
+  /* Status menor */
+  .avatar-status-indicator {
+    width: 10px;
+    height: 10px;
+    border-width: 2px;
+  }
+
+  /* Logo responsivo */
+  .secondary-logo {
+    max-height: 32px;
+  }
+
+  /* Ações compactas */
+  .header-actions {
+    gap: 8px;
+  }
+
+  .btn-icon {
+    border-radius: 8px;
+  }
+
+  .btn-icon svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 /* Suporte para notch/safe areas */
 @supports (padding-top: env(safe-area-inset-top)) {
-    .home-header {
-        padding-top: env(safe-area-inset-top);
-    }
+  .home-header {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 /* Dark Theme Enhancement */
 @media (prefers-color-scheme: dark) {
-    .home-header {
-        background: rgba(10, 10, 10, 0.9);
-    }
-    
-    .avatar-status-indicator {
-        border-color: #000;
-    }
+  .home-header {
+    background: rgba(10, 10, 10, 0.9);
+  }
+
+  .avatar-status-indicator {
+    border-color: #000;
+  }
 }
 
 /* Acessibilidade */
 @media (prefers-reduced-motion: reduce) {
-    .home-header,
-    .btn-icon,
-    .user-avatar-small,
-    .secondary-logo {
-        transition: none;
+  .home-header,
+  .btn-icon,
+  .user-avatar-small,
+  .secondary-logo {
+    transition: none;
+  }
+
+  @keyframes pulse-status {
+    to {
+      box-shadow: none;
     }
-    
-    @keyframes pulse-status {
-        to { box-shadow: none; }
-    }
+  }
 }

@@ -6,91 +6,91 @@
 import { ComponentConfig } from '../templates/COMPONENT_CONFIG.js';
 
 export class SaveExitModal {
-    constructor(workoutData = {}) {
-        this.workoutData = workoutData;
-        this.modalElement = null;
-        this.isVisible = false;
-        this.resolve = null;
-        this.focusTrap = null;
-        
-        // Configuração das opções do modal
-        this.options = [
-            { 
-                id: 'save-exit', 
-                text: 'Salvar e Sair', 
-                primary: true,
-                icon: '💾',
-                description: 'Salva o progresso atual e volta para a tela inicial'
-            },
-            { 
-                id: 'exit-no-save', 
-                text: 'Sair sem Salvar', 
-                destructive: true,
-                icon: '🚪',
-                description: 'Perde todo o progresso do treino atual'
-            },
-            { 
-                id: 'cancel', 
-                text: 'Cancelar', 
-                neutral: true,
-                icon: '↩️',
-                description: 'Continua o treino'
-            }
-        ];
-        
-        // Bind methods
-        this.handleKeydown = this.handleKeydown.bind(this);
-        this.handleOutsideClick = this.handleOutsideClick.bind(this);
+  constructor(workoutData = {}) {
+    this.workoutData = workoutData;
+    this.modalElement = null;
+    this.isVisible = false;
+    this.resolve = null;
+    this.focusTrap = null;
+
+    // Configuração das opções do modal
+    this.options = [
+      {
+        id: 'save-exit',
+        text: 'Salvar e Sair',
+        primary: true,
+        icon: '💾',
+        description: 'Salva o progresso atual e volta para a tela inicial',
+      },
+      {
+        id: 'exit-no-save',
+        text: 'Sair sem Salvar',
+        destructive: true,
+        icon: '🚪',
+        description: 'Perde todo o progresso do treino atual',
+      },
+      {
+        id: 'cancel',
+        text: 'Cancelar',
+        neutral: true,
+        icon: '↩️',
+        description: 'Continua o treino',
+      },
+    ];
+
+    // Bind methods
+    this.handleKeydown = this.handleKeydown.bind(this);
+    this.handleOutsideClick = this.handleOutsideClick.bind(this);
+  }
+
+  /**
+   * Exibe o modal e retorna uma Promise com a escolha do usuário
+   * @returns {Promise<string>} 'save-exit' | 'exit-no-save' | 'cancel'
+   */
+  async show() {
+    return new Promise((resolve) => {
+      this.resolve = resolve;
+      this.render();
+      this.setupEventListeners();
+      this.setupFocusTrap();
+      this.announceToScreenReader();
+    });
+  }
+
+  /**
+   * Renderiza o modal no DOM
+   */
+  render() {
+    const existingModal = document.getElementById('save-exit-modal');
+    if (existingModal) {
+      existingModal.remove();
     }
 
-    /**
-     * Exibe o modal e retorna uma Promise com a escolha do usuário
-     * @returns {Promise<string>} 'save-exit' | 'exit-no-save' | 'cancel'
-     */
-    async show() {
-        return new Promise((resolve) => {
-            this.resolve = resolve;
-            this.render();
-            this.setupEventListeners();
-            this.setupFocusTrap();
-            this.announceToScreenReader();
-        });
-    }
+    this.modalElement = this.createElement();
+    document.body.appendChild(this.modalElement);
 
-    /**
-     * Renderiza o modal no DOM
-     */
-    render() {
-        const existingModal = document.getElementById('save-exit-modal');
-        if (existingModal) {
-            existingModal.remove();
-        }
+    // Delay para animação
+    setTimeout(() => {
+      this.modalElement.classList.add('visible');
+      this.isVisible = true;
+    }, ComponentConfig.performance.modalDisplayTarget);
+  }
 
-        this.modalElement = this.createElement();
-        document.body.appendChild(this.modalElement);
-        
-        // Delay para animação
-        setTimeout(() => {
-            this.modalElement.classList.add('visible');
-            this.isVisible = true;
-        }, ComponentConfig.performance.modalDisplayTarget);
-    }
+  /**
+   * Cria o elemento do modal
+   */
+  createElement() {
+    const modal = document.createElement('div');
+    modal.id = 'save-exit-modal';
+    modal.className = 'modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'save-exit-title');
+    modal.setAttribute('aria-describedby', 'save-exit-description');
 
-    /**
-     * Cria o elemento do modal
-     */
-    createElement() {
-        const modal = document.createElement('div');
-        modal.id = 'save-exit-modal';
-        modal.className = 'modal-overlay';
-        modal.setAttribute('role', 'dialog');
-        modal.setAttribute('aria-modal', 'true');
-        modal.setAttribute('aria-labelledby', 'save-exit-title');
-        modal.setAttribute('aria-describedby', 'save-exit-description');
+    const workoutInfo = this.generateWorkoutSummary();
 
-        const workoutInfo = this.generateWorkoutSummary();
-        
-        modal.innerHTML = `
+    modal.innerHTML = `
             <div class="modal-backdrop" aria-hidden="true"></div>
             <div class="modal-container">
                 <div class="modal-content">
@@ -144,15 +144,17 @@ export class SaveExitModal {
             </div>
         `;
 
-        this.applyStyles(modal);
-        return modal;
-    }
+    this.applyStyles(modal);
+    return modal;
+  }
 
-    /**
-     * Renderiza os botões de ação
-     */
-    renderActionButtons() {
-        return this.options.map(option => `
+  /**
+   * Renderiza os botões de ação
+   */
+  renderActionButtons() {
+    return this.options
+      .map(
+        (option) => `
             <button 
                 type="button"
                 class="modal-btn ${this.getButtonClass(option)}"
@@ -166,200 +168,203 @@ export class SaveExitModal {
                     ${option.description}
                 </span>
             </button>
-        `).join('');
+        `
+      )
+      .join('');
+  }
+
+  /**
+   * Retorna a classe CSS apropriada para cada botão
+   */
+  getButtonClass(option) {
+    if (option.primary) return 'btn-primary';
+    if (option.destructive) return 'btn-destructive';
+    if (option.neutral) return 'btn-neutral';
+    return 'btn-secondary';
+  }
+
+  /**
+   * Gera sumário do treino atual
+   */
+  generateWorkoutSummary() {
+    const defaultSummary = {
+      timeElapsed: '0 min',
+      exercisesCompleted: '0 de 0',
+      progress: '0',
+    };
+
+    if (!this.workoutData) return defaultSummary;
+
+    try {
+      const elapsed = this.workoutData.startTime
+        ? Math.round((Date.now() - this.workoutData.startTime) / 60000)
+        : 0;
+
+      const completed = this.workoutData.exerciciosExecutados?.length || 0;
+      const total = this.workoutData.currentWorkout?.exercicios?.length || 0;
+      const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        timeElapsed: elapsed > 0 ? `${elapsed} min` : '< 1 min',
+        exercisesCompleted: `${completed} de ${total}`,
+        progress: progress.toString(),
+      };
+    } catch (error) {
+      console.error('[SaveExitModal] Erro ao gerar sumário:', error);
+      return defaultSummary;
     }
+  }
 
-    /**
-     * Retorna a classe CSS apropriada para cada botão
-     */
-    getButtonClass(option) {
-        if (option.primary) return 'btn-primary';
-        if (option.destructive) return 'btn-destructive';
-        if (option.neutral) return 'btn-neutral';
-        return 'btn-secondary';
-    }
+  /**
+   * Configura event listeners
+   */
+  setupEventListeners() {
+    // Click nos botões
+    this.modalElement.addEventListener('click', (e) => {
+      const action = e.target.closest('[data-action]')?.dataset.action;
+      if (action) {
+        this.handleAction(action);
+      }
+    });
 
-    /**
-     * Gera sumário do treino atual
-     */
-    generateWorkoutSummary() {
-        const defaultSummary = {
-            timeElapsed: '0 min',
-            exercisesCompleted: '0 de 0',
-            progress: '0'
-        };
+    // Keyboard navigation
+    document.addEventListener('keydown', this.handleKeydown);
 
-        if (!this.workoutData) return defaultSummary;
+    // Click fora do modal
+    this.modalElement.addEventListener('click', this.handleOutsideClick);
+  }
 
-        try {
-            const elapsed = this.workoutData.startTime 
-                ? Math.round((Date.now() - this.workoutData.startTime) / 60000)
-                : 0;
-            
-            const completed = this.workoutData.exerciciosExecutados?.length || 0;
-            const total = this.workoutData.currentWorkout?.exercicios?.length || 0;
-            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+  /**
+   * Configura focus trap para acessibilidade
+   */
+  setupFocusTrap() {
+    const focusableElements = this.modalElement.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
 
-            return {
-                timeElapsed: elapsed > 0 ? `${elapsed} min` : '< 1 min',
-                exercisesCompleted: `${completed} de ${total}`,
-                progress: progress.toString()
-            };
-        } catch (error) {
-            console.error('[SaveExitModal] Erro ao gerar sumário:', error);
-            return defaultSummary;
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    this.focusTrap = {
+      firstElement,
+      lastElement,
+      elements: focusableElements,
+    };
+
+    // Focar no primeiro elemento
+    setTimeout(() => {
+      firstElement?.focus();
+    }, ComponentConfig.accessibility.focusTrapDelay);
+  }
+
+  /**
+   * Manipula navegação por teclado
+   */
+  handleKeydown(e) {
+    if (!this.isVisible) return;
+
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        this.handleAction('cancel');
+        break;
+
+      case 'Tab':
+        this.handleTabNavigation(e);
+        break;
+
+      case 'Enter':
+        if (e.target.dataset.action) {
+          e.preventDefault();
+          this.handleAction(e.target.dataset.action);
         }
+        break;
     }
+  }
 
-    /**
-     * Configura event listeners
-     */
-    setupEventListeners() {
-        // Click nos botões
-        this.modalElement.addEventListener('click', (e) => {
-            const action = e.target.closest('[data-action]')?.dataset.action;
-            if (action) {
-                this.handleAction(action);
-            }
-        });
+  /**
+   * Manipula navegação por Tab (focus trap)
+   */
+  handleTabNavigation(e) {
+    const { firstElement, lastElement } = this.focusTrap;
 
-        // Keyboard navigation
-        document.addEventListener('keydown', this.handleKeydown);
-
-        // Click fora do modal
-        this.modalElement.addEventListener('click', this.handleOutsideClick);
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement.focus();
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement.focus();
     }
+  }
 
-    /**
-     * Configura focus trap para acessibilidade
-     */
-    setupFocusTrap() {
-        const focusableElements = this.modalElement.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        this.focusTrap = {
-            firstElement,
-            lastElement,
-            elements: focusableElements
-        };
-
-        // Focar no primeiro elemento
-        setTimeout(() => {
-            firstElement?.focus();
-        }, ComponentConfig.accessibility.focusTrapDelay);
+  /**
+   * Manipula cliques fora do modal
+   */
+  handleOutsideClick(e) {
+    if (e.target.classList.contains('modal-backdrop')) {
+      this.handleAction('cancel');
     }
+  }
 
-    /**
-     * Manipula navegação por teclado
-     */
-    handleKeydown(e) {
-        if (!this.isVisible) return;
+  /**
+   * Processa a ação selecionada pelo usuário
+   */
+  handleAction(action) {
+    if (!this.resolve) return;
 
-        switch (e.key) {
-            case 'Escape':
-                e.preventDefault();
-                this.handleAction('cancel');
-                break;
-                
-            case 'Tab':
-                this.handleTabNavigation(e);
-                break;
-                
-            case 'Enter':
-                if (e.target.dataset.action) {
-                    e.preventDefault();
-                    this.handleAction(e.target.dataset.action);
-                }
-                break;
-        }
-    }
+    console.log('[SaveExitModal] Ação selecionada:', action);
 
-    /**
-     * Manipula navegação por Tab (focus trap)
-     */
-    handleTabNavigation(e) {
-        const { firstElement, lastElement } = this.focusTrap;
-        
-        if (e.shiftKey && document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement.focus();
-        } else if (!e.shiftKey && document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement.focus();
-        }
-    }
+    this.close();
+    this.resolve(action);
+  }
 
-    /**
-     * Manipula cliques fora do modal
-     */
-    handleOutsideClick(e) {
-        if (e.target.classList.contains('modal-backdrop')) {
-            this.handleAction('cancel');
-        }
-    }
+  /**
+   * Fecha o modal e limpa recursos
+   */
+  close() {
+    if (!this.isVisible) return;
 
-    /**
-     * Processa a ação selecionada pelo usuário
-     */
-    handleAction(action) {
-        if (!this.resolve) return;
+    this.isVisible = false;
 
-        console.log('[SaveExitModal] Ação selecionada:', action);
-        
-        this.close();
-        this.resolve(action);
-    }
+    // Remover event listeners
+    document.removeEventListener('keydown', this.handleKeydown);
 
-    /**
-     * Fecha o modal e limpa recursos
-     */
-    close() {
-        if (!this.isVisible) return;
+    // Animação de saída
+    this.modalElement.classList.remove('visible');
 
-        this.isVisible = false;
-        
-        // Remover event listeners
-        document.removeEventListener('keydown', this.handleKeydown);
-        
-        // Animação de saída
-        this.modalElement.classList.remove('visible');
-        
-        setTimeout(() => {
-            if (this.modalElement && this.modalElement.parentNode) {
-                this.modalElement.parentNode.removeChild(this.modalElement);
-            }
-            this.modalElement = null;
-        }, ComponentConfig.modals.animationDuration);
-    }
+    setTimeout(() => {
+      if (this.modalElement && this.modalElement.parentNode) {
+        this.modalElement.parentNode.removeChild(this.modalElement);
+      }
+      this.modalElement = null;
+    }, ComponentConfig.modals.animationDuration);
+  }
 
-    /**
-     * Anuncia o modal para leitores de tela
-     */
-    announceToScreenReader() {
-        setTimeout(() => {
-            const announcement = document.createElement('div');
-            announcement.setAttribute('aria-live', 'polite');
-            announcement.setAttribute('aria-atomic', 'true');
-            announcement.className = 'sr-only';
-            announcement.textContent = 'Modal de confirmação de saída aberto. Use Tab para navegar pelas opções.';
-            
-            document.body.appendChild(announcement);
-            
-            setTimeout(() => {
-                document.body.removeChild(announcement);
-            }, ComponentConfig.accessibility.announceDelay);
-        }, ComponentConfig.accessibility.announceDelay);
-    }
+  /**
+   * Anuncia o modal para leitores de tela
+   */
+  announceToScreenReader() {
+    setTimeout(() => {
+      const announcement = document.createElement('div');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.setAttribute('aria-atomic', 'true');
+      announcement.className = 'sr-only';
+      announcement.textContent =
+        'Modal de confirmação de saída aberto. Use Tab para navegar pelas opções.';
 
-    /**
-     * Aplica estilos CSS ao modal
-     */
-    applyStyles(modal) {
-        const styles = `
+      document.body.appendChild(announcement);
+
+      setTimeout(() => {
+        document.body.removeChild(announcement);
+      }, ComponentConfig.accessibility.announceDelay);
+    }, ComponentConfig.accessibility.announceDelay);
+  }
+
+  /**
+   * Aplica estilos CSS ao modal
+   */
+  applyStyles(modal) {
+    const styles = `
             .modal-overlay {
                 position: fixed;
                 top: 0;
@@ -595,20 +600,20 @@ export class SaveExitModal {
             }
         `;
 
-        // Adicionar estilos se ainda não existem
-        if (!document.getElementById('save-exit-modal-styles')) {
-            const styleSheet = document.createElement('style');
-            styleSheet.id = 'save-exit-modal-styles';
-            styleSheet.textContent = styles;
-            document.head.appendChild(styleSheet);
-        }
+    // Adicionar estilos se ainda não existem
+    if (!document.getElementById('save-exit-modal-styles')) {
+      const styleSheet = document.createElement('style');
+      styleSheet.id = 'save-exit-modal-styles';
+      styleSheet.textContent = styles;
+      document.head.appendChild(styleSheet);
     }
+  }
 }
 
 // Função utilitária para uso direto
 export async function showSaveExitModal(workoutData) {
-    const modal = new SaveExitModal(workoutData);
-    return await modal.show();
+  const modal = new SaveExitModal(workoutData);
+  return await modal.show();
 }
 
 export default SaveExitModal;

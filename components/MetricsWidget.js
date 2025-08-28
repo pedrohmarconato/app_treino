@@ -1,8 +1,8 @@
 /**
  * 📊 WIDGET DE MÉTRICAS AVANÇADAS - Metrics Widget
- * 
+ *
  * FUNÇÃO: Exibir métricas detalhadas de progresso do usuário com visualizações interativas e animadas.
- * 
+ *
  * RESPONSABILIDADES:
  * - Buscar e processar dados de estatísticas do usuário (treinos, progresso, sequências)
  * - Renderizar métricas principais (treinos completos, semana atual, progresso geral)
@@ -11,7 +11,7 @@
  * - Comparar desempenho atual com metas estabelecidas
  * - Aplicar animações suaves para contadores e barras de progresso
  * - Fornecer feedback visual interativo (hover effects, pulsos)
- * 
+ *
  * RECURSOS:
  * - Animações de contadores incrementais para engajamento
  * - Barras de progresso com efeitos shimmer
@@ -20,7 +20,7 @@
  * - Integração com AppState para atualizações em tempo real
  * - Design adaptativo para diferentes tamanhos de tela
  * - Tratamento de erros com interface de retry
- * 
+ *
  * MÉTRICAS EXIBIDAS:
  * - Treinos Completos: quantidade total de treinos finalizados
  * - Semana Atual: posição no protocolo de treinamento
@@ -28,7 +28,7 @@
  * - Dias Consecutivos: streak atual de treinos
  * - Melhor Sequência: maior streak já alcançada
  * - Peso Médio: média de carga utilizada nos exercícios
- * 
+ *
  * INTEGRAÇÃO: Usado no dashboard principal, carregado dinamicamente pelo template manager
  */
 
@@ -37,110 +37,111 @@ import AppState from '../state/appState.js';
 import { fetchDadosIndicadores } from '../services/workoutService.js';
 
 export class MetricsWidget {
-    constructor(containerId) {
-        this.container = document.getElementById(containerId);
-        this.metrics = null;
-        this.animationFrameId = null;
+  constructor(containerId) {
+    this.container = document.getElementById(containerId);
+    this.metrics = null;
+    this.animationFrameId = null;
+  }
+
+  async init() {
+    if (!this.container) {
+      console.error('[MetricsWidget] Container não encontrado');
+      return;
     }
 
-    async init() {
-        if (!this.container) {
-            console.error('[MetricsWidget] Container não encontrado');
-            return;
-        }
+    try {
+      await this.loadMetrics();
+      this.render();
+      this.startAnimations();
+      this.setupEventListeners();
+    } catch (error) {
+      console.error('[MetricsWidget] Erro na inicialização:', error);
+      this.renderError();
+    }
+  }
 
-        try {
-            await this.loadMetrics();
-            this.render();
-            this.startAnimations();
-            this.setupEventListeners();
-        } catch (error) {
-            console.error('[MetricsWidget] Erro na inicialização:', error);
-            this.renderError();
-        }
+  async loadMetrics() {
+    const currentUser = AppState.get('currentUser');
+    if (!currentUser) throw new Error('Usuário não encontrado');
+
+    try {
+      const dados = await fetchDadosIndicadores(currentUser.id);
+      this.metrics = this.processMetrics(dados);
+    } catch (error) {
+      console.warn('[MetricsWidget] Usando dados mock devido ao erro:', error);
+      this.metrics = this.getMockMetrics();
+    }
+  }
+
+  processMetrics(dados) {
+    const estatisticas = dados?.estatisticas || {};
+    const comparacao = dados?.comparacao || [];
+
+    // Encontrar métricas do usuário atual
+    const currentUser = AppState.get('currentUser');
+    const userComparison = comparacao.find((c) => c.usuario === currentUser.nome) || {};
+
+    return {
+      treinosCompletos: estatisticas.total_treinos_realizados || 0,
+      semanaAtual: estatisticas.semana_atual || 1,
+      progressoGeral: estatisticas.percentual_progresso || 0,
+      diasConsecutivos: estatisticas.dias_consecutivos || 0,
+      melhorSequencia: estatisticas.melhor_sequencia || 0,
+      pesoMedio: userComparison.peso_medio || 0,
+      progressoSemanal: this.calculateWeeklyProgress(),
+      metaDiaria: 1,
+      metaSemanal: 4,
+    };
+  }
+
+  getMockMetrics() {
+    const weekPlan = AppState.get('weekPlan');
+    const diasComTreino = weekPlan
+      ? Object.values(weekPlan).filter((dia) => dia !== 'folga').length
+      : 3;
+
+    return {
+      treinosCompletos: Math.floor(Math.random() * 8),
+      semanaAtual: 1,
+      progressoGeral: Math.min((diasComTreino / 7) * 100, 100),
+      diasConsecutivos: Math.floor(Math.random() * 5),
+      melhorSequencia: Math.floor(Math.random() * 10) + 5,
+      pesoMedio: 45 + Math.random() * 30,
+      progressoSemanal: Math.random() * 100,
+      metaDiaria: 1,
+      metaSemanal: 4,
+    };
+  }
+
+  calculateWeeklyProgress() {
+    const hoje = new Date().getDay();
+    const diasPassados = hoje === 0 ? 7 : hoje; // Domingo = 7
+    const weekPlan = AppState.get('weekPlan');
+
+    if (!weekPlan) return 0;
+
+    let treinosEsperados = 0;
+    let treinosCompletos = 0;
+
+    for (let i = 0; i < diasPassados; i++) {
+      const diaPlan = weekPlan[i];
+      if (diaPlan && diaPlan !== 'folga') {
+        treinosEsperados++;
+        // Simular conclusão de treinos passados
+        if (Math.random() > 0.3) treinosCompletos++;
+      }
     }
 
-    async loadMetrics() {
-        const currentUser = AppState.get('currentUser');
-        if (!currentUser) throw new Error('Usuário não encontrado');
+    return treinosEsperados > 0 ? (treinosCompletos / treinosEsperados) * 100 : 0;
+  }
 
-        try {
-            const dados = await fetchDadosIndicadores(currentUser.id);
-            this.metrics = this.processMetrics(dados);
-        } catch (error) {
-            console.warn('[MetricsWidget] Usando dados mock devido ao erro:', error);
-            this.metrics = this.getMockMetrics();
-        }
+  render() {
+    if (!this.metrics) {
+      this.renderError();
+      return;
     }
 
-    processMetrics(dados) {
-        const estatisticas = dados?.estatisticas || {};
-        const comparacao = dados?.comparacao || [];
-        
-        // Encontrar métricas do usuário atual
-        const currentUser = AppState.get('currentUser');
-        const userComparison = comparacao.find(c => c.usuario === currentUser.nome) || {};
-        
-        return {
-            treinosCompletos: estatisticas.total_treinos_realizados || 0,
-            semanaAtual: estatisticas.semana_atual || 1,
-            progressoGeral: estatisticas.percentual_progresso || 0,
-            diasConsecutivos: estatisticas.dias_consecutivos || 0,
-            melhorSequencia: estatisticas.melhor_sequencia || 0,
-            pesoMedio: userComparison.peso_medio || 0,
-            progressoSemanal: this.calculateWeeklyProgress(),
-            metaDiaria: 1,
-            metaSemanal: 4
-        };
-    }
-
-    getMockMetrics() {
-        const weekPlan = AppState.get('weekPlan');
-        const diasComTreino = weekPlan ? 
-            Object.values(weekPlan).filter(dia => dia !== 'folga').length : 3;
-        
-        return {
-            treinosCompletos: Math.floor(Math.random() * 8),
-            semanaAtual: 1,
-            progressoGeral: Math.min((diasComTreino / 7) * 100, 100),
-            diasConsecutivos: Math.floor(Math.random() * 5),
-            melhorSequencia: Math.floor(Math.random() * 10) + 5,
-            pesoMedio: 45 + Math.random() * 30,
-            progressoSemanal: Math.random() * 100,
-            metaDiaria: 1,
-            metaSemanal: 4
-        };
-    }
-
-    calculateWeeklyProgress() {
-        const hoje = new Date().getDay();
-        const diasPassados = hoje === 0 ? 7 : hoje; // Domingo = 7
-        const weekPlan = AppState.get('weekPlan');
-        
-        if (!weekPlan) return 0;
-        
-        let treinosEsperados = 0;
-        let treinosCompletos = 0;
-        
-        for (let i = 0; i < diasPassados; i++) {
-            const diaPlan = weekPlan[i];
-            if (diaPlan && diaPlan !== 'folga') {
-                treinosEsperados++;
-                // Simular conclusão de treinos passados
-                if (Math.random() > 0.3) treinosCompletos++;
-            }
-        }
-        
-        return treinosEsperados > 0 ? (treinosCompletos / treinosEsperados) * 100 : 0;
-    }
-
-    render() {
-        if (!this.metrics) {
-            this.renderError();
-            return;
-        }
-
-        this.container.innerHTML = `
+    this.container.innerHTML = `
             <div class="metrics-widget">
                 <!-- Métricas Principais -->
                 <div class="main-metrics">
@@ -234,116 +235,122 @@ export class MetricsWidget {
             </div>
         `;
 
-        this.updateValues();
-    }
+    this.updateValues();
+  }
 
-    updateValues() {
-        // Animar contadores
-        this.animateCounter('treinos-valor', 0, this.metrics.treinosCompletos, 1000);
-        this.animateCounter('semana-valor', 0, this.metrics.semanaAtual, 800);
-        this.animateCounter('consecutivos-valor', 0, this.metrics.diasConsecutivos, 600);
-        this.animateCounter('sequencia-valor', 0, this.metrics.melhorSequencia, 1200);
-        
-        // Atualizar valores diretos
-        this.updateElement('progresso-valor', `${Math.round(this.metrics.progressoGeral)}%`);
-        this.updateElement('peso-valor', `${Math.round(this.metrics.pesoMedio)}kg`);
-        this.updateElement('weekly-progress-text', `${Math.round(this.metrics.progressoSemanal)}%`);
-        this.updateElement('user-comparison-value', this.metrics.treinosCompletos);
+  updateValues() {
+    // Animar contadores
+    this.animateCounter('treinos-valor', 0, this.metrics.treinosCompletos, 1000);
+    this.animateCounter('semana-valor', 0, this.metrics.semanaAtual, 800);
+    this.animateCounter('consecutivos-valor', 0, this.metrics.diasConsecutivos, 600);
+    this.animateCounter('sequencia-valor', 0, this.metrics.melhorSequencia, 1200);
 
-        // Animar barras de progresso
+    // Atualizar valores diretos
+    this.updateElement('progresso-valor', `${Math.round(this.metrics.progressoGeral)}%`);
+    this.updateElement('peso-valor', `${Math.round(this.metrics.pesoMedio)}kg`);
+    this.updateElement('weekly-progress-text', `${Math.round(this.metrics.progressoSemanal)}%`);
+    this.updateElement('user-comparison-value', this.metrics.treinosCompletos);
+
+    // Animar barras de progresso
+    setTimeout(() => {
+      this.animateProgressBar(
+        'treinos-progress',
+        (this.metrics.treinosCompletos / this.metrics.metaSemanal) * 100
+      );
+      this.animateProgressBar('progresso-progress', this.metrics.progressoGeral);
+      this.animateProgressBar('weekly-progress-fill', this.metrics.progressoSemanal);
+      this.animateProgressBar(
+        'user-comparison-bar',
+        (this.metrics.treinosCompletos / this.metrics.metaSemanal) * 100
+      );
+    }, 500);
+  }
+
+  animateCounter(elementId, start, end, duration) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= end) {
+        current = end;
+        clearInterval(timer);
+      }
+      element.textContent = Math.round(current);
+    }, 16);
+  }
+
+  animateProgressBar(elementId, percentage) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    element.style.width = '0%';
+    element.style.transition = 'width 1s ease-out';
+
+    setTimeout(() => {
+      element.style.width = `${Math.min(percentage, 100)}%`;
+    }, 100);
+  }
+
+  startAnimations() {
+    // Animar entrada dos cards
+    const cards = this.container.querySelectorAll('.metric-card, .metric-item');
+    cards.forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+
+      setTimeout(() => {
+        card.style.transition = 'all 0.5s ease-out';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, index * 100);
+    });
+
+    // Efeito de pulso nos ícones
+    setInterval(() => {
+      const icons = this.container.querySelectorAll('.metric-icon');
+      icons.forEach((icon) => {
+        icon.style.animation = 'pulse 0.5s ease-in-out';
         setTimeout(() => {
-            this.animateProgressBar('treinos-progress', (this.metrics.treinosCompletos / this.metrics.metaSemanal) * 100);
-            this.animateProgressBar('progresso-progress', this.metrics.progressoGeral);
-            this.animateProgressBar('weekly-progress-fill', this.metrics.progressoSemanal);
-            this.animateProgressBar('user-comparison-bar', (this.metrics.treinosCompletos / this.metrics.metaSemanal) * 100);
+          icon.style.animation = '';
         }, 500);
-    }
+      });
+    }, 5000);
+  }
 
-    animateCounter(elementId, start, end, duration) {
-        const element = document.getElementById(elementId);
-        if (!element) return;
+  setupEventListeners() {
+    // Listener para mudanças no estado
+    AppState.subscribe('userMetrics', (newMetrics) => {
+      if (newMetrics) {
+        this.metrics = { ...this.metrics, ...newMetrics };
+        this.updateValues();
+      }
+    });
 
-        const range = end - start;
-        const increment = range / (duration / 16);
-        let current = start;
+    // Hover effects nos cards
+    const cards = this.container.querySelectorAll('.metric-card');
+    cards.forEach((card) => {
+      card.addEventListener('mouseenter', () => {
+        card.style.transform = 'translateY(-4px) scale(1.02)';
+      });
 
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= end) {
-                current = end;
-                clearInterval(timer);
-            }
-            element.textContent = Math.round(current);
-        }, 16);
-    }
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'translateY(0) scale(1)';
+      });
+    });
+  }
 
-    animateProgressBar(elementId, percentage) {
-        const element = document.getElementById(elementId);
-        if (!element) return;
+  updateElement(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  }
 
-        element.style.width = '0%';
-        element.style.transition = 'width 1s ease-out';
-        
-        setTimeout(() => {
-            element.style.width = `${Math.min(percentage, 100)}%`;
-        }, 100);
-    }
-
-    startAnimations() {
-        // Animar entrada dos cards
-        const cards = this.container.querySelectorAll('.metric-card, .metric-item');
-        cards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                card.style.transition = 'all 0.5s ease-out';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 100);
-        });
-
-        // Efeito de pulso nos ícones
-        setInterval(() => {
-            const icons = this.container.querySelectorAll('.metric-icon');
-            icons.forEach(icon => {
-                icon.style.animation = 'pulse 0.5s ease-in-out';
-                setTimeout(() => {
-                    icon.style.animation = '';
-                }, 500);
-            });
-        }, 5000);
-    }
-
-    setupEventListeners() {
-        // Listener para mudanças no estado
-        AppState.subscribe('userMetrics', (newMetrics) => {
-            if (newMetrics) {
-                this.metrics = { ...this.metrics, ...newMetrics };
-                this.updateValues();
-            }
-        });
-
-        // Hover effects nos cards
-        const cards = this.container.querySelectorAll('.metric-card');
-        cards.forEach(card => {
-            card.addEventListener('mouseenter', () => {
-                card.style.transform = 'translateY(-4px) scale(1.02)';
-            });
-            
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-    }
-
-    updateElement(id, value) {
-        const element = document.getElementById(id);
-        if (element) element.textContent = value;
-    }
-
-    renderError() {
-        this.container.innerHTML = `
+  renderError() {
+    this.container.innerHTML = `
             <div class="metrics-error">
                 <div class="error-icon">⚠️</div>
                 <p>Erro ao carregar métricas</p>
@@ -352,13 +359,13 @@ export class MetricsWidget {
                 </button>
             </div>
         `;
-    }
+  }
 
-    destroy() {
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-        }
+  destroy() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
     }
+  }
 }
 
 // CSS para o widget de métricas
