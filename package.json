@@ -1,7 +1,7 @@
 {
   "name": "app-treino",
   "version": "5.6.1",
-  "description": "Aplicação web completa para gerenciamento de treinos físicos",
+  "description": "Aplica\u00e7\u00e3o web completa para gerenciamento de treinos f\u00edsicos",
   "keywords": [
     "fitness",
     "workout",
@@ -104,48 +104,7 @@
       "maxSize": "50 kB"
     }
   ],
-  "type": "module"
-              "@babel/preset-env",
-              {
-                "targets": {
-                  "node": "current"
-                }
-              }
-            ]
-          ]
-        }
-      ]
-    },
-    "setupFilesAfterEnv": [
-      "<rootDir>/tests/setup.js"
-    ],
-    "testMatch": [
-      "<rootDir>/tests/**/*.test.js",
-      "<rootDir>/tests/**/*.spec.js"
-    ],
-    "testPathIgnorePatterns": [
-      "<rootDir>/templates/*.spec.js",
-      "<rootDir>/tests/workoutE2E.test.js"
-    ],
-    "collectCoverageFrom": [
-      "**/*.js",
-      "!**/node_modules/**",
-      "!**/dist/**",
-      "!**/coverage/**",
-      "!**/templates/*.spec.js"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "branches": 70,
-        "functions": 70,
-        "lines": 70,
-        "statements": 70
-      }
-    },
-    "moduleNameMapping": {
-      "^@/(.*)$": "<rootDir>/$1"
-    }
-  },
+  "type": "module",
   "eslintConfig": {
     "env": {
       "browser": true,
