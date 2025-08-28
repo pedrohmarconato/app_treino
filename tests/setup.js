@@ -1,13 +1,14 @@
 // Jest Setup File
-// Configurações globais para todos os testes
+// Configuraï¿½ï¿½es globais para todos os testes
 
 // Mock do TextEncoder/TextDecoder para ambientes Node
-if (typeof TextEncoder === 'undefined') {
-  global.TextEncoder = require('util').TextEncoder;
+const { TextEncoder, TextDecoder } = require('util');
+if (typeof global.TextEncoder === 'undefined') {
+  global.TextEncoder = TextEncoder;
 }
 
-if (typeof TextDecoder === 'undefined') {
-  global.TextDecoder = require('util').TextDecoder;
+if (typeof global.TextDecoder === 'undefined') {
+  global.TextDecoder = TextDecoder;
 }
 
 // Mock do localStorage
