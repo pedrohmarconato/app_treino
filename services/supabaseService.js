@@ -63,6 +63,14 @@ async function getSupabaseClient() {
     return null;
   }
 
+  // Verificar se já existe um cliente criado pelo config.js
+  if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+    supabase = window.supabaseClient;
+    console.log('[supabaseService] ✅ Reutilizando cliente Supabase do config.js');
+    return supabase;
+  } 
+  
+  // Tentar criar um novo cliente se necessário
   if (window.supabase && typeof window.supabase.createClient === 'function') {
     try {
       supabase = window.supabase.createClient(
@@ -79,6 +87,22 @@ async function getSupabaseClient() {
       console.error('[supabaseService] ❌ Erro ao criar cliente Supabase:', error);
       return null;
     }
+  } else if (window.createClient && typeof window.createClient === 'function') {
+    try {
+      supabase = window.createClient(
+        window.SUPABASE_CONFIG.url,
+        window.SUPABASE_CONFIG.key,
+        {
+          realtime: { enabled: false },
+          auth: { persistSession: false, autoRefreshToken: false },
+        }
+      );
+      console.log('[supabaseService] ✅ Cliente Supabase criado com sucesso (createClient global)');
+      return supabase;
+    } catch (error) {
+      console.error('[supabaseService] ❌ Erro ao criar cliente Supabase:', error);
+      return null;
+    }
   } else if (window.supabase && typeof window.supabase.from === 'function') {
     // supabase already initialized (client), reuse it
     supabase = window.supabase;
@@ -86,6 +110,9 @@ async function getSupabaseClient() {
     return supabase;
   } else {
     console.warn('[supabaseService] ⚠️ Biblioteca Supabase não encontrada');
+    console.log('[supabaseService] Debug - window.supabase:', window.supabase);
+    console.log('[supabaseService] Debug - window.createClient:', window.createClient);
+    console.log('[supabaseService] Debug - window.supabaseClient:', window.supabaseClient);
     return null;
   }
 }

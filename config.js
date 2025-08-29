@@ -36,29 +36,43 @@ if (typeof window !== 'undefined' && window.supabase && window.SUPABASE_CONFIG) 
   console.log('[config.js] 🔧 Inicializando cliente Supabase...');
 
   try {
-    // Criar cliente Supabase
-    window.supabase = window.supabase.createClient(
-      window.SUPABASE_CONFIG.url,
-      window.SUPABASE_CONFIG.key
-    );
+    // Verificar se createClient existe
+    if (typeof window.supabase.createClient === 'function') {
+      // Criar cliente Supabase e armazenar em variável diferente
+      window.supabaseClient = window.supabase.createClient(
+        window.SUPABASE_CONFIG.url,
+        window.SUPABASE_CONFIG.key
+      );
+    } else if (typeof window.createClient === 'function') {
+      // Tentar createClient direto no window
+      window.supabaseClient = window.createClient(
+        window.SUPABASE_CONFIG.url,
+        window.SUPABASE_CONFIG.key
+      );
+    } else {
+      console.warn('[config.js] ⚠️ createClient não encontrado, mantendo supabase original');
+    }
 
     console.log('[config.js] ✅ Cliente Supabase inicializado com sucesso');
 
     // Testar conexão básica
-    window.supabase
-      .from('usuarios')
-      .select('count')
-      .limit(1)
-      .then((result) => {
-        if (result.error) {
-          console.warn('[config.js] ⚠️ Teste de conexão falhou:', result.error.message);
-        } else {
-          console.log('[config.js] ✅ Conexão com banco confirmada');
-        }
-      })
-      .catch((error) => {
-        console.warn('[config.js] ⚠️ Erro no teste de conexão:', error.message);
-      });
+    const clientToTest = window.supabaseClient || window.supabase;
+    if (clientToTest && typeof clientToTest.from === 'function') {
+      clientToTest
+        .from('usuarios')
+        .select('count')
+        .limit(1)
+        .then((result) => {
+          if (result.error) {
+            console.warn('[config.js] ⚠️ Teste de conexão falhou:', result.error.message);
+          } else {
+            console.log('[config.js] ✅ Conexão com banco confirmada');
+          }
+        })
+        .catch((error) => {
+          console.warn('[config.js] ⚠️ Erro no teste de conexão:', error.message);
+        });
+    }
   } catch (error) {
     console.error('[config.js] ❌ Erro ao inicializar Supabase:', error);
   }
