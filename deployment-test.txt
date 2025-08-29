@@ -1,2 +1,0 @@
-Deploy test - ${new Date().toISOString()}
-This file verifies that the deployment is working correctly.
