@@ -90,11 +90,13 @@ export async function renderTemplate(templateName, container = 'app') {
     switch (templateName) {
       case 'login': {
         // Evitar múltiplas renderizações do login
-        if (document.getElementById('login-screen')) {
+        const existingLogin = document.getElementById('login-screen');
+        if (existingLogin) {
           console.warn(
-            '[renderTemplate] Login já está presente no DOM, ignorando nova renderização.'
+            '[renderTemplate] Login já está presente no DOM, garantindo visibilidade.'
           );
-          break;
+          existingLogin.classList.add('active');
+          return;
         }
         console.log('[renderTemplate] Renderizando login');
         containerEl.innerHTML = loginTemplate();
