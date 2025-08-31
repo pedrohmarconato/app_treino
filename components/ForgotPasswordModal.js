@@ -254,13 +254,13 @@ export default class ForgotPasswordModal extends BaseModal {
       // Enviar email de recuperação
       const resultado = await resetPassword(email);
 
-      if (resultado.error) {
+      if (!resultado.success && resultado.error) {
         throw resultado.error;
       }
 
-      // Sucesso
-      console.log('[ForgotPasswordModal] ✅ Email enviado com sucesso');
-      this.showSuccess(email);
+      // Sempre mostrar sucesso para não expor se email existe
+      console.log('[ForgotPasswordModal] ✅ Processo concluído');
+      this.showSuccess(email, resultado.message || 'Se o email estiver cadastrado, você receberá as instruções');
 
       // Track evento sucesso
       if (window.trackEvent) {
@@ -302,7 +302,7 @@ export default class ForgotPasswordModal extends BaseModal {
   /**
    * Mostrar tela de sucesso
    */
-  showSuccess(email) {
+  showSuccess(email, message = null) {
     const domain = email.split('@')[1];
 
     const successHTML = `
@@ -322,7 +322,7 @@ export default class ForgotPasswordModal extends BaseModal {
                 
                 <div class="modal-body success-body">
                     <div class="success-message">
-                        <p>📧 Enviamos um link de recuperação para:</p>
+                        <p>📧 ${message || 'Enviamos um link de recuperação para:'}</p>
                         <p class="email-sent"><strong>${email}</strong></p>
                         
                         <div class="instructions">

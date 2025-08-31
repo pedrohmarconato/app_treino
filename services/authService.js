@@ -341,16 +341,7 @@ export async function resetPassword(email) {
       throw new Error('Formato de email inválido');
     }
 
-    // Verificar se o usuário existe antes de enviar reset
-    console.log('[authService] 🔍 Verificando se usuário existe...');
-    const userExists = await checkEmailExists(email);
-
-    if (!userExists) {
-      console.log('[authService] ❌ Email não encontrado no sistema');
-      throw new Error('User not found');
-    }
-
-    // Enviar email de reset com configurações melhoradas
+    // Obter cliente Supabase
     let client = window.supabaseClient || window.supabase;
     
     // Se não encontrou, tentar obter via getSupabaseClient
@@ -362,9 +353,20 @@ export async function resetPassword(email) {
     if (!client || !client.auth) {
       throw new Error('Cliente Supabase não inicializado');
     }
+
+    // Determinar URL de redirecionamento baseado no ambiente
+    const isProduction = window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
+    const redirectTo = isProduction 
+      ? 'https://app-treino-pmarconatos-projects.vercel.app/reset-password'
+      : `${window.location.origin}/reset-password`;
     
+    console.log('[authService] 📧 Enviando email de reset para:', email);
+    console.log('[authService] 🔗 Redirect URL:', redirectTo);
+    
+    // Enviar email de reset - O Supabase já verifica se o email existe
     const { data, error } = await client.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password?email=${encodeURIComponent(email)}`,
+      redirectTo: `${redirectTo}?email=${encodeURIComponent(email)}`,
       captchaToken: null, // Pode ser usado para captcha se necessário
     });
 
@@ -376,31 +378,41 @@ export async function resetPassword(email) {
         throw new Error(
           'Muitas tentativas de reset. Aguarde alguns minutos antes de tentar novamente.'
         );
-      } else if (error.message?.includes('User not found')) {
-        throw new Error('Email não encontrado em nosso sistema');
       } else if (error.message?.includes('Invalid email')) {
         throw new Error('Email inválido');
       } else {
-        throw new Error(error.message || 'Erro ao enviar email de recuperação');
+        // Não expor se o email existe ou não por segurança
+        throw new Error('Se o email estiver cadastrado, você receberá as instruções de recuperação');
       }
     }
 
-    console.log('[authService] ✅ Email de reset enviado com sucesso');
+    console.log('[authService] ✅ Email de reset processado com sucesso');
 
-    // Retornar dados úteis para o modal
+    // Sempre retornar sucesso para não expor se o email existe
     return {
       success: true,
       email: email,
-      message: 'Email de recuperação enviado com sucesso',
+      message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação',
       data: data,
     };
   } catch (error) {
     console.error('[authService] ❌ Erro no reset de senha:', error);
 
+    // Para erros de validação, retornar mensagem específica
+    if (error.message === 'Formato de email inválido' || 
+        error.message === 'Cliente Supabase não inicializado') {
+      return {
+        success: false,
+        error: error,
+        message: error.message,
+      };
+    }
+
+    // Para outros erros, retornar mensagem genérica por segurança
     return {
-      success: false,
-      error: error,
-      message: error.message || 'Erro desconhecido',
+      success: true,
+      email: email,
+      message: 'Se o email estiver cadastrado, você receberá as instruções de recuperação',
     };
   }
 }
