@@ -53,7 +53,7 @@ let connectionStatus = {
 let supabase;
 
 // Função para obter cliente Supabase
-async function getSupabaseClient() {
+export async function getSupabaseClient() {
   if (supabase) return supabase;
 
   await waitForSupabaseConfig();
@@ -349,7 +349,8 @@ export async function query(table, options = {}) {
 
 export async function insert(table, data) {
   // Verificar se o cliente Supabase existe
-  if (!supabase) {
+  const client = await getSupabaseClient();
+  if (!client) {
     console.error('[insert] Cliente Supabase não está disponível');
     return {
       data: null,
@@ -365,7 +366,7 @@ export async function insert(table, data) {
     console.log(`[insert] 📄 DADOS PARA INSERIR:`, JSON.stringify(data, null, 2));
     console.log(`[insert] 📊 QUANTIDADE DE REGISTROS:`, Array.isArray(data) ? data.length : 1);
 
-    const { data: result, error } = await supabase.from(table).insert(data).select();
+    const { data: result, error } = await client.from(table).insert(data).select();
 
     if (error) {
       console.error(`[insert] ❌ ERRO do Supabase na tabela ${table}:`, error);
@@ -387,7 +388,8 @@ export async function insert(table, data) {
 
 export async function update(table, data, filters) {
   // Verificar se o cliente Supabase existe
-  if (!supabase) {
+  const client = await getSupabaseClient();
+  if (!client) {
     console.error('[update] Cliente Supabase não está disponível');
     return {
       data: null,
@@ -401,7 +403,7 @@ export async function update(table, data, filters) {
   try {
     console.log(`[supabaseService] update chamado:`, { table, data, filters });
 
-    let q = supabase.from(table).update(data);
+    let q = client.from(table).update(data);
 
     // Se filters é um número, assume que é um ID
     if (typeof filters === 'number' || typeof filters === 'string') {
@@ -445,7 +447,12 @@ export async function update(table, data, filters) {
 
 export async function upsert(table, data, options = {}) {
   try {
-    const { data: result, error } = await supabase.from(table).upsert(data, options).select();
+    const client = await getSupabaseClient();
+    if (!client) {
+      throw new Error('Cliente Supabase não inicializado');
+    }
+    
+    const { data: result, error } = await client.from(table).upsert(data, options).select();
 
     if (error) throw error;
     return { data: result, error: null };

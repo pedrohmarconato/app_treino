@@ -18,7 +18,7 @@
  * - getCurrentUser(): Obter usuário logado
  */
 
-import { query, update } from './supabaseService.js';
+import { query, update, getSupabaseClient } from './supabaseService.js';
 
 /**
  * Fazer login com email e senha
@@ -27,7 +27,12 @@ export async function signIn(email, password) {
   console.log('[authService] 🔐 Tentando login para:', email);
 
   try {
-    const { data, error } = await window.supabase.auth.signInWithPassword({
+    const client = window.supabaseClient || window.supabase;
+    if (!client || !client.auth) {
+      throw new Error('Cliente Supabase não inicializado');
+    }
+    
+    const { data, error } = await client.auth.signInWithPassword({
       email: email,
       password: password,
     });
@@ -76,8 +81,13 @@ export async function signUp(email, password, userData) {
   console.log('[authService] 🆕 Cadastrando usuário:', email);
 
   try {
+    const client = window.supabaseClient || window.supabase;
+    if (!client || !client.auth) {
+      throw new Error('Cliente Supabase não inicializado');
+    }
+    
     // 1. Criar usuário no Supabase Auth
-    const { data, error } = await window.supabase.auth.signUp({
+    const { data, error } = await client.auth.signUp({
       email: email,
       password: password,
       options: {
@@ -144,7 +154,12 @@ export async function signOut() {
   console.log('[authService] 🚪 Fazendo logout...');
 
   try {
-    const { error } = await window.supabase.auth.signOut();
+    const client = window.supabaseClient || window.supabase;
+    if (!client || !client.auth) {
+      throw new Error('Cliente Supabase não inicializado');
+    }
+    
+    const { error } = await client.auth.signOut();
 
     if (error) {
       console.error('[authService] ❌ Erro no logout:', error);
@@ -169,9 +184,14 @@ export async function signOut() {
  */
 export async function getCurrentUser() {
   try {
+    const client = window.supabaseClient || window.supabase;
+    if (!client || !client.auth) {
+      return null;
+    }
+    
     const {
       data: { user },
-    } = await window.supabase.auth.getUser();
+    } = await client.auth.getUser();
 
     if (!user) {
       return null;
@@ -224,7 +244,12 @@ export async function migrateExistingUser(userId, password) {
     console.log('[authService] 📧 Criando auth para:', usuario.email);
 
     // 2. Criar no Supabase Auth
-    const { data, error } = await window.supabase.auth.signUp({
+    const client = window.supabaseClient || window.supabase;
+    if (!client || !client.auth) {
+      throw new Error('Cliente Supabase não inicializado');
+    }
+    
+    const { data, error } = await client.auth.signUp({
       email: usuario.email,
       password: password,
       options: {
@@ -326,7 +351,12 @@ export async function resetPassword(email) {
     }
 
     // Enviar email de reset com configurações melhoradas
-    const { data, error } = await window.supabase.auth.resetPasswordForEmail(email, {
+    const client = window.supabaseClient || window.supabase;
+    if (!client || !client.auth) {
+      throw new Error('Cliente Supabase não inicializado');
+    }
+    
+    const { data, error } = await client.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password?email=${encodeURIComponent(email)}`,
       captchaToken: null, // Pode ser usado para captcha se necessário
     });
@@ -373,8 +403,14 @@ export async function resetPassword(email) {
  */
 export async function checkEmailExists(email) {
   try {
+    const client = window.supabaseClient || window.supabase;
+    if (!client || !client.auth) {
+      console.error('[authService] Cliente Supabase não inicializado');
+      return false;
+    }
+    
     // Tentar fazer login com senha falsa para verificar se o email existe
-    const { error } = await window.supabase.auth.signInWithPassword({
+    const { error } = await client.auth.signInWithPassword({
       email: email,
       password: 'fake-password-to-test',
     });
