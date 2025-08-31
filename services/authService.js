@@ -351,7 +351,14 @@ export async function resetPassword(email) {
     }
 
     // Enviar email de reset com configurações melhoradas
-    const client = window.supabaseClient || window.supabase;
+    let client = window.supabaseClient || window.supabase;
+    
+    // Se não encontrou, tentar obter via getSupabaseClient
+    if (!client) {
+      console.log('[authService] Tentando obter cliente via getSupabaseClient...');
+      client = await getSupabaseClient();
+    }
+    
     if (!client || !client.auth) {
       throw new Error('Cliente Supabase não inicializado');
     }
@@ -406,15 +413,33 @@ export async function checkEmailExists(email) {
     console.log('[authService] Debug - window.supabaseClient:', window.supabaseClient);
     console.log('[authService] Debug - window.supabase:', window.supabase);
     
-    const client = window.supabaseClient || window.supabase;
+    // Tentar várias formas de acessar o cliente
+    let client = window.supabaseClient || window.supabase;
+    
+    // Se não encontrou, tentar importar e obter
+    if (!client) {
+      console.log('[authService] Tentando obter cliente via getSupabaseClient...');
+      const supabaseClient = await getSupabaseClient();
+      client = supabaseClient;
+    }
+    
     console.log('[authService] Debug - client:', client);
-    console.log('[authService] Debug - client.auth:', client?.auth);
+    console.log('[authService] Debug - client?.auth:', client?.auth);
+    console.log('[authService] Debug - typeof client?.auth:', typeof client?.auth);
     
     if (!client || !client.auth) {
       console.error('[authService] Cliente Supabase não inicializado');
       console.error('[authService] client:', client);
       console.error('[authService] client?.auth:', client?.auth);
-      return false;
+      
+      // Tentar verificar diretamente na tabela como fallback
+      console.log('[authService] Tentando verificar email diretamente na tabela...');
+      const { data: users } = await query('usuarios', {
+        eq: { email: email },
+        limit: 1
+      });
+      
+      return users && users.length > 0;
     }
     
     // Tentar fazer login com senha falsa para verificar se o email existe
