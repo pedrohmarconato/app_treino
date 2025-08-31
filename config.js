@@ -34,6 +34,8 @@ window.SUPABASE_CONFIG = {
 // Inicializar cliente Supabase assim que o script carregar
 if (typeof window !== 'undefined' && window.supabase && window.SUPABASE_CONFIG) {
   console.log('[config.js] 🔧 Inicializando cliente Supabase...');
+  console.log('[config.js] Debug - window.supabase:', window.supabase);
+  console.log('[config.js] Debug - typeof window.supabase:', typeof window.supabase);
 
   try {
     // Verificar se createClient existe
@@ -43,12 +45,14 @@ if (typeof window !== 'undefined' && window.supabase && window.SUPABASE_CONFIG) 
         window.SUPABASE_CONFIG.url,
         window.SUPABASE_CONFIG.key
       );
+      console.log('[config.js] ✅ Cliente criado via window.supabase.createClient');
     } else if (typeof window.createClient === 'function') {
       // Tentar createClient direto no window
       window.supabaseClient = window.createClient(
         window.SUPABASE_CONFIG.url,
         window.SUPABASE_CONFIG.key
       );
+      console.log('[config.js] ✅ Cliente criado via window.createClient');
     } else {
       console.warn('[config.js] ⚠️ createClient não encontrado, mantendo supabase original');
     }

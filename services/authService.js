@@ -403,9 +403,17 @@ export async function resetPassword(email) {
  */
 export async function checkEmailExists(email) {
   try {
+    console.log('[authService] Debug - window.supabaseClient:', window.supabaseClient);
+    console.log('[authService] Debug - window.supabase:', window.supabase);
+    
     const client = window.supabaseClient || window.supabase;
+    console.log('[authService] Debug - client:', client);
+    console.log('[authService] Debug - client.auth:', client?.auth);
+    
     if (!client || !client.auth) {
       console.error('[authService] Cliente Supabase não inicializado');
+      console.error('[authService] client:', client);
+      console.error('[authService] client?.auth:', client?.auth);
       return false;
     }
     
